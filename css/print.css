@@ -1,0 +1,10 @@
+@media print {
+  nav, .hero, #step1-card, #prefs-card, #macros-card, .steps-row,
+  .swap-btn, .btn-primary, .btn-secondary, .dark-toggle,
+  #water-section, .recipe-footer, .recipe-meta { display:none !important; }
+  body { background:white !important; color:black !important; }
+  .card { box-shadow:none !important; border:1px solid #ddd !important; break-inside:avoid; }
+  #shopping-section, #meal-plan-section { display:block !important; }
+  .shop-item { border:1px solid #eee; border-radius:4px; }
+  .print-header { display:block !important; }
+}

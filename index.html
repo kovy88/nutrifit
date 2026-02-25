@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>NutriPlan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/print.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">NutriPlan</div>
+  <div class="nav-right">
+    <!-- nepřihlášen -->
+    <div class="nav-logged-out">
+      <button class="nav-btn" id="btn-login">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Přihlásit se
+      </button>
+    </div>
+    <!-- přihlášen -->
+    <div class="nav-logged-in">
+      <div class="nav-user-chip" id="nav-user-chip">
+        <div class="nav-user-avatar" id="nav-user-avatar"></div>
+        <span class="nav-user-name" id="nav-user-name"></span>
+      </div>
+      <button class="nav-btn has-profile" id="btn-profile">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Profil
+      </button>
+      <button class="nav-btn nav-btn-logout" id="btn-logout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Odhlásit
+      </button>
+    </div>
+    <button class="dark-toggle" id="dark-toggle" title="Přepnout tmavý režim">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">Personalizovaná výživa</div>
+  <h1>Tvůj jídelníček,<br><span>přesně na míru.</span></h1>
+  <p>Zadej pár údajů a získej doporučená makra s jídelníčkem vygenerovaným umělou inteligencí.</p>
+</section>
+
+<div class="container">
+  <div class="steps-row reveal">
+    <div class="step-dot active" id="sdot-1">1</div>
+    <div class="step-line" id="sline-1"></div>
+    <div class="step-dot" id="sdot-2">2</div>
+    <div class="step-line" id="sline-2"></div>
+    <div class="step-dot" id="sdot-3">3</div>
+  </div>
+
+  <!-- CARD 1 -->
+  <div class="card reveal" style="animation-delay:0.05s">
+    <div class="card-header">
+      <div class="card-title">Základní údaje</div>
+      <div class="card-subtitle">Pohlaví, věk, výška, váha a cíl</div>
+    </div>
+    <div class="section-label">Pohlaví</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-muz">Muž</button>
+      <button class="toggle-btn" id="btn-zena">Žena</button>
+    </div>
+    <div class="section-label">Tělesné parametry</div>
+    <div class="inputs-grid">
+      <div class="input-group"><label>Věk</label><input type="number" id="age" placeholder="25" min="10" max="100"></div>
+      <div class="input-group"><label>Výška (cm)</label><input type="number" id="height" placeholder="175" min="100" max="250"></div>
+      <div class="input-group"><label>Váha (kg)</label><input type="number" id="weight" placeholder="75" min="30" max="300"></div>
+    </div>
+    <div class="section-label">Cíl</div>
+    <div class="goal-grid">
+      <div class="goal-card active" data-goal="hubnutí"><span class="goal-name">Hubnout</span><span class="goal-desc">Kalorický deficit</span></div>
+      <div class="goal-card" data-goal="udržení"><span class="goal-name">Udržet váhu</span><span class="goal-desc">Udržení hmotnosti</span></div>
+      <div class="goal-card" data-goal="nabírání"><span class="goal-name">Nabírat</span><span class="goal-desc">Kalorický surplus</span></div>
+    </div>
+  </div>
+
+  <!-- CARD 2 -->
+  <div class="card reveal" style="animation-delay:0.1s">
+    <div class="card-header">
+      <div class="card-title">Aktivita</div>
+      <div class="card-subtitle">Jak moc se pohybuješ?</div>
+    </div>
+    <div class="section-label">Kolikrát týdně cvičíš?</div>
+    <div class="freq-cards">
+      <div class="freq-card" data-factor="1.2"><div class="freq-card-num">0×</div><div class="freq-card-lbl">Vůbec</div></div>
+      <div class="freq-card active" data-factor="1.375"><div class="freq-card-num">1–3×</div><div class="freq-card-lbl">Lehce</div></div>
+      <div class="freq-card" data-factor="1.55"><div class="freq-card-num">3–5×</div><div class="freq-card-lbl">Středně</div></div>
+      <div class="freq-card" data-factor="1.725"><div class="freq-card-num">6–7×</div><div class="freq-card-lbl">Hodně</div></div>
+      <div class="freq-card" data-factor="1.9"><div class="freq-card-num">7×</div><div class="freq-card-lbl">Každý den</div></div>
+    </div>
+    <div class="detail-toggle" id="day-toggle">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Rozepsat tréninky den po dni (volitelné)
+    </div>
+    <div id="day-planner" style="display:none;margin-top:12px;">
+      <div class="day-rows" id="day-rows"></div>
+      <div class="day-planner-note" id="day-planner-note">Faktor aktivity bude přepočítán z průměrné intenzity tvých tréninků.</div>
+    </div>
+    <button class="btn-primary" id="btn-calculate">Spočítat makra →</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" style="display:none;">
+    <div class="card" id="macros-card">
+      <div class="card-header">
+        <div class="card-title">Tvoje denní makra</div>
+        <div class="card-subtitle">Výpočet dle Mifflin-St Jeor</div>
+      </div>
+      <div class="macro-grid">
+        <div class="macro-tile kcal editable" data-macro="kcal">
+          <div class="macro-name">Kalorie <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="macro-value" id="r-kcal">—</div>
+          <input class="macro-input" id="input-kcal" type="number">
+          <div class="macro-unit">kcal / den</div>
+        </div>
+        <div class="macro-tile protein editable" data-macro="protein">
+          <div class="macro-name">Bílkoviny <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="macro-value" id="r-protein">—</div>
+          <input class="macro-input" id="input-protein" type="number">
+          <div class="macro-unit">gramů</div>
+        </div>
+        <div class="macro-tile carbs editable" data-macro="carbs">
+          <div class="macro-name">Sacharidy <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="macro-value" id="r-carbs">—</div>
+          <input class="macro-input" id="input-carbs" type="number">
+          <div class="macro-unit">gramů</div>
+        </div>
+        <div class="macro-tile fat editable" data-macro="fat">
+          <div class="macro-name">Tuky <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          <div class="macro-value" id="r-fat">—</div>
+          <input class="macro-input" id="input-fat" type="number">
+          <div class="macro-unit">gramů</div>
+        </div>
+      </div>
+      <div class="fiber-row">
+        <span class="fiber-label">Vláknina</span>
+        <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
+      </div>
+      <div class="macro-note" id="macro-note" style="display:none;"></div>
+      <div class="stats-row">
+        <div><div class="stat-label">Bazální metabolismus (BMR)</div><div class="stat-value"><span id="r-bmr">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Kolik spálíš v klidu</div></div>
+        <div class="stat-divider"></div>
+        <div><div class="stat-label">Celkový výdej (TDEE)</div><div class="stat-value"><span id="r-tdee">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Celkem včetně pohybu</div></div>
+      </div>
+      <div class="info-pill" id="result-note"></div>
+      <div class="bmi-warning" id="bmi-warning" style="display:none;"></div>
+    </div>
+
+    <!-- CARD 3 -->
+    <div class="card" id="prefs-card">
+      <div class="card-header">
+        <div class="card-title">Preference jídelníčku</div>
+        <div class="card-subtitle">Řekni mi, co ti chutná — vygeneruji jídelníček</div>
+      </div>
+      <div class="textarea-group">
+        <label>Co rád/a jíš?</label>
+        <textarea id="likes" placeholder="Např. kuřecí maso, těstoviny, vejce, jogurt, italská kuchyně…"></textarea>
+        <div class="quick-chips" id="likes-chips">
+          <span class="chip" data-target="likes" data-value="kuřecí maso">🍗 Kuřecí</span>
+          <span class="chip" data-target="likes" data-value="těstoviny">🍝 Těstoviny</span>
+          <span class="chip" data-target="likes" data-value="vejce">🥚 Vejce</span>
+          <span class="chip" data-target="likes" data-value="ryby">🐟 Ryby</span>
+          <span class="chip" data-target="likes" data-value="zelenina">🥦 Zelenina</span>
+          <span class="chip" data-target="likes" data-value="luštěniny">🫘 Luštěniny</span>
+          <span class="chip" data-target="likes" data-value="rýže">🍚 Rýže</span>
+          <span class="chip" data-target="likes" data-value="jogurt a mléčné výrobky">🥛 Mléčné</span>
+        </div>
+      </div>
+
+      <div class="textarea-group">
+        <label>Co nemáš rád/a nebo alergie?</label>
+        <textarea id="dislikes" placeholder="Nebo klikni na rychlé volby níže…" style="min-height:56px;"></textarea>
+        <div class="quick-chips" id="dislikes-chips">
+          <span class="chip" data-target="dislikes" data-value="bez laktózy">🥛 Bez laktózy</span>
+          <span class="chip" data-target="dislikes" data-value="bez lepku">🌾 Bez lepku</span>
+          <span class="chip" data-target="dislikes" data-value="bez vepřového">🐷 Bez vepřového</span>
+          <span class="chip" data-target="dislikes" data-value="bez ryb">🐟 Bez ryb</span>
+          <span class="chip" data-target="dislikes" data-value="nesnáším koriandr">🌿 Bez koriandru</span>
+          <span class="chip" data-target="dislikes" data-value="nesnáším celer">🥬 Bez celeru</span>
+          <span class="chip" data-target="dislikes" data-value="nesnáším brokolici">🥦 Bez brokolice</span>
+          <span class="chip" data-target="dislikes" data-value="bez ořechů">🥜 Bez ořechů</span>
+          <span class="chip" data-target="dislikes" data-value="nesnáším houby">🍄 Bez hub</span>
+          <span class="chip" data-target="dislikes" data-value="bez vajec">🥚 Bez vajec</span>
+        </div>
+      </div>
+      <div class="section-label" style="margin-top:4px;">Stravovací styl</div>
+      <div class="input-group select-wrapper" style="margin-bottom:0;">
+        <select id="diet-style">
+          <option value="standardní">Standardní (vše)</option>
+          <option value="vegetariánský">Vegetariánský</option>
+          <option value="veganský">Veganský</option>
+          <option value="bezlepkový">Bezlepkový</option>
+          <option value="nízkosacharidový">Nízkosacharidový / Keto</option>
+          <option value="vysokoproteínový">Vysokoproteínový</option>
+        </select>
+      </div>
+      <div class="section-label" style="margin-top:20px;">Level surovin</div>
+      <div class="level-grid">
+        <button class="level-btn" data-level="úsporný">
+          <span class="level-icon">🥚</span>
+          <span class="level-name">Úsporný</span>
+          <span class="level-desc">Vejce, luštěniny, mražená zelenina, rýže, ovesné vločky</span>
+        </button>
+        <button class="level-btn active" data-level="standard">
+          <span class="level-icon">🍗</span>
+          <span class="level-name">Standard</span>
+          <span class="level-desc">Kuřecí maso, sezonní zelenina, jogurt, celozrnné pečivo</span>
+        </button>
+        <button class="level-btn" data-level="gourmet">
+          <span class="level-icon">🥩</span>
+          <span class="level-name">Gourmet</span>
+          <span class="level-desc">Losos, avokádo, hovězí, exotické ovoce, prémiové suroviny</span>
+        </button>
+      </div>
+
+      <div class="section-label" style="margin-top:20px;">Počet jídel za den</div>
+      <div class="meal-count-row">
+        <button class="mc-btn" id="mc-minus">−</button>
+        <div class="mc-display">
+          <span class="mc-number" id="meal-count-display">5</span>
+          <span class="mc-label" id="meal-count-label">jídel</span>
+        </div>
+        <button class="mc-btn" id="mc-plus">+</button>
+        <div class="mc-names" id="meal-count-names">Snídaně · Dop. svačina · Oběd · Odp. svačina · Večeře</div>
+      </div>
+      <button class="btn-primary" id="btn-generate">Vygenerovat jídelníček</button>
+    </div>
+
+    <!-- CARD 4 -->
+    <div id="meal-plan-section" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Jídelníček na míru</div>
+          <div class="card-subtitle">Klikni na recept pro podrobný postup</div>
+        </div>
+        <div id="meal-plan-output"></div>
+      </div>
+    </div>
+
+    <!-- CARD 5: Shopping list -->
+    <div id="shopping-section" style="display:none;">
+      <div class="shop-accordion">
+        <div class="shop-accordion-header" id="shop-accordion-header">
+          <div class="shop-accordion-left">
+            <span>🛒</span>
+            <span class="shop-accordion-title">Nákupní seznam</span>
+            <span class="shop-accordion-count" id="shop-total-count"></span>
+          </div>
+          <svg class="shop-group-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shop-accordion-body" id="shopping-output"></div>
+      </div>
+    </div>
+
+    <!-- CARD 6: Water -->
+    <div id="water-section" style="display:none;">
+      <div class="card water-card">
+        <div class="water-inner">
+          <div class="water-text">
+            <div class="water-title">Pitný režim</div>
+            <div class="water-amount" id="water-amount">—</div>
+            <div class="water-desc" id="water-desc"></div>
+          </div>
+          <div class="water-progress-wrap">
+            <div class="water-glasses-label">
+              <span>Denní cíl</span>
+              <span id="water-glasses-count"></span>
+            </div>
+            <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
+            <div class="water-drops" id="water-drops"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div id="profile-modal" class="profile-modal" style="display:none;">
+  <div class="profile-sheet">
+    <div class="profile-handle"></div>
+    <button class="profile-close" id="profile-close">×</button>
+
+    <!-- Přihlášený uživatel -->
+    <div class="profile-user-header" id="profile-user-header" style="display:none;">
+      <div class="profile-avatar" id="profile-avatar-initials"></div>
+      <div class="profile-user-info">
+        <div class="profile-user-fullname" id="profile-user-fullname"></div>
+        <div class="profile-user-email" id="profile-user-email"></div>
+      </div>
+    </div>
+
+    <!-- Anonymní uživatel -->
+    <div class="profile-anon" id="profile-anon" style="display:none;">
+      <div class="profile-anon-icon">👤</div>
+      <div class="profile-anon-text">Nejsi přihlášen/a. <strong id="profile-anon-login-btn">Přihlásit se</strong> pro synchronizaci dat napříč zařízeními.</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-title">Základní údaje</div>
+      <div class="toggle-group" style="margin-bottom:12px;">
+        <button class="toggle-btn active" id="p-btn-muz">👨 Muž</button>
+        <button class="toggle-btn" id="p-btn-zena">👩 Žena</button>
+      </div>
+      <div class="inputs-grid">
+        <div class="input-group"><label>Věk</label><input type="number" id="p-age" placeholder="25"></div>
+        <div class="input-group"><label>Výška (cm)</label><input type="number" id="p-height" placeholder="175"></div>
+        <div class="input-group"><label>Váha (kg)</label><input type="number" id="p-weight" placeholder="70"></div>
+      </div>
+      <div class="section-label">Cíl</div>
+      <div class="goal-grid">
+        <div class="goal-card active" data-profile-goal="hubnutí">
+          <div class="goal-name">📉 Hubnout</div>
+          <div class="goal-desc">Kalorický deficit</div>
+        </div>
+        <div class="goal-card" data-profile-goal="udržení">
+          <div class="goal-name">⚖️ Udržet</div>
+          <div class="goal-desc">Vyrovnaná bilance</div>
+        </div>
+        <div class="goal-card" data-profile-goal="nabírání">
+          <div class="goal-name">📈 Nabírat</div>
+          <div class="goal-desc">Kalorický přebytek</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-title">Jídelní preference</div>
+      <div class="textarea-group" style="margin-bottom:10px;">
+        <label>Co rád/a jíš?</label>
+        <textarea id="p-likes" placeholder="Kuřecí, těstoviny, vejce…" style="min-height:60px;"></textarea>
+      </div>
+      <div class="textarea-group" style="margin-bottom:10px;">
+        <label>Co nemáš rád/a nebo alergie?</label>
+        <textarea id="p-dislikes" placeholder="Laktóza, ryby, koriandr…" style="min-height:60px;"></textarea>
+      </div>
+      <div class="section-label">Stravovací styl</div>
+      <div class="input-group select-wrapper" style="margin-bottom:0;">
+        <select id="p-diet">
+          <option value="standardní">Standardní (vše)</option>
+          <option value="vegetariánský">Vegetariánský</option>
+          <option value="veganský">Veganský</option>
+          <option value="bezlepkový">Bezlepkový</option>
+          <option value="nízkosacharidový">Nízkosacharidový / Keto</option>
+          <option value="vysokoproteínový">Vysokoproteínový</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-section-title">Aktivity (výchozí týden)</div>
+      <div id="p-day-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <div class="profile-save-area">
+      <button class="profile-save-btn" id="profile-save-btn">Uložit profil</button>
+      <div class="profile-saved-note" id="profile-saved-note"></div>
+    </div>
+
+    <div class="profile-section" style="margin-top:16px;">
+      <div class="profile-section-title">Historie jídelníčků</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECIPE MODAL -->
+<div class="modal-overlay" id="recipe-modal">
+  <div class="modal-card">
+    <button class="modal-close" id="modal-close-btn">×</button>
+    <div id="modal-content" style="display:none;">
+      <div class="modal-meal-type" id="modal-meal-type"></div>
+      <h2 class="modal-title" id="modal-title"></h2>
+      <div class="modal-macros" id="modal-macros"></div>
+      <div class="modal-info-row" id="modal-info-row"></div>
+      <div class="modal-divider"></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand-logo">N</div>
+      <div class="auth-brand-name">NutriPlan</div>
+      <div class="auth-brand-sub">Personalizovaná výživa</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Přihlásit se</button>
+      <button class="auth-tab" data-tab="register">Registrovat</button>
+    </div>
+    <!-- Login -->
+    <div id="auth-login-form" class="auth-form">
+      <div class="input-group">
+        <label>E-mail</label>
+        <input type="email" id="auth-email" placeholder="jan@email.cz" autocomplete="email">
+      </div>
+      <div class="input-group">
+        <label>Heslo</label>
+        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="auth-error" id="auth-login-error"></div>
+      <button class="btn-primary" id="auth-login-btn" style="margin-top:16px;">Přihlásit se</button>
+      <button class="auth-skip" id="auth-skip-login">Pokračovat bez přihlášení</button>
+    </div>
+    <!-- Register -->
+    <div id="auth-register-form" class="auth-form" style="display:none;">
+      <div class="input-group">
+        <label>Jméno</label>
+        <input type="text" id="reg-name" placeholder="Jan Kovář" autocomplete="name">
+      </div>
+      <div class="input-group">
+        <label>E-mail</label>
+        <input type="email" id="reg-email" placeholder="jan@email.cz" autocomplete="email">
+      </div>
+      <div class="input-group">
+        <label>Heslo <span style="color:var(--text-tertiary);font-weight:400;">(min. 6 znaků)</span></label>
+        <input type="password" id="reg-password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="auth-error" id="auth-register-error"></div>
+      <button class="btn-primary" id="auth-register-btn" style="margin-top:16px;">Vytvořit účet</button>
+      <button class="auth-skip" id="auth-skip-register">Pokračovat bez přihlášení</button>
+    </div>
+    <!-- Google Sign-In -->
+    <div class="auth-divider"><span>nebo</span></div>
+    <div id="google-signin-btn"></div>
+    <div class="google-setup-note" id="google-setup-note" style="display:none;">
+      Pro Google přihlášení nastav <code>GOOGLE_CLIENT_ID</code> v kódu.<br>
+      <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

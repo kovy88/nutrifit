@@ -1,0 +1,58 @@
+/* ── BASE */
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; transition: background 0.3s, color 0.3s; }
+body::before { content:''; position:fixed; top:0; left:50%; transform:translateX(-50%); width:600px; height:300px; background:radial-gradient(ellipse, rgba(0,113,227,0.04) 0%, transparent 70%); pointer-events:none; z-index:0; }
+[data-theme="dark"] body::before { background:radial-gradient(ellipse, rgba(0,113,227,0.08) 0%, transparent 70%); }
+
+/* ── NAV */
+nav { position:sticky; top:0; z-index:100; background:var(--nav-bg); backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--border); padding:0 24px; height:52px; display:flex; align-items:center; justify-content:center; }
+.nav-logo { font-size:1rem; font-weight:600; letter-spacing:-0.3px; }
+.nav-right { position:absolute; right:16px; display:flex; align-items:center; gap:8px; }
+.nav-btn { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:100px; border:1.5px solid var(--border-strong); background:var(--white); font-family:inherit; font-size:0.8rem; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.18s ease; }
+.nav-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.nav-btn.has-profile { border-color:var(--blue); color:var(--blue); }
+.dark-toggle { width:36px; height:36px; border-radius:50%; border:1.5px solid var(--border-strong); background:var(--white); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; }
+.dark-toggle:hover { background:var(--blue); color:white; border-color:var(--blue); }
+.dark-toggle .icon-moon { display:none; }
+[data-theme="dark"] .dark-toggle .icon-sun  { display:none; }
+[data-theme="dark"] .dark-toggle .icon-moon { display:block; }
+
+/* ── NAV AUTH STATES */
+.nav-logged-out { display:flex; align-items:center; gap:8px; }
+.nav-logged-in  { display:none;  align-items:center; gap:8px; }
+body.logged-in .nav-logged-out { display:none; }
+body.logged-in .nav-logged-in  { display:flex; }
+.nav-user-chip { display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border-radius:100px; border:1.5px solid var(--border-strong); background:var(--white); cursor:pointer; transition:all 0.18s; }
+.nav-user-chip:hover { border-color:var(--blue); background:var(--blue-light); }
+.nav-user-avatar { width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,var(--blue),#5a9ef8); color:white; font-size:0.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:0.3px; }
+.nav-user-name { font-size:0.8rem; font-weight:600; color:var(--text); white-space:nowrap; max-width:100px; overflow:hidden; text-overflow:ellipsis; }
+.nav-btn-logout { color:var(--red) !important; border-color:rgba(255,59,48,0.25) !important; }
+.nav-btn-logout:hover { background:#fff1f0 !important; border-color:var(--red) !important; color:var(--red) !important; }
+[data-theme="dark"] .nav-btn-logout:hover { background:rgba(255,59,48,0.12) !important; }
+
+/* ── HERO */
+.hero { text-align:center; padding:72px 24px 48px; position:relative; z-index:1; }
+.hero-badge { display:inline-flex; align-items:center; gap:6px; color:var(--text-tertiary); font-size:0.75rem; font-weight:500; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:20px; animation:fadeDown 0.6s ease both; }
+.hero h1 { font-size:clamp(2.4rem,5.5vw,4rem); font-weight:700; letter-spacing:-2px; line-height:1.08; margin-bottom:16px; animation:fadeDown 0.6s 0.1s ease both; }
+.hero h1 span { color:var(--blue); }
+.hero p { font-size:1.05rem; color:var(--text-secondary); max-width:400px; margin:0 auto; line-height:1.6; animation:fadeDown 0.6s 0.2s ease both; }
+
+/* ── CONTAINER */
+.container { max-width:680px; margin:0 auto; padding:0 20px 100px; position:relative; z-index:1; }
+
+/* ── STEP INDICATOR */
+.steps-row { display:flex; align-items:center; justify-content:center; margin-bottom:32px; }
+.step-dot { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border-strong); background:var(--white); color:var(--text-tertiary); font-size:0.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.35s ease; }
+.step-dot.active { background:var(--blue); border-color:var(--blue); color:white; box-shadow:0 2px 8px rgba(0,113,227,0.3); }
+.step-dot.done { background:var(--green); border-color:var(--green); color:white; }
+.step-line { width:48px; height:1.5px; background:var(--border-strong); transition:background 0.4s 0.2s ease; }
+.step-line.done { background:var(--green); }
+
+/* ── SCROLL REVEAL */
+.reveal { opacity:0; transform:translateY(24px); transition:opacity 0.5s ease,transform 0.5s ease; }
+.reveal.visible { opacity:1; transform:translateY(0); }
+
+/* ── PRINT HEADER */
+.print-header { display:none; text-align:center; margin-bottom:20px; }
+.print-header h2 { font-size:1.4rem; font-weight:700; }
+.print-header p { color:#666; font-size:0.85rem; margin-top:4px; }
