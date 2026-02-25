@@ -1,4 +1,4 @@
-// ── GENEROVÁNÍ A ZOBRAZENÍ RECEPTŮ + RECIPE MODAL
+// ── INDIVIDUÁLNÍ NÁVRH JÍDELNÍČKU — generování, zobrazení receptů + recipe modal
 
 import { appState, MEAL_NAMES } from './state.js';
 import { buildShoppingList } from './shopping.js';

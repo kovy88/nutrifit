@@ -1,6 +1,6 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES } from './state.js';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js';
 import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js';
 import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js';
 import { toggleDayPlanner } from './dayplanner.js';
@@ -204,8 +204,10 @@ function changeMealCount(delta) {
   });
   document.getElementById('profile-save-btn')?.addEventListener('click', saveProfile);
 
-  // Bootstrap
-  loadProfileOnStart();
-
+  // Bootstrap — obnova session + naslouchání změnám autentizace
+  initAuthListener(
+    () => loadProfileOnStart(),
+    () => { updateNavAuth(); openAuthModal(); }
+  );
 
 })();

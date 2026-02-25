@@ -1,7 +1,8 @@
 // ── PROFIL, HISTORIE, STARTUP
 
 import { appState, DAYS, ACTIVITY_TYPES } from './state.js';
-import { getCurrentUser, getProfileKey, getHistoryKey, updateNavAuth, openAuthModal } from './auth.js';
+import { supabase } from './supabase.js';
+import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js';
 import { setDayRest, recalcFromDays } from './dayplanner.js';
 import { buildShoppingList } from './shopping.js';
 import { renderList } from './recipes.js';
@@ -29,12 +30,13 @@ export function openProfileModal() {
   const header = document.getElementById('profile-user-header');
   const anon   = document.getElementById('profile-anon');
   if (user) {
-    const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const name     = user.user_metadata?.full_name || user.email;
+    const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const avatarEl = document.getElementById('profile-avatar-initials');
     const nameEl   = document.getElementById('profile-user-fullname');
     const emailEl  = document.getElementById('profile-user-email');
     if (avatarEl) avatarEl.textContent = initials;
-    if (nameEl)   nameEl.textContent   = user.name;
+    if (nameEl)   nameEl.textContent   = name;
     if (emailEl)  emailEl.textContent  = user.email;
     if (header) header.style.display = 'flex';
     if (anon)   anon.style.display   = 'none';
@@ -53,17 +55,15 @@ export function closeProfileModal() {
   document.body.style.overflow = '';
 }
 
-function loadProfileIntoModal() {
-  const profileKey = getProfileKey();
-  try {
-    const raw = localStorage.getItem(profileKey);
-    if (raw) fillModalFromProfile(JSON.parse(raw));
-  } catch(e) {}
-  if (window.storage) {
-    window.storage.get(profileKey).then(res => {
-      if (res?.value) fillModalFromProfile(JSON.parse(res.value));
-    }).catch(() => {});
-  }
+async function loadProfileIntoModal() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
+  if (data) fillModalFromProfile(data);
 }
 
 function fillModalFromProfile(p) {
@@ -118,46 +118,44 @@ export function applyProfileToForm(p) {
 // ── HISTORY
 
 export async function saveToHistory(recipes) {
-  const entry = {
-    id: Date.now(),
-    date: new Date().toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
-    meals: recipes.map(r => ({
-      name: r.name, mealType: r.mealType, kcal: r.kcal, protein: r.protein,
-      carbs: r.carbs, fat: r.fat, fiber: r.fiber, prepTime: r.prepTime,
-      difficulty: r.difficulty, ingredients: r.ingredients, steps: r.steps,
+  const user = getCurrentUser();
+  if (!user) return;   // anonymní uživatel — tiše přeskočit
+  await supabase.from('meal_history').insert({
+    user_id:    user.id,
+    date_label: new Date().toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }),
+    meals:      recipes.map(r => ({
+      name:        r.name,
+      mealType:    r.mealType,
+      kcal:        r.kcal,
+      protein:     r.protein,
+      carbs:       r.carbs,
+      fat:         r.fat,
+      fiber:       r.fiber,
+      prepTime:    r.prepTime,
+      difficulty:  r.difficulty,
+      ingredients: r.ingredients,
+      steps:       r.steps,
     })),
-    totalKcal: recipes.reduce((s, r) => s + (r.kcal || 0), 0),
-  };
-
-  const historyKey = getHistoryKey();
-  let history = [];
-  try {
-    const res = await window.storage.get(historyKey);
-    if (res?.value) history = JSON.parse(res.value);
-  } catch(e) {
-    try { const raw = localStorage.getItem(historyKey); if (raw) history = JSON.parse(raw); } catch(e2) {}
-  }
-
-  history.unshift(entry);
-  if (history.length > 10) history = history.slice(0, 10);
-
-  try { await window.storage.set(historyKey, JSON.stringify(history)); } catch(e) {}
-  localStorage.setItem(historyKey, JSON.stringify(history));
+    total_kcal: recipes.reduce((s, r) => s + (r.kcal || 0), 0),
+  });
+  // Cap na 10 záznamů řídí DB trigger cap_meal_history — žádné JS ořezávání
 }
 
 async function loadHistory() {
-  const historyKey = getHistoryKey();
-  let history = [];
-  try {
-    const res = await window.storage.get(historyKey);
-    if (res?.value) history = JSON.parse(res.value);
-  } catch(e) {}
-  if (!history.length) {
-    try { const raw = localStorage.getItem(historyKey); if (raw) history = JSON.parse(raw); } catch(e) {}
-  }
-
+  const user = getCurrentUser();
   const list = document.getElementById('history-list');
-  if (!history.length) {
+  if (!user) {
+    list.innerHTML = '<div class="history-empty">Zatím žádné uložené jídelníčky</div>';
+    return;
+  }
+  const { data: history } = await supabase
+    .from('meal_history')
+    .select('id, date_label, meals, total_kcal')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (!history || !history.length) {
     list.innerHTML = '<div class="history-empty">Zatím žádné uložené jídelníčky</div>';
     return;
   }
@@ -167,9 +165,9 @@ async function loadHistory() {
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
-      <span class="history-date">${entry.date}</span>
+      <span class="history-date">${entry.date_label}</span>
       <span class="history-name">${entry.meals.map(m => m.mealType).join(' · ')}</span>
-      <span class="history-kcal">${entry.totalKcal} kcal</span>`;
+      <span class="history-kcal">${entry.total_kcal} kcal</span>`;
     item.addEventListener('click', () => {
       appState.currentRecipes = entry.meals;
       renderList(document.getElementById('meal-plan-output'), appState.currentRecipes);
@@ -186,20 +184,17 @@ async function loadHistory() {
 
 export async function loadProfileOnStart() {
   updateNavAuth();
-  const profileKey = getProfileKey();
-  let profile = null;
-  try {
-    const res = await window.storage.get(profileKey);
-    if (res?.value) profile = JSON.parse(res.value);
-  } catch(e) {}
-  if (!profile) {
-    try { const raw = localStorage.getItem(profileKey); if (raw) profile = JSON.parse(raw); } catch(e) {}
-  }
+  const user = getCurrentUser();
+  if (!user) return;   // openAuthModal volá initAuthListener v main.js při SIGNED_OUT
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
   if (profile) {
     applyProfileToForm(profile);
     document.getElementById('btn-profile')?.classList.add('has-profile');
   }
-  if (!getCurrentUser()) openAuthModal();
 }
 
 // ── PROFILE SAVE (voláno z main.js)
@@ -216,9 +211,13 @@ export async function saveProfile() {
     diet:       document.getElementById('p-diet')?.value,
     activities: DAYS.map((_, i) => document.getElementById(`p-day-type-${i}`)?.value || 'rest'),
   };
-  const profileKey = getProfileKey();
-  try { await window.storage.set(profileKey, JSON.stringify(profile)); } catch(e) {}
-  localStorage.setItem(profileKey, JSON.stringify(profile));
+  const user = getCurrentUser();
+  if (user) {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ user_id: user.id, ...profile }, { onConflict: 'user_id' });
+    if (error) console.error('Chyba při ukládání profilu:', error.message);
+  }
   document.getElementById('btn-profile')?.classList.add('has-profile');
   applyProfileToForm(profile);
   const note = document.getElementById('profile-saved-note');

@@ -1,4 +1,4 @@
-// Vercel serverless funkce — proxy pro Gemini API
+// Vercel serverless funkce — proxy pro individuální návrh jídelníčku (Gemini)
 // API klíč zůstává na serveru, nikdy nedorazí do prohlížeče
 
 module.exports = async function handler(req, res) {

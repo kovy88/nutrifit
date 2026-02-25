@@ -60,3 +60,24 @@ export const SHOP_CATEGORIES = {
   'Luštěniny & ořechy':  ['čočka', 'fazol', 'hrách', 'cizrna', 'ořech', 'mandle', 'kešu', 'arašíd'],
   'Ostatní':             [],
 };
+
+// ── AUTH LISTENER
+// Inicializuje Supabase session listener; volat jednou z main.js při startu
+
+import { supabase } from './supabase.js';
+import { _setCurrentUser } from './auth.js';
+
+export function initAuthListener(onSignIn, onSignOut) {
+  // Zkontroluj existující session (přežití reloadu stránky díky persistSession: true)
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    _setCurrentUser(session?.user ?? null);
+    if (session?.user) onSignIn(); else onSignOut?.();
+  });
+
+  // Sleduj změny stavu autentizace (přihlášení, odhlášení, vypršení tokenu)
+  supabase.auth.onAuthStateChange((_event, session) => {
+    _setCurrentUser(session?.user ?? null);
+    if (_event === 'SIGNED_IN')  onSignIn();
+    if (_event === 'SIGNED_OUT') onSignOut?.();
+  });
+}
