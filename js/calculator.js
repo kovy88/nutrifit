@@ -32,14 +32,17 @@ export function calculate(setStepFn) {
   const weight = parseInt(document.getElementById('weight')?.value);
 
   if (!age || !height || !weight) {
+    let firstEmpty = null;
     ['age', 'height', 'weight'].forEach(id => {
       const inp = document.getElementById(id);
       if (!inp.value) {
+        if (!firstEmpty) firstEmpty = inp;
         inp.style.borderColor = '#ff3b30';
         inp.style.boxShadow   = '0 0 0 4px rgba(255,59,48,0.12)';
         setTimeout(() => { inp.style.borderColor = ''; inp.style.boxShadow = ''; }, 2000);
       }
     });
+    if (firstEmpty) firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
 
