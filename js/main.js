@@ -207,20 +207,5 @@ function changeMealCount(delta) {
   // Bootstrap
   loadProfileOnStart();
 
-  // ── DISCLAIMER (první spuštění)
-  if (!localStorage.getItem('nutriplan-disclaimer-accepted')) {
-    document.getElementById('disclaimer-modal').classList.add('open');
-  }
-  document.getElementById('disclaimer-accept-btn')?.addEventListener('click', () => {
-    localStorage.setItem('nutriplan-disclaimer-accepted', '1');
-    document.getElementById('disclaimer-modal').classList.remove('open');
-  });
-  document.getElementById('footer-disclaimer-btn')?.addEventListener('click', () => {
-    document.getElementById('disclaimer-modal').classList.add('open');
-  });
-  document.getElementById('disclaimer-modal')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('disclaimer-modal'))
-      document.getElementById('disclaimer-modal').classList.remove('open');
-  });
 
 })();
