@@ -257,6 +257,7 @@
         <div class="mc-names" id="meal-count-names">Snídaně · Dop. svačina · Oběd · Odp. svačina · Večeře</div>
       </div>
       <button class="btn-primary" id="btn-generate">Vygenerovat jídelníček</button>
+      <div class="usage-badge" id="usage-badge" style="display:none;"><span id="usage-badge-text"></span></div>
     </div>
 
     <!-- CARD 4 -->
@@ -463,6 +464,30 @@
       Pro Google přihlášení nastav <code>GOOGLE_CLIENT_ID</code> v kódu.<br>
       <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a>
     </div>
+  </div>
+</div>
+
+<!-- PAYWALL MODAL -->
+<div class="modal-overlay" id="paywall-modal">
+  <div class="paywall-card">
+    <button class="modal-close" id="paywall-close-btn">&times;</button>
+    <div class="paywall-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <h2 class="paywall-title">Dosáhl jsi limitu</h2>
+    <p class="paywall-subtitle">Zdarma máš <strong id="paywall-limit">3</strong> generace jídelníčku měsíčně</p>
+    <div class="paywall-progress">
+      <div class="paywall-progress-bar" id="paywall-progress-bar"></div>
+    </div>
+    <div class="paywall-progress-label"><span id="paywall-count">3</span> / <span id="paywall-limit-label">3</span> využito</div>
+    <div class="paywall-benefits">
+      <div class="paywall-benefit"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Neomezené generace jídelníčků</div>
+      <div class="paywall-benefit"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Neomezené výměny jídel</div>
+      <div class="paywall-benefit"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Historie a cloudové ukládání</div>
+      <div class="paywall-benefit"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Prioritní AI generace</div>
+    </div>
+    <button class="btn-primary paywall-cta" id="paywall-cta-btn">Odemknout Premium</button>
+    <p class="paywall-note">Nový limit se obnoví příští měsíc</p>
   </div>
 </div>
 

@@ -3,6 +3,8 @@
 import { appState, MEAL_NAMES } from './state.js';
 import { buildShoppingList } from './shopping.js';
 import { saveToHistory } from './profile.js';
+import { getCurrentUser } from './auth.js';
+import { checkAndIncrement } from './generation-limit.js';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
@@ -27,6 +29,21 @@ function fixMacros(meal) {
 // ── GENEROVÁNÍ JÍDELNÍČKU
 
 export async function generateMealPlan(setStepFn) {
+  // ── Limit check: vyžaduj login a zkontroluj generační limit
+  const user = getCurrentUser();
+  if (!user) {
+    const { openAuthModal } = await import('./auth.js');
+    openAuthModal();
+    return;
+  }
+  const limitResult = await checkAndIncrement();
+  if (limitResult && !limitResult.allowed) {
+    window.dispatchEvent(new CustomEvent('paywall:show', { detail: limitResult }));
+    return;
+  }
+  // Aktualizuj badge po úspěšné inkrementaci
+  if (limitResult) window.dispatchEvent(new CustomEvent('usage:update', { detail: limitResult }));
+
   const sec = document.getElementById('meal-plan-section');
   const out = document.getElementById('meal-plan-output');
   sec.style.display = 'block';
@@ -88,6 +105,20 @@ DŮLEŽITÉ: Makra vypočítej přesně ze surovin. Vzorec: kcal = protein×4 + 
 // ── VYMĚNIT JÍDLO
 
 export async function swapMeal(index) {
+  // ── Limit check pro swap
+  const swapUser = getCurrentUser();
+  if (!swapUser) {
+    const { openAuthModal } = await import('./auth.js');
+    openAuthModal();
+    return;
+  }
+  const swapLimit = await checkAndIncrement();
+  if (swapLimit && !swapLimit.allowed) {
+    window.dispatchEvent(new CustomEvent('paywall:show', { detail: swapLimit }));
+    return;
+  }
+  if (swapLimit) window.dispatchEvent(new CustomEvent('usage:update', { detail: swapLimit }));
+
   const item = document.getElementById(`recipe-item-${index}`);
   const btn  = item.querySelector('.swap-btn');
   const meal = appState.currentRecipes[index];

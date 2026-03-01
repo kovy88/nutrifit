@@ -6,6 +6,7 @@ import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js
 import { toggleDayPlanner } from './dayplanner.js';
 import { generateMealPlan, closeRecipeModal } from './recipes.js';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js';
+import { getUsageInfo, FREE_LIMIT } from './generation-limit.js';
 
 // ── DARK MODE (spouští se okamžitě, před DOMContentLoaded)
 const savedTheme = localStorage.getItem('nutriplan-theme');
@@ -35,6 +36,44 @@ function changeMealCount(delta) {
   document.getElementById('meal-count-names').textContent = MEAL_NAMES[next].join(' · ');
   document.getElementById('mc-minus').disabled = next <= 2;
   document.getElementById('mc-plus').disabled  = next >= 6;
+}
+
+// ── PAYWALL MODAL
+
+function openPaywallModal(detail) {
+  const modal = document.getElementById('paywall-modal');
+  if (!modal) return;
+  const count = detail?.count ?? FREE_LIMIT;
+  const limit = detail?.limit ?? FREE_LIMIT;
+  document.getElementById('paywall-count').textContent = count;
+  document.getElementById('paywall-limit-label').textContent = limit;
+  document.getElementById('paywall-limit').textContent = limit;
+  document.getElementById('paywall-progress-bar').style.width = '100%';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePaywallModal() {
+  document.getElementById('paywall-modal')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── USAGE BADGE
+
+function updateUsageBadge(info) {
+  const badge = document.getElementById('usage-badge');
+  const text  = document.getElementById('usage-badge-text');
+  if (!badge || !text) return;
+
+  if (info.premium) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  const remaining = Math.max(0, info.limit - info.count);
+  badge.style.display = 'block';
+  text.textContent = `${remaining}/${info.limit} generací zbývá`;
+  badge.className = 'usage-badge' + (remaining === 0 ? ' exhausted' : remaining === 1 ? ' low' : '');
 }
 
 // ── INIT
@@ -141,8 +180,23 @@ function changeMealCount(delta) {
 
   // Escape key
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeRecipeModal(); closeProfileModal(); closeAuthModal(); }
+    if (e.key === 'Escape') { closeRecipeModal(); closeProfileModal(); closeAuthModal(); closePaywallModal(); }
   });
+
+  // Paywall modal
+  document.getElementById('paywall-close-btn')?.addEventListener('click', closePaywallModal);
+  document.getElementById('paywall-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('paywall-modal')) closePaywallModal();
+  });
+  document.getElementById('paywall-cta-btn')?.addEventListener('click', () => {
+    // TODO: Stripe checkout — zatím jen zavři a ukaž info
+    closePaywallModal();
+    alert('Stripe platby budou brzy k dispozici. Díky za zájem!');
+  });
+
+  // Custom events z recipes.js
+  window.addEventListener('paywall:show', e => openPaywallModal(e.detail));
+  window.addEventListener('usage:update', e => updateUsageBadge(e.detail));
 
   // Shopping accordion
   document.getElementById('shop-accordion-header')?.addEventListener('click', () => {
@@ -177,7 +231,10 @@ function changeMealCount(delta) {
   });
 
   // Auth login event (fired by auth.js after successful login)
-  window.addEventListener('auth:login', () => loadProfileOnStart());
+  window.addEventListener('auth:login', () => {
+    loadProfileOnStart();
+    getUsageInfo().then(updateUsageBadge);
+  });
 
   // Profile modal
   document.getElementById('btn-profile')?.addEventListener('click', openProfileModal);
@@ -206,8 +263,8 @@ function changeMealCount(delta) {
 
   // Bootstrap — obnova session + naslouchání změnám autentizace
   initAuthListener(
-    () => loadProfileOnStart(),
-    () => { updateNavAuth(); openAuthModal(); }
+    () => { loadProfileOnStart(); getUsageInfo().then(updateUsageBadge); },
+    () => { updateNavAuth(); openAuthModal(); document.getElementById('usage-badge').style.display = 'none'; }
   );
 
 })();
