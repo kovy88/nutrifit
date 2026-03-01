@@ -1,6 +1,31 @@
 // Vercel serverless funkce — proxy pro individuální návrh jídelníčku (Gemini)
 // API klíč zůstává na serveru, nikdy nedorazí do prohlížeče
 
+// ── RATE LIMITING (in-memory, přežije dokud Vercel drží instanci ~5–15 min)
+const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hodina
+const RATE_MAX = 15; // max 15 požadavků za hodinu na IP
+const hits = new Map();
+
+function rateLimit(ip) {
+  const now = Date.now();
+  const entry = hits.get(ip);
+  if (!entry || now - entry.start > RATE_WINDOW_MS) {
+    hits.set(ip, { start: now, count: 1 });
+    return false; // OK
+  }
+  entry.count++;
+  if (entry.count > RATE_MAX) return true; // BLOCKED
+  return false;
+}
+
+// Úklid starých záznamů (max 5000 IP v paměti)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of hits) {
+    if (now - entry.start > RATE_WINDOW_MS) hits.delete(ip);
+  }
+}, 10 * 60 * 1000);
+
 module.exports = async function handler(req, res) {
   const allowedOrigins = [
     'https://nutri-fit-omega.vercel.app',
@@ -18,6 +43,12 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: { message: 'Method not allowed' } });
+  }
+
+  // Rate limit — IP z Vercel headers
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (rateLimit(ip)) {
+    return res.status(429).json({ error: { message: 'Příliš mnoho požadavků. Zkus to za chvíli.' } });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
