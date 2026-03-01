@@ -186,6 +186,12 @@ export async function loadProfileOnStart() {
   updateNavAuth();
   const user = getCurrentUser();
   if (!user) return;   // openAuthModal volá initAuthListener v main.js při SIGNED_OUT
+
+  // Zajisti že profil existuje (důležité pro Google sign-in a generační limity)
+  await supabase
+    .from('profiles')
+    .upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true });
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')

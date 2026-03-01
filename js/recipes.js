@@ -57,38 +57,79 @@ export async function generateMealPlan(setStepFn) {
   const diet     = document.getElementById('diet-style')?.value;
   const names    = MEAL_NAMES[appState.mealCount];
 
-  const systemPrompt = `Jsi český výživový poradce a kuchař. Pravidla:
-1. VEŠKERÝ text musí být česky — názvy jídel, ingredience, postup, vše. Nikdy nepoužívej angličtinu.
-2. Kalorie VŽDY počítej přesně: kcal = bílkoviny×4 + sacharidy×4 + tuky×9. Každé jídlo ověř před odesláním.
-3. Ingredience piš ve formátu "200g ovesných vloček" nebo "2 vejce" (množství + jednotka + název).
-4. Vrátíš validní JSON přesně dle zadané struktury bez dalšího textu.`;
+  const systemPrompt = `# Role
+Jsi NutriPlan AI — český výživový poradce a kreativní kuchař. Veškerý výstup je VÝHRADNĚ v češtině (ingredience, názvy, postup).
+
+# Základní direktivy
+1. MATEMATICKÁ PŘESNOST — Pro každé jídlo: kcal = bílkoviny×4 + sacharidy×4 + tuky×9. Tolerance ±5 kcal na jídlo. Součet maker všech jídel = denní cíl ±3 %.
+2. REÁLNÉ GRAMÁŽE — Každá ingredience má přesné množství (např. "150g kuřecích prsou", "2 vejce", "30ml olivového oleje"). Gramáže musí odpovídat uvedeným makrům.
+3. PRAKTIČNOST — Používej suroviny dostupné v českých supermarketech (Billa, Albert, Kaufland, Lidl). Uváděj realistické doby přípravy.
+4. EDUKATIVNÍ POSTUP — Každý krok receptu je jasný a proveditelný i pro začátečníka. Uváděj teploty, časy a vizuální indikátory hotovosti.
+
+# Dietní guardrails
+- Pokud diet = "keto": sacharidy < 20g/den, ŽÁDNÉ obiloviny, brambory, ovoce s vysokým GI.
+- Pokud diet = "vegan": ŽÁDNÉ živočišné produkty (maso, vejce, mléko, med, sýr). Bílkoviny z luštěnin, tofu, tempeh, seitan.
+- Pokud diet = "bezlepkové": ŽÁDNÁ pšenice, žito, ječmen, špalda. Povoleno: rýže, kukuřice, pohanka, brambory, bezlepkové ovesné vločky.
+- Pokud diet = "vegetariánské": žádné maso ani ryby, ale vejce a mléčné výrobky jsou OK.
+
+# Myšlenkový postup (interní, nevypisuj)
+Pro každé jídlo si nejdřív spočítej:
+1. Rozděl denní makra mezi jídla podle typu (snídaně ~20-25%, oběd ~30-35%, svačiny ~10-15%, večeře ~25-30%).
+2. Zvol hlavní zdroj bílkovin → spočítej jeho gramáž z cílového proteinu.
+3. Doplň sacharidový zdroj → spočítej gramáž.
+4. Doplň tukový zdroj → spočítej gramáž.
+5. Ověř: protein×4 + carbs×4 + fat×9 = kcal (±5 kcal).
+
+# Diverzita a struktura
+- Hlavní zdroj bílkovin se NESMÍ opakovat ve dvou jídlech (např. ne 2× kuřecí prsa).
+- Přílohy musí být pestré (ne 2× rýže — střídej rýži, brambory, těstoviny, kuskus, bulgur, quinoa dle levelu).
+- Každé hlavní jídlo musí mít jiný typ zeleniny.
+- Střídej textury: křupavé + krémové, teplé + studené.
+- Doba přípravy: snídaně max 15 min, svačiny max 10 min, oběd/večeře max 45 min.
+
+# Vrátíš POUZE validní JSON bez dalšího textu.`;
 
   const levelDesc = appState.ingredientLevel === 'úsporný'
-    ? `ÚSPORNÝ level (levné suroviny, max ~80 Kč/porci):
-POVOLENO: vejce, čočka, fazole, cizrna, hrách, mražená zelenina, mrkev, cibule, zelí, rajčata, rýže, těstoviny, ovesné vločky, tvaroh, mléko, bílý jogurt, banány, jablka, chléb, brambory, tuňák v konzervě, kuřecí stehna.
-ZAKÁZÁNO: losos, avokádo, hovězí svíčková, quinoa, granola, kokosové mléko, kešu ořechy, pistácie, mango, borůvky mimo sezónu, dražší sýry než eidam.`
+    ? `ÚSPORNÝ level (max ~80 Kč/porci):
+POVOLENO: vejce, čočka, fazole, cizrna, hrách, mražená zelenina, mrkev, cibule, zelí, rajčata, rýže, těstoviny, ovesné vločky, tvaroh, mléko, bílý jogurt, banány, jablka, chléb, brambory, tuňák v konzervě, kuřecí stehna, vepřové maso.
+ZAKÁZÁNO: losos, avokádo, hovězí svíčková, quinoa, granola, kokosové mléko, kešu ořechy, pistácie, mango, borůvky mimo sezónu, dražší sýry než eidam.
+PRAVIDLA: Upřednostňuj sezónní suroviny. Luštěniny jako hlavní zdroj bílkovin min. 2× denně. Mražená zelenina je OK.`
     : appState.ingredientLevel === 'gourmet'
-    ? `GOURMET level (prémiové suroviny, cena není omezena):
-POVOLENO: losos, čerstvý tuňák, avokádo, hovězí entrecôte, telecí, mango, granola, řecký jogurt, quinoa, para ořechy, kešu, pistácie, chia semínka, olivový olej extra virgin, parmazán, mozzarella buffalo, tahini, kokosové mléko, šampaňské houby.
-VYHNI SE: průmyslovým polotovarům, instantním jídlům, levným náhražkám.`
-    : `STANDARD level (běžná obchodní dostupnost, střední cena 80–200 Kč/porci):
-POVOLENO: kuřecí prsa, kuřecí stehna, vepřová panenka, tuňák v konzervě, sezónní zelenina, celozrnné pečivo, jogurt, sýr eidam nebo gouda, brambory, ovoce, rýže, těstoviny, vejce, tvaroh, cottage.
-VYHNI SE: prémiové suroviny (losos, avokádo, quinoa) i velmi levné náhražky.`;
+    ? `GOURMET level (cena není omezena):
+POVOLENO: losos, čerstvý tuňák, avokádo, hovězí entrecôte, telecí, jehněčí, mango, granola, řecký jogurt, quinoa, para ořechy, kešu, pistácie, chia semínka, olivový olej extra virgin, parmazán, mozzarella buffalo, tahini, kokosové mléko, čerstvé bylinky, šampaňské houby.
+VYHNI SE: průmyslovým polotovarům, instantním jídlům, levným náhražkám.
+PRAVIDLA: Důraz na prezentaci a chuťovou komplexitu. Používej čerstvé bylinky a koření. Každé jídlo má mít "wow" faktor.`
+    : `STANDARD level (80–200 Kč/porci):
+POVOLENO: kuřecí prsa, kuřecí stehna, vepřová panenka, tuňák v konzervě, sezónní zelenina, celozrnné pečivo, jogurt, sýr eidam nebo gouda, brambory, ovoce, rýže, těstoviny, vejce, tvaroh, cottage, ovesné vločky.
+VYHNI SE: prémiové suroviny (losos, avokádo, quinoa) i velmi levné náhražky.
+PRAVIDLA: Vyvážený poměr cena/kvalita. Sezónní ovoce a zelenina. Střídej živočišné a rostlinné zdroje bílkovin.`;
 
-  const prompt = `Vytvoř jídelníček na 1 den s přesně ${appState.mealCount} jídly. VEŠKERÝ TEXT MUSÍ BÝT V ČEŠTINĚ.
+  const prompt = `Vytvoř jídelníček na 1 den s přesně ${appState.mealCount} jídly.
 
-MAKRA: ${appState.macros.kcal} kcal | Bílkoviny: ${appState.macros.protein}g | Sacharidy: ${appState.macros.carbs}g | Tuky: ${appState.macros.fat}g
+DENNÍ CÍLE: ${appState.macros.kcal} kcal | Bílkoviny: ${appState.macros.protein}g | Sacharidy: ${appState.macros.carbs}g | Tuky: ${appState.macros.fat}g
 OSOBA: ${appState.macros.gender === 'muz' ? 'Muž' : 'Žena'}, ${appState.macros.age} let, ${appState.macros.weight} kg | CÍL: ${appState.macros.goal}
-STRAVOVÁNÍ: ${diet} | OBLÍBENÁ JÍDLA: ${likes} | NEMÁ RÁD: ${dislikes}
+STRAVOVÁNÍ: ${diet} | OBLÍBENÁ JÍDLA: ${likes} | NEMÁ RÁD/ALERGIE: ${dislikes}
 LEVEL SUROVIN: ${levelDesc}
-JÍDLA (česky): ${names.join(', ')}
+JÍDLA: ${names.join(', ')}
 
-Vrať POUZE validní JSON, vše česky:
-{"meals":[{"mealType":"Snídaně","name":"Český název receptu","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["200g ovesných vloček","300ml plnotučného mléka"],"steps":["Uvař vločky v mléce 5 minut za občasného míchání.","Přidej ovoce a podávej."]}]}
+POŽADAVKY NA MAKRA:
+- Součet kcal všech jídel = ${appState.macros.kcal} ±3%
+- Součet bílkovin = ${appState.macros.protein}g ±5%
+- U každého jídla ověř: kcal = protein×4 + carbs×4 + fat×9 (±5 kcal)
+- Rozděl kalorie: snídaně ~20-25%, oběd ~30-35%, svačiny ~10-15%, večeře ~25-30%
 
-Pole difficulty musí být vždy jedno z: "Jednoduchá", "Střední", "Náročná". Pole prepTime je celé číslo v minutách. Pole fiber je vláknina v gramech (celé číslo).
-Pokryj přesně tato jídla česky: ${names.join(', ')}. Makra musí dávat dohromady přibližně celkový cíl. ŽÁDNÉ anglické texty.
-DŮLEŽITÉ: Makra vypočítej přesně ze surovin. Vzorec: kcal = protein×4 + sacharidy×4 + tuk×9. Ověř každé jídlo před odesláním.`;
+FORMÁT — vrať POUZE validní JSON:
+{"meals":[{"mealType":"Snídaně","name":"Český název","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["200g ovesných vloček","300ml mléka"],"steps":["Krok 1.","Krok 2."]}]}
+
+PRAVIDLA:
+- difficulty: "Jednoduchá" | "Střední" | "Náročná"
+- prepTime: celé číslo v minutách (snídaně max 15, svačiny max 10, hlavní jídla max 45)
+- fiber: vláknina v gramech (celé číslo)
+- ingredients: formát "množství + název" (např. "150g kuřecích prsou", "2 vejce")
+- steps: jasné kroky s teplotami a časy (např. "Předehřej troubu na 200°C.", "Opékej 3 minuty do zlatova.")
+- Pokryj přesně: ${names.join(', ')}
+- Hlavní bílkovina se NESMÍ opakovat ve dvou jídlech
+- VEŠKERÝ text česky, ŽÁDNÁ angličtina`;
 
   try {
     const text = await callGemini(systemPrompt, prompt, 2000);
@@ -132,23 +173,32 @@ export async function swapMeal(index) {
   const diet     = document.getElementById('diet-style')?.value;
   const usedNames = appState.currentRecipes.filter((_, i) => i !== index).map(m => m.name).join(', ');
 
-  const systemPrompt = `Jsi český výživový poradce a kuchař. Veškerý text česky. Kalorie: kcal = bílkoviny×4 + sacharidy×4 + tuky×9. Vrátíš validní JSON.`;
+  const systemPrompt = `Jsi NutriPlan AI — český výživový poradce. Veškerý text česky. Vrátíš POUZE validní JSON bez dalšího textu.
+Pravidla: kcal = bílkoviny×4 + sacharidy×4 + tuky×9 (tolerance ±5 kcal). Reálné gramáže ingrediencí. Praktické postupy s teplotami a časy.`;
+
   const levelDescSwap = appState.ingredientLevel === 'úsporný'
     ? 'ÚSPORNÝ level — levné suroviny: vejce, luštěniny, mražená zelenina, rýže, ovesné vločky, tvaroh, banány. ŽÁDNÉ drahé suroviny (losos, avokádo, quinoa).'
     : appState.ingredientLevel === 'gourmet'
-    ? 'GOURMET level — prémiové suroviny: losos, avokádo, hovězí, mango, quinoa, ořechy, řecký jogurt, semínka.'
-    : 'STANDARD level — kuřecí maso, vejce, sezónní zelenina, celozrnné pečivo, jogurt, sýr, brambory, ovoce.';
+    ? 'GOURMET level — prémiové suroviny povoleny: losos, avokádo, hovězí, mango, quinoa, ořechy, řecký jogurt, čerstvé bylinky. Důraz na chuťovou komplexitu.'
+    : 'STANDARD level — kuřecí maso, vejce, sezónní zelenina, celozrnné pečivo, jogurt, sýr, brambory, ovoce. Vyvážený poměr cena/kvalita.';
 
-  const prompt = `Navrhni JEDNO alternativní jídlo místo "${meal.name}" (${meal.mealType}). VEŠKERÝ TEXT V ČEŠTINĚ.
+  const prompt = `Navrhni JEDNO alternativní jídlo místo "${meal.name}" (${meal.mealType}).
 
-MAKRA PRO TOTO JÍDLO: ~${meal.kcal} kcal | Bílkoviny: ~${meal.protein}g | Sacharidy: ~${meal.carbs}g | Tuky: ~${meal.fat}g
-STRAVOVÁNÍ: ${diet} | OBLÍBENÁ JÍDLA: ${likes} | NEMÁ RÁD: ${dislikes}
+CÍLOVÉ MAKRA: kcal: ${meal.kcal} | Bílkoviny: ${meal.protein}g | Sacharidy: ${meal.carbs}g | Tuky: ${meal.fat}g
+STRAVOVÁNÍ: ${diet} | OBLÍBENÁ JÍDLA: ${likes} | NEMÁ RÁD/ALERGIE: ${dislikes}
 LEVEL SUROVIN: ${levelDescSwap}
-NESMÍ BÝT: ${usedNames || 'žádné omezení'}
+NESMÍ SE OPAKOVAT (už v jídelníčku): ${usedNames || 'žádné omezení'}
 
-Vrať POUZE validní JSON jednoho jídla, vše česky:
-{"mealType":"${meal.mealType}","name":"Jiný český název","kcal":${meal.kcal},"protein":${meal.protein},"carbs":${meal.carbs},"fat":${meal.fat},"prepTime":15,"difficulty":"Jednoduchá","ingredients":["ingredience česky"],"steps":["Postup česky."]}
-ŽÁDNÉ anglické texty.`;
+POŽADAVKY:
+- Makra musí odpovídat cíli: kcal = protein×4 + carbs×4 + fat×9 (±5 kcal)
+- Jiný hlavní zdroj bílkovin než původní jídlo
+- Ingredience s přesnými gramážemi
+- Postup s teplotami a časy
+- prepTime: max 15 min (snídaně/svačina), max 45 min (oběd/večeře)
+
+Vrať POUZE validní JSON, vše česky:
+{"mealType":"${meal.mealType}","name":"Český název","kcal":${meal.kcal},"protein":${meal.protein},"carbs":${meal.carbs},"fat":${meal.fat},"fiber":6,"prepTime":15,"difficulty":"Jednoduchá","ingredients":["150g ingredience"],"steps":["Krok s teplotou a časem."]}
+ŽÁDNÁ angličtina.`;
 
   try {
     const text = await callGemini(systemPrompt, prompt, 800);

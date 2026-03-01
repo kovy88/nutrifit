@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obchodní podmínky a Ochrana osobních údajů — NutriPlan</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="icon" type="image/png" href="favicon.jpg">
+<style>
+  body { padding:0; }
+  .legal-wrap { max-width:720px; margin:0 auto; padding:80px 24px 60px; }
+  .legal-nav { position:fixed; top:0; left:0; right:0; background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-bottom:1px solid var(--border); z-index:100; padding:14px 24px; display:flex; align-items:center; gap:12px; }
+  .legal-nav a { text-decoration:none; color:var(--blue); font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .legal-nav a:hover { text-decoration:underline; }
+  .legal-nav .logo { font-size:1rem; font-weight:700; color:var(--text); letter-spacing:-0.5px; }
+  .legal-tabs { display:flex; gap:4px; background:var(--bg); border-radius:12px; padding:4px; margin-bottom:32px; }
+  .legal-tab { flex:1; padding:10px 16px; border:none; border-radius:10px; background:transparent; font-family:inherit; font-size:0.85rem; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.2s; text-align:center; }
+  .legal-tab.active { background:var(--white); color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  .legal-section { display:none; }
+  .legal-section.active { display:block; }
+  h1 { font-size:1.6rem; font-weight:700; letter-spacing:-0.8px; color:var(--text); margin-bottom:8px; }
+  .legal-date { font-size:0.78rem; color:var(--text-tertiary); margin-bottom:28px; }
+  h2 { font-size:1.05rem; font-weight:700; color:var(--text); margin:28px 0 12px; letter-spacing:-0.3px; }
+  h3 { font-size:0.92rem; font-weight:600; color:var(--text); margin:20px 0 8px; }
+  p, li { font-size:0.88rem; line-height:1.7; color:var(--text-secondary); }
+  ul, ol { padding-left:20px; margin:8px 0; }
+  li { margin-bottom:4px; }
+  a { color:var(--blue); }
+  .legal-contact { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-top:24px; }
+  .legal-contact p { margin:0; }
+  [data-theme="dark"] .legal-tab.active { background:#3a3a3c; }
+</style>
+</head>
+<body>
+
+<div class="legal-nav">
+  <a href="/">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Zpět na NutriPlan
+  </a>
+</div>
+
+<div class="legal-wrap">
+  <div class="legal-tabs">
+    <button class="legal-tab active" data-section="terms">Obchodní podmínky</button>
+    <button class="legal-tab" data-section="privacy">Ochrana údajů</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- OBCHODNÍ PODMÍNKY                          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="legal-section active" id="terms">
+    <h1>Obchodní podmínky</h1>
+    <div class="legal-date">Účinné od 1. 3. 2025 · Poslední aktualizace 1. 3. 2025</div>
+
+    <h2>1. Úvodní ustanovení</h2>
+    <p>Tyto obchodní podmínky (dále jen „Podmínky") upravují práva a povinnosti při používání webové aplikace NutriPlan dostupné na adrese <strong>nutri-fit-omega.vercel.app</strong> (dále jen „Aplikace").</p>
+    <p>Provozovatelem Aplikace je fyzická osoba (dále jen „Provozovatel"). Kontaktní e-mail: <a href="mailto:koval.macek@gmail.com">koval.macek@gmail.com</a>.</p>
+    <p>Registrací nebo používáním Aplikace vyjadřujete souhlas s těmito Podmínkami. Pokud s nimi nesouhlasíte, Aplikaci nepoužívejte.</p>
+
+    <h2>2. Popis služby</h2>
+    <p>NutriPlan je webová aplikace, která pomocí umělé inteligence (AI) generuje personalizované jídelníčky na základě údajů zadaných uživatelem — pohlaví, věk, váha, výška, cíl, preference a aktivita.</p>
+    <p>Aplikace dále nabízí:</p>
+    <ul>
+      <li>Výpočet bazálního metabolismu (BMR) a celkového energetického výdeje (TDEE)</li>
+      <li>Výpočet doporučených denních maker (bílkoviny, sacharidy, tuky)</li>
+      <li>Generování nákupního seznamu z jídelníčku</li>
+      <li>Sledování pitného režimu</li>
+      <li>Ukládání historie jídelníčků (pro přihlášené uživatele)</li>
+    </ul>
+
+    <h2>3. Důležité upozornění — AI disclaimer</h2>
+    <p><strong>Aplikace NutriPlan NENÍ zdravotnickým prostředkem a NENAHRAZUJE odbornou konzultaci</strong> s lékařem, nutričním terapeutem ani jiným zdravotnickým pracovníkem.</p>
+    <p>Jídelníčky jsou generovány umělou inteligencí (Google Gemini) a mohou obsahovat nepřesnosti, nevhodné kombinace potravin nebo chybné nutriční hodnoty. AI model může „halucinovat" — vytvářet zdánlivě správné, ale ve skutečnosti nesprávné informace.</p>
+    <p>Před zahájením jakéhokoli dietního režimu doporučujeme konzultaci s odborníkem, zejména pokud:</p>
+    <ul>
+      <li>Máte diagnostikované onemocnění (diabetes, celiakie, poruchy příjmu potravy apod.)</li>
+      <li>Užíváte léky ovlivňující metabolismus</li>
+      <li>Jste těhotná nebo kojíte</li>
+      <li>Jste mladší 18 let</li>
+    </ul>
+    <p><strong>Používání Aplikace je zcela na vlastní riziko uživatele.</strong></p>
+
+    <h2>4. Uživatelský účet</h2>
+    <p>Pro plné využití Aplikace je nutná registrace (e-mail/heslo nebo přihlášení přes Google). Uživatel je povinen:</p>
+    <ul>
+      <li>Uvádět pravdivé údaje</li>
+      <li>Chránit své přihlašovací údaje před zneužitím</li>
+      <li>Nepoužívat Aplikaci k nelegálním účelům</li>
+      <li>Nezneužívat API ani se nepokoušet obcházet technická omezení</li>
+    </ul>
+    <p>Provozovatel si vyhrazuje právo zablokovat nebo smazat účet, který porušuje tyto Podmínky.</p>
+
+    <h2>5. Bezplatná a prémiová verze</h2>
+    <h3>5.1 Bezplatná verze (Free)</h3>
+    <p>Bezplatná verze zahrnuje:</p>
+    <ul>
+      <li>Neomezený výpočet maker a BMR/TDEE</li>
+      <li>3 AI generace jídelníčku měsíčně (včetně výměn jídel)</li>
+      <li>Základní nákupní seznam</li>
+    </ul>
+    <p>Limit se obnovuje automaticky 1. den každého kalendářního měsíce.</p>
+
+    <h3>5.2 Prémiová verze (Premium)</h3>
+    <p>Prémiová verze bude nabízena formou měsíčního nebo ročního předplatného. Cena, rozsah služeb a platební podmínky budou upřesněny před spuštěním prémiové verze.</p>
+    <p>Platby budou zpracovávány přes zabezpečenou platební bránu Stripe. Provozovatel nemá přístup k údajům platebních karet.</p>
+
+    <h3>5.3 Odstoupení od smlouvy</h3>
+    <p>Uživatel může předplatné kdykoli zrušit. Přístup k prémiové verzi zůstane aktivní do konce fakturačního období. Vrácení poměrné části platby je možné do 14 dnů od zakoupení dle zákona o ochraně spotřebitele.</p>
+
+    <h2>6. Omezení odpovědnosti</h2>
+    <ul>
+      <li>Provozovatel neodpovídá za škody vzniklé použitím vygenerovaných jídelníčků</li>
+      <li>Provozovatel negarantuje dostupnost Aplikace 24/7 ani bezchybnost AI výstupů</li>
+      <li>Provozovatel neodpovídá za výpadky způsobené třetími stranami (Vercel, Supabase, Google)</li>
+      <li>Maximální odpovědnost Provozovatele je omezena na výši platby uhrazené uživatelem za posledních 12 měsíců</li>
+    </ul>
+
+    <h2>7. Duševní vlastnictví</h2>
+    <p>Zdrojový kód, design a obsah Aplikace jsou majetkem Provozovatele. Vygenerované jídelníčky smí uživatel volně používat pro osobní potřebu. Komerční redistribuce vygenerovaného obsahu bez souhlasu Provozovatele není povolena.</p>
+
+    <h2>8. Změny podmínek</h2>
+    <p>Provozovatel si vyhrazuje právo tyto Podmínky kdykoli změnit. O podstatných změnách bude uživatel informován e-mailem nebo oznámením v Aplikaci. Pokračování v používání Aplikace po změně Podmínek znamená souhlas s novým zněním.</p>
+
+    <h2>9. Rozhodné právo</h2>
+    <p>Tyto Podmínky se řídí právním řádem České republiky. Případné spory budou řešeny příslušnými soudy ČR. Spotřebitel má právo na mimosoudní řešení sporu prostřednictvím <a href="https://www.coi.cz" target="_blank" rel="noopener">České obchodní inspekce</a>.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- OCHRANA OSOBNÍCH ÚDAJŮ                      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="legal-section" id="privacy">
+    <h1>Zásady ochrany osobních údajů</h1>
+    <div class="legal-date">Účinné od 1. 3. 2025 · Poslední aktualizace 1. 3. 2025</div>
+
+    <p>Tyto zásady popisují, jakým způsobem NutriPlan (dále jen „Aplikace") shromažďuje, zpracovává a chrání osobní údaje uživatelů v souladu s Nařízením EU 2016/679 (GDPR) a zákonem č. 110/2019 Sb. o zpracování osobních údajů.</p>
+
+    <h2>1. Správce osobních údajů</h2>
+    <div class="legal-contact">
+      <p><strong>NutriPlan</strong></p>
+      <p>E-mail: <a href="mailto:koval.macek@gmail.com">koval.macek@gmail.com</a></p>
+    </div>
+
+    <h2>2. Jaké údaje sbíráme</h2>
+
+    <h3>2.1 Registrační údaje</h3>
+    <ul>
+      <li><strong>E-mailová adresa</strong> — pro vytvoření a správu účtu</li>
+      <li><strong>Jméno</strong> — zobrazení v profilu (volitelné)</li>
+      <li><strong>Google účet</strong> — při přihlášení přes Google (e-mail a jméno z Google profilu)</li>
+    </ul>
+
+    <h3>2.2 Údaje z profilu</h3>
+    <ul>
+      <li>Pohlaví, věk, výška, váha</li>
+      <li>Stravovací cíl (hubnutí / udržení / nabírání)</li>
+      <li>Jídelní preference a alergie</li>
+      <li>Týdenní plán aktivit</li>
+    </ul>
+    <p>Tyto údaje zadáváte dobrovolně a slouží výhradně k personalizaci jídelníčků.</p>
+
+    <h3>2.3 Údaje o používání</h3>
+    <ul>
+      <li>Historie vygenerovaných jídelníčků (max. 10 posledních)</li>
+      <li>Počet generací v aktuálním měsíci</li>
+      <li>Stav předplatného (free / premium)</li>
+    </ul>
+
+    <h3>2.4 Technické údaje</h3>
+    <ul>
+      <li>IP adresa — pro rate limiting (omezení počtu požadavků na API)</li>
+      <li>Preference motivu (světlý / tmavý) — uloženo v localStorage prohlížeče</li>
+    </ul>
+
+    <h2>3. Účely zpracování a právní základ</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin:12px 0;">
+      <tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:8px 0;color:var(--text);">Účel</th><th style="text-align:left;padding:8px 0;color:var(--text);">Právní základ</th></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 0;color:var(--text-secondary);">Poskytování služby (generace jídelníčků)</td><td style="padding:8px 0;color:var(--text-secondary);">Plnění smlouvy</td></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 0;color:var(--text-secondary);">Správa uživatelského účtu</td><td style="padding:8px 0;color:var(--text-secondary);">Plnění smlouvy</td></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 0;color:var(--text-secondary);">Rate limiting a ochrana API</td><td style="padding:8px 0;color:var(--text-secondary);">Oprávněný zájem</td></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 0;color:var(--text-secondary);">Zasílání newsletteru</td><td style="padding:8px 0;color:var(--text-secondary);">Souhlas (odhlášení kdykoli)</td></tr>
+      <tr><td style="padding:8px 0;color:var(--text-secondary);">Zpracování plateb (budoucí)</td><td style="padding:8px 0;color:var(--text-secondary);">Plnění smlouvy</td></tr>
+    </table>
+
+    <h2>4. Zpracovatelé a třetí strany</h2>
+    <p>Vaše údaje mohou být zpracovávány těmito třetími stranami:</p>
+    <ul>
+      <li><strong>Supabase Inc.</strong> (USA) — databáze a autentizace. <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Privacy Policy</a></li>
+      <li><strong>Vercel Inc.</strong> (USA) — hosting aplikace a serverless funkce. <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a></li>
+      <li><strong>Google LLC</strong> (USA) — Google Sign-In autentizace a Gemini AI API. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a></li>
+      <li><strong>Brevo (Sendinblue)</strong> (Francie) — zasílání newsletteru. <a href="https://www.brevo.com/legal/privacypolicy/" target="_blank" rel="noopener">Privacy Policy</a></li>
+      <li><strong>Stripe Inc.</strong> (USA) — zpracování plateb (připravováno). <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Privacy Policy</a></li>
+    </ul>
+    <p>Přenos údajů do USA probíhá na základě standardních smluvních doložek (SCC) dle čl. 46 GDPR.</p>
+
+    <h2>5. Uchovávání údajů</h2>
+    <ul>
+      <li><strong>Účet a profil</strong> — po dobu existence účtu + 30 dní po smazání</li>
+      <li><strong>Historie jídelníčků</strong> — max. 10 posledních záznamů, smazáno s účtem</li>
+      <li><strong>IP adresy (rate limiting)</strong> — max. 1 hodina v paměti serveru, neukladáno do databáze</li>
+      <li><strong>Newsletter</strong> — do odhlášení</li>
+    </ul>
+
+    <h2>6. Vaše práva (GDPR)</h2>
+    <p>Jako uživatel máte právo:</p>
+    <ul>
+      <li><strong>Přístup</strong> — získat kopii svých osobních údajů</li>
+      <li><strong>Opravu</strong> — opravit nepřesné údaje ve svém profilu</li>
+      <li><strong>Výmaz</strong> — požádat o smazání účtu a všech dat</li>
+      <li><strong>Přenositelnost</strong> — získat své údaje ve strojově čitelném formátu</li>
+      <li><strong>Námitku</strong> — vznést námitku proti zpracování na základě oprávněného zájmu</li>
+      <li><strong>Odvolání souhlasu</strong> — kdykoli odvolat souhlas se zpracováním (např. newsletter)</li>
+    </ul>
+    <p>Pro uplatnění těchto práv nás kontaktujte na <a href="mailto:koval.macek@gmail.com">koval.macek@gmail.com</a>. Na žádost odpovíme do 30 dní.</p>
+    <p>Máte také právo podat stížnost u <a href="https://www.uoou.cz" target="_blank" rel="noopener">Úřadu pro ochranu osobních údajů (ÚOOÚ)</a>.</p>
+
+    <h2>7. Cookies a localStorage</h2>
+    <p>Aplikace nepoužívá marketingové ani analytické cookies třetích stran. Používáme pouze:</p>
+    <ul>
+      <li><strong>Supabase session token</strong> (localStorage) — nezbytný pro přihlášení</li>
+      <li><strong>Preference motivu</strong> (localStorage) — světlý/tmavý režim</li>
+    </ul>
+    <p>Tyto údaje jsou uloženy výhradně ve vašem prohlížeči a nejsou odesílány třetím stranám.</p>
+
+    <h2>8. Zabezpečení</h2>
+    <ul>
+      <li>Komunikace přes HTTPS (TLS šifrování)</li>
+      <li>Hesla hashována na straně Supabase (bcrypt)</li>
+      <li>API klíče uloženy na serveru (Vercel env variables), nikdy v prohlížeči</li>
+      <li>Content Security Policy (CSP) headers</li>
+      <li>XSS ochrana na všech uživatelských vstupech</li>
+      <li>CORS omezení na povolené domény</li>
+      <li>Rate limiting na API endpointech</li>
+    </ul>
+
+    <h2>9. Zdravotní data — zvláštní kategorie</h2>
+    <p>Údaje o váze, výšce a stravovacích preferencích mohou být považovány za údaje o zdravotním stavu (zvláštní kategorie dle čl. 9 GDPR). Tyto údaje zpracováváme na základě <strong>výslovného souhlasu</strong>, který udělujete při registraci a vyplnění profilu.</p>
+    <p>Tyto údaje jsou používány výhradně pro výpočet maker a generování jídelníčků. Nejsou sdíleny s třetími stranami pro marketingové účely.</p>
+
+    <h2>10. Změny zásad</h2>
+    <p>O změnách těchto zásad budeme informovat prostřednictvím e-mailu nebo oznámení v Aplikaci. Datum poslední aktualizace je vždy uvedeno na začátku dokumentu.</p>
+
+    <div class="legal-contact" style="margin-top:32px;">
+      <p><strong>Máte otázku ohledně svých údajů?</strong></p>
+      <p>Napište na <a href="mailto:koval.macek@gmail.com">koval.macek@gmail.com</a> — odpovíme do 30 dní.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dark mode
+  const t = localStorage.getItem('nutriplan-theme');
+  if (t) document.documentElement.setAttribute('data-theme', t);
+
+  // Tab switching
+  document.querySelectorAll('.legal-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.legal-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.legal-section').forEach(s => s.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.section).classList.add('active');
+    });
+  });
+
+  // Open correct tab from URL hash
+  if (location.hash === '#privacy') {
+    document.querySelector('[data-section="privacy"]')?.click();
+  }
+</script>
+</body>
+</html>

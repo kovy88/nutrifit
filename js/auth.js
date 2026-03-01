@@ -78,7 +78,9 @@ export async function handleRegister() {
   const name     = document.getElementById('reg-name')?.value.trim();
   const email    = document.getElementById('reg-email')?.value.trim();
   const password = document.getElementById('reg-password')?.value;
+  const consent  = document.getElementById('reg-consent')?.checked;
   const errEl    = document.getElementById('auth-register-error');
+  if (!consent) { errEl.textContent = 'Pro registraci je nutný souhlas s podmínkami.'; return; }
   const res = await signUp(name, email, password);
   if (res.error) { errEl.textContent = res.error; return; }
   errEl.textContent = '';
