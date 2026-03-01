@@ -42,8 +42,6 @@ export const ACTIVITY_TYPES = [
   { value: 'work',    label: 'Fyzická práce',          met: 5 },
 ];
 
-export const DUR_OPTIONS = [15, 30, 45, 60, 90, 120];
-
 export const MACRO_LIMITS = {
   kcal:    { min: 1200, max: 5000 },
   protein: { min: 10,   max: 300  },

@@ -5,7 +5,7 @@ import { supabase } from './supabase.js';
 import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js';
 import { setDayRest, recalcFromDays } from './dayplanner.js';
 import { buildShoppingList } from './shopping.js';
-import { renderList } from './recipes.js';
+import { renderList, esc } from './recipes.js';
 
 // ── PROFILE MODAL
 
@@ -165,9 +165,9 @@ async function loadHistory() {
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
-      <span class="history-date">${entry.date_label}</span>
-      <span class="history-name">${entry.meals.map(m => m.mealType).join(' · ')}</span>
-      <span class="history-kcal">${entry.total_kcal} kcal</span>`;
+      <span class="history-date">${esc(entry.date_label)}</span>
+      <span class="history-name">${entry.meals.map(m => esc(m.mealType)).join(' · ')}</span>
+      <span class="history-kcal">${esc(entry.total_kcal)} kcal</span>`;
     item.addEventListener('click', () => {
       appState.currentRecipes = entry.meals;
       renderList(document.getElementById('meal-plan-output'), appState.currentRecipes);

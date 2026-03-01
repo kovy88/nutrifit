@@ -239,7 +239,7 @@ function diffColor(d) {
   return d === 'Jednoduchá' ? '#30d158' : d === 'Střední' ? '#ff9f0a' : '#ff3b30';
 }
 
-function esc(s) {
+export function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

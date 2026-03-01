@@ -1,6 +1,6 @@
 // ── DENNÍ PLÁNOVAČ AKTIVIT
 
-import { appState, DAYS, ACTIVITY_TYPES, DUR_OPTIONS } from './state.js';
+import { appState, DAYS, ACTIVITY_TYPES } from './state.js';
 
 export function toggleDayPlanner() {
   appState.dayPlannerOpen = !appState.dayPlannerOpen;
@@ -29,27 +29,25 @@ export function buildDayRows() {
     row.className = 'day-row';
     row.id = `day-row-${i}`;
 
-    const pillsHtml = DUR_OPTIONS.map(d =>
-      `<button class="dur-pill${d === 60 ? ' active' : ''}" data-min="${d}">${d} min</button>`
-    ).join('');
-
     row.innerHTML = `
       <div class="day-row-top">
         <div class="day-row-name">${day}</div>
         <select id="day-type-${i}">${opts}</select>
         <button class="day-rest-btn" id="day-rest-${i}" title="Označit jako volno">—</button>
       </div>
-      <div class="dur-pills" id="day-dur-pills-${i}">${pillsHtml}</div>`;
+      <div class="dur-slider-wrap" id="day-dur-wrap-${i}">
+        <input type="range" class="dur-slider" id="day-dur-${i}" min="10" max="180" step="5" value="60">
+        <span class="dur-slider-val" id="day-dur-val-${i}">60 min</span>
+      </div>`;
     container.appendChild(row);
 
     row.querySelector(`#day-type-${i}`).addEventListener('change', recalcFromDays);
 
-    row.querySelector(`#day-dur-pills-${i}`).addEventListener('click', e => {
-      const pill = e.target.closest('.dur-pill');
-      if (!pill) return;
-      appState.dayDurations[i] = parseInt(pill.dataset.min);
-      row.querySelectorAll('.dur-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
+    const slider = row.querySelector(`#day-dur-${i}`);
+    slider.addEventListener('input', () => {
+      const val = parseInt(slider.value);
+      appState.dayDurations[i] = val;
+      row.querySelector(`#day-dur-val-${i}`).textContent = `${val} min`;
       recalcFromDays();
     });
 
@@ -72,12 +70,12 @@ export function setDayRest(i, isRest) {
   const sel  = document.getElementById(`day-type-${i}`);
   const btn  = document.getElementById(`day-rest-${i}`);
   const row  = document.getElementById(`day-row-${i}`);
-  const pills = document.getElementById(`day-dur-pills-${i}`);
+  const wrap = document.getElementById(`day-dur-wrap-${i}`);
 
   sel.disabled = isRest;
   sel.style.opacity = isRest ? '0.4' : '1';
-  pills.style.opacity = isRest ? '0.35' : '1';
-  pills.style.pointerEvents = isRest ? 'none' : '';
+  wrap.style.opacity = isRest ? '0.35' : '1';
+  wrap.style.pointerEvents = isRest ? 'none' : '';
 
   btn.dataset.resting = String(isRest);
   btn.classList.toggle('resting', isRest);

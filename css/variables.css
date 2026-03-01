@@ -4,29 +4,63 @@
 /* ── CUSTOM PROPERTIES */
 :root {
   --bg: #f5f5f7; --white: #ffffff;
-  --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.14);
+  --border: rgba(0,0,0,0.06); --border-strong: rgba(0,0,0,0.12);
   --text: #1d1d1f; --text-secondary: #6e6e73; --text-tertiary: #aeaeb2;
   --blue: #0071e3; --blue-light: #e8f1fd; --blue-hover: #0077ed;
   --green: #30d158; --orange: #ff9f0a; --red: #ff3b30;
+  --purple: #8b5cf6;
   --radius-sm: 10px; --radius: 18px; --radius-lg: 24px;
-  --nav-bg: rgba(245,245,247,0.82);
-  --shadow: 0 2px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);
-  --shadow-hover: 0 8px 32px rgba(0,0,0,0.09),0 2px 8px rgba(0,0,0,0.05);
+  --nav-bg: rgba(245,245,247,0.72);
+
+  /* Gradient accents */
+  --gradient-blue: linear-gradient(135deg, #0071e3, #5ac8fa);
+  --gradient-green: linear-gradient(135deg, #30d158, #63e89a);
+  --gradient-orange: linear-gradient(135deg, #ff9f0a, #ffcc02);
+  --gradient-red: linear-gradient(135deg, #ff3b30, #ff6b6b);
+  --gradient-purple: linear-gradient(135deg, #8b5cf6, #a78bfa);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(24px) saturate(180%);
+
+  /* 3-layer shadows */
+  --shadow: 0 1px 2px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.04), 0 12px 40px rgba(0,0,0,0.02);
+  --shadow-hover: 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06), 0 24px 64px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 4px 8px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.08), 0 32px 80px rgba(0,0,0,0.06);
+
+  /* Colored shadows */
+  --shadow-blue: 0 4px 14px rgba(0,113,227,0.2), 0 12px 36px rgba(0,113,227,0.1);
+  --shadow-blue-hover: 0 6px 20px rgba(0,113,227,0.3), 0 16px 48px rgba(0,113,227,0.15);
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
 [data-theme="dark"] {
   --bg: #1c1c1e; --white: #2c2c2e;
   --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
   --text: #f5f5f7; --text-secondary: #aeaeb2; --text-tertiary: #6e6e73;
-  --blue-light: #1a3a5c; --nav-bg: rgba(28,28,30,0.85);
-  --shadow: 0 2px 12px rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.2);
-  --shadow-hover: 0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3);
+  --blue: #0a84ff; --blue-light: #1a3a5c; --blue-hover: #409cff;
+  --nav-bg: rgba(28,28,30,0.82);
+
+  --glass-bg: rgba(44, 44, 46, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.16), 0 12px 40px rgba(0,0,0,0.12);
+  --shadow-hover: 0 2px 4px rgba(0,0,0,0.24), 0 8px 24px rgba(0,0,0,0.2), 0 24px 64px rgba(0,0,0,0.16);
+  --shadow-elevated: 0 4px 8px rgba(0,0,0,0.3), 0 16px 48px rgba(0,0,0,0.24), 0 32px 80px rgba(0,0,0,0.2);
+
+  --shadow-blue: 0 4px 14px rgba(10,132,255,0.25), 0 12px 36px rgba(10,132,255,0.12);
+  --shadow-blue-hover: 0 6px 20px rgba(10,132,255,0.35), 0 16px 48px rgba(10,132,255,0.18);
 }
 
 /* ── ANIMATIONS */
 @keyframes fadeDown  { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
-@keyframes fadeUp    { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:translateY(0)} }
-@keyframes scaleIn   { from{opacity:0;transform:scale(0.96)}       to{opacity:1;transform:scale(1)} }
-@keyframes slideIn   { from{opacity:0;transform:translateY(28px)}  to{opacity:1;transform:translateY(0)} }
+@keyframes fadeUp    { from{opacity:0;transform:translateY(24px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes scaleIn   { from{opacity:0;transform:scale(0.94)} to{opacity:1;transform:scale(1)} }
+@keyframes slideIn   { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
 @keyframes slideUp   { from{transform:translateY(100%)} to{transform:translateY(0)} }
 @keyframes spin      { to{transform:rotate(360deg)} }
 @keyframes flashUpdate { 0%{opacity:0.2;transform:translateY(3px)} 100%{opacity:1;transform:translateY(0)} }
