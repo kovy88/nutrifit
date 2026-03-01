@@ -1,0 +1,13 @@
+{
+  "name": "NutriPlan",
+  "short_name": "NutriPlan",
+  "description": "Personalizovaný jídelníček s AI — makra, recepty a nákupní seznam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0071e3",
+  "lang": "cs",
+  "icons": [
+    { "src": "/favicon.jpg", "sizes": "any", "type": "image/jpeg" }
+  ]
+}

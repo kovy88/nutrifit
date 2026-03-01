@@ -82,6 +82,9 @@ export async function handleRegister() {
   const res = await signUp(name, email, password);
   if (res.error) { errEl.textContent = res.error; return; }
   errEl.textContent = '';
+  document.getElementById('reg-name').value     = '';
+  document.getElementById('reg-email').value    = '';
+  document.getElementById('reg-password').value = '';
   closeAuthModal();
   updateNavAuth();
   window.dispatchEvent(new CustomEvent('auth:login'));

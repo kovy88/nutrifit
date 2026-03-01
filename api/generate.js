@@ -2,8 +2,16 @@
 // API klíč zůstává na serveru, nikdy nedorazí do prohlížeče
 
 module.exports = async function handler(req, res) {
-  // CORS pro lokální vývoj
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = [
+    'https://nutri-fit-omega.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -17,7 +25,8 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: { message: 'GEMINI_API_KEY není nastavený v prostředí serveru.' } });
   }
 
-  const { systemPrompt, prompt, maxTokens = 2000 } = req.body || {};
+  const { systemPrompt, prompt } = req.body || {};
+  const maxTokens = Math.min(parseInt(req.body.maxTokens) || 2000, 3000);
   if (!prompt) {
     return res.status(400).json({ error: { message: 'Chybí parametr prompt.' } });
   }

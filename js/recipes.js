@@ -159,22 +159,22 @@ export function renderList(container, meals) {
     item.innerHTML = `
       <button class="recipe-row" data-idx="${i}">
         <div class="recipe-row-body">
-          <span class="recipe-meal-badge">${meal.mealType}</span>
-          <span class="recipe-name">${meal.name}</span>
+          <span class="recipe-meal-badge">${esc(meal.mealType)}</span>
+          <span class="recipe-name">${esc(meal.name)}</span>
         </div>
         <span class="recipe-arrow"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </button>
       <div class="recipe-meta">
-        <span class="recipe-kcal-tag">${meal.kcal} kcal</span>
+        <span class="recipe-kcal-tag">${esc(meal.kcal)} kcal</span>
         <span class="recipe-meta-sep"></span>
         <span class="recipe-meta-tag">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.5V7l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          ${meal.prepTime} min
+          ${esc(meal.prepTime)} min
         </span>
         <span class="recipe-meta-sep"></span>
         <span class="recipe-meta-tag">
           <span class="difficulty-dot" style="background:${diffC}"></span>
-          ${meal.difficulty}
+          ${esc(meal.difficulty)}
         </span>
       </div>
       <div class="recipe-footer">
@@ -204,25 +204,25 @@ export function openRecipe(i) {
   document.getElementById('modal-meal-type').textContent = meal.mealType;
   document.getElementById('modal-title').textContent     = meal.name;
   document.getElementById('modal-macros').innerHTML = `
-    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--blue)"></div>${meal.kcal} kcal</div>
-    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--red)"></div>${meal.protein}g bílkoviny</div>
-    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--orange)"></div>${meal.carbs}g sacharidy</div>
-    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--green)"></div>${meal.fat}g tuky</div>`;
+    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--blue)"></div>${esc(meal.kcal)} kcal</div>
+    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--red)"></div>${esc(meal.protein)}g bílkoviny</div>
+    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--orange)"></div>${esc(meal.carbs)}g sacharidy</div>
+    <div class="modal-macro-pill"><div class="modal-macro-dot" style="background:var(--green)"></div>${esc(meal.fat)}g tuky</div>`;
 
   const diffC = diffColor(meal.difficulty || 'Jednoduchá');
   document.getElementById('modal-info-row').innerHTML = `
     <div class="modal-info-chip">
       <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 4.5V7l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-      Příprava: <strong>${meal.prepTime || '?'} min</strong>
+      Příprava: <strong>${esc(meal.prepTime) || '?'} min</strong>
     </div>
     <div class="modal-info-chip">
       <span class="modal-difficulty-dot" style="background:${diffC}"></span>
-      Náročnost: <strong>${meal.difficulty || '—'}</strong>
+      Náročnost: <strong>${esc(meal.difficulty) || '—'}</strong>
     </div>`;
 
   document.getElementById('modal-body').innerHTML =
-    `<h3>Ingredience</h3><ul>${(meal.ingredients || []).map(x => `<li>${x}</li>`).join('')}</ul>` +
-    `<h3>Postup</h3><ol>${(meal.steps || []).map(x => `<li>${x}</li>`).join('')}</ol>`;
+    `<h3>Ingredience</h3><ul>${(meal.ingredients || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` +
+    `<h3>Postup</h3><ol>${(meal.steps || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol>`;
 
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -233,8 +233,17 @@ export function closeRecipeModal() {
   document.body.style.overflow = '';
 }
 
-// ── HELPER
+// ── HELPERS
 
 function diffColor(d) {
   return d === 'Jednoduchá' ? '#30d158' : d === 'Střední' ? '#ff9f0a' : '#ff3b30';
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
