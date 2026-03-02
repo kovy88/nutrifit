@@ -8,6 +8,19 @@ import { generateMealPlan, closeRecipeModal } from './recipes.js';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js';
 
+// ── TOAST
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon  = document.getElementById('toast-icon');
+  const text  = document.getElementById('toast-text');
+  if (!toast) return;
+  icon.textContent = type === 'success' ? '✓' : '✕';
+  text.textContent = message;
+  toast.className = 'toast ' + type;
+  requestAnimationFrame(() => toast.classList.add('visible'));
+  setTimeout(() => toast.classList.remove('visible'), 4000);
+}
+
 // ── DARK MODE (spouští se okamžitě, před DOMContentLoaded)
 const savedTheme = localStorage.getItem('nutriplan-theme');
 if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
@@ -210,7 +223,7 @@ function updateUsageBadge(info) {
     } catch (err) {
       btn.disabled = false;
       btn.textContent = 'Odemknout Premium';
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   });
 
@@ -288,13 +301,20 @@ function updateUsageBadge(info) {
     const user = (await import('./auth.js')).getCurrentUser();
     if (!user) { closeProfileModal(); (await import('./auth.js')).openAuthModal(); return; }
 
+    const isManage = btn.dataset.action === 'manage';
+    const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';
+    const body = isManage
+      ? { email: user.email }
+      : { userId: user.id, email: user.email };
+    const originalText = btn.textContent;
+
     btn.disabled = true;
     btn.textContent = 'Přesměrovávám…';
     try {
-      const res = await fetch('/api/create-checkout', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.url) {
@@ -304,8 +324,8 @@ function updateUsageBadge(info) {
       }
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'Získat';
-      alert(err.message);
+      btn.textContent = originalText;
+      showToast(err.message, 'error');
     }
   });
 
@@ -313,7 +333,7 @@ function updateUsageBadge(info) {
   const params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {
     window.history.replaceState({}, '', window.location.pathname);
-    setTimeout(() => alert('Platba proběhla úspěšně! Premium je nyní aktivní.'), 500);
+    setTimeout(() => showToast('Platba proběhla úspěšně! Premium je nyní aktivní.', 'success'), 500);
   } else if (params.get('checkout') === 'cancel') {
     window.history.replaceState({}, '', window.location.pathname);
   }

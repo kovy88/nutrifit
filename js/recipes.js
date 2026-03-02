@@ -33,6 +33,17 @@ function sanitizeJSON(text) {
   return text.replace(/^```json?\s*\n?/, '').replace(/\n?\s*```$/, '').trim();
 }
 
+// ── LOADING SKELETON
+function buildSkeletonHTML(count) {
+  const cards = Array.from({ length: count }, (_, i) => `
+    <div class="skeleton-card" style="animation-delay:${i * 0.08}s">
+      <div class="skeleton-badge skel-pulse"></div>
+      <div class="skeleton-title skel-pulse"></div>
+      <div class="skeleton-meta"><div class="skeleton-tag skel-pulse"></div><div class="skeleton-tag skel-pulse"></div><div class="skeleton-tag skel-pulse"></div></div>
+    </div>`).join('');
+  return `<div class="skeleton-list">${cards}</div>`;
+}
+
 // ── OPRAVA MAKER (přepočítá kcal ze skutečných maker)
 function fixMacros(meal) {
   meal.kcal = Math.round((meal.protein || 0) * 4 + (meal.carbs || 0) * 4 + (meal.fat || 0) * 9);
@@ -61,7 +72,7 @@ export async function generateMealPlan(setStepFn) {
   const out = document.getElementById('meal-plan-output');
   sec.style.display = 'block';
   sec.style.animation = 'slideIn 0.42s ease both';
-  out.innerHTML = '<div class="loading"><div class="spinner-wrap"></div>Generuji jídelníček…</div>';
+  out.innerHTML = buildSkeletonHTML(appState.mealCount);
   setStepFn(3);
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth' }), 100);
 

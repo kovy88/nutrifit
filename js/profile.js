@@ -57,9 +57,10 @@ export function openProfileModal() {
         if (info.premium) {
           titleEl.textContent = 'Premium aktivní';
           descEl.textContent  = 'Neomezené generace jídelníčků.';
-          btnEl.textContent   = '✓ Aktivní';
+          btnEl.textContent   = 'Spravovat';
           btnEl.classList.add('active-premium');
-          btnEl.disabled = true;
+          btnEl.disabled = false;
+          btnEl.dataset.action = 'manage';
         } else {
           titleEl.textContent = 'NutriPlan Premium';
           descEl.textContent  = `Zbývá ${Math.max(0, info.limit - info.count)}/${info.limit} generací. Odemkni neomezené.`;

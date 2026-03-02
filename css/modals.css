@@ -125,6 +125,13 @@
 .usage-badge.low { color:var(--orange); }
 .usage-badge.exhausted { color:var(--red); }
 
+/* ── TOAST */
+.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-120px); z-index:500; display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:14px; background:var(--glass-bg); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid var(--glass-border); box-shadow:var(--shadow-elevated); font-size:0.88rem; font-weight:600; color:var(--text); transition:transform 0.4s var(--ease-out), opacity 0.4s; opacity:0; pointer-events:none; white-space:nowrap; }
+.toast.visible { transform:translateX(-50%) translateY(0); opacity:1; pointer-events:auto; }
+.toast-icon { font-size:1.1rem; flex-shrink:0; }
+.toast.success .toast-icon { color:var(--green); }
+.toast.error .toast-icon { color:var(--red); }
+
 [data-theme="dark"] .auth-card { background:rgba(44,44,46,0.85); border:1px solid rgba(255,255,255,0.08); }
 [data-theme="dark"] .auth-tab.active { background:#3a3a3c; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
 [data-theme="dark"] .nav-user-chip { background:var(--white); }
