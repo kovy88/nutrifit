@@ -6,6 +6,7 @@ import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js';
 import { setDayRest, recalcFromDays } from './dayplanner.js';
 import { buildShoppingList } from './shopping.js';
 import { renderList, esc } from './recipes.js';
+import { getUsageInfo } from './generation-limit.js';
 
 // ── PROFILE MODAL
 
@@ -44,6 +45,34 @@ export function openProfileModal() {
     if (header) header.style.display = 'none';
     if (anon)   anon.style.display   = 'flex';
   }
+  // Premium banner
+  const banner = document.getElementById('profile-premium-banner');
+  if (banner) {
+    if (user) {
+      banner.style.display = 'flex';
+      getUsageInfo().then(info => {
+        const titleEl = document.getElementById('premium-banner-title');
+        const descEl  = document.getElementById('premium-banner-desc');
+        const btnEl   = document.getElementById('premium-banner-btn');
+        if (info.premium) {
+          titleEl.textContent = 'Premium aktivní';
+          descEl.textContent  = 'Neomezené generace jídelníčků.';
+          btnEl.textContent   = '✓ Aktivní';
+          btnEl.classList.add('active-premium');
+          btnEl.disabled = true;
+        } else {
+          titleEl.textContent = 'NutriPlan Premium';
+          descEl.textContent  = `Zbývá ${Math.max(0, info.limit - info.count)}/${info.limit} generací. Odemkni neomezené.`;
+          btnEl.textContent   = 'Získat';
+          btnEl.classList.remove('active-premium');
+          btnEl.disabled = false;
+        }
+      });
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
   const m = document.getElementById('profile-modal');
   if (m) m.style.display = 'flex';
   document.body.style.overflow = 'hidden';

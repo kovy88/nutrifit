@@ -44,7 +44,19 @@
 .profile-save-btn:hover { box-shadow:var(--shadow-blue-hover); transform:translateY(-1px); }
 .profile-save-btn:active { transform:scale(0.98); }
 .profile-saved-note { text-align:center; font-size:0.78rem; color:var(--green); margin-top:8px; height:18px; transition:opacity 0.3s; }
-.profile-save-area { position:sticky; bottom:0; background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:16px 0 4px; border-top:1px solid var(--border); margin-top:8px; z-index:1; }
+.profile-save-area { padding:16px 0 4px; margin-top:8px; }
+
+/* ── PROFILE PREMIUM BANNER */
+.profile-premium-banner { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:14px; background:linear-gradient(135deg, rgba(255,204,0,0.12), rgba(255,149,0,0.10)); border:1px solid rgba(255,204,0,0.25); margin-bottom:20px; }
+[data-theme="dark"] .profile-premium-banner { background:linear-gradient(135deg, rgba(255,204,0,0.08), rgba(255,149,0,0.06)); border-color:rgba(255,204,0,0.18); }
+.premium-banner-icon { font-size:1.5rem; flex-shrink:0; }
+.premium-banner-body { flex:1; min-width:0; }
+.premium-banner-title { font-size:0.85rem; font-weight:700; color:var(--text); }
+.premium-banner-desc { font-size:0.72rem; color:var(--text-secondary); margin-top:2px; }
+.premium-banner-btn { padding:8px 18px; border:none; border-radius:10px; background:linear-gradient(135deg, #ffcc00, #ff9500); color:#1a1a1a; font-family:inherit; font-size:0.78rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:all 0.25s var(--ease-out); box-shadow:0 2px 8px rgba(255,149,0,0.3); }
+.premium-banner-btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(255,149,0,0.4); }
+.premium-banner-btn.active-premium { background:linear-gradient(135deg, #34c759, #30b350); color:white; cursor:default; box-shadow:0 2px 8px rgba(52,199,89,0.3); }
+.premium-banner-btn.active-premium:hover { transform:none; box-shadow:0 2px 8px rgba(52,199,89,0.3); }
 
 /* ── PROFILE USER HEADER */
 .profile-user-header { display:flex; align-items:center; gap:14px; padding:16px 0 20px; border-bottom:1px solid var(--border); margin-bottom:20px; }

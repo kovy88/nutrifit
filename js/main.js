@@ -281,6 +281,34 @@ function updateUsageBadge(info) {
   });
   document.getElementById('profile-save-btn')?.addEventListener('click', saveProfile);
 
+  // Premium banner button in profile modal
+  document.getElementById('premium-banner-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('premium-banner-btn');
+    if (btn.disabled) return;
+    const user = (await import('./auth.js')).getCurrentUser();
+    if (!user) { closeProfileModal(); (await import('./auth.js')).openAuthModal(); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Přesměrovávám…';
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, email: user.email }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Chyba při vytváření platby.');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Získat';
+      alert(err.message);
+    }
+  });
+
   // Stripe checkout return — zobraz feedback
   const params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {
