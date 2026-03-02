@@ -29,7 +29,7 @@ body.logged-in .nav-logged-out { display:none; }
 body.logged-in .nav-logged-in  { display:flex; }
 .nav-user-chip { display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border-radius:100px; border:1.5px solid var(--border-strong); background:var(--white); cursor:pointer; transition:all 0.25s var(--ease-out); }
 .nav-user-chip:hover { border-color:var(--blue); background:var(--blue-light); }
-.nav-user-avatar { width:26px; height:26px; border-radius:50%; background:var(--gradient-blue); color:white; font-size:0.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:0.3px; box-shadow:0 2px 6px rgba(0,113,227,0.2); }
+.nav-user-avatar { width:26px; height:26px; border-radius:50%; background:var(--gradient-blue); color:white; font-size:0.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:0.3px; }
 .nav-user-name { font-size:0.8rem; font-weight:600; color:var(--text); white-space:nowrap; max-width:100px; overflow:hidden; text-overflow:ellipsis; }
 .nav-btn-logout { color:var(--red) !important; border-color:rgba(255,59,48,0.25) !important; }
 .nav-btn-logout:hover { background:#fff1f0 !important; border-color:var(--red) !important; color:var(--red) !important; }
@@ -49,8 +49,8 @@ body.logged-in .nav-logged-in  { display:flex; }
 /* ── STEP INDICATOR */
 .steps-row { display:flex; align-items:center; justify-content:center; margin-bottom:32px; gap:0; }
 .step-dot { width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border-strong); background:var(--white); color:var(--text-tertiary); font-size:0.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.4s var(--ease-out); }
-.step-dot.active { background:var(--gradient-blue); border-color:transparent; color:white; box-shadow:0 2px 8px rgba(0,113,227,0.25); }
-.step-dot.done { background:var(--gradient-green); border-color:transparent; color:white; box-shadow:0 2px 6px rgba(48,209,88,0.2); }
+.step-dot.active { background:var(--gradient-blue); border:none; color:white; }
+.step-dot.done { background:var(--gradient-green); border:none; color:white; }
 .step-line { width:48px; height:1.5px; background:var(--border-strong); border-radius:1px; transition:all 0.5s var(--ease-out); }
 .step-line.done { background:var(--gradient-green); height:2px; }
 

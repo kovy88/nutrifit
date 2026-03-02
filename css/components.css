@@ -10,7 +10,7 @@
 .toggle-group { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:24px; }
 .toggle-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-radius:12px; border:1.5px solid var(--border-strong); background:var(--bg); color:var(--text-secondary); font-family:inherit; font-size:0.92rem; font-weight:600; cursor:pointer; transition:all 0.25s var(--ease-out); }
 .toggle-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
-.toggle-btn.active { background:var(--gradient-blue); border-color:transparent; color:white; }
+.toggle-btn.active { background:var(--gradient-blue); border:none; color:white; }
 .toggle-btn:active { transform:scale(0.97); }
 [data-theme="dark"] .toggle-btn { background:var(--bg); }
 
@@ -164,7 +164,7 @@
 /* ── MEAL COUNT */
 .meal-count-row { display:flex; align-items:center; gap:12px; background:var(--bg); border:1.5px solid var(--border-strong); border-radius:12px; padding:10px 14px; flex-wrap:wrap; }
 .mc-btn { width:36px; height:36px; border-radius:50%; border:1.5px solid var(--border-strong); background:var(--white); color:var(--text); font-size:1.2rem; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s var(--ease-out); flex-shrink:0; font-family:inherit; }
-.mc-btn:hover { background:var(--gradient-blue); border-color:transparent; color:white; box-shadow:0 2px 8px rgba(0,113,227,0.2); transform:scale(1.05); }
+.mc-btn:hover { background:var(--gradient-blue); border:none; color:white; transform:scale(1.05); }
 .mc-btn:active { transform:scale(0.9); }
 .mc-btn:disabled { opacity:0.3; cursor:not-allowed; pointer-events:none; }
 .mc-display { display:flex; align-items:baseline; gap:5px; min-width:52px; justify-content:center; }
@@ -229,9 +229,8 @@
 .quick-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .chip { display:inline-flex; align-items:center; gap:4px; padding:6px 13px; border-radius:100px; border:1.5px solid var(--border-strong); background:var(--white); color:var(--text-secondary); font-size:0.76rem; font-weight:550; cursor:pointer; user-select:none; transition:all 0.22s var(--ease-out); white-space:nowrap; }
 .chip:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
-.chip.active { background:var(--gradient-blue); border-color:transparent; color:white; box-shadow:0 2px 8px rgba(0,113,227,0.2); }
+.chip.active { background:var(--gradient-blue); border:none; color:white; }
 .chip:active { transform:scale(0.95); }
-.chip.active:hover { box-shadow:0 4px 12px rgba(0,113,227,0.3); }
 
 /* ── LEVEL GRID */
 .level-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:4px; }
@@ -264,7 +263,7 @@
 .water-fill { height:100%; background:linear-gradient(90deg,#38bdf8,#0ea5e9,#0284c7); background-size:200% 100%; border-radius:100px; width:0%; transition:width 1s var(--ease-spring); }
 .water-drops { display:flex; gap:5px; flex-wrap:wrap; }
 .water-dot { width:10px; height:10px; border-radius:50%; background:var(--border); transition:all 0.25s var(--ease-out); }
-.water-dot.filled { background:linear-gradient(135deg,#38bdf8,#0ea5e9); box-shadow:0 0 6px rgba(56,189,248,0.3); }
+.water-dot.filled { background:linear-gradient(135deg,#38bdf8,#0ea5e9); }
 
 /* ── SHOPPING LIST */
 .shop-accordion { background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--glass-border); overflow:hidden; margin-bottom:16px; }
@@ -285,5 +284,5 @@
 .shop-item:hover { background:var(--bg); }
 .shop-item.checked { opacity:0.4; text-decoration:line-through; color:var(--text-tertiary); }
 .shop-check { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--border-strong); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:0.65rem; color:white; transition:all 0.25s var(--ease-out); }
-.shop-item.checked .shop-check { background:var(--gradient-green); border-color:transparent; box-shadow:0 0 6px rgba(48,209,88,0.3); }
+.shop-item.checked .shop-check { background:var(--gradient-green); border:none; }
 .shop-item.checked .shop-check::after { content:'✓'; }

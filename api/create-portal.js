@@ -6,8 +6,6 @@ const stripe = require('stripe');
 module.exports = async function handler(req, res) {
   const allowedOrigins = [
     'https://nutri-fit-omega.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:5500',
   ];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
