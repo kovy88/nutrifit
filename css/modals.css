@@ -73,7 +73,7 @@
 /* ── HISTORY */
 .history-list { display:flex; flex-direction:column; gap:6px; margin-top:4px; }
 .history-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; cursor:pointer; transition:all 0.25s var(--ease-out); }
-.history-item:hover { border-color:var(--blue); background:var(--blue-light); transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,113,227,0.08); }
+.history-item:hover { border-color:var(--blue); background:var(--blue-light); }
 .history-date { font-size:0.72rem; color:var(--text-tertiary); flex-shrink:0; }
 .history-name { font-size:0.85rem; font-weight:600; color:var(--text); flex:1; }
 .history-kcal { font-size:0.75rem; color:var(--blue); font-weight:600; flex-shrink:0; }
