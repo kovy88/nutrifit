@@ -9,15 +9,28 @@ import { checkAndIncrement } from './generation-limit.js';
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
 
-async function callGemini(systemPrompt, prompt, maxTokens = 2000) {
-  const res = await fetch('/api/generate', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemPrompt, prompt, maxTokens }),
-  });
+async function callGemini(systemPrompt, prompt, maxTokens = 3500) {
+  let res;
+  try {
+    res = await fetch('/api/generate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt, prompt, maxTokens }),
+    });
+  } catch {
+    throw new Error('Nepodařilo se připojit k serveru. Zkontroluj připojení k internetu.');
+  }
+  if (!res.ok) throw new Error(`Chyba serveru (${res.status}). Zkus to znovu za chvíli.`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.candidates[0].content.parts[0].text.trim();
+  if (data.error) throw new Error(data.error.message || 'Chyba při generování.');
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) throw new Error('AI nevrátila žádnou odpověď. Zkus to znovu.');
+  return text;
+}
+
+// ── SANITIZACE JSON (Gemini občas vrátí markdown wrapper)
+function sanitizeJSON(text) {
+  return text.replace(/^```json?\s*\n?/, '').replace(/\n?\s*```$/, '').trim();
 }
 
 // ── OPRAVA MAKER (přepočítá kcal ze skutečných maker)
@@ -132,14 +145,17 @@ PRAVIDLA:
 - VEŠKERÝ text česky, ŽÁDNÁ angličtina`;
 
   try {
-    const text = await callGemini(systemPrompt, prompt, 2000);
-    appState.currentRecipes = JSON.parse(text).meals.map(fixMacros);
+    const text = await callGemini(systemPrompt, prompt, 3500);
+    appState.currentRecipes = JSON.parse(sanitizeJSON(text)).meals.map(fixMacros);
     renderList(out, appState.currentRecipes);
     buildShoppingList(appState.currentRecipes);
     saveToHistory(appState.currentRecipes);
     setStepFn('done');
   } catch (err) {
-    out.innerHTML = `<div class="error-box">${err.message || 'Chyba při generování. Zkus znovu.'}</div>`;
+    const msg = err instanceof SyntaxError
+      ? 'AI vrátila neplatnou odpověď. Zkus vygenerovat znovu.'
+      : (err.message || 'Chyba při generování. Zkus to znovu.');
+    out.innerHTML = `<div class="error-box">${msg}</div>`;
   }
 }
 
@@ -201,8 +217,8 @@ Vrať POUZE validní JSON, vše česky:
 ŽÁDNÁ angličtina.`;
 
   try {
-    const text = await callGemini(systemPrompt, prompt, 800);
-    const newMeal = fixMacros(JSON.parse(text));
+    const text = await callGemini(systemPrompt, prompt, 1200);
+    const newMeal = fixMacros(JSON.parse(sanitizeJSON(text)));
     appState.currentRecipes[index] = newMeal;
 
     item.style.transition = 'opacity 0.2s,transform 0.2s';

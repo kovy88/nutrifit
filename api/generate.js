@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   }
 
   const { systemPrompt, prompt } = req.body || {};
-  const maxTokens = Math.min(parseInt(req.body.maxTokens) || 2000, 3000);
+  const maxTokens = Math.min(parseInt(req.body.maxTokens) || 3500, 4500);
   if (!prompt) {
     return res.status(400).json({ error: { message: 'Chybí parametr prompt.' } });
   }

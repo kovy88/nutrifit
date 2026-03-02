@@ -188,10 +188,30 @@ function updateUsageBadge(info) {
   document.getElementById('paywall-modal')?.addEventListener('click', e => {
     if (e.target === document.getElementById('paywall-modal')) closePaywallModal();
   });
-  document.getElementById('paywall-cta-btn')?.addEventListener('click', () => {
-    // TODO: Stripe checkout — zatím jen zavři a ukaž info
-    closePaywallModal();
-    alert('Stripe platby budou brzy k dispozici. Díky za zájem!');
+  document.getElementById('paywall-cta-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('paywall-cta-btn');
+    const user = (await import('./auth.js')).getCurrentUser();
+    if (!user) { closePaywallModal(); (await import('./auth.js')).openAuthModal(); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Přesměrovávám…';
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, email: user.email }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Chyba při vytváření platby.');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Odemknout Premium';
+      alert(err.message);
+    }
   });
 
   // Custom events z recipes.js
@@ -260,6 +280,15 @@ function updateUsageBadge(info) {
     });
   });
   document.getElementById('profile-save-btn')?.addEventListener('click', saveProfile);
+
+  // Stripe checkout return — zobraz feedback
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('checkout') === 'success') {
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(() => alert('Platba proběhla úspěšně! Premium je nyní aktivní.'), 500);
+  } else if (params.get('checkout') === 'cancel') {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 
   // Bootstrap — obnova session + naslouchání změnám autentizace
   initAuthListener(

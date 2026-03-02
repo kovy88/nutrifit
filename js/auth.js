@@ -87,6 +87,13 @@ export async function handleRegister() {
   document.getElementById('reg-name').value     = '';
   document.getElementById('reg-email').value    = '';
   document.getElementById('reg-password').value = '';
+
+  // Pokud Supabase vyžaduje ověření emailu (user nemá session hned)
+  if (res.user && !res.user.confirmed_at && res.user.identities?.length === 0) {
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = 'Ověřovací email odeslán! Zkontroluj svou schránku a klikni na odkaz.';
+    return;
+  }
   closeAuthModal();
   updateNavAuth();
   window.dispatchEvent(new CustomEvent('auth:login'));
