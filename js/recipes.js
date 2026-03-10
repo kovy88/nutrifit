@@ -162,11 +162,16 @@ PRAVIDLA:
     buildShoppingList(appState.currentRecipes);
     saveToHistory(appState.currentRecipes);
     setStepFn('done');
+    window.dispatchEvent(new CustomEvent('mealplan:ready'));
   } catch (err) {
     const msg = err instanceof SyntaxError
-      ? 'AI vrátila neplatnou odpověď. Zkus vygenerovat znovu.'
-      : (err.message || 'Chyba při generování. Zkus to znovu.');
-    out.innerHTML = `<div class="error-box">${msg}</div>`;
+      ? 'AI vrátila neplatnou odpověď.'
+      : (err.message || 'Chyba při generování.');
+    out.innerHTML = `<div class="error-box">
+      <div>${msg}</div>
+      <button class="error-retry-btn" id="error-retry-btn">Zkusit znovu</button>
+    </div>`;
+    document.getElementById('error-retry-btn')?.addEventListener('click', () => generateMealPlan(setStepFn));
   }
 }
 

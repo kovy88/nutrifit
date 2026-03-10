@@ -329,6 +329,127 @@ function updateUsageBadge(info) {
     }
   });
 
+  // ── LOCALSTORAGE AUTO-SAVE PRO NEPŘIHLÁŠENÉ UŽIVATELE
+  const LS_KEY = 'nutriplan-form';
+
+  function saveFormToLS() {
+    const data = {
+      gender: appState.gender,
+      goal: appState.goal,
+      age: document.getElementById('age')?.value || '',
+      height: document.getElementById('height')?.value || '',
+      weight: document.getElementById('weight')?.value || '',
+      likes: document.getElementById('likes')?.value || '',
+      dislikes: document.getElementById('dislikes')?.value || '',
+      diet: document.getElementById('diet-style')?.value || 'standardní',
+      ingredientLevel: appState.ingredientLevel,
+      mealCount: appState.mealCount,
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  }
+
+  function loadFormFromLS() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.gender) setGender(d.gender);
+      if (d.goal) {
+        appState.goal = d.goal;
+        document.querySelectorAll('[data-goal]').forEach(c => c.classList.toggle('active', c.dataset.goal === d.goal));
+      }
+      if (d.age) document.getElementById('age').value = d.age;
+      if (d.height) document.getElementById('height').value = d.height;
+      if (d.weight) document.getElementById('weight').value = d.weight;
+      if (d.likes) document.getElementById('likes').value = d.likes;
+      if (d.dislikes) document.getElementById('dislikes').value = d.dislikes;
+      if (d.diet) document.getElementById('diet-style').value = d.diet;
+      if (d.ingredientLevel) {
+        appState.ingredientLevel = d.ingredientLevel;
+        document.querySelectorAll('.level-btn').forEach(b => b.classList.toggle('active', b.dataset.level === d.ingredientLevel));
+      }
+      if (d.mealCount && d.mealCount >= 2 && d.mealCount <= 6) {
+        const delta = d.mealCount - appState.mealCount;
+        if (delta !== 0) changeMealCount(delta);
+      }
+    } catch {}
+  }
+
+  // Auto-save na každou změnu relevantních polí
+  ['age', 'height', 'weight', 'likes', 'dislikes'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', saveFormToLS);
+  });
+  document.getElementById('diet-style')?.addEventListener('change', saveFormToLS);
+  // Hooks do existujících akcí (gender, goal, level, mealCount) — uložit po kliknutí
+  const origSetGender = setGender;
+  // Overwrite click handlers to also save
+  window.addEventListener('click', e => {
+    const t = e.target.closest('.goal-card, .level-btn, .freq-card, .mc-btn, .toggle-btn');
+    if (t) setTimeout(saveFormToLS, 50);
+  });
+
+  // Načti uložené hodnoty při startu (jen pokud není přihlášen — profil ho přepíše)
+  loadFormFromLS();
+
+  // ── COOKIE CONSENT BANNER
+  const consent = localStorage.getItem('nutriplan-consent');
+  if (!consent) {
+    const banner = document.getElementById('cookie-consent');
+    if (banner) banner.style.display = 'flex';
+  }
+  document.getElementById('cookie-accept')?.addEventListener('click', () => {
+    localStorage.setItem('nutriplan-consent', 'accepted');
+    document.getElementById('cookie-consent').style.display = 'none';
+    if (typeof loadGA === 'function') loadGA();
+  });
+  document.getElementById('cookie-reject')?.addEventListener('click', () => {
+    localStorage.setItem('nutriplan-consent', 'rejected');
+    document.getElementById('cookie-consent').style.display = 'none';
+  });
+
+  // ── SHARE TOOLBAR — injektuje se po generování meal planu
+  window.addEventListener('mealplan:ready', () => setTimeout(injectShareToolbar, 300));
+
+  function injectShareToolbar() {
+    if (document.querySelector('.share-toolbar')) return;
+    const sec = document.getElementById('meal-plan-section');
+    if (!sec || sec.style.display === 'none') return;
+    const tpl = document.getElementById('share-toolbar-tpl');
+    if (!tpl) return;
+    const clone = tpl.content.cloneNode(true);
+    sec.querySelector('.card')?.appendChild(clone);
+
+    sec.querySelector('[data-action="copy"]')?.addEventListener('click', () => {
+      const text = buildPlainTextMealPlan();
+      navigator.clipboard.writeText(text).then(() => showToast('Jídelníček zkopírován do schránky', 'success'));
+    });
+    sec.querySelector('[data-action="whatsapp"]')?.addEventListener('click', () => {
+      const text = buildPlainTextMealPlan();
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+    sec.querySelector('[data-action="email"]')?.addEventListener('click', () => {
+      const text = buildPlainTextMealPlan();
+      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
+    });
+    sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  function buildPlainTextMealPlan() {
+    const recipes = appState.currentRecipes || [];
+    if (!recipes.length) return '';
+    let text = 'Jídelníček z NutriPlan\n========================\n\n';
+    recipes.forEach(m => {
+      text += `${m.mealType}: ${m.name}\n`;
+      text += `  ${m.kcal} kcal | B: ${m.protein}g | S: ${m.carbs}g | T: ${m.fat}g\n`;
+      text += `  Ingredience: ${(m.ingredients || []).join(', ')}\n\n`;
+    });
+    const total = recipes.reduce((s, r) => s + (r.kcal || 0), 0);
+    text += `Celkem: ${total} kcal\n\nVygenerováno na nutri-fit-omega.vercel.app`;
+    return text;
+  }
+
   // Stripe checkout return — zobraz feedback
   const params = new URLSearchParams(window.location.search);
   if (params.get('checkout') === 'success') {

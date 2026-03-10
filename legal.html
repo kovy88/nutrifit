@@ -218,10 +218,16 @@
     <p>Máte také právo podat stížnost u <a href="https://www.uoou.cz" target="_blank" rel="noopener">Úřadu pro ochranu osobních údajů (ÚOOÚ)</a>.</p>
 
     <h2>7. Cookies a localStorage</h2>
-    <p>Aplikace nepoužívá marketingové ani analytické cookies třetích stran. Používáme pouze:</p>
+    <h3>7.1 Analytické cookies (Google Analytics)</h3>
+    <p>Aplikace používá Google Analytics (GA4) pro anonymní sledování návštěvnosti. Analytické cookies se načítají <strong>pouze po udělení souhlasu</strong> prostřednictvím cookie banneru. IP adresy jsou anonymizovány (anonymize_ip).</p>
+    <p>Souhlas můžete kdykoli odvolat vymazáním localStorage klíče <code>nutriplan-consent</code> v nastavení prohlížeče.</p>
+    <h3>7.2 Nezbytné localStorage</h3>
+    <p>Bez souhlasu ukládáme pouze technicky nezbytné údaje do localStorage prohlížeče:</p>
     <ul>
-      <li><strong>Supabase session token</strong> (localStorage) — nezbytný pro přihlášení</li>
-      <li><strong>Preference motivu</strong> (localStorage) — světlý/tmavý režim</li>
+      <li><strong>Supabase session token</strong> — nezbytný pro přihlášení</li>
+      <li><strong>Preference motivu</strong> — světlý/tmavý režim</li>
+      <li><strong>Formulářová data</strong> — auto-uložení vyplněných údajů pro komfort (věk, výška, váha, preference)</li>
+      <li><strong>Cookie souhlas</strong> — zapamatování vašeho rozhodnutí o analytických cookies</li>
     </ul>
     <p>Tyto údaje jsou uloženy výhradně ve vašem prohlížeči a nejsou odesílány třetím stranám.</p>
 

@@ -1,10 +1,31 @@
 @media print {
-  nav, .hero, #step1-card, #prefs-card, #macros-card, .steps-row,
-  .swap-btn, .btn-primary, .btn-secondary, .dark-toggle,
-  #water-section, .recipe-footer, .recipe-meta { display:none !important; }
-  body { background:white !important; color:black !important; }
-  .card { box-shadow:none !important; border:1px solid #ddd !important; break-inside:avoid; }
-  #shopping-section, #meal-plan-section { display:block !important; }
+  nav, .hero, .steps-row, .swap-btn, .btn-primary, .btn-secondary,
+  .dark-toggle, .recipe-footer, .share-toolbar, .cookie-consent,
+  .toast, .modal-overlay, .profile-modal, .usage-badge,
+  footer, #water-section { display:none !important; }
+
+  body { background:white !important; color:black !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .card { box-shadow:none !important; border:1px solid #ddd !important; break-inside:avoid; background:white !important; backdrop-filter:none !important; }
+
+  /* Show meal plan and shopping list */
+  #meal-plan-section, #shopping-section { display:block !important; }
+  #results { display:block !important; }
+  #macros-card { break-inside:avoid; }
+
+  /* Shopping accordion always open in print */
+  .shop-accordion-body { display:block !important; }
+  .shop-group-chevron { display:none !important; }
   .shop-item { border:1px solid #eee; border-radius:4px; }
+
+  /* Recipe list styling for print */
+  .recipe-item { border:1px solid #ddd; break-inside:avoid; }
+  .recipe-meta { display:flex !important; }
+  .recipe-kcal-tag { color:black !important; }
+
+  /* Print header */
   .print-header { display:block !important; }
+
+  /* Hide form cards but show results */
+  .card.reveal { display:none !important; }
+  #prefs-card { display:none !important; }
 }

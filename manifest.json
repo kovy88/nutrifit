@@ -7,7 +7,9 @@
   "background_color": "#ffffff",
   "theme_color": "#0071e3",
   "lang": "cs",
+  "orientation": "portrait-primary",
+  "categories": ["health", "fitness", "food"],
   "icons": [
-    { "src": "/favicon.jpg", "sizes": "any", "type": "image/jpeg" }
+    { "src": "/favicon.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "any maskable" }
   ]
 }
