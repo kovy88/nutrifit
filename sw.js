@@ -1,5 +1,5 @@
 // ── NutriPlan Service Worker — offline cache
-const CACHE_NAME = 'nutriplan-v1';
+const CACHE_NAME = 'nutriplan-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   '/css/modals.css',
   '/css/print.css',
   '/js/main.js',
+  '/js/ai-utils.js',
   '/js/auth.js',
   '/js/calculator.js',
   '/js/state.js',

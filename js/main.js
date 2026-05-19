@@ -4,9 +4,12 @@ import { appState, MEAL_NAMES, initAuthListener } from './state.js';
 import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js';
 import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js';
 import { toggleDayPlanner } from './dayplanner.js';
-import { generateMealPlan, closeRecipeModal } from './recipes.js';
+import { generateMealPlan, closeRecipeModal } from './recipes.js?v=2';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=2';
+
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
 // ── TOAST
 function showToast(message, type = 'success') {
@@ -19,6 +22,117 @@ function showToast(message, type = 'success') {
   toast.className = 'toast ' + type;
   requestAnimationFrame(() => toast.classList.add('visible'));
   setTimeout(() => toast.classList.remove('visible'), 4000);
+}
+
+async function fileToBase64(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  return String(dataUrl).split(',')[1];
+}
+
+async function analyzeFoodPhoto() {
+  const fileInput = document.getElementById('food-photo-input');
+  const out = document.getElementById('photo-estimate-output');
+  const btn = document.getElementById('btn-photo-estimate');
+  const file = fileInput?.files?.[0];
+  if (!file) {
+    showToast('Nejdřív vyber fotku jídla.', 'error');
+    return;
+  }
+  if (!file.type.startsWith('image/')) {
+    showToast('Vyber prosím obrázek jídla.', 'error');
+    return;
+  }
+  if (file.size > MAX_PHOTO_SIZE) {
+    showToast('Fotka je moc velká. Maximum je 5 MB.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzuju fotku…';
+  setPhotoOutputMessage(out, 'Probíhá odhad maker z obrázku...');
+
+  try {
+    const imageBase64 = await fileToBase64(file);
+    const res = await fetch('/api/analyze-food-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64, mimeType: file.type || 'image/jpeg' }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error?.message || `Chyba serveru (${res.status})`);
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) throw new Error('AI nevrátila odpověď.');
+    renderFoodEstimate(out, normalizeFoodEstimate(parseGeminiJSON(text, 'Odhad z fotky')));
+  } catch (err) {
+    setPhotoOutputMessage(out, `Nepodařilo se analyzovat fotku: ${err.message || 'Neznámá chyba'}`, 'error');
+    showToast('Analýza fotky selhala.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Odhadnout z fotky';
+  }
+}
+
+function setPhotoOutputMessage(out, message, type = '') {
+  if (!out) return;
+  out.className = `photo-estimate-output${type ? ` ${type}` : ''}`;
+  out.style.display = 'block';
+  out.textContent = message;
+}
+
+function renderFoodEstimate(out, estimate) {
+  if (!out) return;
+  out.className = 'photo-estimate-output';
+  out.style.display = 'block';
+  out.replaceChildren();
+
+  const heading = document.createElement('div');
+  heading.className = 'photo-estimate-heading';
+
+  const titleWrap = document.createElement('div');
+  const food = document.createElement('div');
+  food.className = 'photo-estimate-food';
+  food.textContent = estimate.foodName;
+  const portion = document.createElement('div');
+  portion.className = 'photo-estimate-portion';
+  portion.textContent = estimate.portionGuess;
+  titleWrap.append(food, portion);
+
+  const confidence = document.createElement('div');
+  confidence.className = 'photo-confidence';
+  confidence.textContent = estimate.confidence;
+  heading.append(titleWrap, confidence);
+
+  const grid = document.createElement('div');
+  grid.className = 'photo-macro-grid';
+  [
+    ['Kalorie', `${estimate.kcal} kcal`],
+    ['Bílkoviny', `${estimate.protein} g`],
+    ['Sacharidy', `${estimate.carbs} g`],
+    ['Tuky', `${estimate.fat} g`],
+  ].forEach(([label, value]) => {
+    const tile = document.createElement('div');
+    tile.className = 'photo-macro-tile';
+    const valueEl = document.createElement('span');
+    valueEl.className = 'photo-macro-value';
+    valueEl.textContent = value;
+    const labelEl = document.createElement('span');
+    labelEl.className = 'photo-macro-label';
+    labelEl.textContent = label;
+    tile.append(valueEl, labelEl);
+    grid.appendChild(tile);
+  });
+
+  const note = document.createElement('div');
+  note.className = 'photo-estimate-note';
+  note.textContent = estimate.note;
+
+  out.append(heading, grid, note);
 }
 
 // ── DARK MODE (spouští se okamžitě, před DOMContentLoaded)
@@ -173,6 +287,29 @@ function updateUsageBadge(info) {
   document.getElementById('mc-minus')?.addEventListener('click', () => changeMealCount(-1));
   document.getElementById('mc-plus')?.addEventListener('click', () => changeMealCount(1));
   document.getElementById('btn-generate')?.addEventListener('click', () => generateMealPlan(setStep));
+  document.getElementById('btn-photo-estimate')?.addEventListener('click', analyzeFoodPhoto);
+  document.querySelector('.photo-upload-btn')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      document.getElementById('food-photo-input')?.click();
+    }
+  });
+  document.getElementById('food-photo-input')?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    const preview = document.getElementById('food-photo-preview');
+    const out = document.getElementById('photo-estimate-output');
+    const name = document.getElementById('food-photo-name');
+    if (!file || !preview) return;
+    if (name) name.textContent = file.name;
+    if (!file.type.startsWith('image/') || file.size > MAX_PHOTO_SIZE) {
+      preview.style.display = 'none';
+      showToast(file.size > MAX_PHOTO_SIZE ? 'Fotka je moc velká. Maximum je 5 MB.' : 'Vyber prosím obrázek.', 'error');
+      return;
+    }
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    if (out) out.style.display = 'none';
+  });
 
   // Macro tile clicks
   document.querySelectorAll('.macro-tile.editable').forEach(tile => {
@@ -462,7 +599,7 @@ function updateUsageBadge(info) {
   // Bootstrap — obnova session + naslouchání změnám autentizace
   initAuthListener(
     () => { loadProfileOnStart(); getUsageInfo().then(updateUsageBadge); },
-    () => { updateNavAuth(); openAuthModal(); document.getElementById('usage-badge').style.display = 'none'; }
+    () => { updateNavAuth(); document.getElementById('usage-badge').style.display = 'none'; }
   );
 
 })();

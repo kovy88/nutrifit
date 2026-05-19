@@ -5,6 +5,7 @@ import { buildShoppingList } from './shopping.js';
 import { saveToHistory } from './profile.js';
 import { getCurrentUser } from './auth.js';
 import { checkAndIncrement } from './generation-limit.js';
+import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=2';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
@@ -28,11 +29,6 @@ async function callGemini(systemPrompt, prompt, maxTokens = 3500) {
   return text;
 }
 
-// ── SANITIZACE JSON (Gemini občas vrátí markdown wrapper)
-function sanitizeJSON(text) {
-  return text.replace(/^```json?\s*\n?/, '').replace(/\n?\s*```$/, '').trim();
-}
-
 // ── LOADING SKELETON
 function buildSkeletonHTML(count) {
   const cards = Array.from({ length: count }, (_, i) => `
@@ -53,20 +49,16 @@ function fixMacros(meal) {
 // ── GENEROVÁNÍ JÍDELNÍČKU
 
 export async function generateMealPlan(setStepFn) {
-  // ── Limit check: vyžaduj login a zkontroluj generační limit
+  // ── Přihlášení je bonus pro historii/premium limity, ne bariéra pro školní demo
   const user = getCurrentUser();
-  if (!user) {
-    const { openAuthModal } = await import('./auth.js');
-    openAuthModal();
-    return;
+  if (user) {
+    const limitResult = await checkAndIncrement();
+    if (limitResult && !limitResult.allowed) {
+      window.dispatchEvent(new CustomEvent('paywall:show', { detail: limitResult }));
+      return;
+    }
+    if (limitResult) window.dispatchEvent(new CustomEvent('usage:update', { detail: limitResult }));
   }
-  const limitResult = await checkAndIncrement();
-  if (limitResult && !limitResult.allowed) {
-    window.dispatchEvent(new CustomEvent('paywall:show', { detail: limitResult }));
-    return;
-  }
-  // Aktualizuj badge po úspěšné inkrementaci
-  if (limitResult) window.dispatchEvent(new CustomEvent('usage:update', { detail: limitResult }));
 
   const sec = document.getElementById('meal-plan-section');
   const out = document.getElementById('meal-plan-output');
@@ -157,7 +149,8 @@ PRAVIDLA:
 
   try {
     const text = await callGemini(systemPrompt, prompt, 3500);
-    appState.currentRecipes = JSON.parse(sanitizeJSON(text)).meals.map(fixMacros);
+    const parsed = parseGeminiJSON(text, 'Jídelníček');
+    appState.currentRecipes = normalizeMealPlanResponse(parsed, appState.mealCount).map(fixMacros);
     renderList(out, appState.currentRecipes);
     buildShoppingList(appState.currentRecipes);
     saveToHistory(appState.currentRecipes);
@@ -168,7 +161,7 @@ PRAVIDLA:
       ? 'AI vrátila neplatnou odpověď.'
       : (err.message || 'Chyba při generování.');
     out.innerHTML = `<div class="error-box">
-      <div>${msg}</div>
+      <div>${esc(msg)}</div>
       <button class="error-retry-btn" id="error-retry-btn">Zkusit znovu</button>
     </div>`;
     document.getElementById('error-retry-btn')?.addEventListener('click', () => generateMealPlan(setStepFn));
@@ -178,19 +171,16 @@ PRAVIDLA:
 // ── VYMĚNIT JÍDLO
 
 export async function swapMeal(index) {
-  // ── Limit check pro swap
+  // ── Limit check pro přihlášené; anonymní demo může vyměnit jídlo bez účtu
   const swapUser = getCurrentUser();
-  if (!swapUser) {
-    const { openAuthModal } = await import('./auth.js');
-    openAuthModal();
-    return;
+  if (swapUser) {
+    const swapLimit = await checkAndIncrement();
+    if (swapLimit && !swapLimit.allowed) {
+      window.dispatchEvent(new CustomEvent('paywall:show', { detail: swapLimit }));
+      return;
+    }
+    if (swapLimit) window.dispatchEvent(new CustomEvent('usage:update', { detail: swapLimit }));
   }
-  const swapLimit = await checkAndIncrement();
-  if (swapLimit && !swapLimit.allowed) {
-    window.dispatchEvent(new CustomEvent('paywall:show', { detail: swapLimit }));
-    return;
-  }
-  if (swapLimit) window.dispatchEvent(new CustomEvent('usage:update', { detail: swapLimit }));
 
   const item = document.getElementById(`recipe-item-${index}`);
   const btn  = item.querySelector('.swap-btn');
@@ -234,7 +224,7 @@ Vrať POUZE validní JSON, vše česky:
 
   try {
     const text = await callGemini(systemPrompt, prompt, 1200);
-    const newMeal = fixMacros(JSON.parse(sanitizeJSON(text)));
+    const newMeal = fixMacros(normalizeMeal(parseGeminiJSON(text, 'Alternativní jídlo'), index));
     appState.currentRecipes[index] = newMeal;
 
     item.style.transition = 'opacity 0.2s,transform 0.2s';
