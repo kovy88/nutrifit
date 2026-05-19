@@ -5,7 +5,7 @@ import { buildShoppingList } from './shopping.js';
 import { saveToHistory } from './profile.js';
 import { getCurrentUser } from './auth.js';
 import { checkAndIncrement } from './generation-limit.js';
-import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=2';
+import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=3';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče

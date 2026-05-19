@@ -1,5 +1,5 @@
 // ── NutriPlan Service Worker — offline cache
-const CACHE_NAME = 'nutriplan-v2';
+const CACHE_NAME = 'nutriplan-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -42,7 +42,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch — network first for API, cache first for static assets
+// Fetch — network first for app shell/API, stale-while-revalidate for static assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -52,6 +52,21 @@ self.addEventListener('fetch', event => {
   // API calls and external resources — network only (don't cache)
   if (url.pathname.startsWith('/api/') ||
       url.hostname !== self.location.hostname) {
+    return;
+  }
+
+  // HTML navigace musí vždy zkusit síť, jinak po deployi zůstane stará aplikace.
+  if (event.request.mode === 'navigate' ||
+      event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/index.html')))
+    );
     return;
   }
 

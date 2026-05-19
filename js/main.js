@@ -4,10 +4,10 @@ import { appState, MEAL_NAMES, initAuthListener } from './state.js';
 import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js';
 import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js';
 import { toggleDayPlanner } from './dayplanner.js';
-import { generateMealPlan, closeRecipeModal } from './recipes.js?v=2';
+import { generateMealPlan, closeRecipeModal } from './recipes.js?v=3';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js';
-import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=2';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=3';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
