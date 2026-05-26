@@ -1,23 +1,30 @@
-# NutriPlan
+# NutriPlan / NutriFit
 
-NutriPlan je interaktivní webová aplikace pro výpočet denních maker a generování jídelníčku na míru pomocí AI. Uživatel zadá základní údaje, cíl, aktivitu a stravovací preference, aplikace spočítá kalorický cíl a následně vygeneruje recepty včetně ingrediencí, postupu a nákupního seznamu.
+NutriPlan je interaktivní webová aplikace pro výpočet denních maker, generování jídelníčku na míru a zápis reálného jídla z fotky. Uživatel zadá základní údaje, aplikace spočítá denní rozpočet maker, AI navrhne recepty a multimodální analýza fotky umí přičíst snědené jídlo do dnešního příjmu.
 
 ## Splnění zadání
 
-- Vlastní uživatelské rozhraní: responzivní UI s kalkulačkou, editací maker, výběrem preferencí, historií, nákupním seznamem, tmavým režimem a modály.
-- Strukturovaný výstup: Gemini vrací validní JSON pro jídelníčky, výměnu jídel i odhad maker z fotky.
-- Více LLM volání / kontext: aplikace používá jiné prompty pro vygenerování celého jídelníčku a pro výměnu konkrétního jídla v existujícím plánu.
-- Další datový zdroj a paměť: profil, historie jídelníčků, generační limity a premium stav jsou ukládané v Supabase.
-- Multimodalita: uživatel může nahrát fotku jídla a AI z ní odhadne porci, kalorie a makra.
+- Vlastní uživatelské rozhraní: responzivní dashboard se dvěma hlavními workflow: **Naplánovat den** a **Zapsat jídlo fotkou**.
+- Strukturovaný výstup / function calling princip: Gemini vrací validní JSON pro jídelníčky, výměnu jídel i odhad maker z fotky, který se dá bezpečně parsovat a normalizovat.
+- Více LLM volání / kontext: aplikace používá odlišné role a prompty pro vygenerování celého jídelníčku, výměnu konkrétního jídla a analýzu fotky.
+- Další datový zdroj a paměť: profil, historie jídelníčků, generační limity a premium stav jsou ukládané v Supabase; denní příjem z fotek se ukládá lokálně pro aktuální den.
+- Multimodalita: uživatel nahraje fotku jídla, Gemini Vision odhadne porci, kalorie a makra a uživatel výsledek potvrdí do denního rozpočtu.
 
 ## Demo průchod
 
 1. Otevři aplikaci a bez přihlášení vyplň věk, výšku a váhu.
 2. Klikni na **Spočítat makra**.
 3. Doplň preference jídla, styl stravování a počet jídel.
-4. Klikni na **Vygenerovat jídelníček**.
-5. Klikni na recept pro detail, případně použij **Vyměnit jídlo**.
-6. V části **Odhad maker z fotky jídla** nahraj obrázek jídla a spusť multimodální analýzu.
+4. V dashboardu zkontroluj sekci **Dnešní příjem** se zbývajícími kaloriemi a makry.
+5. V části **Naplánovat den** doplň preference a klikni na **Vygenerovat jídelníček**.
+6. Klikni na recept pro detail, případně použij **Vyměnit jídlo**.
+7. V části **Zapsat jídlo fotkou** nahraj obrázek, spusť analýzu a klikni na **Přidat do dne**. Denní zůstatek maker se okamžitě přepočítá.
+
+## Poznámky k lokálnímu testování
+
+- Lokálně přes statický server funguje UI, výpočet maker, preview uploadu a klientský denní log.
+- AI endpointy `/api/generate` a `/api/analyze-food-photo` jsou Vercel serverless funkce a pro plné otestování vyžadují Vercel/dev prostředí s `GEMINI_API_KEY`.
+- Google přihlášení může na `localhost` hlásit chybu originu, pokud localhost není přidaný v Google OAuth konfiguraci. Produkční doména tím není dotčená.
 
 ## Technologie
 

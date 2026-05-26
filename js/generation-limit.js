@@ -1,7 +1,7 @@
 // ── GENERAČNÍ LIMITY — freemium model
 
-import { supabase } from './supabase.js';
-import { getCurrentUser } from './auth.js';
+import { supabase } from './supabase.js?v=4';
+import { getCurrentUser } from './auth.js?v=4';
 
 export const FREE_LIMIT = 3;
 

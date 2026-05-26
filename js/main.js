@@ -1,15 +1,16 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES, initAuthListener } from './state.js';
-import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js';
-import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js';
-import { toggleDayPlanner } from './dayplanner.js';
-import { generateMealPlan, closeRecipeModal } from './recipes.js?v=3';
-import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js';
-import { getUsageInfo, FREE_LIMIT } from './generation-limit.js';
-import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=3';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=4';
+import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=4';
+import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=4';
+import { toggleDayPlanner } from './dayplanner.js?v=4';
+import { generateMealPlan, closeRecipeModal } from './recipes.js?v=4';
+import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=4';
+import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=4';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=4';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+const FOOD_LOG_KEY = 'nutriplan-food-log';
 
 // ── TOAST
 function showToast(message, type = 'success') {
@@ -54,6 +55,8 @@ async function analyzeFoodPhoto() {
 
   btn.disabled = true;
   btn.textContent = 'Analyzuju fotku…';
+  appState.pendingFoodEstimate = null;
+  setPhotoActionsVisible(false);
   setPhotoOutputMessage(out, 'Probíhá odhad maker z obrázku...');
 
   try {
@@ -68,8 +71,13 @@ async function analyzeFoodPhoto() {
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) throw new Error('AI nevrátila odpověď.');
-    renderFoodEstimate(out, normalizeFoodEstimate(parseGeminiJSON(text, 'Odhad z fotky')));
+    const estimate = normalizeFoodEstimate(parseGeminiJSON(text, 'Odhad z fotky'));
+    appState.pendingFoodEstimate = buildFoodLogItem(estimate);
+    renderFoodEstimate(out, estimate);
+    setPhotoActionsVisible(true);
   } catch (err) {
+    appState.pendingFoodEstimate = null;
+    setPhotoActionsVisible(false);
     setPhotoOutputMessage(out, `Nepodařilo se analyzovat fotku: ${err.message || 'Neznámá chyba'}`, 'error');
     showToast('Analýza fotky selhala.', 'error');
   } finally {
@@ -83,6 +91,11 @@ function setPhotoOutputMessage(out, message, type = '') {
   out.className = `photo-estimate-output${type ? ` ${type}` : ''}`;
   out.style.display = 'block';
   out.textContent = message;
+}
+
+function setPhotoActionsVisible(visible) {
+  const actions = document.getElementById('photo-actions');
+  if (actions) actions.style.display = visible ? 'grid' : 'none';
 }
 
 function renderFoodEstimate(out, estimate) {
@@ -133,6 +146,161 @@ function renderFoodEstimate(out, estimate) {
   note.textContent = estimate.note;
 
   out.append(heading, grid, note);
+}
+
+function buildFoodLogItem(estimate) {
+  return {
+    id: globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `photo-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    source: 'photo',
+    foodName: estimate.foodName,
+    portionGuess: estimate.portionGuess,
+    kcal: estimate.kcal,
+    protein: estimate.protein,
+    carbs: estimate.carbs,
+    fat: estimate.fat,
+    confidence: estimate.confidence,
+    note: estimate.note,
+  };
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function loadFoodLogFromLS() {
+  try {
+    const raw = localStorage.getItem(FOOD_LOG_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    appState.foodLog = parsed?.date === todayKey() && Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    appState.foodLog = [];
+  }
+}
+
+function saveFoodLogToLS() {
+  localStorage.setItem(FOOD_LOG_KEY, JSON.stringify({ date: todayKey(), items: appState.foodLog }));
+}
+
+function addPendingFoodEstimate() {
+  if (!appState.pendingFoodEstimate) {
+    showToast('Nejdřív analyzuj fotku jídla.', 'error');
+    return;
+  }
+  appState.foodLog = [appState.pendingFoodEstimate, ...appState.foodLog];
+  appState.pendingFoodEstimate = null;
+  saveFoodLogToLS();
+  renderDailyOverview();
+  setPhotoActionsVisible(false);
+  document.getElementById('photo-estimate-output').style.display = 'none';
+  document.getElementById('food-photo-preview').style.display = 'none';
+  document.getElementById('food-photo-input').value = '';
+  document.getElementById('food-photo-name').textContent = 'JPG, PNG nebo WebP do 5 MB';
+  showToast('Jídlo přidáno do dne.', 'success');
+}
+
+function discardPendingFoodEstimate() {
+  appState.pendingFoodEstimate = null;
+  setPhotoActionsVisible(false);
+  document.getElementById('photo-estimate-output').style.display = 'none';
+  showToast('Odhad z fotky zahozen.', 'success');
+}
+
+function removeFoodLogItem(id) {
+  appState.foodLog = appState.foodLog.filter(item => item.id !== id);
+  saveFoodLogToLS();
+  renderDailyOverview();
+}
+
+function clearFoodLog() {
+  if (!appState.foodLog.length) return;
+  appState.foodLog = [];
+  saveFoodLogToLS();
+  renderDailyOverview();
+  showToast('Dnešní příjem je vymazaný.', 'success');
+}
+
+function sumFoodLog() {
+  return appState.foodLog.reduce((sum, item) => ({
+    kcal: sum.kcal + (item.kcal || 0),
+    protein: sum.protein + (item.protein || 0),
+    carbs: sum.carbs + (item.carbs || 0),
+    fat: sum.fat + (item.fat || 0),
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+}
+
+function renderDailyOverview() {
+  const overview = document.getElementById('daily-overview');
+  if (!overview || !appState.macros?.kcal) return;
+  overview.style.display = 'block';
+
+  const totals = sumFoodLog();
+  const count = appState.foodLog.length;
+  const summary = document.getElementById('daily-summary');
+  summary.textContent = count
+    ? `${count} ${count === 1 ? 'jídlo zapsané' : count < 5 ? 'jídla zapsaná' : 'jídel zapsáno'} z fotky.`
+    : 'Zatím není zapsané žádné jídlo.';
+
+  updateBudgetTile('kcal', totals.kcal, appState.macros.kcal, 'kcal');
+  updateBudgetTile('protein', totals.protein, appState.macros.protein, 'g');
+  updateBudgetTile('carbs', totals.carbs, appState.macros.carbs, 'g');
+  updateBudgetTile('fat', totals.fat, appState.macros.fat, 'g');
+
+  const clearBtn = document.getElementById('clear-food-log');
+  if (clearBtn) clearBtn.style.display = count ? 'inline-flex' : 'none';
+
+  const list = document.getElementById('food-log-list');
+  if (!list) return;
+  list.replaceChildren();
+  if (!count) {
+    const empty = document.createElement('div');
+    empty.className = 'food-log-empty';
+    empty.textContent = 'Po analýze fotky se tady objeví potvrzená jídla a odečtou se od denního cíle.';
+    list.appendChild(empty);
+    return;
+  }
+
+  appState.foodLog.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'food-log-item';
+
+    const body = document.createElement('div');
+    body.className = 'food-log-body';
+    const name = document.createElement('strong');
+    name.textContent = item.foodName;
+    const meta = document.createElement('span');
+    const time = new Date(item.createdAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    meta.textContent = `${time} · ${item.portionGuess} · ${item.confidence} jistota`;
+    body.append(name, meta);
+
+    const macros = document.createElement('div');
+    macros.className = 'food-log-macros';
+    macros.textContent = `${item.kcal} kcal · B ${item.protein}g · S ${item.carbs}g · T ${item.fat}g`;
+
+    const remove = document.createElement('button');
+    remove.className = 'food-log-remove';
+    remove.type = 'button';
+    remove.dataset.removeFoodId = item.id;
+    remove.setAttribute('aria-label', `Odebrat ${item.foodName}`);
+    remove.textContent = '×';
+
+    row.append(body, macros, remove);
+    list.appendChild(row);
+  });
+}
+
+function updateBudgetTile(key, used, goal, unit) {
+  const left = Math.max(goal - used, 0);
+  const pct = goal ? Math.min((used / goal) * 100, 100) : 0;
+  document.getElementById(`budget-${key}-left`).textContent = `${left} ${unit} zbývá`;
+  document.getElementById(`budget-${key}-used`).textContent = `${used} / ${goal} ${unit}`;
+  document.getElementById(`budget-${key}-bar`).style.width = `${pct}%`;
+}
+
+function finishMacroEdit(m) {
+  finishEdit(m);
+  renderDailyOverview();
 }
 
 // ── DARK MODE (spouští se okamžitě, před DOMContentLoaded)
@@ -283,11 +451,21 @@ function updateUsageBadge(info) {
   });
 
   document.getElementById('day-toggle')?.addEventListener('click', toggleDayPlanner);
-  document.getElementById('btn-calculate')?.addEventListener('click', () => calculate(setStep));
+  document.getElementById('btn-calculate')?.addEventListener('click', () => {
+    calculate(setStep);
+    renderDailyOverview();
+  });
   document.getElementById('mc-minus')?.addEventListener('click', () => changeMealCount(-1));
   document.getElementById('mc-plus')?.addEventListener('click', () => changeMealCount(1));
   document.getElementById('btn-generate')?.addEventListener('click', () => generateMealPlan(setStep));
   document.getElementById('btn-photo-estimate')?.addEventListener('click', analyzeFoodPhoto);
+  document.getElementById('btn-add-photo-meal')?.addEventListener('click', addPendingFoodEstimate);
+  document.getElementById('btn-discard-photo-meal')?.addEventListener('click', discardPendingFoodEstimate);
+  document.getElementById('clear-food-log')?.addEventListener('click', clearFoodLog);
+  document.getElementById('food-log-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-remove-food-id]');
+    if (btn) removeFoodLogItem(btn.dataset.removeFoodId);
+  });
   document.querySelector('.photo-upload-btn')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -301,6 +479,8 @@ function updateUsageBadge(info) {
     const name = document.getElementById('food-photo-name');
     if (!file || !preview) return;
     if (name) name.textContent = file.name;
+    appState.pendingFoodEstimate = null;
+    setPhotoActionsVisible(false);
     if (!file.type.startsWith('image/') || file.size > MAX_PHOTO_SIZE) {
       preview.style.display = 'none';
       showToast(file.size > MAX_PHOTO_SIZE ? 'Fotka je moc velká. Maximum je 5 MB.' : 'Vyber prosím obrázek.', 'error');
@@ -317,8 +497,11 @@ function updateUsageBadge(info) {
   });
   ['kcal', 'protein', 'carbs', 'fat'].forEach(m => {
     const inp = document.getElementById('input-' + m);
-    inp.addEventListener('blur', () => finishEdit(m));
-    inp.addEventListener('keydown', e => handleEditKey(e, m));
+    inp.addEventListener('blur', () => finishMacroEdit(m));
+    inp.addEventListener('keydown', e => {
+      handleEditKey(e, m);
+      if (e.key === 'Enter') renderDailyOverview();
+    });
     inp.addEventListener('click', e => e.stopPropagation());
   });
 
@@ -340,8 +523,8 @@ function updateUsageBadge(info) {
   });
   document.getElementById('paywall-cta-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('paywall-cta-btn');
-    const user = (await import('./auth.js')).getCurrentUser();
-    if (!user) { closePaywallModal(); (await import('./auth.js')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=4')).getCurrentUser();
+    if (!user) { closePaywallModal(); (await import('./auth.js?v=4')).openAuthModal(); return; }
 
     btn.disabled = true;
     btn.textContent = 'Přesměrovávám…';
@@ -435,8 +618,8 @@ function updateUsageBadge(info) {
   document.getElementById('premium-banner-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('premium-banner-btn');
     if (btn.disabled) return;
-    const user = (await import('./auth.js')).getCurrentUser();
-    if (!user) { closeProfileModal(); (await import('./auth.js')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=4')).getCurrentUser();
+    if (!user) { closeProfileModal(); (await import('./auth.js?v=4')).openAuthModal(); return; }
 
     const isManage = btn.dataset.action === 'manage';
     const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';
@@ -527,6 +710,8 @@ function updateUsageBadge(info) {
 
   // Načti uložené hodnoty při startu (jen pokud není přihlášen — profil ho přepíše)
   loadFormFromLS();
+  loadFoodLogFromLS();
+  renderDailyOverview();
 
   // ── COOKIE CONSENT BANNER
   const consent = localStorage.getItem('nutriplan-consent');

@@ -44,7 +44,9 @@ body.logged-in .nav-logged-in  { display:flex; }
 .hero p { font-size:1.05rem; color:var(--text-secondary); max-width:420px; margin:0 auto; line-height:1.6; animation:fadeDown 0.6s 0.2s ease both; }
 
 /* ── CONTAINER */
-.container { max-width:700px; margin:0 auto; padding:0 24px 120px; position:relative; z-index:1; }
+.container { max-width:1080px; margin:0 auto; padding:0 24px 120px; position:relative; z-index:1; }
+.container > .card.reveal,
+.steps-row { max-width:700px; margin-left:auto; margin-right:auto; }
 
 /* ── STEP INDICATOR */
 .steps-row { display:flex; align-items:center; justify-content:center; margin-bottom:32px; gap:0; }

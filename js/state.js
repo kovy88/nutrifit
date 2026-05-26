@@ -9,6 +9,8 @@ export const appState = {
   mealCount: 5,
   dayPlannerOpen: false,
   currentRecipes: [],
+  foodLog: [],
+  pendingFoodEstimate: null,
   ingredientLevel: 'standard',
   profileGenderVal: 'muz',
   profileGoalVal: 'hubnutí',
@@ -62,8 +64,8 @@ export const SHOP_CATEGORIES = {
 // ── AUTH LISTENER
 // Inicializuje Supabase session listener; volat jednou z main.js při startu
 
-import { supabase } from './supabase.js';
-import { _setCurrentUser } from './auth.js';
+import { supabase } from './supabase.js?v=4';
+import { _setCurrentUser } from './auth.js?v=4';
 
 export function initAuthListener(onSignIn, onSignOut) {
   // Zkontroluj existující session (přežití reloadu stránky díky persistSession: true)

@@ -1,6 +1,6 @@
 // ── AUTENTIZACE (Supabase) + AUTH UI + GOOGLE SIGN-IN
 
-import { supabase } from './supabase.js';
+import { supabase } from './supabase.js?v=4';
 
 const GOOGLE_CLIENT_ID = '671016135738-rl5fj7fhvvljjo3ppc9edh53hvtv5sg3.apps.googleusercontent.com';
 

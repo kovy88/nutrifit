@@ -1,6 +1,6 @@
 // ── NÁKUPNÍ SEZNAM
 
-import { SHOP_CATEGORIES } from './state.js';
+import { SHOP_CATEGORIES } from './state.js?v=4';
 
 // Položky, které se nekupují (voda, koření v stopovém množství, dochucovadla)
 const TRIVIAL_KEYWORDS = [
