@@ -23,22 +23,22 @@
   }
   if (localStorage.getItem('nutriplan-consent') === 'accepted') loadGA();
 </script>
-<title>NutriPlan — Personalizovaný jídelníček s AI</title>
+<title>NutriFit — Personalizovaný jídelníček s AI</title>
 <meta name="description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru a získej nákupní seznam. Zdarma, česky, s umělou inteligencí.">
 <meta name="keywords" content="jídelníček, makra, kalorie, bílkoviny, výživa, AI, nutriční kalkulačka, meal plan, česky">
-<meta name="author" content="NutriPlan">
+<meta name="author" content="NutriFit">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nutri-fit-omega.vercel.app/">
-<meta property="og:title" content="NutriPlan — Personalizovaný jídelníček s AI">
+<meta property="og:title" content="NutriFit — Personalizovaný jídelníček s AI">
 <meta property="og:description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru a získej nákupní seznam. Zdarma, česky.">
 <meta property="og:image" content="https://nutri-fit-omega.vercel.app/og-image.jpeg">
 <meta property="og:locale" content="cs_CZ">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="NutriPlan — Personalizovaný jídelníček s AI">
+<meta name="twitter:title" content="NutriFit — Personalizovaný jídelníček s AI">
 <meta name="twitter:description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru. Zdarma, česky.">
 <meta name="twitter:image" content="https://nutri-fit-omega.vercel.app/og-image.jpeg">
 
@@ -46,24 +46,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/variables.css?v=4">
-<link rel="stylesheet" href="css/layout.css?v=4">
-<link rel="stylesheet" href="css/components.css?v=4">
-<link rel="stylesheet" href="css/modals.css?v=4">
-<link rel="stylesheet" href="css/print.css?v=4">
+<link rel="stylesheet" href="css/variables.css?v=6">
+<link rel="stylesheet" href="css/layout.css?v=6">
+<link rel="stylesheet" href="css/components.css?v=6">
+<link rel="stylesheet" href="css/modals.css?v=6">
+<link rel="stylesheet" href="css/print.css?v=6">
 <link rel="icon" type="image/png" href="favicon.jpg">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0071e3">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="NutriPlan">
+<meta name="apple-mobile-web-app-title" content="NutriFit">
 <link rel="apple-touch-icon" href="favicon.jpg">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
 <nav>
-  <div class="nav-logo">NutriPlan</div>
+  <div class="nav-logo">NutriFit</div>
   <div class="nav-right">
     <!-- nepřihlášen -->
     <div class="nav-logged-out">
@@ -110,7 +111,7 @@
   </div>
 
   <!-- CARD 1 -->
-  <div class="card reveal" style="animation-delay:0.05s">
+  <div class="card reveal onboarding-card" style="animation-delay:0.05s">
     <div class="card-header">
       <div class="card-title">Základní údaje</div>
       <div class="card-subtitle">Pohlaví, věk, výška, váha a cíl</div>
@@ -135,7 +136,7 @@
   </div>
 
   <!-- CARD 2 -->
-  <div class="card reveal" style="animation-delay:0.1s">
+  <div class="card reveal onboarding-card" style="animation-delay:0.1s">
     <div class="card-header">
       <div class="card-title">Aktivita</div>
       <div class="card-subtitle">Jak moc se pohybuješ?</div>
@@ -164,9 +165,16 @@
     <div class="dashboard-grid">
     <div class="card dashboard-card dashboard-card-wide" id="macros-card">
       <div class="card-header">
-        <div class="card-kicker">Dnešní rozpočet</div>
-        <div class="card-title">Makra a zůstatek dne</div>
-        <div class="card-subtitle">Výpočet dle Mifflin-St Jeor doplněný o zapsaná jídla z fotek</div>
+        <div class="card-kicker">Dnešek</div>
+        <div class="card-title">Plán, příjem a zůstatek</div>
+        <div class="card-subtitle">Jeden denní rozpočet pro plánovaná jídla, fotky, vodu a trend váhy</div>
+      </div>
+      <div class="today-topbar">
+        <div>
+          <div class="today-label">Vybraný den</div>
+          <div class="today-date" id="selected-date-label">Dnes</div>
+        </div>
+        <div class="date-chip-list" id="date-chip-list"></div>
       </div>
       <div class="macro-grid">
         <div class="macro-tile kcal editable" data-macro="kcal">
@@ -206,6 +214,35 @@
       </div>
       <div class="info-pill" id="result-note"></div>
       <div class="bmi-warning" id="bmi-warning" style="display:none;"></div>
+
+      <div class="today-insights">
+        <div class="insight-tile">
+          <span class="insight-label">Streak</span>
+          <strong><span id="streak-count">0</span> dní</strong>
+          <small id="streak-desc">dní v řadě nad 80 % bílkovin</small>
+        </div>
+        <div class="insight-tile weight-insight">
+          <div>
+            <span class="insight-label">Váha</span>
+            <strong id="weight-trend-label">Zatím žádný trend</strong>
+          </div>
+          <svg id="weight-sparkline" class="weight-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="weight-input-row">
+            <input type="number" id="today-weight-input" min="30" max="300" step="0.1" inputmode="decimal" aria-label="Váha pro vybraný den">
+            <button class="btn-text neutral" id="save-weight-btn" type="button">Uložit váhu</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="meal-plan-section" class="today-plan-section" style="display:none;">
+        <div class="today-subsection-head">
+          <div>
+            <div class="daily-title">Plán dne</div>
+            <div class="daily-subtitle">Klikni na recept pro postup, nebo ho rovnou zapiš tlačítkem „Snědl jsem“.</div>
+          </div>
+        </div>
+        <div id="meal-plan-output"></div>
+      </div>
 
       <div class="daily-overview" id="daily-overview" style="display:none;">
         <div class="daily-overview-head">
@@ -329,9 +366,9 @@
 
     <div class="card dashboard-card intake-card" id="intake-card">
       <div class="card-header">
-        <div class="card-kicker">Zapsat jídlo fotkou</div>
-        <div class="card-title">Dnešní příjem</div>
-        <div class="card-subtitle">Nahraj talíř, zkontroluj odhad a přičti ho do denního rozpočtu</div>
+        <div class="card-kicker">Sekundární zápis</div>
+        <div class="card-title">Jídlo z fotky</div>
+        <div class="card-subtitle">Pro cokoliv mimo plán: nahraj talíř, zkontroluj odhad a přičti ho do vybraného dne</div>
       </div>
       <div class="photo-estimate-box">
         <input class="photo-file-input" type="file" id="food-photo-input" accept="image/*" aria-hidden="true" tabindex="-1">
@@ -351,17 +388,6 @@
         </div>
       </div>
     </div>
-    </div>
-
-    <!-- CARD 4 -->
-    <div id="meal-plan-section" style="display:none;">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Jídelníček na míru</div>
-          <div class="card-subtitle">Klikni na recept pro podrobný postup</div>
-        </div>
-        <div id="meal-plan-output"></div>
-      </div>
     </div>
 
     <!-- CARD 5: Shopping list -->
@@ -395,6 +421,11 @@
             </div>
             <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
             <div class="water-drops" id="water-drops"></div>
+            <div class="water-actions">
+              <button class="btn-text neutral" id="water-minus" type="button">−250 ml</button>
+              <button class="btn-text neutral" id="water-plus" type="button">+250 ml</button>
+              <button class="btn-text" id="water-reset" type="button">Reset</button>
+            </div>
           </div>
         </div>
       </div>
@@ -427,7 +458,7 @@
     <div class="profile-premium-banner" id="profile-premium-banner" style="display:none;">
       <div class="premium-banner-icon">⭐</div>
       <div class="premium-banner-body">
-        <div class="premium-banner-title" id="premium-banner-title">NutriPlan Premium</div>
+        <div class="premium-banner-title" id="premium-banner-title">NutriFit Premium</div>
         <div class="premium-banner-desc" id="premium-banner-desc">Neomezené generace jídelníčků, prioritní podpora.</div>
       </div>
       <button class="premium-banner-btn" id="premium-banner-btn">Získat</button>
@@ -521,7 +552,7 @@
   <div class="auth-card">
     <div class="auth-brand">
       <div class="auth-brand-logo">N</div>
-      <div class="auth-brand-name">NutriPlan</div>
+      <div class="auth-brand-name">NutriFit</div>
       <div class="auth-brand-sub">Personalizovaná výživa</div>
     </div>
     <div class="auth-tabs">
@@ -603,11 +634,12 @@
 
 <!-- FOOTER -->
 <footer class="site-footer">
-<p>NutriPlan je informativní nástroj využívající AI. Nenahrazuje lékařské doporučení ani odbornou konzultaci s nutričním terapeutem. Vše děláte na vlastní riziko.</p>
+<p>NutriFit je informativní nástroj využívající AI. Nenahrazuje lékařské doporučení ani odbornou konzultaci s nutričním terapeutem. Vše děláte na vlastní riziko.</p>
   <div class="footer-links">
     <a href="/legal.html">Obchodní podmínky</a>
     <a href="/legal.html#privacy">Ochrana údajů</a>
-    <a id="footer-feedback-btn" href="mailto:koval.macek@gmail.com?subject=Zpětná%20vazba%20NutriPlan" target="_blank">Zpětná vazba</a>
+    <a href="/delete-account.html">Smazání účtu</a>
+    <a id="footer-feedback-btn" href="mailto:koval.macek@gmail.com?subject=Zpětná%20vazba%20NutriFit" target="_blank">Zpětná vazba</a>
   </div>
 </footer>
 
@@ -648,7 +680,7 @@
   </div>
 </template>
 
-<script type="module" src="js/main.js?v=4"></script>
+<script type="module" src="js/main.js?v=6"></script>
 <script>
 // Service Worker registration
 if ('serviceWorker' in navigator) {

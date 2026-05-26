@@ -12,12 +12,25 @@
 .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(320px,0.95fr); gap:16px; align-items:start; }
 .dashboard-card { height:fit-content; margin-bottom:0; }
 .dashboard-card-wide { grid-column:1 / -1; }
+.today-topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; padding:14px 16px; border:1px solid var(--border); border-radius:16px; background:var(--white); }
+.today-label { font-size:0.68rem; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:3px; }
+.today-date { font-size:1.1rem; font-weight:750; color:var(--text); letter-spacing:-0.3px; }
+.date-chip-list { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+.date-chip { min-width:54px; height:52px; border:1px solid var(--border-strong); border-radius:12px; background:var(--bg); color:var(--text-secondary); font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; transition:all 0.2s var(--ease-out); }
+.date-chip span { font-size:0.65rem; color:var(--text-tertiary); white-space:nowrap; }
+.date-chip strong { font-size:1rem; color:var(--text); line-height:1; }
+.date-chip:hover, .date-chip.active { border-color:var(--blue); background:var(--blue-light); color:var(--blue); }
+.date-chip.active strong { color:var(--blue); }
 @media(max-width:900px){
   .dashboard-grid { grid-template-columns:1fr; }
   .dashboard-card-wide { grid-column:auto; }
   #macros-card { order:1; }
-  #intake-card { order:2; }
-  #prefs-card { order:3; }
+  #prefs-card { order:2; }
+  #intake-card { order:3; }
+}
+@media(max-width:700px){
+  .today-topbar { align-items:flex-start; flex-direction:column; }
+  .date-chip-list { width:100%; }
 }
 
 /* ── TOGGLE GROUP */
@@ -224,13 +237,16 @@
 .recipe-meta-sep { width:3px; height:3px; border-radius:50%; background:var(--border-strong); flex-shrink:0; }
 .recipe-kcal-tag { font-size:0.72rem; font-weight:600; color:var(--blue); }
 .difficulty-dot { display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.recipe-footer { display:flex; align-items:center; justify-content:flex-end; padding:0 14px 12px; }
+.recipe-footer { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:0 14px 12px; }
 .swap-btn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:100px; border:1.5px solid var(--border-strong); background:var(--white); font-family:inherit; font-size:0.72rem; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.2s var(--ease-out); }
 .swap-btn:hover { border-color:var(--orange); color:var(--orange); background:#fff8ee; transform:translateY(-1px); }
 .swap-btn:active { transform:scale(0.95); }
 .swap-btn.loading { opacity:0.5; pointer-events:none; }
 .swap-btn svg { transition:transform 0.4s var(--ease-out); }
 .swap-btn:hover svg { transform:rotate(180deg); }
+.eat-btn { display:flex; align-items:center; justify-content:center; padding:6px 13px; border-radius:100px; border:1.5px solid rgba(48,209,88,0.35); background:rgba(48,209,88,0.08); color:#168038; font-family:inherit; font-size:0.72rem; font-weight:700; cursor:pointer; transition:all 0.2s var(--ease-out); }
+.eat-btn:hover { background:rgba(48,209,88,0.14); transform:translateY(-1px); }
+.eat-btn.logged, .eat-btn:disabled { cursor:default; opacity:0.75; background:var(--bg); color:var(--text-tertiary); border-color:var(--border-strong); transform:none; }
 
 /* ── BMI WARNING */
 .bmi-warning { display:flex; gap:12px; align-items:flex-start; background:#fffbeb; border:1.5px solid #fde68a; border-radius:12px; padding:16px 18px; margin-top:10px; animation:fadeUp 0.3s ease both; }
@@ -275,9 +291,12 @@
 .water-progress-wrap { flex:1; min-width:180px; }
 .water-glasses-label { display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-tertiary); margin-bottom:8px; font-weight:500; }
 .water-glasses-label span:last-child { color:#0369a1; font-weight:700; }
+.water-actions { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-top:12px; }
 
 /* ── DAILY OVERVIEW */
 .daily-overview { margin-top:22px; padding-top:22px; border-top:1px solid var(--border); }
+.today-plan-section { margin-top:22px; padding-top:22px; border-top:1px solid var(--border); animation:fadeUp 0.35s var(--ease-out) both; }
+.today-subsection-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
 .daily-overview-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
 .daily-title { font-size:0.95rem; font-weight:750; color:var(--text); letter-spacing:-0.2px; }
 .daily-subtitle { font-size:0.78rem; color:var(--text-tertiary); margin-top:3px; line-height:1.45; }
@@ -300,10 +319,22 @@
 .food-log-macros { font-size:0.74rem; color:var(--text-secondary); white-space:nowrap; }
 .food-log-remove { width:30px; height:30px; border-radius:50%; border:1px solid var(--border-strong); background:var(--bg); color:var(--text-tertiary); cursor:pointer; font-size:1rem; line-height:1; transition:all 0.2s var(--ease-out); }
 .food-log-remove:hover { border-color:var(--red); color:var(--red); background:rgba(255,59,48,0.06); }
+.today-insights { display:grid; grid-template-columns:0.7fr 1.3fr; gap:10px; margin-top:16px; }
+.insight-tile { min-width:0; padding:16px; border:1px solid var(--border); border-radius:14px; background:var(--white); }
+.insight-label { display:block; font-size:0.66rem; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:7px; }
+.insight-tile strong { display:block; font-size:1.25rem; color:var(--text); letter-spacing:-0.5px; line-height:1.15; }
+.insight-tile small { display:block; margin-top:5px; font-size:0.72rem; color:var(--text-tertiary); line-height:1.4; }
+.weight-insight { display:grid; grid-template-columns:minmax(120px,0.9fr) minmax(120px,1fr); align-items:center; gap:12px; }
+.weight-sparkline { width:100%; height:44px; overflow:visible; }
+.weight-input-row { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:8px; }
+.weight-input-row input { width:100%; background:var(--bg); border:1px solid var(--border-strong); border-radius:10px; padding:9px 10px; font-family:inherit; color:var(--text); }
+.btn-text.neutral:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
 @media(max-width:700px){
   .daily-budget-grid { grid-template-columns:1fr 1fr; }
   .food-log-item { grid-template-columns:1fr auto; }
   .food-log-macros { grid-column:1 / -1; }
+  .today-insights, .weight-insight { grid-template-columns:1fr; }
+  .water-actions { grid-template-columns:1fr; }
 }
 
 /* ── PHOTO ESTIMATE */
@@ -408,4 +439,6 @@
   .photo-actions { grid-template-columns:1fr; }
   .daily-overview-head { flex-direction:column; }
   .daily-budget-grid { grid-template-columns:1fr; }
+  .recipe-footer { align-items:stretch; flex-direction:column; }
+  .eat-btn, .swap-btn { justify-content:center; width:100%; }
 }

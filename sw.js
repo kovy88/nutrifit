@@ -1,9 +1,10 @@
-// ── NutriPlan Service Worker — offline cache
+// ── NutriFit Service Worker — offline cache
 const CACHE_NAME = 'nutriplan-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/legal.html',
+  '/delete-account.html',
   '/manifest.json',
   '/favicon.jpg',
   '/css/variables.css',

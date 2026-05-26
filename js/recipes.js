@@ -1,11 +1,12 @@
 // ── INDIVIDUÁLNÍ NÁVRH JÍDELNÍČKU — generování, zobrazení receptů + recipe modal
 
-import { appState, MEAL_NAMES } from './state.js?v=4';
-import { buildShoppingList } from './shopping.js?v=4';
-import { saveToHistory } from './profile.js?v=4';
-import { getCurrentUser } from './auth.js?v=4';
-import { checkAndIncrement } from './generation-limit.js?v=4';
-import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=4';
+import { appState, MEAL_NAMES } from './state.js?v=6';
+import { buildShoppingList } from './shopping.js?v=6';
+import { saveToHistory } from './profile.js?v=6';
+import { getCurrentUser } from './auth.js?v=6';
+import { checkAndIncrement } from './generation-limit.js?v=6';
+import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=6';
+import { dateKey } from './tracking-store.js?v=6';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
@@ -46,6 +47,20 @@ function fixMacros(meal) {
   return meal;
 }
 
+function plannedMealId(meal, index) {
+  const day = appState.selectedDate || dateKey();
+  const slug = `${meal.mealType || 'jidlo'}-${meal.name || index}`
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${day}-${index}-${slug}`;
+}
+
+function withPlannedMealIds(meals) {
+  return meals.map((meal, index) => ({ ...meal, plannedMealId: meal.plannedMealId || plannedMealId(meal, index) }));
+}
+
 // ── GENEROVÁNÍ JÍDELNÍČKU
 
 export async function generateMealPlan(setStepFn) {
@@ -74,7 +89,7 @@ export async function generateMealPlan(setStepFn) {
   const names    = MEAL_NAMES[appState.mealCount];
 
   const systemPrompt = `# Role
-Jsi NutriPlan AI — český výživový poradce a kreativní kuchař. Veškerý výstup je VÝHRADNĚ v češtině (ingredience, názvy, postup).
+Jsi NutriFit AI — český výživový poradce a kreativní kuchař. Veškerý výstup je VÝHRADNĚ v češtině (ingredience, názvy, postup).
 
 # Základní direktivy
 1. MATEMATICKÁ PŘESNOST — Pro každé jídlo: kcal = bílkoviny×4 + sacharidy×4 + tuky×9. Tolerance ±5 kcal na jídlo. Součet maker všech jídel = denní cíl ±3 %.
@@ -150,12 +165,12 @@ PRAVIDLA:
   try {
     const text = await callGemini(systemPrompt, prompt, 3500);
     const parsed = parseGeminiJSON(text, 'Jídelníček');
-    appState.currentRecipes = normalizeMealPlanResponse(parsed, appState.mealCount).map(fixMacros);
+    appState.currentRecipes = withPlannedMealIds(normalizeMealPlanResponse(parsed, appState.mealCount).map(fixMacros));
     renderList(out, appState.currentRecipes);
     buildShoppingList(appState.currentRecipes);
     saveToHistory(appState.currentRecipes);
     setStepFn('done');
-    window.dispatchEvent(new CustomEvent('mealplan:ready'));
+    window.dispatchEvent(new CustomEvent('mealplan:ready', { detail: { meals: appState.currentRecipes } }));
   } catch (err) {
     const msg = err instanceof SyntaxError
       ? 'AI vrátila neplatnou odpověď.'
@@ -195,7 +210,7 @@ export async function swapMeal(index) {
   const diet     = document.getElementById('diet-style')?.value;
   const usedNames = appState.currentRecipes.filter((_, i) => i !== index).map(m => m.name).join(', ');
 
-  const systemPrompt = `Jsi NutriPlan AI — český výživový poradce. Veškerý text česky. Vrátíš POUZE validní JSON bez dalšího textu.
+  const systemPrompt = `Jsi NutriFit AI — český výživový poradce. Veškerý text česky. Vrátíš POUZE validní JSON bez dalšího textu.
 Pravidla: kcal = bílkoviny×4 + sacharidy×4 + tuky×9 (tolerance ±5 kcal). Reálné gramáže ingrediencí. Praktické postupy s teplotami a časy.`;
 
   const levelDescSwap = appState.ingredientLevel === 'úsporný'
@@ -225,7 +240,7 @@ Vrať POUZE validní JSON, vše česky:
   try {
     const text = await callGemini(systemPrompt, prompt, 1200);
     const newMeal = fixMacros(normalizeMeal(parseGeminiJSON(text, 'Alternativní jídlo'), index));
-    appState.currentRecipes[index] = newMeal;
+    appState.currentRecipes[index] = { ...newMeal, plannedMealId: plannedMealId(newMeal, index) };
 
     item.style.transition = 'opacity 0.2s,transform 0.2s';
     item.style.opacity    = '0';
@@ -239,6 +254,7 @@ Vrať POUZE validní JSON, vše česky:
         newItem.style.transition = 'opacity 0.25s,transform 0.25s';
         requestAnimationFrame(() => { newItem.style.opacity = '1'; newItem.style.transform = 'translateX(0)'; });
       }
+      window.dispatchEvent(new CustomEvent('mealplan:updated', { detail: { meals: appState.currentRecipes } }));
     }, 200);
   } catch (err) {
     item.classList.remove('swapping');
@@ -258,6 +274,7 @@ export function renderList(container, meals) {
     item.className = 'recipe-item';
     item.id = `recipe-item-${i}`;
     const diffC = diffColor(meal.difficulty);
+    const logged = (appState.foodLog || []).some(entry => entry.plannedMealId === meal.plannedMealId);
 
     item.innerHTML = `
       <button class="recipe-row" data-idx="${i}">
@@ -281,6 +298,9 @@ export function renderList(container, meals) {
         </span>
       </div>
       <div class="recipe-footer">
+        <button class="eat-btn ${logged ? 'logged' : ''}" data-eat-idx="${i}" ${logged ? 'disabled' : ''}>
+          ${logged ? 'Zapsáno' : 'Snědl jsem'}
+        </button>
         <button class="swap-btn" data-idx="${i}">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 7c0-2.76 2.24-5 5-5 1.55 0 2.94.7 3.88 1.8M12 7c0 2.76-2.24 5-5 5-1.55 0-2.94-.7-3.88-1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.5 2.5L12 4l-1.5 1.5M3.5 11.5L2 10l1.5-1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Vyměnit jídlo
@@ -289,6 +309,9 @@ export function renderList(container, meals) {
 
     item.querySelector('.recipe-row').addEventListener('click', () => openRecipe(i));
     item.querySelector('.swap-btn').addEventListener('click', () => swapMeal(i));
+    item.querySelector('.eat-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('tracking:add-planned-meal', { detail: { meal, index: i } }));
+    });
     list.appendChild(item);
   });
 

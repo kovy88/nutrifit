@@ -1,16 +1,31 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=4';
-import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=4';
-import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=4';
-import { toggleDayPlanner } from './dayplanner.js?v=4';
-import { generateMealPlan, closeRecipeModal } from './recipes.js?v=4';
-import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=4';
-import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=4';
-import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=4';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=6';
+import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=6';
+import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=6';
+import { toggleDayPlanner } from './dayplanner.js?v=6';
+import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=6';
+import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=6';
+import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=6';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=6';
+import {
+  addFoodLogItem,
+  calcWaterGoal,
+  clearFoodLog as clearStoredFoodLog,
+  dateKey,
+  formatDayLabel,
+  lastDays,
+  loadDay,
+  loadTrends,
+  migrateAnonymousTracking,
+  removeFoodLogItem as removeStoredFoodLogItem,
+  saveDailyTarget,
+  saveMealPlan,
+  updateWater,
+  upsertWeight,
+} from './tracking-store.js?v=6';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
-const FOOD_LOG_KEY = 'nutriplan-food-log';
 
 // ── TOAST
 function showToast(message, type = 'success') {
@@ -164,34 +179,76 @@ function buildFoodLogItem(estimate) {
   };
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
+async function refreshSelectedDay(options = {}) {
+  const key = appState.selectedDate || dateKey();
+  appState.selectedDate = key;
+  appState.weeklyDays = lastDays(7);
 
-function loadFoodLogFromLS() {
   try {
-    const raw = localStorage.getItem(FOOD_LOG_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    appState.foodLog = parsed?.date === todayKey() && Array.isArray(parsed.items) ? parsed.items : [];
-  } catch {
-    appState.foodLog = [];
+    const day = await loadDay(key);
+    appState.dailyData = day;
+    appState.foodLog = day.foodLog || [];
+
+    if (day.target && options.applyTarget !== false) {
+      appState.macros = { ...appState.macros, ...day.target, waterGoalMl: day.target.waterGoalMl || day.target.water_goal_ml || 0 };
+      appState.waterGoalMl = appState.macros.waterGoalMl || appState.waterGoalMl;
+      const results = document.getElementById('results');
+      if (results) results.style.display = 'block';
+    }
+
+    if (day.mealPlan?.meals?.length) {
+      appState.currentRecipes = day.mealPlan.meals;
+      const sec = document.getElementById('meal-plan-section');
+      const out = document.getElementById('meal-plan-output');
+      if (sec && out) {
+        sec.style.display = 'block';
+        renderList(out, appState.currentRecipes);
+        buildShoppingListIfPossible();
+      }
+    } else if (options.clearMissingPlan) {
+      appState.currentRecipes = [];
+      document.getElementById('meal-plan-section').style.display = 'none';
+      document.getElementById('meal-plan-output').innerHTML = '';
+    }
+
+    appState.trackingTrends = await loadTrends(30);
+  } catch (err) {
+    showToast('Nepodařilo se načíst tracking data.', 'error');
+    console.error(err);
   }
+
+  renderTrackingShell();
 }
 
-function saveFoodLogToLS() {
-  localStorage.setItem(FOOD_LOG_KEY, JSON.stringify({ date: todayKey(), items: appState.foodLog }));
+function buildShoppingListIfPossible() {
+  const output = document.getElementById('shopping-output');
+  if (!output || !appState.currentRecipes?.length) return;
+  import('./shopping.js?v=6').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
 }
 
-function addPendingFoodEstimate() {
+async function persistCurrentTarget() {
+  if (!appState.macros?.kcal) return;
+  const key = appState.selectedDate || dateKey();
+  const waterGoalMl = calcWaterGoal(appState.macros.weight, appState.activityFactor);
+  appState.waterGoalMl = waterGoalMl;
+  appState.macros.waterGoalMl = waterGoalMl;
+  await saveDailyTarget(key, appState.macros);
+  await upsertWeight(key, appState.macros.weight, 'profile');
+  const currentWater = appState.dailyData?.water || { amountMl: 0, goalMl: waterGoalMl };
+  await updateWater(key, currentWater.amountMl || 0, waterGoalMl);
+  await refreshSelectedDay({ applyTarget: false });
+}
+
+async function addPendingFoodEstimate() {
   if (!appState.pendingFoodEstimate) {
     showToast('Nejdřív analyzuj fotku jídla.', 'error');
     return;
   }
-  appState.foodLog = [appState.pendingFoodEstimate, ...appState.foodLog];
+  const key = appState.selectedDate || dateKey();
+  const saved = await addFoodLogItem(key, appState.pendingFoodEstimate);
+  appState.foodLog = [saved, ...appState.foodLog];
   appState.pendingFoodEstimate = null;
-  saveFoodLogToLS();
-  renderDailyOverview();
+  await refreshSelectedDay({ applyTarget: false });
   setPhotoActionsVisible(false);
   document.getElementById('photo-estimate-output').style.display = 'none';
   document.getElementById('food-photo-preview').style.display = 'none';
@@ -207,18 +264,16 @@ function discardPendingFoodEstimate() {
   showToast('Odhad z fotky zahozen.', 'success');
 }
 
-function removeFoodLogItem(id) {
-  appState.foodLog = appState.foodLog.filter(item => item.id !== id);
-  saveFoodLogToLS();
-  renderDailyOverview();
+async function removeFoodLogItem(id) {
+  await removeStoredFoodLogItem(appState.selectedDate || dateKey(), id);
+  await refreshSelectedDay({ applyTarget: false });
 }
 
-function clearFoodLog() {
+async function clearFoodLog() {
   if (!appState.foodLog.length) return;
-  appState.foodLog = [];
-  saveFoodLogToLS();
-  renderDailyOverview();
-  showToast('Dnešní příjem je vymazaný.', 'success');
+  await clearStoredFoodLog(appState.selectedDate || dateKey());
+  await refreshSelectedDay({ applyTarget: false });
+  showToast('Příjem pro vybraný den je vymazaný.', 'success');
 }
 
 function sumFoodLog() {
@@ -230,6 +285,40 @@ function sumFoodLog() {
   }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
 }
 
+function renderTrackingShell() {
+  renderMacroValues();
+  renderDateNav();
+  renderDailyOverview();
+  renderWaterTracker();
+  renderTrends();
+}
+
+function renderMacroValues() {
+  if (!appState.macros?.kcal) return;
+  ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'bmr', 'tdee'].forEach(key => {
+    const el = document.getElementById(`r-${key}`);
+    if (el && appState.macros[key] !== undefined) el.textContent = appState.macros[key];
+  });
+}
+
+function renderDateNav() {
+  const label = document.getElementById('selected-date-label');
+  const chips = document.getElementById('date-chip-list');
+  if (label) label.textContent = formatDayLabel(appState.selectedDate || dateKey());
+  if (!chips) return;
+
+  chips.replaceChildren();
+  appState.weeklyDays = lastDays(7);
+  appState.weeklyDays.forEach(key => {
+    const btn = document.createElement('button');
+    btn.className = `date-chip${key === appState.selectedDate ? ' active' : ''}`;
+    btn.type = 'button';
+    btn.dataset.date = key;
+    btn.innerHTML = `<span>${formatDayLabel(key, { short: true })}</span><strong>${new Date(`${key}T12:00:00`).getDate()}</strong>`;
+    chips.appendChild(btn);
+  });
+}
+
 function renderDailyOverview() {
   const overview = document.getElementById('daily-overview');
   if (!overview || !appState.macros?.kcal) return;
@@ -238,8 +327,10 @@ function renderDailyOverview() {
   const totals = sumFoodLog();
   const count = appState.foodLog.length;
   const summary = document.getElementById('daily-summary');
+  const photoCount = appState.foodLog.filter(x => x.source === 'photo').length;
+  const plannedCount = appState.foodLog.filter(x => x.source === 'planned').length;
   summary.textContent = count
-    ? `${count} ${count === 1 ? 'jídlo zapsané' : count < 5 ? 'jídla zapsaná' : 'jídel zapsáno'} z fotky.`
+    ? `${count} ${count === 1 ? 'jídlo zapsané' : count < 5 ? 'jídla zapsaná' : 'jídel zapsáno'} · plán ${plannedCount} · fotka ${photoCount}.`
     : 'Zatím není zapsané žádné jídlo.';
 
   updateBudgetTile('kcal', totals.kcal, appState.macros.kcal, 'kcal');
@@ -256,7 +347,7 @@ function renderDailyOverview() {
   if (!count) {
     const empty = document.createElement('div');
     empty.className = 'food-log-empty';
-    empty.textContent = 'Po analýze fotky se tady objeví potvrzená jídla a odečtou se od denního cíle.';
+    empty.textContent = 'Až klikneš na „Snědl jsem“ u receptu nebo přidáš fotku jídla, objeví se tady záznam a odečte se od denního cíle.';
     list.appendChild(empty);
     return;
   }
@@ -271,7 +362,8 @@ function renderDailyOverview() {
     name.textContent = item.foodName;
     const meta = document.createElement('span');
     const time = new Date(item.createdAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
-    meta.textContent = `${time} · ${item.portionGuess} · ${item.confidence} jistota`;
+    const source = item.source === 'planned' ? 'z jídelníčku' : item.source === 'photo' ? 'z fotky' : 'ručně';
+    meta.textContent = `${time} · ${source}${item.portionGuess ? ` · ${item.portionGuess}` : ''}${item.confidence ? ` · ${item.confidence} jistota` : ''}`;
     body.append(name, meta);
 
     const macros = document.createElement('div');
@@ -300,7 +392,121 @@ function updateBudgetTile(key, used, goal, unit) {
 
 function finishMacroEdit(m) {
   finishEdit(m);
-  renderDailyOverview();
+  persistCurrentTarget();
+}
+
+async function addPlannedMeal(meal) {
+  if (!meal) return;
+  if ((appState.foodLog || []).some(item => item.plannedMealId === meal.plannedMealId)) {
+    showToast('Tohle jídlo už je zapsané.', 'error');
+    return;
+  }
+  const item = {
+    id: globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `planned-${Date.now()}`,
+    source: 'planned',
+    foodName: meal.name,
+    mealType: meal.mealType,
+    plannedMealId: meal.plannedMealId,
+    portionGuess: meal.mealType,
+    kcal: meal.kcal,
+    protein: meal.protein,
+    carbs: meal.carbs,
+    fat: meal.fat,
+    confidence: 'vysoká',
+    note: 'Zapsáno z vygenerovaného jídelníčku.',
+    createdAt: new Date().toISOString(),
+  };
+  await addFoodLogItem(appState.selectedDate || dateKey(), item);
+  await refreshSelectedDay({ applyTarget: false });
+  renderList(document.getElementById('meal-plan-output'), appState.currentRecipes);
+  showToast('Jídlo zapsané do dne.', 'success');
+}
+
+function renderWaterTracker() {
+  const section = document.getElementById('water-section');
+  if (!section) return;
+  const water = appState.dailyData?.water || { amountMl: 0, goalMl: appState.waterGoalMl || appState.macros?.waterGoalMl || 0 };
+  const goal = water.goalMl || appState.waterGoalMl || appState.macros?.waterGoalMl || calcWaterGoal(appState.macros?.weight, appState.activityFactor);
+  const amount = water.amountMl || 0;
+  const pct = goal ? Math.min((amount / goal) * 100, 100) : 0;
+  const glassesGoal = goal ? Math.round(goal / 250) : 0;
+  const glassesDone = Math.floor(amount / 250);
+
+  document.getElementById('water-amount').textContent = `${(amount / 1000).toFixed(1)} / ${(goal / 1000).toFixed(1)} l`;
+  document.getElementById('water-desc').textContent = goal ? `Cíl podle váhy a aktivity: ${glassesGoal} sklenic` : 'Spočítej makra a nastaví se denní cíl.';
+  document.getElementById('water-glasses-count').textContent = `${glassesDone}/${glassesGoal} sklenic`;
+  document.getElementById('water-fill').style.width = `${pct}%`;
+
+  const drops = document.getElementById('water-drops');
+  if (drops) {
+    drops.innerHTML = '';
+    const shown = Math.min(Math.max(glassesGoal, 4), 12);
+    for (let i = 0; i < shown; i++) {
+      const dot = document.createElement('div');
+      dot.className = `water-dot${i < glassesDone ? ' filled' : ''}`;
+      drops.appendChild(dot);
+    }
+  }
+  section.style.display = appState.macros?.kcal ? 'block' : 'none';
+}
+
+async function changeWater(delta) {
+  const key = appState.selectedDate || dateKey();
+  const current = appState.dailyData?.water || { amountMl: 0, goalMl: appState.waterGoalMl || 0 };
+  const goal = current.goalMl || appState.waterGoalMl || appState.macros?.waterGoalMl || 0;
+  await updateWater(key, Math.max(0, (current.amountMl || 0) + delta), goal);
+  await refreshSelectedDay({ applyTarget: false });
+}
+
+async function saveWeightFromInput() {
+  const input = document.getElementById('today-weight-input');
+  const weight = Number(input?.value || 0);
+  if (!weight) {
+    showToast('Zadej váhu v kg.', 'error');
+    return;
+  }
+  await upsertWeight(appState.selectedDate || dateKey(), weight, 'manual');
+  await refreshSelectedDay({ applyTarget: false });
+  showToast('Váha uložená.', 'success');
+}
+
+function renderTrends() {
+  const streakEl = document.getElementById('streak-count');
+  const streakText = document.getElementById('streak-desc');
+  if (streakEl) streakEl.textContent = `${appState.trackingTrends?.streak || 0}`;
+  if (streakText) streakText.textContent = 'dní v řadě nad 80 % bílkovin';
+
+  const input = document.getElementById('today-weight-input');
+  const selectedWeight = appState.dailyData?.weight?.weightKg || appState.macros?.weight || '';
+  if (input && selectedWeight) input.value = selectedWeight;
+
+  const spark = document.getElementById('weight-sparkline');
+  const label = document.getElementById('weight-trend-label');
+  if (!spark) return;
+  const weights = (appState.trackingTrends?.days || [])
+    .map(day => ({ date: day.date, value: Number(day.weight?.weightKg || 0) }))
+    .filter(point => point.value > 0)
+    .slice(-30);
+  spark.replaceChildren();
+  if (weights.length < 2) {
+    if (label) label.textContent = weights.length ? `${weights[0].value} kg` : 'Zatím žádný trend';
+    return;
+  }
+  const min = Math.min(...weights.map(p => p.value));
+  const max = Math.max(...weights.map(p => p.value));
+  const range = Math.max(max - min, 1);
+  const points = weights.map((p, i) => {
+    const x = weights.length === 1 ? 100 : (i / (weights.length - 1)) * 100;
+    const y = 34 - ((p.value - min) / range) * 28;
+    return `${x},${y}`;
+  }).join(' ');
+  spark.innerHTML = `<polyline points="${points}" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>`;
+  if (label) {
+    const first = weights[0].value;
+    const last = weights[weights.length - 1].value;
+    const diff = last - first;
+    label.textContent = `${last} kg · ${diff >= 0 ? '+' : ''}${diff.toFixed(1)} kg`;
+  }
 }
 
 // ── DARK MODE (spouští se okamžitě, před DOMContentLoaded)
@@ -451,9 +657,10 @@ function updateUsageBadge(info) {
   });
 
   document.getElementById('day-toggle')?.addEventListener('click', toggleDayPlanner);
-  document.getElementById('btn-calculate')?.addEventListener('click', () => {
+  document.getElementById('btn-calculate')?.addEventListener('click', async () => {
+    appState.selectedDate = dateKey();
     calculate(setStep);
-    renderDailyOverview();
+    if (appState.macros?.kcal) await persistCurrentTarget();
   });
   document.getElementById('mc-minus')?.addEventListener('click', () => changeMealCount(-1));
   document.getElementById('mc-plus')?.addEventListener('click', () => changeMealCount(1));
@@ -462,6 +669,16 @@ function updateUsageBadge(info) {
   document.getElementById('btn-add-photo-meal')?.addEventListener('click', addPendingFoodEstimate);
   document.getElementById('btn-discard-photo-meal')?.addEventListener('click', discardPendingFoodEstimate);
   document.getElementById('clear-food-log')?.addEventListener('click', clearFoodLog);
+  document.getElementById('date-chip-list')?.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-date]');
+    if (!btn) return;
+    appState.selectedDate = btn.dataset.date;
+    await refreshSelectedDay({ clearMissingPlan: true });
+  });
+  document.getElementById('water-plus')?.addEventListener('click', () => changeWater(250));
+  document.getElementById('water-minus')?.addEventListener('click', () => changeWater(-250));
+  document.getElementById('water-reset')?.addEventListener('click', () => changeWater(-(appState.dailyData?.water?.amountMl || 0)));
+  document.getElementById('save-weight-btn')?.addEventListener('click', saveWeightFromInput);
   document.getElementById('food-log-list')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-remove-food-id]');
     if (btn) removeFoodLogItem(btn.dataset.removeFoodId);
@@ -500,7 +717,7 @@ function updateUsageBadge(info) {
     inp.addEventListener('blur', () => finishMacroEdit(m));
     inp.addEventListener('keydown', e => {
       handleEditKey(e, m);
-      if (e.key === 'Enter') renderDailyOverview();
+      if (e.key === 'Enter') persistCurrentTarget();
     });
     inp.addEventListener('click', e => e.stopPropagation());
   });
@@ -523,8 +740,8 @@ function updateUsageBadge(info) {
   });
   document.getElementById('paywall-cta-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('paywall-cta-btn');
-    const user = (await import('./auth.js?v=4')).getCurrentUser();
-    if (!user) { closePaywallModal(); (await import('./auth.js?v=4')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=6')).getCurrentUser();
+    if (!user) { closePaywallModal(); (await import('./auth.js?v=6')).openAuthModal(); return; }
 
     btn.disabled = true;
     btn.textContent = 'Přesměrovávám…';
@@ -550,6 +767,26 @@ function updateUsageBadge(info) {
   // Custom events z recipes.js
   window.addEventListener('paywall:show', e => openPaywallModal(e.detail));
   window.addEventListener('usage:update', e => updateUsageBadge(e.detail));
+  window.addEventListener('tracking:add-planned-meal', e => addPlannedMeal(e.detail?.meal));
+  window.addEventListener('mealplan:ready', async e => {
+    if (e.detail?.meals?.length) {
+      await saveMealPlan(appState.selectedDate || dateKey(), e.detail.meals);
+      await refreshSelectedDay({ applyTarget: false });
+    }
+  });
+  window.addEventListener('mealplan:updated', async e => {
+    if (e.detail?.meals?.length) {
+      await saveMealPlan(appState.selectedDate || dateKey(), e.detail.meals);
+      await refreshSelectedDay({ applyTarget: false });
+    }
+  });
+  window.addEventListener('profile:saved', async e => {
+    const weight = Number(e.detail?.profile?.weight || 0);
+    if (weight) {
+      await upsertWeight(appState.selectedDate || dateKey(), weight, 'profile');
+      await refreshSelectedDay({ applyTarget: false });
+    }
+  });
 
   // Shopping accordion
   document.getElementById('shop-accordion-header')?.addEventListener('click', () => {
@@ -584,8 +821,10 @@ function updateUsageBadge(info) {
   });
 
   // Auth login event (fired by auth.js after successful login)
-  window.addEventListener('auth:login', () => {
-    loadProfileOnStart();
+  window.addEventListener('auth:login', async () => {
+    await migrateAnonymousTracking();
+    await loadProfileOnStart();
+    await refreshSelectedDay({ clearMissingPlan: true });
     getUsageInfo().then(updateUsageBadge);
   });
 
@@ -618,8 +857,8 @@ function updateUsageBadge(info) {
   document.getElementById('premium-banner-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('premium-banner-btn');
     if (btn.disabled) return;
-    const user = (await import('./auth.js?v=4')).getCurrentUser();
-    if (!user) { closeProfileModal(); (await import('./auth.js?v=4')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=6')).getCurrentUser();
+    if (!user) { closeProfileModal(); (await import('./auth.js?v=6')).openAuthModal(); return; }
 
     const isManage = btn.dataset.action === 'manage';
     const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';
@@ -701,17 +940,15 @@ function updateUsageBadge(info) {
   });
   document.getElementById('diet-style')?.addEventListener('change', saveFormToLS);
   // Hooks do existujících akcí (gender, goal, level, mealCount) — uložit po kliknutí
-  const origSetGender = setGender;
-  // Overwrite click handlers to also save
   window.addEventListener('click', e => {
     const t = e.target.closest('.goal-card, .level-btn, .freq-card, .mc-btn, .toggle-btn');
     if (t) setTimeout(saveFormToLS, 50);
   });
 
   // Načti uložené hodnoty při startu (jen pokud není přihlášen — profil ho přepíše)
+  appState.selectedDate = dateKey();
   loadFormFromLS();
-  loadFoodLogFromLS();
-  renderDailyOverview();
+  refreshSelectedDay({ clearMissingPlan: true });
 
   // ── COOKIE CONSENT BANNER
   const consent = localStorage.getItem('nutriplan-consent');
@@ -739,7 +976,7 @@ function updateUsageBadge(info) {
     const tpl = document.getElementById('share-toolbar-tpl');
     if (!tpl) return;
     const clone = tpl.content.cloneNode(true);
-    sec.querySelector('.card')?.appendChild(clone);
+    (sec.querySelector('.card') || sec)?.appendChild(clone);
 
     sec.querySelector('[data-action="copy"]')?.addEventListener('click', () => {
       const text = buildPlainTextMealPlan();
@@ -751,7 +988,7 @@ function updateUsageBadge(info) {
     });
     sec.querySelector('[data-action="email"]')?.addEventListener('click', () => {
       const text = buildPlainTextMealPlan();
-      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
+      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriFit') + '&body=' + encodeURIComponent(text);
     });
     sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
       window.print();
@@ -761,7 +998,7 @@ function updateUsageBadge(info) {
   function buildPlainTextMealPlan() {
     const recipes = appState.currentRecipes || [];
     if (!recipes.length) return '';
-    let text = 'Jídelníček z NutriPlan\n========================\n\n';
+    let text = 'Jídelníček z NutriFit\n========================\n\n';
     recipes.forEach(m => {
       text += `${m.mealType}: ${m.name}\n`;
       text += `  ${m.kcal} kcal | B: ${m.protein}g | S: ${m.carbs}g | T: ${m.fat}g\n`;
@@ -783,8 +1020,17 @@ function updateUsageBadge(info) {
 
   // Bootstrap — obnova session + naslouchání změnám autentizace
   initAuthListener(
-    () => { loadProfileOnStart(); getUsageInfo().then(updateUsageBadge); },
-    () => { updateNavAuth(); document.getElementById('usage-badge').style.display = 'none'; }
+    async () => {
+      await migrateAnonymousTracking();
+      await loadProfileOnStart();
+      await refreshSelectedDay({ clearMissingPlan: true });
+      getUsageInfo().then(updateUsageBadge);
+    },
+    () => {
+      updateNavAuth();
+      document.getElementById('usage-badge').style.display = 'none';
+      refreshSelectedDay({ clearMissingPlan: true });
+    }
   );
 
 })();

@@ -71,6 +71,8 @@ body.logged-in .nav-logged-in  { display:flex; }
   .hero { padding: 56px 20px 36px; }
   .hero h1 { letter-spacing: -1.5px; }
   .container { padding: 0 16px 80px; }
+  .onboarding-card { min-height:calc(100vh - 128px); display:flex; flex-direction:column; justify-content:center; scroll-snap-align:start; }
+  .onboarding-card .btn-primary { margin-top:auto; }
 }
 
 /* ── FOOTER */

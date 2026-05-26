@@ -1,6 +1,6 @@
-# NutriPlan / NutriFit
+# NutriFit
 
-NutriPlan je interaktivní webová aplikace pro výpočet denních maker, generování jídelníčku na míru a zápis reálného jídla z fotky. Uživatel zadá základní údaje, aplikace spočítá denní rozpočet maker, AI navrhne recepty a multimodální analýza fotky umí přičíst snědené jídlo do dnešního příjmu.
+NutriFit je interaktivní webová aplikace pro výpočet denních maker, generování jídelníčku na míru a zápis reálného jídla z fotky. Uživatel zadá základní údaje, aplikace spočítá denní rozpočet maker, AI navrhne recepty a multimodální analýza fotky umí přičíst snědené jídlo do dnešního příjmu.
 
 ## Splnění zadání
 

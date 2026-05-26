@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smazání účtu a dat — NutriFit</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="icon" type="image/png" href="favicon.jpg">
+<style>
+  body { padding:0; }
+  .wrap { max-width:680px; margin:0 auto; padding:80px 24px; }
+  .panel { background:var(--white); border:1px solid var(--border); border-radius:20px; padding:28px; box-shadow:var(--shadow); }
+  h1 { font-size:2rem; line-height:1.1; margin-bottom:12px; color:var(--text); }
+  p { color:var(--text-secondary); line-height:1.7; font-size:0.95rem; }
+  label { display:block; margin:18px 0 7px; font-size:0.78rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.6px; }
+  input, textarea { width:100%; border:1.5px solid var(--border-strong); border-radius:12px; padding:14px 16px; font:inherit; color:var(--text); background:var(--bg); }
+  textarea { min-height:110px; resize:vertical; }
+  button { width:100%; margin-top:18px; border:0; border-radius:14px; padding:15px 18px; background:var(--gradient-blue); color:white; font:inherit; font-weight:800; cursor:pointer; }
+  .note { margin-top:18px; font-size:0.85rem; color:var(--text-tertiary); }
+  .status { margin-top:14px; font-weight:700; }
+  .back { display:inline-flex; margin-bottom:22px; color:var(--blue); text-decoration:none; font-weight:700; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="/">← Zpět na NutriFit</a>
+  <section class="panel">
+    <h1>Smazání účtu a dat</h1>
+    <p>Pokud jste přihlášení v mobilní aplikaci, nejrychlejší cesta je Profil → Smazat účet a data. Tento formulář slouží jako veřejná alternativa pro Google Play/App Store požadavky.</p>
+    <p>Po ověření žádosti smažeme účet, profil, historii jídelníčků a denní záznamy navázané na daný účet. Na žádost odpovíme do 30 dní.</p>
+    <form id="delete-form">
+      <label for="email">E-mail účtu</label>
+      <input id="email" name="email" type="email" autocomplete="email" required placeholder="jan@email.cz">
+      <label for="message">Poznámka</label>
+      <textarea id="message" name="message" placeholder="Volitelně doplňte, čeho se žádost týká."></textarea>
+      <button type="submit">Odeslat žádost</button>
+      <div class="status" id="status"></div>
+    </form>
+    <p class="note">Můžete nám také napsat přímo na <a href="mailto:koval.macek@gmail.com">koval.macek@gmail.com</a>.</p>
+  </section>
+</main>
+<script>
+document.getElementById('delete-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const status = document.getElementById('status');
+  status.textContent = 'Odesílám…';
+  const body = {
+    email: document.getElementById('email').value,
+    message: document.getElementById('message').value
+  };
+  try {
+    const response = await fetch('/api/delete-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error?.message || 'Žádost se nepodařilo odeslat.');
+    status.style.color = 'var(--green)';
+    status.textContent = data.message || 'Žádost byla přijata.';
+    event.target.reset();
+  } catch (err) {
+    status.style.color = 'var(--red)';
+    status.textContent = err.message;
+  }
+});
+</script>
+</body>
+</html>

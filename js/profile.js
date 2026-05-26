@@ -1,12 +1,12 @@
 // ── PROFIL, HISTORIE, STARTUP
 
-import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=4';
-import { supabase } from './supabase.js?v=4';
-import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js?v=4';
-import { setDayRest, recalcFromDays } from './dayplanner.js?v=4';
-import { buildShoppingList } from './shopping.js?v=4';
-import { renderList, esc } from './recipes.js?v=4';
-import { getUsageInfo } from './generation-limit.js?v=4';
+import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=6';
+import { supabase } from './supabase.js?v=6';
+import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js?v=6';
+import { setDayRest, recalcFromDays } from './dayplanner.js?v=6';
+import { buildShoppingList } from './shopping.js?v=6';
+import { renderList, esc } from './recipes.js?v=6';
+import { getUsageInfo } from './generation-limit.js?v=6';
 
 // ── PROFILE MODAL
 
@@ -62,7 +62,7 @@ export function openProfileModal() {
           btnEl.disabled = false;
           btnEl.dataset.action = 'manage';
         } else {
-          titleEl.textContent = 'NutriPlan Premium';
+          titleEl.textContent = 'NutriFit Premium';
           descEl.textContent  = `Zbývá ${Math.max(0, info.limit - info.count)}/${info.limit} generací. Odemkni neomezené.`;
           btnEl.textContent   = 'Získat';
           btnEl.classList.remove('active-premium');
@@ -259,4 +259,5 @@ export async function saveProfile() {
   const note = document.getElementById('profile-saved-note');
   note.textContent = '✓ Profil uložen a předvyplněn';
   setTimeout(() => { note.textContent = ''; }, 3000);
+  window.dispatchEvent(new CustomEvent('profile:saved', { detail: { profile } }));
 }
