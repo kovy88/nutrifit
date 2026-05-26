@@ -1,13 +1,13 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=7';
-import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=7';
-import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=7';
-import { toggleDayPlanner } from './dayplanner.js?v=7';
-import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=7';
-import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=7';
-import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=7';
-import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=7';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=8';
+import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=8';
+import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=8';
+import { toggleDayPlanner } from './dayplanner.js?v=8';
+import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=8';
+import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=8';
+import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=8';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=8';
 import {
   addFoodLogItem,
   calcWaterGoal,
@@ -23,7 +23,7 @@ import {
   saveMealPlan,
   updateWater,
   upsertWeight,
-} from './tracking-store.js?v=7';
+} from './tracking-store.js?v=8';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
@@ -227,7 +227,7 @@ async function refreshSelectedDay(options = {}) {
 function buildShoppingListIfPossible() {
   const output = document.getElementById('shopping-output');
   if (!output || !appState.currentRecipes?.length) return;
-  import('./shopping.js?v=7').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
+  import('./shopping.js?v=8').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
 }
 
 async function persistCurrentTarget() {
@@ -253,6 +253,7 @@ async function addPendingFoodEstimate() {
   appState.foodLog = [saved, ...appState.foodLog];
   appState.pendingFoodEstimate = null;
   await refreshSelectedDay({ applyTarget: false });
+  setActiveAppTab('today', { scroll: true });
   setPhotoActionsVisible(false);
   document.getElementById('photo-estimate-output').style.display = 'none';
   document.getElementById('food-photo-preview').style.display = 'none';
@@ -292,9 +293,33 @@ function sumFoodLog() {
 function renderTrackingShell() {
   renderMacroValues();
   renderDateNav();
+  renderFirstRunState();
   renderDailyOverview();
   renderWaterTracker();
   renderTrends();
+}
+
+function setActiveAppTab(tabName, options = {}) {
+  const target = tabName || 'today';
+  document.querySelectorAll('[data-app-tab]').forEach(btn => {
+    const active = btn.dataset.appTab === target;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-app-panel]').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.appPanel === target);
+  });
+  if (options.scroll) {
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function renderFirstRunState() {
+  const card = document.getElementById('first-run-card');
+  if (!card) return;
+  const hasPlan = Boolean(appState.currentRecipes?.length || appState.dailyData?.mealPlan?.meals?.length);
+  const hasLog = Boolean(appState.foodLog?.length);
+  card.style.display = appState.macros?.kcal && !hasPlan && !hasLog ? 'grid' : 'none';
 }
 
 function renderMacroValues() {
@@ -422,6 +447,7 @@ async function addPlannedMeal(meal) {
   };
   await addFoodLogItem(appState.selectedDate || dateKey(), item);
   await refreshSelectedDay({ applyTarget: false });
+  setActiveAppTab('today', { scroll: true });
   renderList(document.getElementById('meal-plan-output'), appState.currentRecipes);
   showToast('Jídlo zapsané do dne.', 'success');
 }
@@ -664,11 +690,25 @@ function updateUsageBadge(info) {
   document.getElementById('btn-calculate')?.addEventListener('click', async () => {
     appState.selectedDate = dateKey();
     calculate(setStep);
-    if (appState.macros?.kcal) await persistCurrentTarget();
+    if (appState.macros?.kcal) {
+      setActiveAppTab('today');
+      await persistCurrentTarget();
+    }
   });
   document.getElementById('mc-minus')?.addEventListener('click', () => changeMealCount(-1));
   document.getElementById('mc-plus')?.addEventListener('click', () => changeMealCount(1));
-  document.getElementById('btn-generate')?.addEventListener('click', () => generateMealPlan(setStep));
+  document.getElementById('btn-generate')?.addEventListener('click', () => {
+    setActiveAppTab('plan');
+    generateMealPlan(setStep);
+  });
+  document.getElementById('btn-start-plan')?.addEventListener('click', () => {
+    setActiveAppTab('plan', { scroll: true });
+    generateMealPlan(setStep);
+  });
+  document.getElementById('btn-start-photo')?.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+  document.querySelectorAll('[data-app-tab]').forEach(tab => {
+    tab.addEventListener('click', () => setActiveAppTab(tab.dataset.appTab));
+  });
   document.getElementById('btn-photo-estimate')?.addEventListener('click', analyzeFoodPhoto);
   document.getElementById('btn-add-photo-meal')?.addEventListener('click', addPendingFoodEstimate);
   document.getElementById('btn-discard-photo-meal')?.addEventListener('click', discardPendingFoodEstimate);
@@ -750,8 +790,8 @@ function updateUsageBadge(info) {
   });
   document.getElementById('paywall-cta-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('paywall-cta-btn');
-    const user = (await import('./auth.js?v=7')).getCurrentUser();
-    if (!user) { closePaywallModal(); (await import('./auth.js?v=7')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=8')).getCurrentUser();
+    if (!user) { closePaywallModal(); (await import('./auth.js?v=8')).openAuthModal(); return; }
 
     btn.disabled = true;
     btn.textContent = 'Přesměrovávám…';
@@ -867,8 +907,8 @@ function updateUsageBadge(info) {
   document.getElementById('premium-banner-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('premium-banner-btn');
     if (btn.disabled) return;
-    const user = (await import('./auth.js?v=7')).getCurrentUser();
-    if (!user) { closeProfileModal(); (await import('./auth.js?v=7')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=8')).getCurrentUser();
+    if (!user) { closeProfileModal(); (await import('./auth.js?v=8')).openAuthModal(); return; }
 
     const isManage = btn.dataset.action === 'manage';
     const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';

@@ -1,6 +1,6 @@
 // ── KALKULAČKA MAKER + EDITACE MAKER
 
-import { appState, MACRO_LIMITS } from './state.js?v=7';
+import { appState, MACRO_LIMITS } from './state.js?v=8';
 
 // ── ANIMACE HODNOT
 

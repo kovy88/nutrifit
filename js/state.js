@@ -69,8 +69,8 @@ export const SHOP_CATEGORIES = {
 // ── AUTH LISTENER
 // Inicializuje Supabase session listener; volat jednou z main.js při startu
 
-import { supabase } from './supabase.js?v=7';
-import { _setCurrentUser } from './auth.js?v=7';
+import { supabase } from './supabase.js?v=8';
+import { _setCurrentUser } from './auth.js?v=8';
 
 export function initAuthListener(onSignIn, onSignOut) {
   // Zkontroluj existující session (přežití reloadu stránky díky persistSession: true)

@@ -1,5 +1,5 @@
-import { supabase } from './supabase.js?v=7';
-import { getCurrentUser } from './auth.js?v=7';
+import { supabase } from './supabase.js?v=8';
+import { getCurrentUser } from './auth.js?v=8';
 
 const TRACKING_KEY = 'nutriplan-tracking-v2';
 const LEGACY_FOOD_LOG_KEY = 'nutriplan-food-log';

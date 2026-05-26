@@ -1,5 +1,5 @@
 // ── NutriFit Service Worker — offline cache
-const CACHE_NAME = 'nutriplan-v5';
+const CACHE_NAME = 'nutriplan-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

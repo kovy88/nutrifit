@@ -9,6 +9,18 @@
 
 /* ── DASHBOARD */
 .results-shell { animation:fadeUp 0.45s var(--ease-out) both; }
+.app-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:5px; margin:0 auto 16px; border:1px solid var(--border); border-radius:16px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); box-shadow:0 8px 24px rgba(0,0,0,0.04); }
+.app-tab { min-width:0; border:0; border-radius:12px; background:transparent; color:var(--text-tertiary); font-family:inherit; font-size:0.82rem; font-weight:700; padding:11px 10px; cursor:pointer; transition:all 0.2s var(--ease-out); white-space:nowrap; }
+.app-tab:hover { color:var(--text); background:var(--bg); }
+.app-tab.active { color:var(--blue); background:var(--white); box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+.app-panels { display:block; }
+.app-panel { display:none; animation:fadeUp 0.26s var(--ease-out) both; }
+.app-panel.active { display:block; }
+.compact-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.first-run-card { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,0.45fr); gap:16px; align-items:center; margin-top:18px; padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--bg); }
+.first-run-actions { display:flex; flex-direction:column; gap:8px; }
+.first-run-actions .btn-primary,
+.first-run-actions .btn-secondary { margin-top:0; }
 .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(320px,0.95fr); gap:16px; align-items:start; }
 .dashboard-card { height:fit-content; margin-bottom:0; }
 .dashboard-card-wide { grid-column:1 / -1; }
@@ -29,6 +41,9 @@
   #intake-card { order:3; }
 }
 @media(max-width:700px){
+  .app-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:12px; border-radius:14px; }
+  .app-tab { padding:10px 6px; font-size:0.76rem; }
+  .first-run-card { grid-template-columns:1fr; padding:16px; }
   .today-topbar { align-items:flex-start; flex-direction:column; }
   .date-chip-list { width:100%; }
 }
@@ -296,6 +311,7 @@
 /* ── DAILY OVERVIEW */
 .daily-overview { margin-top:22px; padding-top:22px; border-top:1px solid var(--border); }
 .today-plan-section { margin-top:22px; padding-top:22px; border-top:1px solid var(--border); animation:fadeUp 0.35s var(--ease-out) both; }
+.app-panel > .today-plan-section.card { margin-top:16px; padding-top:28px; border-top:1px solid var(--glass-border); }
 .today-subsection-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
 .daily-overview-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
 .daily-title { font-size:0.95rem; font-weight:750; color:var(--text); letter-spacing:-0.2px; }

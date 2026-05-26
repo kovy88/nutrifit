@@ -46,11 +46,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/variables.css?v=7">
-<link rel="stylesheet" href="css/layout.css?v=7">
-<link rel="stylesheet" href="css/components.css?v=7">
-<link rel="stylesheet" href="css/modals.css?v=7">
-<link rel="stylesheet" href="css/print.css?v=7">
+<link rel="stylesheet" href="css/variables.css?v=8">
+<link rel="stylesheet" href="css/layout.css?v=8">
+<link rel="stylesheet" href="css/components.css?v=8">
+<link rel="stylesheet" href="css/modals.css?v=8">
+<link rel="stylesheet" href="css/print.css?v=8">
 <link rel="icon" type="image/png" href="favicon.jpg">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0071e3">
@@ -162,273 +162,305 @@
 
   <!-- RESULTS -->
   <div id="results" class="results-shell" style="display:none;">
-    <div class="dashboard-grid">
-    <div class="card dashboard-card dashboard-card-wide" id="macros-card">
-      <div class="card-header">
-        <div class="card-kicker">Dnešek</div>
-        <div class="card-title">Plán, příjem a zůstatek</div>
-        <div class="card-subtitle">Jeden denní rozpočet pro plánovaná jídla, fotky, vodu a trend váhy</div>
-      </div>
-      <div class="today-topbar">
-        <div>
-          <div class="today-label">Vybraný den</div>
-          <div class="today-date" id="selected-date-label">Dnes</div>
-        </div>
-        <div class="date-chip-list" id="date-chip-list"></div>
-      </div>
-      <div class="macro-grid">
-        <div class="macro-tile kcal editable" data-macro="kcal">
-          <div class="macro-name">Kalorie <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-          <div class="macro-value" id="r-kcal">—</div>
-          <input class="macro-input" id="input-kcal" type="number">
-          <div class="macro-unit">kcal / den</div>
-        </div>
-        <div class="macro-tile protein editable" data-macro="protein">
-          <div class="macro-name">Bílkoviny <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-          <div class="macro-value" id="r-protein">—</div>
-          <input class="macro-input" id="input-protein" type="number">
-          <div class="macro-unit">gramů</div>
-        </div>
-        <div class="macro-tile carbs editable" data-macro="carbs">
-          <div class="macro-name">Sacharidy <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-          <div class="macro-value" id="r-carbs">—</div>
-          <input class="macro-input" id="input-carbs" type="number">
-          <div class="macro-unit">gramů</div>
-        </div>
-        <div class="macro-tile fat editable" data-macro="fat">
-          <div class="macro-name">Tuky <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-          <div class="macro-value" id="r-fat">—</div>
-          <input class="macro-input" id="input-fat" type="number">
-          <div class="macro-unit">gramů</div>
-        </div>
-      </div>
-      <div class="fiber-row">
-        <span class="fiber-label">Vláknina</span>
-        <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
-      </div>
-      <div class="macro-note" id="macro-note" style="display:none;"></div>
-      <div class="stats-row">
-        <div><div class="stat-label">Bazální metabolismus (BMR)</div><div class="stat-value"><span id="r-bmr">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Kolik spálíš v klidu</div></div>
-        <div class="stat-divider"></div>
-        <div><div class="stat-label">Celkový výdej (TDEE)</div><div class="stat-value"><span id="r-tdee">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Celkem včetně pohybu</div></div>
-      </div>
-      <div class="info-pill" id="result-note"></div>
-      <div class="bmi-warning" id="bmi-warning" style="display:none;"></div>
-
-      <div class="today-insights">
-        <div class="insight-tile">
-          <span class="insight-label">Streak</span>
-          <strong><span id="streak-count">0</span> dní</strong>
-          <small id="streak-desc">dní v řadě nad 80 % bílkovin</small>
-        </div>
-        <div class="insight-tile weight-insight">
-          <div>
-            <span class="insight-label">Váha</span>
-            <strong id="weight-trend-label">Zatím žádný trend</strong>
-          </div>
-          <svg id="weight-sparkline" class="weight-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"></svg>
-          <div class="weight-input-row">
-            <input type="number" id="today-weight-input" min="30" max="300" step="0.1" inputmode="decimal" aria-label="Váha pro vybraný den">
-            <button class="btn-text neutral" id="save-weight-btn" type="button">Uložit váhu</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="meal-plan-section" class="today-plan-section" style="display:none;">
-        <div class="today-subsection-head">
-          <div>
-            <div class="daily-title">Plán dne</div>
-            <div class="daily-subtitle">Klikni na recept pro postup, nebo ho rovnou zapiš tlačítkem „Snědl jsem“.</div>
-          </div>
-        </div>
-        <div id="meal-plan-output"></div>
-      </div>
-
-      <div class="daily-overview" id="daily-overview" style="display:none;">
-        <div class="daily-overview-head">
-          <div>
-            <div class="daily-title">Dnešní příjem</div>
-            <div class="daily-subtitle" id="daily-summary">Zatím není zapsané žádné jídlo.</div>
-          </div>
-          <button class="btn-text" id="clear-food-log" type="button">Vymazat den</button>
-        </div>
-        <div class="daily-budget-grid">
-          <div class="budget-tile kcal">
-            <span class="budget-label">Kalorie</span>
-            <strong id="budget-kcal-left">—</strong>
-            <span id="budget-kcal-used">—</span>
-            <div class="budget-track"><div id="budget-kcal-bar" class="budget-fill"></div></div>
-          </div>
-          <div class="budget-tile protein">
-            <span class="budget-label">Bílkoviny</span>
-            <strong id="budget-protein-left">—</strong>
-            <span id="budget-protein-used">—</span>
-            <div class="budget-track"><div id="budget-protein-bar" class="budget-fill"></div></div>
-          </div>
-          <div class="budget-tile carbs">
-            <span class="budget-label">Sacharidy</span>
-            <strong id="budget-carbs-left">—</strong>
-            <span id="budget-carbs-used">—</span>
-            <div class="budget-track"><div id="budget-carbs-bar" class="budget-fill"></div></div>
-          </div>
-          <div class="budget-tile fat">
-            <span class="budget-label">Tuky</span>
-            <strong id="budget-fat-left">—</strong>
-            <span id="budget-fat-used">—</span>
-            <div class="budget-track"><div id="budget-fat-bar" class="budget-fill"></div></div>
-          </div>
-        </div>
-        <div class="food-log-list" id="food-log-list"></div>
-      </div>
+    <div class="app-tabs" role="tablist" aria-label="Denní workflow">
+      <button class="app-tab active" type="button" role="tab" aria-selected="true" data-app-tab="today">Dnes</button>
+      <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="plan">Plán</button>
+      <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="log">Zapsat</button>
+      <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="progress">Pokrok</button>
     </div>
 
-    <!-- CARD 3 -->
-    <div class="card dashboard-card" id="prefs-card">
-      <div class="card-header">
-        <div class="card-kicker">Naplánovat den</div>
-        <div class="card-title">AI jídelníček</div>
-        <div class="card-subtitle">Řekni mi, co ti chutná, a nech si složit plán podle rozpočtu maker</div>
-      </div>
-      <div class="textarea-group">
-        <label>Co rád/a jíš?</label>
-        <textarea id="likes" placeholder="Např. kuřecí maso, těstoviny, vejce, jogurt, italská kuchyně…"></textarea>
-        <div class="quick-chips" id="likes-chips">
-          <span class="chip" data-target="likes" data-value="kuřecí maso">🍗 Kuřecí</span>
-          <span class="chip" data-target="likes" data-value="těstoviny">🍝 Těstoviny</span>
-          <span class="chip" data-target="likes" data-value="vejce">🥚 Vejce</span>
-          <span class="chip" data-target="likes" data-value="ryby">🐟 Ryby</span>
-          <span class="chip" data-target="likes" data-value="zelenina">🥦 Zelenina</span>
-          <span class="chip" data-target="likes" data-value="luštěniny">🫘 Luštěniny</span>
-          <span class="chip" data-target="likes" data-value="rýže">🍚 Rýže</span>
-          <span class="chip" data-target="likes" data-value="jogurt a mléčné výrobky">🥛 Mléčné</span>
-        </div>
-      </div>
-
-      <div class="textarea-group">
-        <label>Co nemáš rád/a nebo alergie?</label>
-        <textarea id="dislikes" placeholder="Nebo klikni na rychlé volby níže…" style="min-height:56px;"></textarea>
-        <div class="quick-chips" id="dislikes-chips">
-          <span class="chip" data-target="dislikes" data-value="bez laktózy">🥛 Bez laktózy</span>
-          <span class="chip" data-target="dislikes" data-value="bez lepku">🌾 Bez lepku</span>
-          <span class="chip" data-target="dislikes" data-value="bez vepřového">🐷 Bez vepřového</span>
-          <span class="chip" data-target="dislikes" data-value="bez ryb">🐟 Bez ryb</span>
-          <span class="chip" data-target="dislikes" data-value="nesnáším koriandr">🌿 Bez koriandru</span>
-          <span class="chip" data-target="dislikes" data-value="nesnáším celer">🥬 Bez celeru</span>
-          <span class="chip" data-target="dislikes" data-value="nesnáším brokolici">🥦 Bez brokolice</span>
-          <span class="chip" data-target="dislikes" data-value="bez ořechů">🥜 Bez ořechů</span>
-          <span class="chip" data-target="dislikes" data-value="nesnáším houby">🍄 Bez hub</span>
-          <span class="chip" data-target="dislikes" data-value="bez vajec">🥚 Bez vajec</span>
-        </div>
-      </div>
-      <div class="section-label" style="margin-top:4px;">Stravovací styl</div>
-      <div class="input-group select-wrapper" style="margin-bottom:0;">
-        <select id="diet-style">
-          <option value="standardní">Standardní (vše)</option>
-          <option value="vegetariánský">Vegetariánský</option>
-          <option value="veganský">Veganský</option>
-          <option value="bezlepkový">Bezlepkový</option>
-          <option value="nízkosacharidový">Nízkosacharidový / Keto</option>
-          <option value="vysokoproteínový">Vysokoproteínový</option>
-        </select>
-      </div>
-      <div class="section-label" style="margin-top:20px;">Level surovin</div>
-      <div class="level-grid">
-        <button class="level-btn" data-level="úsporný">
-          <span class="level-icon">🥚</span>
-          <span class="level-name">Úsporný</span>
-          <span class="level-desc">Vejce, luštěniny, mražená zelenina, rýže, ovesné vločky</span>
-        </button>
-        <button class="level-btn active" data-level="standard">
-          <span class="level-icon">🍗</span>
-          <span class="level-name">Standard</span>
-          <span class="level-desc">Kuřecí maso, sezonní zelenina, jogurt, celozrnné pečivo</span>
-        </button>
-        <button class="level-btn" data-level="gourmet">
-          <span class="level-icon">🥩</span>
-          <span class="level-name">Gourmet</span>
-          <span class="level-desc">Losos, avokádo, hovězí, exotické ovoce, prémiové suroviny</span>
-        </button>
-      </div>
-
-      <div class="section-label" style="margin-top:20px;">Počet jídel za den</div>
-      <div class="meal-count-row">
-        <button class="mc-btn" id="mc-minus">−</button>
-        <div class="mc-display">
-          <span class="mc-number" id="meal-count-display">5</span>
-          <span class="mc-label" id="meal-count-label">jídel</span>
-        </div>
-        <button class="mc-btn" id="mc-plus">+</button>
-        <div class="mc-names" id="meal-count-names">Snídaně · Dop. svačina · Oběd · Odp. svačina · Večeře</div>
-      </div>
-      <button class="btn-primary" id="btn-generate">Vygenerovat jídelníček</button>
-      <div class="usage-badge" id="usage-badge" style="display:none;"><span id="usage-badge-text"></span></div>
-    </div>
-
-    <div class="card dashboard-card intake-card" id="intake-card">
-      <div class="card-header">
-        <div class="card-kicker">Sekundární zápis</div>
-        <div class="card-title">Jídlo z fotky</div>
-        <div class="card-subtitle">Pro cokoliv mimo plán: nahraj talíř, zkontroluj odhad a přičti ho do vybraného dne</div>
-      </div>
-      <div class="photo-estimate-box">
-        <input class="photo-file-input" type="file" id="food-photo-input" accept="image/*" aria-hidden="true" tabindex="-1">
-        <label class="photo-upload-btn" for="food-photo-input" role="button" tabindex="0">
-          <span class="photo-upload-icon">+</span>
-          <span>
-            <strong>Vybrat fotku jídla</strong>
-            <small id="food-photo-name">JPG, PNG nebo WebP do 5 MB</small>
-          </span>
-        </label>
-        <img id="food-photo-preview" class="food-photo-preview" alt="Náhled jídla" style="display:none;">
-        <button class="btn-secondary" id="btn-photo-estimate">Odhadnout z fotky</button>
-        <div id="photo-estimate-output" class="photo-estimate-output" style="display:none;"></div>
-        <div class="photo-actions" id="photo-actions" style="display:none;">
-          <button class="btn-primary compact" id="btn-add-photo-meal" type="button">Přidat do dne</button>
-          <button class="btn-secondary compact" id="btn-discard-photo-meal" type="button">Zahodit odhad</button>
-        </div>
-      </div>
-    </div>
-    </div>
-
-    <!-- CARD 5: Shopping list -->
-    <div id="shopping-section" style="display:none;">
-      <div class="shop-accordion">
-        <div class="shop-accordion-header" id="shop-accordion-header">
-          <div class="shop-accordion-left">
-            <span>🛒</span>
-            <span class="shop-accordion-title">Nákupní seznam</span>
-            <span class="shop-accordion-count" id="shop-total-count"></span>
-          </div>
-          <svg class="shop-group-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div class="shop-accordion-body" id="shopping-output"></div>
-      </div>
-    </div>
-
-    <!-- CARD 6: Water -->
-    <div id="water-section" style="display:none;">
-      <div class="card water-card">
-        <div class="water-inner">
-          <div class="water-text">
-            <div class="water-title">Pitný režim</div>
-            <div class="water-amount" id="water-amount">—</div>
-            <div class="water-desc" id="water-desc"></div>
-          </div>
-          <div class="water-progress-wrap">
-            <div class="water-glasses-label">
-              <span>Denní cíl</span>
-              <span id="water-glasses-count"></span>
+    <div class="app-panels">
+      <section class="app-panel active" data-app-panel="today">
+        <div class="card dashboard-card" id="macros-card">
+          <div class="card-header compact-header">
+            <div>
+              <div class="card-kicker">Dnešek</div>
+              <div class="card-title">Tvoje cíle pro <span id="selected-date-label">dnešek</span></div>
+              <div class="card-subtitle">Nejdřív si vyber jednoduchý start: plán nebo zápis jídla.</div>
             </div>
-            <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
-            <div class="water-drops" id="water-drops"></div>
-            <div class="water-actions">
-              <button class="btn-text neutral" id="water-minus" type="button">−250 ml</button>
-              <button class="btn-text neutral" id="water-plus" type="button">+250 ml</button>
-              <button class="btn-text" id="water-reset" type="button">Reset</button>
+          </div>
+          <div class="macro-grid">
+            <div class="macro-tile kcal editable" data-macro="kcal">
+              <div class="macro-name">Kalorie <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div class="macro-value" id="r-kcal">—</div>
+              <input class="macro-input" id="input-kcal" type="number">
+              <div class="macro-unit">kcal / den</div>
+            </div>
+            <div class="macro-tile protein editable" data-macro="protein">
+              <div class="macro-name">Bílkoviny <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div class="macro-value" id="r-protein">—</div>
+              <input class="macro-input" id="input-protein" type="number">
+              <div class="macro-unit">gramů</div>
+            </div>
+            <div class="macro-tile carbs editable" data-macro="carbs">
+              <div class="macro-name">Sacharidy <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div class="macro-value" id="r-carbs">—</div>
+              <input class="macro-input" id="input-carbs" type="number">
+              <div class="macro-unit">gramů</div>
+            </div>
+            <div class="macro-tile fat editable" data-macro="fat">
+              <div class="macro-name">Tuky <span class="edit-hint"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+              <div class="macro-value" id="r-fat">—</div>
+              <input class="macro-input" id="input-fat" type="number">
+              <div class="macro-unit">gramů</div>
+            </div>
+          </div>
+          <div class="fiber-row">
+            <span class="fiber-label">Vláknina</span>
+            <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
+          </div>
+          <div class="macro-note" id="macro-note" style="display:none;"></div>
+          <div class="first-run-card" id="first-run-card">
+            <div>
+              <div class="daily-title">Co chceš udělat teď?</div>
+              <div class="daily-subtitle">Nejjednodušší je vygenerovat dnešní jídelníček. Když už jsi jedl/a, můžeš rovnou zapsat fotku.</div>
+            </div>
+            <div class="first-run-actions">
+              <button class="btn-primary compact" id="btn-start-plan" type="button">Vygenerovat jídelníček</button>
+              <button class="btn-secondary compact" id="btn-start-photo" type="button">Zapsat jídlo fotkou</button>
+            </div>
+          </div>
+          <div class="info-pill" id="result-note"></div>
+          <div class="bmi-warning" id="bmi-warning" style="display:none;"></div>
+          <div class="stats-row">
+            <div><div class="stat-label">BMR</div><div class="stat-value"><span id="r-bmr">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Spáleno v klidu</div></div>
+            <div class="stat-divider"></div>
+            <div><div class="stat-label">TDEE</div><div class="stat-value"><span id="r-tdee">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Celkem včetně pohybu</div></div>
+          </div>
+
+          <div class="daily-overview" id="daily-overview" style="display:none;">
+            <div class="daily-overview-head">
+              <div>
+                <div class="daily-title">Dnešní příjem</div>
+                <div class="daily-subtitle" id="daily-summary">Zatím není zapsané žádné jídlo.</div>
+              </div>
+              <button class="btn-text" id="clear-food-log" type="button">Vymazat den</button>
+            </div>
+            <div class="daily-budget-grid">
+              <div class="budget-tile kcal">
+                <span class="budget-label">Kalorie</span>
+                <strong id="budget-kcal-left">—</strong>
+                <span id="budget-kcal-used">—</span>
+                <div class="budget-track"><div id="budget-kcal-bar" class="budget-fill"></div></div>
+              </div>
+              <div class="budget-tile protein">
+                <span class="budget-label">Bílkoviny</span>
+                <strong id="budget-protein-left">—</strong>
+                <span id="budget-protein-used">—</span>
+                <div class="budget-track"><div id="budget-protein-bar" class="budget-fill"></div></div>
+              </div>
+              <div class="budget-tile carbs">
+                <span class="budget-label">Sacharidy</span>
+                <strong id="budget-carbs-left">—</strong>
+                <span id="budget-carbs-used">—</span>
+                <div class="budget-track"><div id="budget-carbs-bar" class="budget-fill"></div></div>
+              </div>
+              <div class="budget-tile fat">
+                <span class="budget-label">Tuky</span>
+                <strong id="budget-fat-left">—</strong>
+                <span id="budget-fat-used">—</span>
+                <div class="budget-track"><div id="budget-fat-bar" class="budget-fill"></div></div>
+              </div>
+            </div>
+            <div class="food-log-list" id="food-log-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="app-panel" data-app-panel="plan">
+        <div class="card dashboard-card" id="prefs-card">
+          <div class="card-header">
+            <div class="card-kicker">Plán</div>
+            <div class="card-title">AI jídelníček</div>
+            <div class="card-subtitle">Nastav chuť a počet jídel. Recept pak zapíšeš tlačítkem „Snědl jsem“.</div>
+          </div>
+          <div class="textarea-group">
+            <label>Co rád/a jíš?</label>
+            <textarea id="likes" placeholder="Např. kuřecí maso, těstoviny, vejce, jogurt, italská kuchyně…"></textarea>
+            <div class="quick-chips" id="likes-chips">
+              <span class="chip" data-target="likes" data-value="kuřecí maso">🍗 Kuřecí</span>
+              <span class="chip" data-target="likes" data-value="těstoviny">🍝 Těstoviny</span>
+              <span class="chip" data-target="likes" data-value="vejce">🥚 Vejce</span>
+              <span class="chip" data-target="likes" data-value="ryby">🐟 Ryby</span>
+              <span class="chip" data-target="likes" data-value="zelenina">🥦 Zelenina</span>
+              <span class="chip" data-target="likes" data-value="luštěniny">🫘 Luštěniny</span>
+              <span class="chip" data-target="likes" data-value="rýže">🍚 Rýže</span>
+              <span class="chip" data-target="likes" data-value="jogurt a mléčné výrobky">🥛 Mléčné</span>
+            </div>
+          </div>
+
+          <div class="textarea-group">
+            <label>Co nemáš rád/a nebo alergie?</label>
+            <textarea id="dislikes" placeholder="Nebo klikni na rychlé volby níže…" style="min-height:56px;"></textarea>
+            <div class="quick-chips" id="dislikes-chips">
+              <span class="chip" data-target="dislikes" data-value="bez laktózy">🥛 Bez laktózy</span>
+              <span class="chip" data-target="dislikes" data-value="bez lepku">🌾 Bez lepku</span>
+              <span class="chip" data-target="dislikes" data-value="bez vepřového">🐷 Bez vepřového</span>
+              <span class="chip" data-target="dislikes" data-value="bez ryb">🐟 Bez ryb</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším koriandr">🌿 Bez koriandru</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším celer">🥬 Bez celeru</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším brokolici">🥦 Bez brokolice</span>
+              <span class="chip" data-target="dislikes" data-value="bez ořechů">🥜 Bez ořechů</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším houby">🍄 Bez hub</span>
+              <span class="chip" data-target="dislikes" data-value="bez vajec">🥚 Bez vajec</span>
+            </div>
+          </div>
+          <div class="section-label" style="margin-top:4px;">Stravovací styl</div>
+          <div class="input-group select-wrapper" style="margin-bottom:0;">
+            <select id="diet-style">
+              <option value="standardní">Standardní (vše)</option>
+              <option value="vegetariánský">Vegetariánský</option>
+              <option value="veganský">Veganský</option>
+              <option value="bezlepkový">Bezlepkový</option>
+              <option value="nízkosacharidový">Nízkosacharidový / Keto</option>
+              <option value="vysokoproteínový">Vysokoproteínový</option>
+            </select>
+          </div>
+          <div class="section-label" style="margin-top:20px;">Level surovin</div>
+          <div class="level-grid">
+            <button class="level-btn" data-level="úsporný">
+              <span class="level-icon">🥚</span>
+              <span class="level-name">Úsporný</span>
+              <span class="level-desc">Vejce, luštěniny, mražená zelenina, rýže, ovesné vločky</span>
+            </button>
+            <button class="level-btn active" data-level="standard">
+              <span class="level-icon">🍗</span>
+              <span class="level-name">Standard</span>
+              <span class="level-desc">Kuřecí maso, sezonní zelenina, jogurt, celozrnné pečivo</span>
+            </button>
+            <button class="level-btn" data-level="gourmet">
+              <span class="level-icon">🥩</span>
+              <span class="level-name">Gourmet</span>
+              <span class="level-desc">Losos, avokádo, hovězí, exotické ovoce, prémiové suroviny</span>
+            </button>
+          </div>
+
+          <div class="section-label" style="margin-top:20px;">Počet jídel za den</div>
+          <div class="meal-count-row">
+            <button class="mc-btn" id="mc-minus">−</button>
+            <div class="mc-display">
+              <span class="mc-number" id="meal-count-display">5</span>
+              <span class="mc-label" id="meal-count-label">jídel</span>
+            </div>
+            <button class="mc-btn" id="mc-plus">+</button>
+            <div class="mc-names" id="meal-count-names">Snídaně · Dop. svačina · Oběd · Odp. svačina · Večeře</div>
+          </div>
+          <button class="btn-primary" id="btn-generate">Vygenerovat jídelníček</button>
+          <div class="usage-badge" id="usage-badge" style="display:none;"><span id="usage-badge-text"></span></div>
+        </div>
+
+        <div id="meal-plan-section" class="card today-plan-section" style="display:none;">
+          <div class="today-subsection-head">
+            <div>
+              <div class="card-kicker">Jídelníček</div>
+              <div class="daily-title">Plán dne</div>
+              <div class="daily-subtitle">Klikni na recept pro postup, nebo ho rovnou zapiš tlačítkem „Snědl jsem“.</div>
+            </div>
+          </div>
+          <div id="meal-plan-output"></div>
+        </div>
+
+        <div id="shopping-section" style="display:none;">
+          <div class="shop-accordion">
+            <div class="shop-accordion-header" id="shop-accordion-header">
+              <div class="shop-accordion-left">
+                <span>🛒</span>
+                <span class="shop-accordion-title">Nákupní seznam</span>
+                <span class="shop-accordion-count" id="shop-total-count"></span>
+              </div>
+              <svg class="shop-group-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="shop-accordion-body" id="shopping-output"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="app-panel" data-app-panel="log">
+        <div class="card dashboard-card intake-card" id="intake-card">
+          <div class="card-header">
+            <div class="card-kicker">Zapsat</div>
+            <div class="card-title">Jídlo z fotky</div>
+            <div class="card-subtitle">Pro cokoliv mimo plán: nahraj talíř, zkontroluj odhad a přičti ho do vybraného dne.</div>
+          </div>
+          <div class="photo-estimate-box">
+            <input class="photo-file-input" type="file" id="food-photo-input" accept="image/*" aria-hidden="true" tabindex="-1">
+            <label class="photo-upload-btn" for="food-photo-input" role="button" tabindex="0">
+              <span class="photo-upload-icon">+</span>
+              <span>
+                <strong>Vybrat fotku jídla</strong>
+                <small id="food-photo-name">JPG, PNG nebo WebP do 5 MB</small>
+              </span>
+            </label>
+            <img id="food-photo-preview" class="food-photo-preview" alt="Náhled jídla" style="display:none;">
+            <button class="btn-secondary" id="btn-photo-estimate">Odhadnout z fotky</button>
+            <div id="photo-estimate-output" class="photo-estimate-output" style="display:none;"></div>
+            <div class="photo-actions" id="photo-actions" style="display:none;">
+              <button class="btn-primary compact" id="btn-add-photo-meal" type="button">Přidat do dne</button>
+              <button class="btn-secondary compact" id="btn-discard-photo-meal" type="button">Zahodit odhad</button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section class="app-panel" data-app-panel="progress">
+        <div class="card dashboard-card progress-card">
+          <div class="card-header">
+            <div class="card-kicker">Pokrok</div>
+            <div class="card-title">Historie, váha a návyky</div>
+            <div class="card-subtitle">Tady jsou věci pro návrat do aplikace. Při prvním použití neruší hlavní akci.</div>
+          </div>
+          <div class="today-topbar">
+            <div>
+              <div class="today-label">Vybraný den</div>
+              <div class="today-date">Posledních 7 dní</div>
+            </div>
+            <div class="date-chip-list" id="date-chip-list"></div>
+          </div>
+          <div class="today-insights">
+            <div class="insight-tile">
+              <span class="insight-label">Streak</span>
+              <strong><span id="streak-count">0</span> dní</strong>
+              <small id="streak-desc">dní v řadě nad 80 % bílkovin</small>
+            </div>
+            <div class="insight-tile weight-insight">
+              <div>
+                <span class="insight-label">Váha</span>
+                <strong id="weight-trend-label">Zatím žádný trend</strong>
+              </div>
+              <svg id="weight-sparkline" class="weight-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <div class="weight-input-row">
+                <input type="number" id="today-weight-input" min="30" max="300" step="0.1" inputmode="decimal" aria-label="Váha pro vybraný den">
+                <button class="btn-text neutral" id="save-weight-btn" type="button">Uložit váhu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="water-section" style="display:none;">
+          <div class="card water-card">
+            <div class="water-inner">
+              <div class="water-text">
+                <div class="water-title">Pitný režim</div>
+                <div class="water-amount" id="water-amount">—</div>
+                <div class="water-desc" id="water-desc"></div>
+              </div>
+              <div class="water-progress-wrap">
+                <div class="water-glasses-label">
+                  <span>Denní cíl</span>
+                  <span id="water-glasses-count"></span>
+                </div>
+                <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
+                <div class="water-drops" id="water-drops"></div>
+                <div class="water-actions">
+                  <button class="btn-text neutral" id="water-minus" type="button">−250 ml</button>
+                  <button class="btn-text neutral" id="water-plus" type="button">+250 ml</button>
+                  <button class="btn-text" id="water-reset" type="button">Reset</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -680,7 +712,7 @@
   </div>
 </template>
 
-<script type="module" src="js/main.js?v=7"></script>
+<script type="module" src="js/main.js?v=8"></script>
 <script>
 // Service Worker registration
 if ('serviceWorker' in navigator) {
