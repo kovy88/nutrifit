@@ -1,13 +1,13 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=6';
-import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=6';
-import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=6';
-import { toggleDayPlanner } from './dayplanner.js?v=6';
-import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=6';
-import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=6';
-import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=6';
-import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=6';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=7';
+import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=7';
+import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=7';
+import { toggleDayPlanner } from './dayplanner.js?v=7';
+import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=7';
+import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=7';
+import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=7';
+import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=7';
 import {
   addFoodLogItem,
   calcWaterGoal,
@@ -23,7 +23,7 @@ import {
   saveMealPlan,
   updateWater,
   upsertWeight,
-} from './tracking-store.js?v=6';
+} from './tracking-store.js?v=7';
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
@@ -41,13 +41,18 @@ function showToast(message, type = 'success') {
 }
 
 async function fileToBase64(file) {
+  const dataUrl = await fileToDataUrl(file);
+  return String(dataUrl).split(',')[1];
+}
+
+async function fileToDataUrl(file) {
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-  return String(dataUrl).split(',')[1];
+  return String(dataUrl);
 }
 
 async function analyzeFoodPhoto() {
@@ -85,8 +90,7 @@ async function analyzeFoodPhoto() {
     if (!res.ok || data.error) throw new Error(data.error?.message || `Chyba serveru (${res.status})`);
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) throw new Error('AI nevrátila odpověď.');
-    const estimate = normalizeFoodEstimate(parseGeminiJSON(text, 'Odhad z fotky'));
+    const estimate = normalizeFoodEstimate(data.estimate || parseGeminiJSON(text, 'Odhad z fotky'));
     appState.pendingFoodEstimate = buildFoodLogItem(estimate);
     renderFoodEstimate(out, estimate);
     setPhotoActionsVisible(true);
@@ -223,7 +227,7 @@ async function refreshSelectedDay(options = {}) {
 function buildShoppingListIfPossible() {
   const output = document.getElementById('shopping-output');
   if (!output || !appState.currentRecipes?.length) return;
-  import('./shopping.js?v=6').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
+  import('./shopping.js?v=7').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
 }
 
 async function persistCurrentTarget() {
@@ -703,8 +707,14 @@ function updateUsageBadge(info) {
       showToast(file.size > MAX_PHOTO_SIZE ? 'Fotka je moc velká. Maximum je 5 MB.' : 'Vyber prosím obrázek.', 'error');
       return;
     }
-    preview.src = URL.createObjectURL(file);
-    preview.style.display = 'block';
+    fileToDataUrl(file).then(dataUrl => {
+      preview.src = dataUrl;
+      preview.style.display = 'block';
+    }).catch(() => {
+      preview.removeAttribute('src');
+      preview.style.display = 'none';
+      showToast('Náhled fotky se nepodařilo načíst.', 'error');
+    });
     if (out) out.style.display = 'none';
   });
 
@@ -740,8 +750,8 @@ function updateUsageBadge(info) {
   });
   document.getElementById('paywall-cta-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('paywall-cta-btn');
-    const user = (await import('./auth.js?v=6')).getCurrentUser();
-    if (!user) { closePaywallModal(); (await import('./auth.js?v=6')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=7')).getCurrentUser();
+    if (!user) { closePaywallModal(); (await import('./auth.js?v=7')).openAuthModal(); return; }
 
     btn.disabled = true;
     btn.textContent = 'Přesměrovávám…';
@@ -857,8 +867,8 @@ function updateUsageBadge(info) {
   document.getElementById('premium-banner-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('premium-banner-btn');
     if (btn.disabled) return;
-    const user = (await import('./auth.js?v=6')).getCurrentUser();
-    if (!user) { closeProfileModal(); (await import('./auth.js?v=6')).openAuthModal(); return; }
+    const user = (await import('./auth.js?v=7')).getCurrentUser();
+    if (!user) { closeProfileModal(); (await import('./auth.js?v=7')).openAuthModal(); return; }
 
     const isManage = btn.dataset.action === 'manage';
     const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';

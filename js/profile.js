@@ -1,12 +1,12 @@
 // ── PROFIL, HISTORIE, STARTUP
 
-import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=6';
-import { supabase } from './supabase.js?v=6';
-import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js?v=6';
-import { setDayRest, recalcFromDays } from './dayplanner.js?v=6';
-import { buildShoppingList } from './shopping.js?v=6';
-import { renderList, esc } from './recipes.js?v=6';
-import { getUsageInfo } from './generation-limit.js?v=6';
+import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=7';
+import { supabase } from './supabase.js?v=7';
+import { getCurrentUser, updateNavAuth, openAuthModal } from './auth.js?v=7';
+import { setDayRest, recalcFromDays } from './dayplanner.js?v=7';
+import { buildShoppingList } from './shopping.js?v=7';
+import { renderList, esc } from './recipes.js?v=7';
+import { getUsageInfo } from './generation-limit.js?v=7';
 
 // ── PROFILE MODAL
 

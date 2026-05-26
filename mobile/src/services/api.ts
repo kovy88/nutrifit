@@ -39,6 +39,7 @@ export async function generateMealPlan(profile: UserProfile, macros: Macros): Pr
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const data = await postJson<any>('/api/analyze-food-photo', { imageBase64, mimeType });
+  if (data.estimate) return normalizeFoodEstimate(data.estimate);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   return normalizeFoodEstimate(parseJson(text));
 }

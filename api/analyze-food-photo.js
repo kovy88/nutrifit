@@ -3,6 +3,16 @@
 const { method, rateLimit, sendError } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
+const EMPTY_ESTIMATE = {
+  foodName: 'Jídlo se nepodařilo rozpoznat',
+  portionGuess: 'porce nerozpoznána',
+  kcal: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  confidence: 'nízká',
+  note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
+};
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -35,7 +45,8 @@ module.exports = async function handler(req, res) {
 
   const prompt = `
 Jsi výživový asistent. Z obrázku odhadni jídlo a orientační makra.
-Vrať POUZE validní JSON v češtině bez markdownu:
+Vrať POUZE validní JSON v češtině bez markdownu, komentářů nebo dalšího textu.
+Pokud na obrázku není jídlo nebo porce nejde poznat, vrať JSON s nulovými makry a nízkou jistotou.
 {
   "foodName": "Název jídla",
   "portionGuess": "Krátký odhad porce",
@@ -62,11 +73,70 @@ Používej celá čísla pro kcal/protein/carbs/fat.
       }],
       generationConfig: {
         responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          required: ['foodName', 'portionGuess', 'kcal', 'protein', 'carbs', 'fat', 'confidence', 'note'],
+          properties: {
+            foodName: { type: 'STRING' },
+            portionGuess: { type: 'STRING' },
+            kcal: { type: 'INTEGER' },
+            protein: { type: 'INTEGER' },
+            carbs: { type: 'INTEGER' },
+            fat: { type: 'INTEGER' },
+            confidence: { type: 'STRING' },
+            note: { type: 'STRING' },
+          },
+        },
         maxOutputTokens: 900,
       },
     }),
   });
 
   const data = await geminiRes.json();
-  return res.status(geminiRes.status).json(data);
+  if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const estimate = normalizeEstimate(parseJSONLoose(text) || EMPTY_ESTIMATE);
+  return res.status(200).json({ ...data, estimate });
 };
+
+function parseJSONLoose(text) {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end <= start) return null;
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function normalizeEstimate(raw) {
+  const confidence = String(raw.confidence || EMPTY_ESTIMATE.confidence).toLowerCase();
+  return {
+    foodName: text(raw.foodName, EMPTY_ESTIMATE.foodName),
+    portionGuess: text(raw.portionGuess, EMPTY_ESTIMATE.portionGuess),
+    kcal: number(raw.kcal),
+    protein: number(raw.protein),
+    carbs: number(raw.carbs),
+    fat: number(raw.fat),
+    confidence: ['nízká', 'střední', 'vysoká'].includes(confidence) ? confidence : 'střední',
+    note: text(raw.note, EMPTY_ESTIMATE.note),
+  };
+}
+
+function text(value, fallback) {
+  const out = String(value ?? '').trim();
+  return out || fallback;
+}
+
+function number(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}

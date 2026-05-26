@@ -1,6 +1,6 @@
 // ── DENNÍ PLÁNOVAČ AKTIVIT
 
-import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=6';
+import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=7';
 
 export function toggleDayPlanner() {
   appState.dayPlannerOpen = !appState.dayPlannerOpen;

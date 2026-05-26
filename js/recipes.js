@@ -1,12 +1,12 @@
 // ── INDIVIDUÁLNÍ NÁVRH JÍDELNÍČKU — generování, zobrazení receptů + recipe modal
 
-import { appState, MEAL_NAMES } from './state.js?v=6';
-import { buildShoppingList } from './shopping.js?v=6';
-import { saveToHistory } from './profile.js?v=6';
-import { getCurrentUser } from './auth.js?v=6';
-import { checkAndIncrement } from './generation-limit.js?v=6';
-import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=6';
-import { dateKey } from './tracking-store.js?v=6';
+import { appState, MEAL_NAMES } from './state.js?v=7';
+import { buildShoppingList } from './shopping.js?v=7';
+import { saveToHistory } from './profile.js?v=7';
+import { getCurrentUser } from './auth.js?v=7';
+import { checkAndIncrement } from './generation-limit.js?v=7';
+import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=7';
+import { dateKey } from './tracking-store.js?v=7';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
