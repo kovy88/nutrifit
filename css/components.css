@@ -17,14 +17,73 @@
 .app-panel { display:none; animation:fadeUp 0.26s var(--ease-out) both; }
 .app-panel.active { display:block; }
 .compact-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
-.first-run-card { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,0.45fr); gap:16px; align-items:center; margin-top:18px; padding:18px; border:1px solid var(--border); border-radius:16px; background:var(--bg); }
+.first-run-card { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,0.45fr); gap:18px; align-items:center; margin-top:18px; padding:20px; border:1px solid var(--border); border-radius:18px; background:linear-gradient(135deg, var(--blue-light), var(--bg)); position:relative; overflow:hidden; }
+.first-run-card.state-plan-ready { background:linear-gradient(135deg, rgba(48,209,88,0.10), var(--bg)); border-color:rgba(48,209,88,0.25); }
+.first-run-card.state-goal-met { background:linear-gradient(135deg, rgba(255,159,10,0.10), var(--bg)); border-color:rgba(255,159,10,0.30); }
+.first-run-card.state-readonly { background:var(--bg); border-style:dashed; }
+.first-run-head { display:flex; gap:14px; align-items:flex-start; }
+.first-run-icon { font-size:2rem; line-height:1; flex-shrink:0; }
 .first-run-actions { display:flex; flex-direction:column; gap:8px; }
 .first-run-actions .btn-primary,
 .first-run-actions .btn-secondary { margin-top:0; }
+
+/* Tabs pro tři metody zápisu (Ručně / Foto / Z plánu) */
+.log-method-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:6px; background:var(--bg); border:1px solid var(--border); border-radius:14px; margin-bottom:18px; }
+.log-method-tab { padding:10px 8px; border:none; background:transparent; color:var(--text-secondary); font-family:inherit; font-size:0.82rem; font-weight:600; border-radius:10px; cursor:pointer; transition:all 0.2s var(--ease-out); }
+.log-method-tab:hover { color:var(--blue); }
+.log-method-tab.active { background:var(--white); color:var(--blue); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.log-method-panel { display:none; animation:fadeUp 0.22s var(--ease-out) both; }
+.log-method-panel.active { display:block; }
+.log-method-hint { margin:10px 0 0; font-size:0.78rem; color:var(--text-tertiary); }
+.log-planned-list { display:flex; flex-direction:column; gap:8px; }
+.log-planned-empty { padding:24px 18px; text-align:center; color:var(--text-tertiary); font-size:0.85rem; border:1.5px dashed var(--border-strong); border-radius:14px; background:var(--bg); }
+.log-planned-item { display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; transition:border-color 0.2s; }
+.log-planned-item:hover { border-color:var(--blue); }
+.log-planned-item .planned-info { flex:1; min-width:0; }
+.log-planned-item .planned-name { font-weight:600; color:var(--text); font-size:0.92rem; }
+.log-planned-item .planned-meta { font-size:0.75rem; color:var(--text-tertiary); margin-top:2px; }
+.log-planned-item button { white-space:nowrap; flex-shrink:0; }
+.log-planned-item.logged { opacity:0.55; }
+.log-planned-item.logged .planned-name::before { content:'✓ '; color:var(--green); }
+
+@media(max-width:480px){
+  .log-method-tabs { grid-template-columns:1fr; }
+  .log-method-tab { text-align:left; padding:12px 14px; }
+}
+
+/* Collapsible "Detaily" toggle pro BMR/TDEE/vlákninu/info-pill */
+.today-detail-toggle { margin:18px 0 8px; border:1px solid var(--border); border-radius:14px; background:var(--white); padding:0 16px; overflow:hidden; transition:background 0.2s; }
+.today-detail-toggle[open] { background:var(--bg); }
+.today-detail-toggle > summary { cursor:pointer; padding:14px 0; font-size:0.85rem; font-weight:600; color:var(--text-secondary); list-style:none; display:flex; align-items:center; justify-content:space-between; user-select:none; }
+.today-detail-toggle > summary::-webkit-details-marker { display:none; }
+.today-detail-toggle > summary::after { content:'›'; font-size:1.4rem; line-height:1; color:var(--text-tertiary); transition:transform 0.2s; }
+.today-detail-toggle[open] > summary::after { transform:rotate(90deg); }
+.today-detail-toggle > summary:hover { color:var(--blue); }
+.today-detail-toggle .stats-row { margin:0 0 12px; padding:16px; }
+.today-detail-toggle .fiber-row { margin-bottom:12px; border-radius:12px; border-top:1px solid var(--border); }
+.today-detail-toggle .info-pill { margin-bottom:12px; }
 .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(320px,0.95fr); gap:16px; align-items:start; }
 .dashboard-card { height:fit-content; margin-bottom:0; }
 .dashboard-card-wide { grid-column:1 / -1; }
 .today-topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; padding:14px 16px; border:1px solid var(--border); border-radius:16px; background:var(--white); }
+
+/* Globální day selector nad taby — působí na všechny záložky */
+.global-date-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px; padding:12px 16px; background:var(--white); border:1px solid var(--border); border-radius:16px; }
+.global-date-bar.past-day { background:linear-gradient(135deg, rgba(255,159,10,0.10), var(--white)); border-color:rgba(255,159,10,0.30); }
+.global-date-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.global-date-label { font-size:0.66rem; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; color:var(--text-tertiary); }
+.global-date-value { font-size:1.05rem; font-weight:700; color:var(--text); letter-spacing:-0.2px; }
+.global-date-bar .date-chip-list { flex:1; justify-content:flex-end; }
+
+/* Banner když uživatel prohlíží jiný den než dnešek — info + návrat */
+.past-day-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; margin-bottom:12px; background:rgba(255,159,10,0.10); border:1px solid rgba(255,159,10,0.30); border-radius:12px; font-size:0.85rem; color:var(--text); }
+.past-day-banner .btn-text { white-space:nowrap; flex-shrink:0; }
+
+@media(max-width:700px){
+  .global-date-bar { flex-direction:column; align-items:stretch; gap:10px; padding:12px; }
+  .global-date-bar .date-chip-list { justify-content:flex-start; }
+  .past-day-banner { flex-direction:column; align-items:stretch; gap:8px; text-align:left; }
+}
 .today-label { font-size:0.68rem; font-weight:700; letter-spacing:0.7px; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:3px; }
 .today-date { font-size:1.1rem; font-weight:750; color:var(--text); letter-spacing:-0.3px; }
 .date-chip-list { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }

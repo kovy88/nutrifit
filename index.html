@@ -23,22 +23,22 @@
   }
   if (localStorage.getItem('nutriplan-consent') === 'accepted') loadGA();
 </script>
-<title>NutriFit — Personalizovaný jídelníček s AI</title>
-<meta name="description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru a získej nákupní seznam. Zdarma, česky, s umělou inteligencí.">
+<title>NutriPlan — AI jídelníček na míru za minutu</title>
+<meta name="description" content="Spočítej si makra a nech si vygenerovat jídelníček na míru s nákupním seznamem. Zdarma, česky, s AI.">
 <meta name="keywords" content="jídelníček, makra, kalorie, bílkoviny, výživa, AI, nutriční kalkulačka, meal plan, česky">
-<meta name="author" content="NutriFit">
+<meta name="author" content="NutriPlan">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nutri-fit-omega.vercel.app/">
-<meta property="og:title" content="NutriFit — Personalizovaný jídelníček s AI">
+<meta property="og:title" content="NutriPlan — AI jídelníček na míru za minutu">
 <meta property="og:description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru a získej nákupní seznam. Zdarma, česky.">
 <meta property="og:image" content="https://nutri-fit-omega.vercel.app/og-image.jpeg">
 <meta property="og:locale" content="cs_CZ">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="NutriFit — Personalizovaný jídelníček s AI">
+<meta name="twitter:title" content="NutriPlan — AI jídelníček na míru za minutu">
 <meta name="twitter:description" content="Spočítej si makra, nech si vygenerovat jídelníček na míru. Zdarma, česky.">
 <meta name="twitter:image" content="https://nutri-fit-omega.vercel.app/og-image.jpeg">
 
@@ -57,14 +57,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="NutriFit">
+<meta name="apple-mobile-web-app-title" content="NutriPlan">
 <link rel="apple-touch-icon" href="favicon.jpg">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
 <nav>
-  <div class="nav-logo">NutriFit</div>
+  <div class="nav-logo">NutriPlan</div>
   <div class="nav-right">
     <!-- nepřihlášen -->
     <div class="nav-logged-out">
@@ -96,9 +96,9 @@
 </nav>
 
 <section class="hero">
-  <div class="hero-badge">Personalizovaná výživa</div>
-  <h1>Tvůj jídelníček,<br><span>přesně na míru.</span></h1>
-  <p>Spočítej si denní cíle, naplánuj jídlo a zapiš reálný příjem fotkou.</p>
+  <div class="hero-badge">AI · česky · zdarma</div>
+  <h1>Jídelníček na míru<br><span>za minutu.</span></h1>
+  <p>Bez vážení, bez databází. Řekni AI co máš rád — dostaneš plán dne, recepty a nákupní seznam z českých obchodů.</p>
 </section>
 
 <div class="container">
@@ -162,6 +162,19 @@
 
   <!-- RESULTS -->
   <div id="results" class="results-shell" style="display:none;">
+    <!-- Globální date selector — působí na všechny taby. Když je vybrán jiný den než dnešek, zobrazí se banner. -->
+    <div class="global-date-bar" id="global-date-bar">
+      <div class="global-date-info">
+        <span class="global-date-label">Vybraný den</span>
+        <strong class="global-date-value" id="selected-date-label">Dnes</strong>
+      </div>
+      <div class="date-chip-list" id="date-chip-list"></div>
+    </div>
+    <div class="past-day-banner" id="past-day-banner" style="display:none;">
+      <span><strong id="past-day-banner-label">Prohlížíš minulý den</strong> — můžeš upravovat zápisy, ale plán a fotka jsou jen pro dnešek.</span>
+      <button class="btn-text" id="back-to-today-btn" type="button">← Zpět na dnešek</button>
+    </div>
+
     <div class="app-tabs" role="tablist" aria-label="Denní workflow">
       <button class="app-tab active" type="button" role="tab" aria-selected="true" data-app-tab="today">Dnes</button>
       <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="plan">Plán</button>
@@ -174,9 +187,9 @@
         <div class="card dashboard-card" id="macros-card">
           <div class="card-header compact-header">
             <div>
-              <div class="card-kicker">Dnešek</div>
-              <div class="card-title">Tvoje cíle pro <span id="selected-date-label">dnešek</span></div>
-              <div class="card-subtitle">Nejdřív si vyber jednoduchý start: plán nebo zápis jídla.</div>
+              <div class="card-kicker">Cíle dne</div>
+              <div class="card-title">Tvůj rozpočet kalorií a maker</div>
+              <div class="card-subtitle">Kliknutím na dlaždici můžeš upravit cíl. Jídla zapsuj ve "Zapsat" tabu.</div>
             </div>
           </div>
           <div class="macro-grid">
@@ -205,28 +218,39 @@
               <div class="macro-unit">gramů</div>
             </div>
           </div>
-          <div class="fiber-row">
-            <span class="fiber-label">Vláknina</span>
-            <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
-          </div>
           <div class="macro-note" id="macro-note" style="display:none;"></div>
+
+          <!-- Kontext-aware primary CTA — mění se podle stavu (žádný plán / plán hotov / log nad cíl) -->
           <div class="first-run-card" id="first-run-card">
-            <div>
-              <div class="daily-title">Co chceš udělat teď?</div>
-              <div class="daily-subtitle">Nejjednodušší je vygenerovat dnešní jídelníček. Když už jsi jedl/a, můžeš rovnou zapsat fotku.</div>
+            <div class="first-run-head">
+              <div class="first-run-icon" id="first-run-icon">🥗</div>
+              <div>
+                <div class="daily-title" id="first-run-title">Co chceš udělat teď?</div>
+                <div class="daily-subtitle" id="first-run-subtitle">Nejjednodušší je vygenerovat dnešní jídelníček. Když už jsi jedl/a, můžeš rovnou zapsat jídlo.</div>
+              </div>
             </div>
-            <div class="first-run-actions">
+            <div class="first-run-actions" id="first-run-actions">
               <button class="btn-primary compact" id="btn-start-plan" type="button">Vygenerovat jídelníček</button>
-              <button class="btn-secondary compact" id="btn-start-photo" type="button">Zapsat jídlo fotkou</button>
+              <button class="btn-secondary compact" id="btn-start-photo" type="button">Zapsat jídlo</button>
             </div>
           </div>
-          <div class="info-pill" id="result-note"></div>
+
           <div class="bmi-warning" id="bmi-warning" style="display:none;"></div>
-          <div class="stats-row">
-            <div><div class="stat-label">BMR</div><div class="stat-value"><span id="r-bmr">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Spáleno v klidu</div></div>
-            <div class="stat-divider"></div>
-            <div><div class="stat-label">TDEE</div><div class="stat-value"><span id="r-tdee">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Celkem včetně pohybu</div></div>
-          </div>
+
+          <!-- Detaily (BMR, TDEE, vláknina, cíl) — collapsible, většina lidí to nepotřebuje -->
+          <details class="today-detail-toggle" id="today-detail-toggle">
+            <summary>Detaily o cíli a metabolismu</summary>
+            <div class="info-pill" id="result-note"></div>
+            <div class="fiber-row">
+              <span class="fiber-label">Vláknina</span>
+              <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
+            </div>
+            <div class="stats-row">
+              <div><div class="stat-label">BMR</div><div class="stat-value"><span id="r-bmr">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Spáleno v klidu</div></div>
+              <div class="stat-divider"></div>
+              <div><div class="stat-label">TDEE</div><div class="stat-value"><span id="r-tdee">—</span> <span class="stat-unit">kcal</span></div><div class="stat-desc">Celkem včetně pohybu</div></div>
+            </div>
+          </details>
 
           <div class="daily-overview" id="daily-overview" style="display:none;">
             <div class="daily-overview-head">
@@ -263,6 +287,32 @@
               </div>
             </div>
             <div class="food-log-list" id="food-log-list"></div>
+          </div>
+        </div>
+
+        <!-- Pitný režim — denní akce, patří k dnešku, ne do historie -->
+        <div id="water-section" style="display:none;">
+          <div class="card water-card">
+            <div class="water-inner">
+              <div class="water-text">
+                <div class="water-title">Pitný režim</div>
+                <div class="water-amount" id="water-amount">—</div>
+                <div class="water-desc" id="water-desc"></div>
+              </div>
+              <div class="water-progress-wrap">
+                <div class="water-glasses-label">
+                  <span>Denní cíl</span>
+                  <span id="water-glasses-count"></span>
+                </div>
+                <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
+                <div class="water-drops" id="water-drops"></div>
+                <div class="water-actions">
+                  <button class="btn-text neutral" id="water-minus" type="button">−250 ml</button>
+                  <button class="btn-text neutral" id="water-plus" type="button">+250 ml</button>
+                  <button class="btn-text" id="water-reset" type="button">Reset</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -378,26 +428,61 @@
       <section class="app-panel" data-app-panel="log">
         <div class="card dashboard-card intake-card" id="intake-card">
           <div class="card-header">
-            <div class="card-kicker">Zapsat</div>
-            <div class="card-title">Jídlo z fotky</div>
-            <div class="card-subtitle">Pro cokoliv mimo plán: nahraj talíř, zkontroluj odhad a přičti ho do vybraného dne.</div>
+            <div class="card-kicker">Zapsat jídlo</div>
+            <div class="card-title">Co jsi snědl/a?</div>
+            <div class="card-subtitle">Vyber jak to chceš zapsat — pak potvrď do dne.</div>
           </div>
-          <div class="photo-estimate-box">
-            <input class="photo-file-input" type="file" id="food-photo-input" accept="image/*" aria-hidden="true" tabindex="-1">
-            <label class="photo-upload-btn" for="food-photo-input" role="button" tabindex="0">
-              <span class="photo-upload-icon">+</span>
-              <span>
-                <strong>Vybrat fotku jídla</strong>
-                <small id="food-photo-name">JPG, PNG nebo WebP do 5 MB</small>
-              </span>
-            </label>
-            <img id="food-photo-preview" class="food-photo-preview" alt="Náhled jídla" style="display:none;">
-            <button class="btn-secondary" id="btn-photo-estimate">Odhadnout z fotky</button>
-            <div id="photo-estimate-output" class="photo-estimate-output" style="display:none;"></div>
-            <div class="photo-actions" id="photo-actions" style="display:none;">
-              <button class="btn-primary compact" id="btn-add-photo-meal" type="button">Přidat do dne</button>
-              <button class="btn-secondary compact" id="btn-discard-photo-meal" type="button">Zahodit odhad</button>
+          <!-- Tři metody zápisu: rychlá fotka, popis textem, z aktuálního plánu -->
+          <div class="log-method-tabs" role="tablist" aria-label="Způsob zápisu">
+            <button class="log-method-tab active" type="button" role="tab" data-log-method="text" aria-selected="true">✏️ Ručně popsat</button>
+            <button class="log-method-tab" type="button" role="tab" data-log-method="photo" aria-selected="false">📸 Z fotky</button>
+            <button class="log-method-tab" type="button" role="tab" data-log-method="planned" aria-selected="false">🍽 Z plánu</button>
+          </div>
+
+          <!-- Metoda 1: Ručně popsat — AI odhad z textu -->
+          <div class="log-method-panel active" data-log-method-panel="text">
+            <div class="textarea-group" style="margin-bottom:12px;">
+              <label>Co jsi snědl/a a kolik?</label>
+              <textarea id="manual-food-text" placeholder="Např. 300g vepřového řízku se salátem, sklenice plnotučného mléka, jablko" style="min-height:80px;"></textarea>
+              <div class="quick-chips" id="manual-quick-chips">
+                <span class="chip" data-target="manual-food-text" data-value="velký talíř těstovin s rajčatovou omáčkou">🍝 Velký talíř těstovin</span>
+                <span class="chip" data-target="manual-food-text" data-value="150g grilovaného kuřete s rýží">🍗 Kuře s rýží</span>
+                <span class="chip" data-target="manual-food-text" data-value="200g bílého jogurtu s müsli">🥣 Jogurt s müsli</span>
+                <span class="chip" data-target="manual-food-text" data-value="2 plátky chleba s máslem a šunkou">🥪 Chléb s máslem</span>
+              </div>
             </div>
+            <button class="btn-secondary" id="btn-text-estimate">Spočítat z popisu</button>
+            <p class="log-method-hint">AI odhadne kalorie a makra z toho co napíšeš. Pak můžeš upravit a uložit.</p>
+          </div>
+
+          <!-- Metoda 2: Z fotky -->
+          <div class="log-method-panel" data-log-method-panel="photo">
+            <div class="photo-estimate-box">
+              <input class="photo-file-input" type="file" id="food-photo-input" accept="image/*" aria-hidden="true" tabindex="-1">
+              <label class="photo-upload-btn" for="food-photo-input" role="button" tabindex="0">
+                <span class="photo-upload-icon">+</span>
+                <span>
+                  <strong>Vybrat fotku jídla</strong>
+                  <small id="food-photo-name">JPG, PNG nebo WebP do 5 MB</small>
+                </span>
+              </label>
+              <img id="food-photo-preview" class="food-photo-preview" alt="Náhled jídla" style="display:none;">
+              <button class="btn-secondary" id="btn-photo-estimate">Odhadnout z fotky</button>
+            </div>
+          </div>
+
+          <!-- Metoda 3: Z aktuálního plánu -->
+          <div class="log-method-panel" data-log-method-panel="planned">
+            <div id="log-planned-list" class="log-planned-list">
+              <div class="log-planned-empty">Nejprve si nech vygenerovat plán dne (záložka Plán), pak tu budou jednotlivá jídla k zapsání jedním klikem.</div>
+            </div>
+          </div>
+
+          <!-- Sdílený output: estimate preview + akční tlačítka — stejný pro text i foto flow -->
+          <div id="photo-estimate-output" class="photo-estimate-output" style="display:none;"></div>
+          <div class="photo-actions" id="photo-actions" style="display:none;">
+            <button class="btn-primary compact" id="btn-add-photo-meal" type="button">Přidat do dne</button>
+            <button class="btn-secondary compact" id="btn-discard-photo-meal" type="button">Zahodit odhad</button>
           </div>
         </div>
       </section>
@@ -406,15 +491,8 @@
         <div class="card dashboard-card progress-card">
           <div class="card-header">
             <div class="card-kicker">Pokrok</div>
-            <div class="card-title">Historie, váha a návyky</div>
-            <div class="card-subtitle">Tady jsou věci pro návrat do aplikace. Při prvním použití neruší hlavní akci.</div>
-          </div>
-          <div class="today-topbar">
-            <div>
-              <div class="today-label">Vybraný den</div>
-              <div class="today-date">Posledních 7 dní</div>
-            </div>
-            <div class="date-chip-list" id="date-chip-list"></div>
+            <div class="card-title">Streak, váha a trendy</div>
+            <div class="card-subtitle">Den vybíráš nahoře. Tady vidíš jak ti to jde za 7–30 dní.</div>
           </div>
           <div class="today-insights">
             <div class="insight-tile">
@@ -436,30 +514,6 @@
           </div>
         </div>
 
-        <div id="water-section" style="display:none;">
-          <div class="card water-card">
-            <div class="water-inner">
-              <div class="water-text">
-                <div class="water-title">Pitný režim</div>
-                <div class="water-amount" id="water-amount">—</div>
-                <div class="water-desc" id="water-desc"></div>
-              </div>
-              <div class="water-progress-wrap">
-                <div class="water-glasses-label">
-                  <span>Denní cíl</span>
-                  <span id="water-glasses-count"></span>
-                </div>
-                <div class="water-track"><div class="water-fill" id="water-fill"></div></div>
-                <div class="water-drops" id="water-drops"></div>
-                <div class="water-actions">
-                  <button class="btn-text neutral" id="water-minus" type="button">−250 ml</button>
-                  <button class="btn-text neutral" id="water-plus" type="button">+250 ml</button>
-                  <button class="btn-text" id="water-reset" type="button">Reset</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   </div>
@@ -490,7 +544,7 @@
     <div class="profile-premium-banner" id="profile-premium-banner" style="display:none;">
       <div class="premium-banner-icon">⭐</div>
       <div class="premium-banner-body">
-        <div class="premium-banner-title" id="premium-banner-title">NutriFit Premium</div>
+        <div class="premium-banner-title" id="premium-banner-title">NutriPlan Premium</div>
         <div class="premium-banner-desc" id="premium-banner-desc">Neomezené generace jídelníčků, prioritní podpora.</div>
       </div>
       <button class="premium-banner-btn" id="premium-banner-btn">Získat</button>
@@ -584,8 +638,8 @@
   <div class="auth-card">
     <div class="auth-brand">
       <div class="auth-brand-logo">N</div>
-      <div class="auth-brand-name">NutriFit</div>
-      <div class="auth-brand-sub">Personalizovaná výživa</div>
+      <div class="auth-brand-name">NutriPlan</div>
+      <div class="auth-brand-sub">AI jídelníček na míru</div>
     </div>
     <div class="auth-tabs">
       <button class="auth-tab active" data-tab="login">Přihlásit se</button>
@@ -666,12 +720,12 @@
 
 <!-- FOOTER -->
 <footer class="site-footer">
-<p>NutriFit je informativní nástroj využívající AI. Nenahrazuje lékařské doporučení ani odbornou konzultaci s nutričním terapeutem. Vše děláte na vlastní riziko.</p>
+<p>NutriPlan je informativní nástroj využívající AI. Nenahrazuje lékařské doporučení ani odbornou konzultaci s nutričním terapeutem. Vše děláte na vlastní riziko.</p>
   <div class="footer-links">
     <a href="/legal.html">Obchodní podmínky</a>
     <a href="/legal.html#privacy">Ochrana údajů</a>
     <a href="/delete-account.html">Smazání účtu</a>
-    <a id="footer-feedback-btn" href="mailto:koval.macek@gmail.com?subject=Zpětná%20vazba%20NutriFit" target="_blank">Zpětná vazba</a>
+    <a id="footer-feedback-btn" href="mailto:koval.macek@gmail.com?subject=Zpětná%20vazba%20NutriPlan" target="_blank">Zpětná vazba</a>
   </div>
 </footer>
 

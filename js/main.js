@@ -295,6 +295,7 @@ function renderTrackingShell() {
   renderDateNav();
   renderFirstRunState();
   renderDailyOverview();
+  renderPlannedLogList();
   renderWaterTracker();
   renderTrends();
 }
@@ -314,12 +315,287 @@ function setActiveAppTab(tabName, options = {}) {
   }
 }
 
+// Přepíná mezi metodami zápisu (Ručně / Foto / Z plánu) v "Zapsat" panelu.
+// Estimate output je sdílený, takže se vyčistí při změně metody.
+function setActiveLogMethod(method) {
+  document.querySelectorAll('[data-log-method]').forEach(btn => {
+    const active = btn.dataset.logMethod === method;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-log-method-panel]').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.logMethodPanel === method);
+  });
+  // Vyčistit estimate output při přepnutí metody (jiný typ vstupu = jiný estimate)
+  appState.pendingFoodEstimate = null;
+  setPhotoActionsVisible(false);
+  const out = document.getElementById('photo-estimate-output');
+  if (out) out.style.display = 'none';
+}
+
+// AI odhad maker z textového popisu jídla (bez fotky).
+// Reuse infrastrukturu pro photo estimate — stejný preview, stejný "Přidat do dne" flow.
+async function analyzeFoodText() {
+  const input = document.getElementById('manual-food-text');
+  const btn = document.getElementById('btn-text-estimate');
+  const out = document.getElementById('photo-estimate-output');
+  const description = (input?.value || '').trim();
+  if (!description) {
+    showToast('Napiš co jsi snědl/a — třeba „velký talíř těstovin".', 'error');
+    input?.focus();
+    return;
+  }
+  if (description.length > 500) {
+    showToast('Popis je moc dlouhý. Zkrať ho na ~500 znaků.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Odhaduji…';
+  appState.pendingFoodEstimate = null;
+  setPhotoActionsVisible(false);
+  setPhotoOutputMessage(out, 'AI počítá makra z popisu…');
+
+  const systemPrompt = `Jsi NutriPlan AI — český výživový poradce. Z popisu jídla od uživatele vrať JSON s odhadem nutričních hodnot. Vrátíš POUZE validní JSON, žádný další text. Veškerý text v JSON je v češtině.
+
+Pravidla odhadu:
+- Pokud popis obsahuje gramáž (např. "300g"), použij ji. Jinak odhadni průměrnou porci dospělého.
+- kcal musí odpovídat: protein*4 + carbs*4 + fat*9 (±5 kcal).
+- confidence: "vysoká" pokud popis obsahuje konkrétní gramáže, "střední" pro běžná jídla bez gramáží, "nízká" pro vágní popisy.`;
+
+  const prompt = `Popis jídla: "${description.replace(/"/g, "'")}"
+
+Vrať JSON v tomto formátu:
+{"foodName":"Český název jídla","portionGuess":"Odhadovaná porce (např. 300g, 1 talíř)","kcal":0,"protein":0,"carbs":0,"fat":0,"confidence":"střední","note":"Krátká poznámka k odhadu (1 věta)"}`;
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt, prompt, maxTokens: 600 }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error?.message || `Chyba serveru (${res.status})`);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) throw new Error('AI nevrátila odpověď.');
+    const estimate = normalizeFoodEstimate(parseGeminiJSON(text, 'Odhad z popisu'));
+    appState.pendingFoodEstimate = { ...buildFoodLogItem(estimate), source: 'manual' };
+    renderFoodEstimate(out, estimate);
+    setPhotoActionsVisible(true);
+  } catch (err) {
+    appState.pendingFoodEstimate = null;
+    setPhotoActionsVisible(false);
+    setPhotoOutputMessage(out, `Nepodařilo se odhadnout: ${err.message || 'Neznámá chyba'}`, 'error');
+    showToast('Odhad z popisu selhal.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Spočítat z popisu';
+  }
+}
+
+// Vykreslí seznam plánovaných jídel v "Zapsat" panelu pro rychlý one-click záznam.
+function renderPlannedLogList() {
+  const container = document.getElementById('log-planned-list');
+  if (!container) return;
+  const meals = appState.currentRecipes?.length
+    ? appState.currentRecipes
+    : (appState.dailyData?.mealPlan?.meals || []);
+  container.replaceChildren();
+
+  if (!meals.length) {
+    const empty = document.createElement('div');
+    empty.className = 'log-planned-empty';
+    empty.textContent = 'Nejprve si nech vygenerovat plán dne (záložka Plán), pak tu budou jednotlivá jídla k zapsání jedním klikem.';
+    container.appendChild(empty);
+    return;
+  }
+
+  meals.forEach(meal => {
+    const logged = (appState.foodLog || []).some(entry => entry.plannedMealId === meal.plannedMealId);
+    const row = document.createElement('div');
+    row.className = `log-planned-item${logged ? ' logged' : ''}`;
+    const info = document.createElement('div');
+    info.className = 'planned-info';
+    const name = document.createElement('div');
+    name.className = 'planned-name';
+    name.textContent = `${meal.mealType || 'Jídlo'}: ${meal.name}`;
+    const meta = document.createElement('div');
+    meta.className = 'planned-meta';
+    meta.textContent = `${meal.kcal} kcal · B ${meal.protein}g · S ${meal.carbs}g · T ${meal.fat}g`;
+    info.append(name, meta);
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary compact';
+    btn.type = 'button';
+    btn.textContent = logged ? 'Zapsáno' : 'Snědl jsem';
+    btn.disabled = logged;
+    if (!logged) btn.addEventListener('click', () => addPlannedMeal(meal));
+    row.append(info, btn);
+    container.appendChild(row);
+  });
+}
+
+// Kontext-aware primary CTA: mění copy + tlačítka podle stavu uživatele.
+// Cíl: aby na "Dnes" tabu byla VŽDY jasná příští akce.
 function renderFirstRunState() {
   const card = document.getElementById('first-run-card');
-  if (!card) return;
-  const hasPlan = Boolean(appState.currentRecipes?.length || appState.dailyData?.mealPlan?.meals?.length);
-  const hasLog = Boolean(appState.foodLog?.length);
-  card.style.display = appState.macros?.kcal && !hasPlan && !hasLog ? 'grid' : 'none';
+  const icon = document.getElementById('first-run-icon');
+  const title = document.getElementById('first-run-title');
+  const subtitle = document.getElementById('first-run-subtitle');
+  const actions = document.getElementById('first-run-actions');
+  if (!card || !icon || !title || !subtitle || !actions) return;
+
+  // Bez maker se karta nezobrazuje vůbec
+  if (!appState.macros?.kcal) {
+    card.style.display = 'none';
+    return;
+  }
+
+  const selectedDate = appState.selectedDate || dateKey();
+  const isToday = selectedDate === dateKey();
+  const planMeals = appState.currentRecipes?.length
+    ? appState.currentRecipes
+    : (appState.dailyData?.mealPlan?.meals || []);
+  const hasPlan = planMeals.length > 0;
+  const log = appState.foodLog || [];
+  const totals = sumFoodLog();
+  const kcalGoal = appState.macros.kcal;
+  const goalMetRatio = kcalGoal ? totals.kcal / kcalGoal : 0;
+
+  // Reset card class state
+  card.className = 'first-run-card';
+  card.style.display = 'grid';
+  actions.replaceChildren();
+
+  // Stav 1: prohlížím minulý den, žádné akce (read-only mode)
+  if (!isToday) {
+    card.classList.add('state-readonly');
+    icon.textContent = '📅';
+    title.textContent = `Prohlížíš ${formatDayLabel(selectedDate).toLowerCase()}`;
+    subtitle.textContent = log.length
+      ? `Tady je ${log.length} ${log.length === 1 ? 'zápis' : log.length < 5 ? 'zápisy' : 'zápisů'}. Akce (plán, foto) můžeš dělat jen pro dnešek.`
+      : 'Pro tento den není nic zapsané. Pro úpravu se vrať na dnešek.';
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn-primary compact';
+    backBtn.type = 'button';
+    backBtn.textContent = '← Zpět na dnešek';
+    backBtn.addEventListener('click', async () => {
+      appState.selectedDate = dateKey();
+      await refreshSelectedDay({ clearMissingPlan: true });
+    });
+    actions.appendChild(backBtn);
+    return;
+  }
+
+  // Stav 2: cíl splněn (≥85 % kalorií) — celebration mode
+  if (goalMetRatio >= 0.85 && goalMetRatio <= 1.10) {
+    card.classList.add('state-goal-met');
+    icon.textContent = '🎯';
+    title.textContent = 'Dobrá práce, dnešek máš zapsaný!';
+    const streak = appState.trackingTrends?.streak || 0;
+    subtitle.textContent = streak > 0
+      ? `Sériový rekord: ${streak} ${streak === 1 ? 'den' : streak < 5 ? 'dny' : 'dní'} v řadě nad 80 % bílkovin. Drž se.`
+      : 'Začínáš novou sérii. Drž se a uvidíš streak.';
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'btn-secondary compact';
+    moreBtn.type = 'button';
+    moreBtn.textContent = 'Přidat další jídlo';
+    moreBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+    actions.appendChild(moreBtn);
+    return;
+  }
+
+  // Stav 3: cíl překročen — varování
+  if (goalMetRatio > 1.10) {
+    card.classList.add('state-goal-met');
+    icon.textContent = '⚠️';
+    title.textContent = 'Překročil/a jsi denní cíl';
+    subtitle.textContent = `Zapsáno ${totals.kcal} z ${kcalGoal} kcal. Není to konec světa — zkus zítra menší porce.`;
+    return;
+  }
+
+  // Stav 4: plán existuje, čekají nezapsaná jídla
+  if (hasPlan) {
+    const next = planMeals.find(meal => !log.some(entry => entry.plannedMealId === meal.plannedMealId));
+    if (next) {
+      card.classList.add('state-plan-ready');
+      icon.textContent = next.mealType?.toLowerCase().includes('snídan') ? '🥣'
+        : next.mealType?.toLowerCase().includes('oběd') ? '🍽️'
+        : next.mealType?.toLowerCase().includes('večeř') ? '🍲'
+        : '🥗';
+      title.textContent = `Další jídlo: ${next.mealType || 'jídlo'}`;
+      subtitle.textContent = `${next.name} · ${next.kcal} kcal · ${next.prepTime || '—'} min. Klikni „Snědl jsem" až to bude na talíři.`;
+      const eatBtn = document.createElement('button');
+      eatBtn.className = 'btn-primary compact';
+      eatBtn.type = 'button';
+      eatBtn.textContent = `Snědl jsem ${(next.mealType || 'jídlo').toLowerCase()}`;
+      eatBtn.addEventListener('click', () => addPlannedMeal(next));
+      actions.appendChild(eatBtn);
+      const otherBtn = document.createElement('button');
+      otherBtn.className = 'btn-secondary compact';
+      otherBtn.type = 'button';
+      otherBtn.textContent = 'Zapsat jiné jídlo';
+      otherBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+      actions.appendChild(otherBtn);
+      return;
+    }
+    // Všechna plánovaná jídla zapsaná, ale cíl ještě nedosažený → asi user sní něco navíc
+    card.classList.add('state-plan-ready');
+    icon.textContent = '✨';
+    title.textContent = 'Všechna plánovaná jídla zapsaná';
+    subtitle.textContent = `Ještě ti zbývá ${Math.max(0, kcalGoal - totals.kcal)} kcal. Můžeš přidat svačinu nebo zapsat něco navíc.`;
+    const logBtn = document.createElement('button');
+    logBtn.className = 'btn-primary compact';
+    logBtn.type = 'button';
+    logBtn.textContent = 'Zapsat další jídlo';
+    logBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+    actions.appendChild(logBtn);
+    return;
+  }
+
+  // Stav 5: žádný plán + nějaký log existuje → user logoval ručně, asi nemá plán
+  if (log.length > 0) {
+    card.classList.add('state-plan-ready');
+    icon.textContent = '🍴';
+    title.textContent = 'Zatím nemáš plán dne';
+    subtitle.textContent = `Zapsáno ${totals.kcal} z ${kcalGoal} kcal. Můžeš si nechat sestavit zbytek dne.`;
+    const planBtn = document.createElement('button');
+    planBtn.className = 'btn-primary compact';
+    planBtn.type = 'button';
+    planBtn.textContent = 'Sestavit plán';
+    planBtn.addEventListener('click', () => {
+      setActiveAppTab('plan', { scroll: true });
+    });
+    actions.appendChild(planBtn);
+    const logBtn = document.createElement('button');
+    logBtn.className = 'btn-secondary compact';
+    logBtn.type = 'button';
+    logBtn.textContent = 'Zapsat další';
+    logBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+    actions.appendChild(logBtn);
+    return;
+  }
+
+  // Stav 6 (default): fresh start — žádný plán, žádný log
+  icon.textContent = '🥗';
+  title.textContent = 'Co chceš udělat teď?';
+  subtitle.textContent = 'Nejjednodušší je nechat si vygenerovat dnešní jídelníček. Když už jsi jedl/a, zapiš to rovnou.';
+  const planBtn = document.createElement('button');
+  planBtn.className = 'btn-primary compact';
+  planBtn.id = 'btn-start-plan';
+  planBtn.type = 'button';
+  planBtn.textContent = 'Vygenerovat jídelníček';
+  planBtn.addEventListener('click', () => {
+    setActiveAppTab('plan', { scroll: true });
+    generateMealPlan(setStep);
+  });
+  actions.appendChild(planBtn);
+  const photoBtn = document.createElement('button');
+  photoBtn.className = 'btn-secondary compact';
+  photoBtn.id = 'btn-start-photo';
+  photoBtn.type = 'button';
+  photoBtn.textContent = 'Zapsat jídlo';
+  photoBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
+  actions.appendChild(photoBtn);
 }
 
 function renderMacroValues() {
@@ -333,9 +609,24 @@ function renderMacroValues() {
 function renderDateNav() {
   const label = document.getElementById('selected-date-label');
   const chips = document.getElementById('date-chip-list');
-  if (label) label.textContent = formatDayLabel(appState.selectedDate || dateKey());
-  if (!chips) return;
+  const bar = document.getElementById('global-date-bar');
+  const banner = document.getElementById('past-day-banner');
+  const bannerLabel = document.getElementById('past-day-banner-label');
+  const selectedKey = appState.selectedDate || dateKey();
+  const todayKey = dateKey();
+  const isToday = selectedKey === todayKey;
+  const formatted = formatDayLabel(selectedKey);
 
+  if (label) label.textContent = formatted;
+
+  // Zvýrazni bar a banner když user prohlíží minulý den
+  if (bar) bar.classList.toggle('past-day', !isToday);
+  if (banner) {
+    banner.style.display = isToday ? 'none' : 'flex';
+    if (bannerLabel) bannerLabel.textContent = `Prohlížíš ${formatted.toLowerCase()}`;
+  }
+
+  if (!chips) return;
   chips.replaceChildren();
   appState.weeklyDays = lastDays(7);
   appState.weeklyDays.forEach(key => {
@@ -710,13 +1001,28 @@ function updateUsageBadge(info) {
     tab.addEventListener('click', () => setActiveAppTab(tab.dataset.appTab));
   });
   document.getElementById('btn-photo-estimate')?.addEventListener('click', analyzeFoodPhoto);
+  document.getElementById('btn-text-estimate')?.addEventListener('click', analyzeFoodText);
   document.getElementById('btn-add-photo-meal')?.addEventListener('click', addPendingFoodEstimate);
   document.getElementById('btn-discard-photo-meal')?.addEventListener('click', discardPendingFoodEstimate);
+  document.querySelectorAll('[data-log-method]').forEach(tab => {
+    tab.addEventListener('click', () => setActiveLogMethod(tab.dataset.logMethod));
+  });
+  document.getElementById('manual-food-text')?.addEventListener('keydown', e => {
+    // Cmd/Ctrl + Enter spustí odhad
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      analyzeFoodText();
+    }
+  });
   document.getElementById('clear-food-log')?.addEventListener('click', clearFoodLog);
   document.getElementById('date-chip-list')?.addEventListener('click', async e => {
     const btn = e.target.closest('[data-date]');
     if (!btn) return;
     appState.selectedDate = btn.dataset.date;
+    await refreshSelectedDay({ clearMissingPlan: true });
+  });
+  document.getElementById('back-to-today-btn')?.addEventListener('click', async () => {
+    appState.selectedDate = dateKey();
     await refreshSelectedDay({ clearMissingPlan: true });
   });
   document.getElementById('water-plus')?.addEventListener('click', () => changeWater(250));
@@ -1038,7 +1344,7 @@ function updateUsageBadge(info) {
     });
     sec.querySelector('[data-action="email"]')?.addEventListener('click', () => {
       const text = buildPlainTextMealPlan();
-      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriFit') + '&body=' + encodeURIComponent(text);
+      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
     });
     sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
       window.print();
@@ -1048,7 +1354,7 @@ function updateUsageBadge(info) {
   function buildPlainTextMealPlan() {
     const recipes = appState.currentRecipes || [];
     if (!recipes.length) return '';
-    let text = 'Jídelníček z NutriFit\n========================\n\n';
+    let text = 'Jídelníček z NutriPlan\n========================\n\n';
     recipes.forEach(m => {
       text += `${m.mealType}: ${m.name}\n`;
       text += `  ${m.kcal} kcal | B: ${m.protein}g | S: ${m.carbs}g | T: ${m.fat}g\n`;
