@@ -255,11 +255,17 @@ export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCoun
     if (!Array.isArray(meal.steps) || meal.steps.filter(Boolean).length === 0) {
       errors.push(`${label}: chybí postup.`);
     }
+    // Per-meal internal macro consistency: kcal ≈ p*4 + c*4 + f*9 (±15 kcal)
+    const expectedKcal = safeNumber(meal.protein) * 4 + safeNumber(meal.carbs) * 4 + safeNumber(meal.fat) * 9;
+    if (isPositiveFinite(meal.kcal) && Math.abs(safeNumber(meal.kcal) - expectedKcal) > 15) {
+      errors.push(`${label}: kcal ${meal.kcal} neodpovídá makrům (${Math.round(expectedKcal)} z B/S/T).`);
+    }
   });
 
-  const tolerance = Math.max(350, Math.round(macros.kcal * 0.3));
+  // Daily kcal tolerance: 7% (was 30% — AI was free to invent ±600 kcal)
+  const tolerance = Math.max(100, Math.round(macros.kcal * 0.07));
   if (Math.abs(totals.kcal - macros.kcal) > tolerance) {
-    errors.push(`Denní kalorie nesedí na cíl (${totals.kcal} vs. ${macros.kcal} kcal).`);
+    errors.push(`Denní kalorie nesedí na cíl (${totals.kcal} vs. ${macros.kcal} kcal, povolená odchylka ±${tolerance}).`);
   }
 
   return { valid: errors.length === 0, errors, totals };

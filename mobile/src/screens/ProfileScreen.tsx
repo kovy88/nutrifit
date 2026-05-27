@@ -10,7 +10,7 @@ import { activityFactorForSessions, primaryGoalLabel, toDateKey } from '../utils
 import { useTheme } from '../context/ThemeContext';
 
 export function ProfileScreen() {
-  const { profile, setProfile, resetLocalProfile, user, signIn, signOut, signUp } = useNutriFit();
+  const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
 
@@ -51,7 +51,9 @@ export function ProfileScreen() {
         onPress: async () => {
           try {
             await deleteAccount();
-            await resetLocalProfile();
+            // Server-side deletion succeeded — now wipe all local data
+            // (profile, plans, food logs, training sessions, weights, consent).
+            await purgeAllUserData();
           } catch (err) {
             Alert.alert('Smazání selhalo', err instanceof Error ? err.message : 'Použij veřejný deletion request link.');
           }
