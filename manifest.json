@@ -1,7 +1,7 @@
 {
-  "name": "NutriFit",
-  "short_name": "NutriFit",
-  "description": "Personalizovaný jídelníček s AI — makra, recepty a nákupní seznam",
+  "name": "NutriPlan",
+  "short_name": "NutriPlan",
+  "description": "AI jídelníček na míru — makra, recepty a nákupní seznam česky",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

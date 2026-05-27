@@ -14,8 +14,10 @@ export async function checkAndIncrement() {
   const { data, error } = await supabase.rpc('increment_generation', { uid: user.id });
   if (error) {
     console.error('generation-limit RPC error:', error);
-    // Při chybě povol generaci (graceful degradation)
-    return { allowed: true, count: 0, limit: FREE_LIMIT, premium: false };
+    // Fail-closed: při chybě limit nepovol generaci, aby Supabase outage
+    // nebo chybějící RPC neumožnil obejít paywall. Lepší falešný paywall
+    // než ztráta příjmu / drained quota.
+    return { allowed: false, count: FREE_LIMIT, limit: FREE_LIMIT, premium: false, error: true };
   }
   return data;
 }

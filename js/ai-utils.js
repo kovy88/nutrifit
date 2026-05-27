@@ -1,5 +1,41 @@
 // ── AI RESPONSE HELPERS
 
+// Sanitizace uživatelského vstupu před vložením do Gemini promptu.
+// Brání prompt injection (jailbreak vzory, role override) a omezuje délku.
+export function sanitizeUserPrompt(value, { maxLength = 500 } = {}) {
+  if (value == null) return '';
+  let s = String(value);
+
+  // Odstraň trojité backticky a code-fence markery (uzavírají náš prompt block)
+  s = s.replace(/```+/g, '');
+
+  // Odstraň zjevné jailbreak fráze (case-insensitive). Záměrně konzervativní seznam.
+  const jailbreakPatterns = [
+    /ignore (all |previous |above |any )?(instructions|prompts?|rules?)/gi,
+    /disregard (all |previous |above )?(instructions|prompts?)/gi,
+    /system prompt/gi,
+    /you are now/gi,
+    /act as (a |an )?(developer|admin|root|system)/gi,
+    /jailbreak/gi,
+    /reveal (your |the )?(prompt|instructions|system)/gi,
+    /forget (all |everything|previous)/gi,
+    /\[INST\]|\[\/INST\]/gi,
+    /<\|.*?\|>/g, // chat template markery
+  ];
+  jailbreakPatterns.forEach(re => { s = s.replace(re, ''); });
+
+  // Zruš víc-řádkové sekvence (Gemini je vnímá jako oddělení)
+  s = s.replace(/\r/g, '').replace(/\n{2,}/g, '\n').replace(/\n/g, ', ');
+
+  // Whitespace cleanup
+  s = s.replace(/\s+/g, ' ').trim();
+
+  // Hard limit
+  if (s.length > maxLength) s = s.slice(0, maxLength).trim() + '…';
+
+  return s;
+}
+
 export function parseGeminiJSON(text, label = 'AI odpověď') {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error(`${label} je prázdná.`);

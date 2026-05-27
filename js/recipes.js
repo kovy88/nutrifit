@@ -5,7 +5,7 @@ import { buildShoppingList } from './shopping.js?v=8';
 import { saveToHistory } from './profile.js?v=8';
 import { getCurrentUser } from './auth.js?v=8';
 import { checkAndIncrement } from './generation-limit.js?v=8';
-import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON } from './ai-utils.js?v=8';
+import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON, sanitizeUserPrompt } from './ai-utils.js?v=8';
 import { dateKey } from './tracking-store.js?v=8';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
@@ -83,13 +83,13 @@ export async function generateMealPlan(setStepFn) {
   setStepFn(3);
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth' }), 100);
 
-  const likes    = document.getElementById('likes')?.value    || 'různá jídla';
-  const dislikes = document.getElementById('dislikes')?.value || 'žádné omezení';
-  const diet     = document.getElementById('diet-style')?.value;
+  const likes    = sanitizeUserPrompt(document.getElementById('likes')?.value)    || 'různá jídla';
+  const dislikes = sanitizeUserPrompt(document.getElementById('dislikes')?.value) || 'žádné omezení';
+  const diet     = sanitizeUserPrompt(document.getElementById('diet-style')?.value, { maxLength: 50 });
   const names    = MEAL_NAMES[appState.mealCount];
 
   const systemPrompt = `# Role
-Jsi NutriFit AI — český výživový poradce a kreativní kuchař. Veškerý výstup je VÝHRADNĚ v češtině (ingredience, názvy, postup).
+Jsi NutriPlan AI — český výživový poradce a kreativní kuchař. Veškerý výstup je VÝHRADNĚ v češtině (ingredience, názvy, postup).
 
 # Základní direktivy
 1. MATEMATICKÁ PŘESNOST — Pro každé jídlo: kcal = bílkoviny×4 + sacharidy×4 + tuky×9. Tolerance ±5 kcal na jídlo. Součet maker všech jídel = denní cíl ±3 %.
@@ -205,12 +205,12 @@ export async function swapMeal(index) {
   btn.classList.add('loading');
   btn.innerHTML = `<div class="spinner-wrap" style="width:14px;height:14px;margin:0;"></div> Hledám alternativu…`;
 
-  const likes    = document.getElementById('likes')?.value    || 'různá jídla';
-  const dislikes = document.getElementById('dislikes')?.value || 'žádné omezení';
-  const diet     = document.getElementById('diet-style')?.value;
+  const likes    = sanitizeUserPrompt(document.getElementById('likes')?.value)    || 'různá jídla';
+  const dislikes = sanitizeUserPrompt(document.getElementById('dislikes')?.value) || 'žádné omezení';
+  const diet     = sanitizeUserPrompt(document.getElementById('diet-style')?.value, { maxLength: 50 });
   const usedNames = appState.currentRecipes.filter((_, i) => i !== index).map(m => m.name).join(', ');
 
-  const systemPrompt = `Jsi NutriFit AI — český výživový poradce. Veškerý text česky. Vrátíš POUZE validní JSON bez dalšího textu.
+  const systemPrompt = `Jsi NutriPlan AI — český výživový poradce. Veškerý text česky. Vrátíš POUZE validní JSON bez dalšího textu.
 Pravidla: kcal = bílkoviny×4 + sacharidy×4 + tuky×9 (tolerance ±5 kcal). Reálné gramáže ingrediencí. Praktické postupy s teplotami a časy.`;
 
   const levelDescSwap = appState.ingredientLevel === 'úsporný'
