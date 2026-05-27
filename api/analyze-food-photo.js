@@ -42,6 +42,9 @@ module.exports = async function handler(req, res) {
 
   const model = process.env.GEMINI_VISION_MODEL || 'gemini-3.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const thinkingConfig = model.includes('gemini-3')
+    ? { thinkingLevel: 'minimal' }
+    : { thinkingBudget: 0 };
 
   const prompt = `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
@@ -89,11 +92,12 @@ Use integers for kcal/protein/carbs/fat.
           },
         },
         maxOutputTokens: 900,
+        thinkingConfig,
       },
     }),
   });
 
-  const data = await geminiRes.json();
+  const data = coalesceCandidateText(await geminiRes.json());
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -116,6 +120,26 @@ function parseJSONLoose(text) {
       return null;
     }
   }
+}
+
+function coalesceCandidateText(data) {
+  if (!data?.candidates) return data;
+  return {
+    ...data,
+    candidates: data.candidates.map(candidate => {
+      const parts = candidate.content?.parts;
+      if (!Array.isArray(parts)) return candidate;
+      const text = parts.map(part => part.text || '').join('').trim();
+      if (!text) return candidate;
+      return {
+        ...candidate,
+        content: {
+          ...candidate.content,
+          parts: [{ text }],
+        },
+      };
+    }),
+  };
 }
 
 function normalizeEstimate(raw) {

@@ -13,13 +13,19 @@ module.exports = async function handler(req, res) {
   }
 
   const { systemPrompt, prompt } = req.body || {};
-  const maxTokens = Math.min(parseInt(req.body.maxTokens) || 3500, 4500);
+  const requestedMaxTokens = Math.min(parseInt(req.body.maxTokens) || 3500, 6500);
   if (!prompt) {
     return sendError(res, 400, 'missing_prompt', 'Chybí parametr prompt.');
   }
 
-  const model   = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-  const url     = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const maxTokens = model.includes('gemini-3')
+    ? Math.min(requestedMaxTokens + 1200, 8192)
+    : requestedMaxTokens;
+  const thinkingConfig = model.includes('gemini-3')
+    ? { thinkingLevel: 'minimal' }
+    : { thinkingBudget: 0 };
 
   const geminiRes = await fetch(url, {
     method:  'POST',
@@ -30,10 +36,31 @@ module.exports = async function handler(req, res) {
       generationConfig: {
         maxOutputTokens: maxTokens,
         responseMimeType: 'application/json',
+        thinkingConfig,
       },
     }),
   });
 
   const data = await geminiRes.json();
-  return res.status(geminiRes.status).json(data);
+  return res.status(geminiRes.status).json(coalesceCandidateText(data));
 };
+
+function coalesceCandidateText(data) {
+  if (!data?.candidates) return data;
+  return {
+    ...data,
+    candidates: data.candidates.map(candidate => {
+      const parts = candidate.content?.parts;
+      if (!Array.isArray(parts)) return candidate;
+      const text = parts.map(part => part.text || '').join('').trim();
+      if (!text) return candidate;
+      return {
+        ...candidate,
+        content: {
+          ...candidate.content,
+          parts: [{ text }],
+        },
+      };
+    }),
+  };
+}
