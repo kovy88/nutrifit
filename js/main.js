@@ -438,11 +438,10 @@ function renderPlannedLogList() {
 // Cíl: aby na "Dnes" tabu byla VŽDY jasná příští akce.
 function renderFirstRunState() {
   const card = document.getElementById('first-run-card');
-  const icon = document.getElementById('first-run-icon');
   const title = document.getElementById('first-run-title');
   const subtitle = document.getElementById('first-run-subtitle');
   const actions = document.getElementById('first-run-actions');
-  if (!card || !icon || !title || !subtitle || !actions) return;
+  if (!card || !title || !subtitle || !actions) return;
 
   // Bez maker se karta nezobrazuje vůbec
   if (!appState.macros?.kcal) {
@@ -469,7 +468,6 @@ function renderFirstRunState() {
   // Stav 1: prohlížím minulý den, žádné akce (read-only mode)
   if (!isToday) {
     card.classList.add('state-readonly');
-    icon.textContent = '📅';
     title.textContent = `Prohlížíš ${formatDayLabel(selectedDate).toLowerCase()}`;
     subtitle.textContent = log.length
       ? `Tady je ${log.length} ${log.length === 1 ? 'zápis' : log.length < 5 ? 'zápisy' : 'zápisů'}. Akce (plán, foto) můžeš dělat jen pro dnešek.`
@@ -489,8 +487,7 @@ function renderFirstRunState() {
   // Stav 2: cíl splněn (≥85 % kalorií) — celebration mode
   if (goalMetRatio >= 0.85 && goalMetRatio <= 1.10) {
     card.classList.add('state-goal-met');
-    icon.textContent = '🎯';
-    title.textContent = 'Dobrá práce, dnešek máš zapsaný!';
+    title.textContent = 'Dobrá práce, dnešek máš zapsaný';
     const streak = appState.trackingTrends?.streak || 0;
     subtitle.textContent = streak > 0
       ? `Sériový rekord: ${streak} ${streak === 1 ? 'den' : streak < 5 ? 'dny' : 'dní'} v řadě nad 80 % bílkovin. Drž se.`
@@ -507,7 +504,6 @@ function renderFirstRunState() {
   // Stav 3: cíl překročen — varování
   if (goalMetRatio > 1.10) {
     card.classList.add('state-goal-met');
-    icon.textContent = '⚠️';
     title.textContent = 'Překročil/a jsi denní cíl';
     subtitle.textContent = `Zapsáno ${totals.kcal} z ${kcalGoal} kcal. Není to konec světa — zkus zítra menší porce.`;
     return;
@@ -518,10 +514,6 @@ function renderFirstRunState() {
     const next = planMeals.find(meal => !log.some(entry => entry.plannedMealId === meal.plannedMealId));
     if (next) {
       card.classList.add('state-plan-ready');
-      icon.textContent = next.mealType?.toLowerCase().includes('snídan') ? '🥣'
-        : next.mealType?.toLowerCase().includes('oběd') ? '🍽️'
-        : next.mealType?.toLowerCase().includes('večeř') ? '🍲'
-        : '🥗';
       title.textContent = `Další jídlo: ${next.mealType || 'jídlo'}`;
       subtitle.textContent = `${next.name} · ${next.kcal} kcal · ${next.prepTime || '—'} min. Klikni „Snědl jsem" až to bude na talíři.`;
       const eatBtn = document.createElement('button');
@@ -540,7 +532,6 @@ function renderFirstRunState() {
     }
     // Všechna plánovaná jídla zapsaná, ale cíl ještě nedosažený → asi user sní něco navíc
     card.classList.add('state-plan-ready');
-    icon.textContent = '✨';
     title.textContent = 'Všechna plánovaná jídla zapsaná';
     subtitle.textContent = `Ještě ti zbývá ${Math.max(0, kcalGoal - totals.kcal)} kcal. Můžeš přidat svačinu nebo zapsat něco navíc.`;
     const logBtn = document.createElement('button');
@@ -555,7 +546,6 @@ function renderFirstRunState() {
   // Stav 5: žádný plán + nějaký log existuje → user logoval ručně, asi nemá plán
   if (log.length > 0) {
     card.classList.add('state-plan-ready');
-    icon.textContent = '🍴';
     title.textContent = 'Zatím nemáš plán dne';
     subtitle.textContent = `Zapsáno ${totals.kcal} z ${kcalGoal} kcal. Můžeš si nechat sestavit zbytek dne.`;
     const planBtn = document.createElement('button');
@@ -576,7 +566,6 @@ function renderFirstRunState() {
   }
 
   // Stav 6 (default): fresh start — žádný plán, žádný log
-  icon.textContent = '🥗';
   title.textContent = 'Co chceš udělat teď?';
   subtitle.textContent = 'Nejjednodušší je nechat si vygenerovat dnešní jídelníček. Když už jsi jedl/a, zapiš to rovnou.';
   const planBtn = document.createElement('button');

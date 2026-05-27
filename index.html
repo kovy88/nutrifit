@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google-site-verification" content="k6V8JRaCgO-lwtKiK0g9148NhHdiBUtivnhGGsixOa0">
 
+<!-- Inline theme detection (před CSS) — dark default, light opt-in přes uloženou preferenci. -->
+<script>(function(){try{var t=localStorage.getItem('nutriplan-theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+
 <!-- Google Analytics (loaded only after consent) -->
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -53,7 +56,7 @@
 <link rel="stylesheet" href="css/print.css?v=8">
 <link rel="icon" type="image/png" href="favicon.jpg">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0071e3">
+<meta name="theme-color" content="#0B0B0E">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -223,7 +226,7 @@
           <!-- Kontext-aware primary CTA — mění se podle stavu (žádný plán / plán hotov / log nad cíl) -->
           <div class="first-run-card" id="first-run-card">
             <div class="first-run-head">
-              <div class="first-run-icon" id="first-run-icon">🥗</div>
+              <div class="first-run-icon" id="first-run-icon"></div>
               <div>
                 <div class="daily-title" id="first-run-title">Co chceš udělat teď?</div>
                 <div class="daily-subtitle" id="first-run-subtitle">Nejjednodušší je vygenerovat dnešní jídelníček. Když už jsi jedl/a, můžeš rovnou zapsat jídlo.</div>
@@ -328,14 +331,14 @@
             <label>Co rád/a jíš?</label>
             <textarea id="likes" placeholder="Např. kuřecí maso, těstoviny, vejce, jogurt, italská kuchyně…"></textarea>
             <div class="quick-chips" id="likes-chips">
-              <span class="chip" data-target="likes" data-value="kuřecí maso">🍗 Kuřecí</span>
-              <span class="chip" data-target="likes" data-value="těstoviny">🍝 Těstoviny</span>
-              <span class="chip" data-target="likes" data-value="vejce">🥚 Vejce</span>
-              <span class="chip" data-target="likes" data-value="ryby">🐟 Ryby</span>
-              <span class="chip" data-target="likes" data-value="zelenina">🥦 Zelenina</span>
-              <span class="chip" data-target="likes" data-value="luštěniny">🫘 Luštěniny</span>
-              <span class="chip" data-target="likes" data-value="rýže">🍚 Rýže</span>
-              <span class="chip" data-target="likes" data-value="jogurt a mléčné výrobky">🥛 Mléčné</span>
+              <span class="chip" data-target="likes" data-value="kuřecí maso">Kuřecí</span>
+              <span class="chip" data-target="likes" data-value="těstoviny">Těstoviny</span>
+              <span class="chip" data-target="likes" data-value="vejce">Vejce</span>
+              <span class="chip" data-target="likes" data-value="ryby">Ryby</span>
+              <span class="chip" data-target="likes" data-value="zelenina">Zelenina</span>
+              <span class="chip" data-target="likes" data-value="luštěniny">Luštěniny</span>
+              <span class="chip" data-target="likes" data-value="rýže">Rýže</span>
+              <span class="chip" data-target="likes" data-value="jogurt a mléčné výrobky">Mléčné</span>
             </div>
           </div>
 
@@ -343,16 +346,16 @@
             <label>Co nemáš rád/a nebo alergie?</label>
             <textarea id="dislikes" placeholder="Nebo klikni na rychlé volby níže…" style="min-height:56px;"></textarea>
             <div class="quick-chips" id="dislikes-chips">
-              <span class="chip" data-target="dislikes" data-value="bez laktózy">🥛 Bez laktózy</span>
-              <span class="chip" data-target="dislikes" data-value="bez lepku">🌾 Bez lepku</span>
-              <span class="chip" data-target="dislikes" data-value="bez vepřového">🐷 Bez vepřového</span>
-              <span class="chip" data-target="dislikes" data-value="bez ryb">🐟 Bez ryb</span>
-              <span class="chip" data-target="dislikes" data-value="nesnáším koriandr">🌿 Bez koriandru</span>
-              <span class="chip" data-target="dislikes" data-value="nesnáším celer">🥬 Bez celeru</span>
-              <span class="chip" data-target="dislikes" data-value="nesnáším brokolici">🥦 Bez brokolice</span>
-              <span class="chip" data-target="dislikes" data-value="bez ořechů">🥜 Bez ořechů</span>
-              <span class="chip" data-target="dislikes" data-value="nesnáším houby">🍄 Bez hub</span>
-              <span class="chip" data-target="dislikes" data-value="bez vajec">🥚 Bez vajec</span>
+              <span class="chip" data-target="dislikes" data-value="bez laktózy">Bez laktózy</span>
+              <span class="chip" data-target="dislikes" data-value="bez lepku">Bez lepku</span>
+              <span class="chip" data-target="dislikes" data-value="bez vepřového">Bez vepřového</span>
+              <span class="chip" data-target="dislikes" data-value="bez ryb">Bez ryb</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším koriandr">Bez koriandru</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším celer">Bez celeru</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším brokolici">Bez brokolice</span>
+              <span class="chip" data-target="dislikes" data-value="bez ořechů">Bez ořechů</span>
+              <span class="chip" data-target="dislikes" data-value="nesnáším houby">Bez hub</span>
+              <span class="chip" data-target="dislikes" data-value="bez vajec">Bez vajec</span>
             </div>
           </div>
           <div class="section-label" style="margin-top:4px;">Stravovací styl</div>
@@ -369,17 +372,14 @@
           <div class="section-label" style="margin-top:20px;">Level surovin</div>
           <div class="level-grid">
             <button class="level-btn" data-level="úsporný">
-              <span class="level-icon">🥚</span>
               <span class="level-name">Úsporný</span>
               <span class="level-desc">Vejce, luštěniny, mražená zelenina, rýže, ovesné vločky</span>
             </button>
             <button class="level-btn active" data-level="standard">
-              <span class="level-icon">🍗</span>
               <span class="level-name">Standard</span>
               <span class="level-desc">Kuřecí maso, sezonní zelenina, jogurt, celozrnné pečivo</span>
             </button>
             <button class="level-btn" data-level="gourmet">
-              <span class="level-icon">🥩</span>
               <span class="level-name">Gourmet</span>
               <span class="level-desc">Losos, avokádo, hovězí, exotické ovoce, prémiové suroviny</span>
             </button>
@@ -414,7 +414,7 @@
           <div class="shop-accordion">
             <div class="shop-accordion-header" id="shop-accordion-header">
               <div class="shop-accordion-left">
-                <span>🛒</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                 <span class="shop-accordion-title">Nákupní seznam</span>
                 <span class="shop-accordion-count" id="shop-total-count"></span>
               </div>
@@ -434,9 +434,18 @@
           </div>
           <!-- Tři metody zápisu: rychlá fotka, popis textem, z aktuálního plánu -->
           <div class="log-method-tabs" role="tablist" aria-label="Způsob zápisu">
-            <button class="log-method-tab active" type="button" role="tab" data-log-method="text" aria-selected="true">✏️ Ručně popsat</button>
-            <button class="log-method-tab" type="button" role="tab" data-log-method="photo" aria-selected="false">📸 Z fotky</button>
-            <button class="log-method-tab" type="button" role="tab" data-log-method="planned" aria-selected="false">🍽 Z plánu</button>
+            <button class="log-method-tab active" type="button" role="tab" data-log-method="text" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Ručně popsat
+            </button>
+            <button class="log-method-tab" type="button" role="tab" data-log-method="photo" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Z fotky
+            </button>
+            <button class="log-method-tab" type="button" role="tab" data-log-method="planned" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
+              Z plánu
+            </button>
           </div>
 
           <!-- Metoda 1: Ručně popsat — AI odhad z textu -->
@@ -445,10 +454,10 @@
               <label>Co jsi snědl/a a kolik?</label>
               <textarea id="manual-food-text" placeholder="Např. 300g vepřového řízku se salátem, sklenice plnotučného mléka, jablko" style="min-height:80px;"></textarea>
               <div class="quick-chips" id="manual-quick-chips">
-                <span class="chip" data-target="manual-food-text" data-value="velký talíř těstovin s rajčatovou omáčkou">🍝 Velký talíř těstovin</span>
-                <span class="chip" data-target="manual-food-text" data-value="150g grilovaného kuřete s rýží">🍗 Kuře s rýží</span>
-                <span class="chip" data-target="manual-food-text" data-value="200g bílého jogurtu s müsli">🥣 Jogurt s müsli</span>
-                <span class="chip" data-target="manual-food-text" data-value="2 plátky chleba s máslem a šunkou">🥪 Chléb s máslem</span>
+                <span class="chip" data-target="manual-food-text" data-value="velký talíř těstovin s rajčatovou omáčkou">Velký talíř těstovin</span>
+                <span class="chip" data-target="manual-food-text" data-value="150g grilovaného kuřete s rýží">Kuře s rýží</span>
+                <span class="chip" data-target="manual-food-text" data-value="200g bílého jogurtu s müsli">Jogurt s müsli</span>
+                <span class="chip" data-target="manual-food-text" data-value="2 plátky chleba s máslem a šunkou">Chléb s máslem</span>
               </div>
             </div>
             <button class="btn-secondary" id="btn-text-estimate">Spočítat z popisu</button>
@@ -542,7 +551,7 @@
 
     <!-- Premium upsell / status -->
     <div class="profile-premium-banner" id="profile-premium-banner" style="display:none;">
-      <div class="premium-banner-icon">⭐</div>
+      <div class="premium-banner-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
       <div class="premium-banner-body">
         <div class="premium-banner-title" id="premium-banner-title">NutriPlan Premium</div>
         <div class="premium-banner-desc" id="premium-banner-desc">Neomezené generace jídelníčků, prioritní podpora.</div>
@@ -553,8 +562,8 @@
     <div class="profile-section">
       <div class="profile-section-title">Základní údaje</div>
       <div class="toggle-group" style="margin-bottom:12px;">
-        <button class="toggle-btn active" id="p-btn-muz">👨 Muž</button>
-        <button class="toggle-btn" id="p-btn-zena">👩 Žena</button>
+        <button class="toggle-btn active" id="p-btn-muz">Muž</button>
+        <button class="toggle-btn" id="p-btn-zena">Žena</button>
       </div>
       <div class="inputs-grid">
         <div class="input-group"><label>Věk</label><input type="number" id="p-age" placeholder="25" min="10" max="100" inputmode="numeric"></div>
@@ -564,15 +573,15 @@
       <div class="section-label">Cíl</div>
       <div class="goal-grid">
         <div class="goal-card active" data-profile-goal="hubnutí">
-          <div class="goal-name">📉 Hubnout</div>
+          <div class="goal-name">Hubnout</div>
           <div class="goal-desc">Kalorický deficit</div>
         </div>
         <div class="goal-card" data-profile-goal="udržení">
-          <div class="goal-name">⚖️ Udržet</div>
+          <div class="goal-name">Udržet</div>
           <div class="goal-desc">Vyrovnaná bilance</div>
         </div>
         <div class="goal-card" data-profile-goal="nabírání">
-          <div class="goal-name">📈 Nabírat</div>
+          <div class="goal-name">Nabírat</div>
           <div class="goal-desc">Kalorický přebytek</div>
         </div>
       </div>
