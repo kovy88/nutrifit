@@ -368,3 +368,21 @@ export function validateMealPlanMacros(meals, target, opts = {}) {
   });
   return { ok: errors.length === 0, errors, sum };
 }
+
+// ── PRIMARY GOAL → NUTRITION KIND ──────────────────────────────────────────
+
+/**
+ * Odvodí NutritionGoalKind z PrimaryGoal — uživatel nemusí vybírat zvlášť.
+ * @param {import('./types.js').PrimaryGoal} primaryGoal
+ * @returns {import('./types.js').NutritionGoalKind}
+ */
+export function primaryGoalToNutritionKind(primaryGoal) {
+  switch (primaryGoal) {
+    case 'lose_weight':        return 'fat_loss';
+    case 'gain_muscle':        return 'muscle_gain';
+    case 'run_race':
+    case 'triathlon':
+    case 'hyrox_ocr':          return 'endurance';
+    default:                   return 'maintenance';
+  }
+}

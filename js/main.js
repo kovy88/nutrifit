@@ -7,6 +7,7 @@ import { toggleDayPlanner } from './dayplanner.js?v=8';
 import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=8';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=8';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=8';
+import { initOnboardingWizard } from './ui/onboarding.js?v=1';
 import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=8';
 import {
   addFoodLogItem,
@@ -1318,6 +1319,32 @@ function updateUsageBadge(info) {
   loadFormFromLS();
   refreshSelectedDay({ clearMissingPlan: true });
 
+  // ── ONBOARDING WIZARD — shows only on first visit
+  initOnboardingWizard({
+    onComplete(result) {
+      // Map wizard result → existing form state
+      setGender(result.sex);
+      const goalMap = { fat_loss: 'hubnutí', maintenance: 'udržení', muscle_gain: 'nabírání', endurance: 'hubnutí', general_fitness: 'udržení' };
+      const czechGoal = goalMap[result.nutritionKind] ?? 'udržení';
+      appState.goal = czechGoal;
+      document.querySelectorAll('[data-goal]').forEach(c => c.classList.toggle('active', c.dataset.goal === czechGoal));
+      document.getElementById('age').value = result.age;
+      document.getElementById('height').value = result.height;
+      document.getElementById('weight').value = result.weight;
+      appState.activityFactor = result.activityFactor;
+      document.querySelectorAll('.freq-card').forEach(c => c.classList.toggle('active', parseFloat(c.dataset.factor) === result.activityFactor));
+      // Persist wizard-specific fields for later use by training planner
+      localStorage.setItem('nutriplan-training-goal', JSON.stringify({ primaryGoal: result.primaryGoal, trainingGoal: result.trainingGoal, experience: result.experience }));
+      // Trigger calculation automatically
+      appState.selectedDate = dateKey();
+      calculate(setStep);
+      if (appState.macros?.kcal) {
+        setActiveAppTab('today');
+        persistCurrentTarget();
+      }
+    },
+  });
+
   // ── COOKIE CONSENT BANNER
   const consent = localStorage.getItem('nutriplan-consent');
   if (!consent) {
@@ -1328,6 +1355,7 @@ function updateUsageBadge(info) {
     localStorage.setItem('nutriplan-consent', 'accepted');
     document.getElementById('cookie-consent').style.display = 'none';
     if (typeof loadGA === 'function') loadGA();
+    if (typeof window.loadVercelAnalytics === 'function') window.loadVercelAnalytics();
   });
   document.getElementById('cookie-reject')?.addEventListener('click', () => {
     localStorage.setItem('nutriplan-consent', 'rejected');

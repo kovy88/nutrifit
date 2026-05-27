@@ -5,8 +5,10 @@ import {
   adjustForDay,
   planWeeklyAdjustment,
   validateMealPlanMacros,
+  primaryGoalToNutritionKind,
   SAFETY,
 } from '../js/domain/nutrition.js';
+import { GOAL_CONSTRAINTS } from '../js/domain/types.js';
 
 const baseProfile = {
   sex: 'male',
@@ -135,4 +137,49 @@ test('validateMealPlanMacros: detekuje nesedící meal', () => {
   const res = validateMealPlanMacros(meals, target);
   expect(res.ok).toBe(false);
   expect(res.errors.length).toBeGreaterThan(0);
+});
+
+// ── PRIMARY GOAL → NUTRITION KIND ──────────────────────────────────────────
+
+test('primaryGoalToNutritionKind: lose_weight → fat_loss', () => {
+  expect(primaryGoalToNutritionKind('lose_weight')).toBe('fat_loss');
+});
+
+test('primaryGoalToNutritionKind: gain_muscle → muscle_gain', () => {
+  expect(primaryGoalToNutritionKind('gain_muscle')).toBe('muscle_gain');
+});
+
+test('primaryGoalToNutritionKind: run_race / triathlon / hyrox_ocr → endurance', () => {
+  expect(primaryGoalToNutritionKind('run_race')).toBe('endurance');
+  expect(primaryGoalToNutritionKind('triathlon')).toBe('endurance');
+  expect(primaryGoalToNutritionKind('hyrox_ocr')).toBe('endurance');
+});
+
+test('primaryGoalToNutritionKind: ostatní → maintenance', () => {
+  expect(primaryGoalToNutritionKind('get_fit')).toBe('maintenance');
+  expect(primaryGoalToNutritionKind('maintain_weight')).toBe('maintenance');
+  expect(primaryGoalToNutritionKind('sport_conditioning')).toBe('maintenance');
+});
+
+// ── GOAL_CONSTRAINTS ────────────────────────────────────────────────────────
+
+test('GOAL_CONSTRAINTS: každý PrimaryGoal má neprázdné pole TrainingGoalKind hodnot', () => {
+  const primaryGoals = ['lose_weight', 'maintain_weight', 'gain_muscle', 'run_race', 'triathlon', 'hyrox_ocr', 'get_fit', 'sport_conditioning'];
+  for (const pg of primaryGoals) {
+    expect(Array.isArray(GOAL_CONSTRAINTS[pg])).toBe(true);
+    expect(GOAL_CONSTRAINTS[pg].length).toBeGreaterThan(0);
+  }
+});
+
+test('GOAL_CONSTRAINTS: triatlon obsahuje všechny 4 vzdálenosti', () => {
+  const tri = GOAL_CONSTRAINTS['triathlon'];
+  expect(tri).toContain('sprint_triathlon');
+  expect(tri).toContain('olympic_triathlon');
+  expect(tri).toContain('half_ironman');
+  expect(tri).toContain('full_ironman');
+});
+
+test('GOAL_CONSTRAINTS: hyrox_ocr neobsahuje běžecké cíle', () => {
+  const hyrox = GOAL_CONSTRAINTS['hyrox_ocr'];
+  expect(hyrox.every(k => !['run_5k', 'run_10k', 'half_marathon', 'marathon'].includes(k))).toBe(true);
 });

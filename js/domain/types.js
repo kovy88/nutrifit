@@ -20,6 +20,12 @@
  * @typedef {'general_fitness'|'run_5k'|'run_10k'|'half_marathon'|'marathon'|'strength_basics'|'sports_conditioning'|'hyrox'|'sprint_triathlon'|'olympic_triathlon'|'half_ironman'|'full_ironman'|'ocr'} TrainingGoalKind
  *
  * @typedef {'omnivore'|'vegetarian'|'vegan'|'pescatarian'|'keto'|'gluten_free'|'lactose_free'} DietType
+ *
+ * @typedef {'lose_weight'|'maintain_weight'|'gain_muscle'|'run_race'|'triathlon'|'hyrox_ocr'|'get_fit'|'sport_conditioning'} PrimaryGoal
+ *
+ * @typedef {'beginner'|'intermediate'|'advanced'} ExperienceLevel
+ *
+ * @typedef {'low'|'moderate'|'high'} PlanIntensity
  */
 
 /**
@@ -203,5 +209,21 @@
  * @property {string} reason              Lidsky čitelný důvod
  * @property {string[]} warnings
  */
+
+/**
+ * Které TrainingGoalKind hodnoty jsou validní pro daný PrimaryGoal.
+ * Slouží k filtrování výběru cíle v onboarding wizardu.
+ * @type {Record<import('./types.js').PrimaryGoal, import('./types.js').TrainingGoalKind[]>}
+ */
+export const GOAL_CONSTRAINTS = Object.freeze({
+  lose_weight:        ['general_fitness', 'run_5k', 'run_10k'],
+  maintain_weight:    ['general_fitness', 'strength_basics', 'sports_conditioning'],
+  gain_muscle:        ['strength_basics', 'sports_conditioning'],
+  run_race:           ['run_5k', 'run_10k', 'half_marathon', 'marathon'],
+  triathlon:          ['sprint_triathlon', 'olympic_triathlon', 'half_ironman', 'full_ironman'],
+  hyrox_ocr:          ['hyrox', 'ocr'],
+  get_fit:            ['general_fitness', 'strength_basics', 'sports_conditioning'],
+  sport_conditioning: ['sports_conditioning', 'strength_basics'],
+});
 
 export const __DOMAIN_TYPES__ = true;
