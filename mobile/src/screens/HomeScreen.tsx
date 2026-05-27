@@ -11,6 +11,8 @@ import { useNavigation } from '@react-navigation/native';
 import { MacroRing } from '../components/MacroRing';
 import { useTheme } from '../context/ThemeContext';
 import { useDailyHealth } from '../hooks/useDailyHealth';
+import { useDailyCoaching } from '../hooks/useDailyCoaching';
+import type { ReadinessLevel } from '../lib/coaching/readiness';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -22,6 +24,8 @@ export function HomeScreen() {
   // In dev returns deterministic mock; in production returns Manual data (empty
   // until user enters values, or until AppleHealthProvider lands).
   const health = useDailyHealth(new Date(selectedDate));
+  // Readiness assessment (green / yellow / red) from sleep + HRV + RHR.
+  const coaching = useDailyCoaching(new Date(selectedDate));
 
   if (!profile || !macros) return null;
 
@@ -146,6 +150,39 @@ export function HomeScreen() {
           </View>
         </Card>
       </FadeInView>
+
+      {/* Readiness assessment — green/yellow/red signal + coach recommendation.
+          Combines sleep, HRV and RHR from the active HealthDataProvider. */}
+      {coaching.assessment && !coaching.isLoading && (
+        <FadeInView delay={120}>
+          <Card>
+            <View style={styles.readinessHeader}>
+              <View style={[styles.readinessBadge, { backgroundColor: readinessColor(coaching.assessment.level, colors) }]}>
+                <Text style={styles.readinessBadgeText}>{readinessLabel(coaching.assessment.level)}</Text>
+              </View>
+              <Text style={[styles.readinessTitle, { color: colors.ink }]}>Připravenost</Text>
+            </View>
+            <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.assessment.recommendation}</Text>
+            <View style={styles.readinessFactors}>
+              {coaching.assessment.factors
+                .filter(f => !f.key.endsWith('_missing'))
+                .map(f => (
+                  <Text
+                    key={f.key}
+                    style={[
+                      styles.readinessFactor,
+                      { color: colors.muted, borderColor: colors.border },
+                      f.severity === 'red' && { borderColor: colors.red, color: colors.red },
+                      f.severity === 'yellow' && { borderColor: colors.orange, color: colors.orange },
+                    ]}
+                  >
+                    {f.message}
+                  </Text>
+                ))}
+            </View>
+          </Card>
+        </FadeInView>
+      )}
 
       {/* Health snapshot from HealthDataProvider (steps / sleep / RHR).
           In dev shows mock data; production will show Apple Health after EAS prebuild. */}
@@ -311,6 +348,14 @@ function HealthStat({ label, value, accent }: { label: string; value: string; ac
   );
 }
 
+function readinessLabel(level: ReadinessLevel): string {
+  return level === 'green' ? 'Připraven' : level === 'yellow' ? 'Mírně' : 'Regeneruj';
+}
+
+function readinessColor(level: ReadinessLevel, palette: { green: string; orange: string; red: string }): string {
+  return level === 'green' ? palette.green : level === 'yellow' ? palette.orange : palette.red;
+}
+
 function todayOptions(date: string, trainingGoal: TrainingGoalKind): Array<TrainingSession & { label: string }> {
   const base = [
     { date, kind: 'rest' as const, title: 'Volno', durationMinutes: 0, intensity: 'rest' as const, label: 'Volno' },
@@ -400,4 +445,11 @@ const styles = StyleSheet.create({
   healthStatValue: { fontSize: 18, fontWeight: '900' },
   healthEmpty: { fontSize: 13, marginTop: 8, lineHeight: 18 },
   healthEmptySub: { fontSize: 12, marginTop: 4, lineHeight: 16, fontStyle: 'italic' },
+  readinessHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  readinessBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, minWidth: 90, alignItems: 'center' },
+  readinessBadgeText: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.2 },
+  readinessTitle: { fontSize: 16, fontWeight: '800' },
+  readinessRec: { fontSize: 14, lineHeight: 20, fontWeight: '600', marginBottom: 12 },
+  readinessFactors: { gap: 6 },
+  readinessFactor: { fontSize: 12, lineHeight: 16, fontWeight: '600', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
 });
