@@ -519,7 +519,7 @@ function renderFirstRunState() {
       const eatBtn = document.createElement('button');
       eatBtn.className = 'btn-primary compact';
       eatBtn.type = 'button';
-      eatBtn.textContent = `Snědl jsem ${(next.mealType || 'jídlo').toLowerCase()}`;
+      eatBtn.textContent = `Snědl jsem ${mealTypeAccusative(next.mealType)}`;
       eatBtn.addEventListener('click', () => addPlannedMeal(next));
       actions.appendChild(eatBtn);
       const otherBtn = document.createElement('button');
@@ -585,6 +585,29 @@ function renderFirstRunState() {
   photoBtn.textContent = 'Zapsat jídlo';
   photoBtn.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
   actions.appendChild(photoBtn);
+}
+
+function mealTypeAccusative(mealType) {
+  const value = String(mealType || 'jídlo').trim().toLowerCase();
+  const forms = {
+    'snídaně': 'snídani',
+    'snidane': 'snídani',
+    'dop. svačina': 'dopolední svačinu',
+    'dopolední svačina': 'dopolední svačinu',
+    'dopoledni svacina': 'dopolední svačinu',
+    'svačina': 'svačinu',
+    'svacina': 'svačinu',
+    'oběd': 'oběd',
+    'obed': 'oběd',
+    'odp. svačina': 'odpolední svačinu',
+    'odpolední svačina': 'odpolední svačinu',
+    'odpoledni svacina': 'odpolední svačinu',
+    'večeře': 'večeři',
+    'vecere': 'večeři',
+    'jídlo': 'jídlo',
+    'jidlo': 'jídlo',
+  };
+  return forms[value] || value;
 }
 
 function renderMacroValues() {
@@ -1336,7 +1359,7 @@ function updateUsageBadge(info) {
       window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
     });
     sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
-      window.print();
+      openMealPlanPrintView();
     });
   }
 
@@ -1352,6 +1375,131 @@ function updateUsageBadge(info) {
     const total = recipes.reduce((s, r) => s + (r.kcal || 0), 0);
     text += `Celkem: ${total} kcal\n\nVygenerováno na nutri-fit-omega.vercel.app`;
     return text;
+  }
+
+  function openMealPlanPrintView() {
+    const recipes = appState.currentRecipes || [];
+    if (!recipes.length) {
+      showToast('Nejdřív vygeneruj jídelníček.', 'error');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const totals = recipes.reduce((sum, meal) => ({
+      kcal: sum.kcal + Number(meal.kcal || 0),
+      protein: sum.protein + Number(meal.protein || 0),
+      carbs: sum.carbs + Number(meal.carbs || 0),
+      fat: sum.fat + Number(meal.fat || 0),
+      fiber: sum.fiber + Number(meal.fiber || 0),
+    }), { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
+    const dateLabel = formatDayLabel(appState.selectedDate || dateKey(), {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NutriPlan - jídelníček</title>
+  <style>
+    @page { size:A4; margin:14mm; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:#151515; background:#fff; font-family:Inter, Arial, sans-serif; font-size:12px; line-height:1.45; }
+    header { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; padding-bottom:14px; border-bottom:2px solid #151515; margin-bottom:14px; }
+    h1 { margin:0 0 4px; font-size:24px; line-height:1.1; }
+    .muted { color:#666; }
+    .summary { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin:0 0 14px; }
+    .metric { border:1px solid #ddd; border-radius:8px; padding:8px 10px; }
+    .metric strong { display:block; font-size:16px; line-height:1.15; }
+    .metric span { color:#666; font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+    .meal { break-inside:avoid; page-break-inside:avoid; border:1px solid #ddd; border-radius:10px; padding:12px 14px; margin:0 0 10px; }
+    .meal-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:8px; }
+    .meal-type { color:#5c8a4e; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; }
+    h2 { margin:2px 0 0; font-size:17px; line-height:1.25; }
+    .macro-line { white-space:nowrap; color:#444; font-size:11px; text-align:right; }
+    .cols { display:grid; grid-template-columns:1fr 1.35fr; gap:14px; }
+    h3 { margin:6px 0 5px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
+    ul, ol { margin:0; padding-left:18px; }
+    li { margin:0 0 3px; }
+    footer { margin-top:16px; padding-top:10px; border-top:1px solid #ddd; color:#777; font-size:10px; display:flex; justify-content:space-between; gap:12px; }
+    @media print {
+      .no-print { display:none !important; }
+    }
+    @media(max-width:700px) {
+      header, footer { flex-direction:column; }
+      .summary { grid-template-columns:repeat(2, 1fr); }
+      .cols { grid-template-columns:1fr; }
+      .meal-head { flex-direction:column; gap:6px; }
+      .macro-line { text-align:left; white-space:normal; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>NutriPlan jídelníček</h1>
+      <div class="muted">${escapeHtml(dateLabel)}</div>
+    </div>
+    <button class="no-print" onclick="window.print()" style="padding:9px 14px;border:1px solid #bbb;border-radius:8px;background:#fff;font:inherit;cursor:pointer;">Uložit jako PDF / tisk</button>
+  </header>
+  <section class="summary">
+    <div class="metric"><strong>${Math.round(totals.kcal)}</strong><span>kcal</span></div>
+    <div class="metric"><strong>${Math.round(totals.protein)} g</strong><span>bílkoviny</span></div>
+    <div class="metric"><strong>${Math.round(totals.carbs)} g</strong><span>sacharidy</span></div>
+    <div class="metric"><strong>${Math.round(totals.fat)} g</strong><span>tuky</span></div>
+    <div class="metric"><strong>${Math.round(totals.fiber)} g</strong><span>vláknina</span></div>
+  </section>
+  ${recipes.map(meal => `
+    <article class="meal">
+      <div class="meal-head">
+        <div>
+          <div class="meal-type">${escapeHtml(meal.mealType || 'Jídlo')}</div>
+          <h2>${escapeHtml(meal.name || '')}</h2>
+        </div>
+        <div class="macro-line">${escapeHtml(meal.kcal || 0)} kcal | B ${escapeHtml(meal.protein || 0)} g | S ${escapeHtml(meal.carbs || 0)} g | T ${escapeHtml(meal.fat || 0)} g</div>
+      </div>
+      <div class="cols">
+        <section>
+          <h3>Ingredience</h3>
+          <ul>${(meal.ingredients || []).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        </section>
+        <section>
+          <h3>Postup</h3>
+          <ol>${(meal.steps || []).map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>
+        </section>
+      </div>
+    </article>
+  `).join('')}
+  <footer>
+    <span>Vygenerováno v NutriPlan</span>
+    <span>nutri-fit-omega.vercel.app</span>
+  </footer>
+  <script>
+    window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
   }
 
   // Stripe checkout return — zobraz feedback
