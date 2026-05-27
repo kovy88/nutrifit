@@ -5,8 +5,8 @@ import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
 import { useState } from 'react';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { Goal, TrainingGoalKind } from '../types';
-import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
+import type { PrimaryGoal, TrainingGoalKind } from '../types';
+import { activityFactorForSessions, primaryGoalLabel, toDateKey } from '../utils/nutrition';
 import { useTheme } from '../context/ThemeContext';
 
 export function ProfileScreen() {
@@ -65,10 +65,10 @@ export function ProfileScreen() {
       <H1>Profil</H1>
 
       <Card>
-        <Label>Údaje</Label>
+        <Label>Hlavní cíl</Label>
         <View style={styles.rowWrap}>
-          {(['hubnutí', 'udržení', 'nabírání'] as Goal[]).map(goal => (
-            <Pill key={goal} active={profile.goal === goal} onPress={() => setProfile({ ...profile, goal })}>{goal}</Pill>
+          {(['lose_weight', 'maintain_weight', 'gain_muscle', 'run_race'] as PrimaryGoal[]).map(goal => (
+            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{primaryGoalLabel(goal)}</Pill>
           ))}
         </View>
         <Label>Tréninkový cíl</Label>
@@ -158,14 +158,14 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
     let adjustment = 0;
     let msg = '';
 
-    if (profile.goal === 'hubnutí') {
+    if (profile.primaryGoal === 'lose_weight') {
       if (diff > -0.2) {
         adjustment = -100;
         msg = `Za poslední týden tvá váha klesla o ${diff.toFixed(2)} kg (cíl je aspoň -0.3 kg/týden). Doporučujeme mírně snížit denní příjem o 100 kcal, aby se hubnutí opět nastartovalo.`;
       } else {
         msg = `Skvělá práce! Tvá váha klesla o ${Math.abs(diff).toFixed(2)} kg. Hubnutí probíhá zdravým tempem. Pokračuj v aktuálním nastavení příjmu.`;
       }
-    } else if (profile.goal === 'nabírání') {
+    } else if (profile.primaryGoal === 'gain_muscle') {
       if (diff < 0.1) {
         adjustment = 100;
         msg = `Za poslední týden se tvá váha zvýšila o ${diff.toFixed(2)} kg (cíl je aspoň +0.15 kg/týden). Doporučujeme navýšit denní příjem o 100 kcal pro podporu svalového růstu.`;

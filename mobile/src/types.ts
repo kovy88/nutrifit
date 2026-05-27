@@ -1,4 +1,5 @@
 export type Gender = 'muz' | 'zena';
+/** @deprecated only used for storage migration from v1 profiles */
 export type Goal = 'hubnutí' | 'udržení' | 'nabírání';
 export type DietStyle = 'standardní' | 'vegetariánský' | 'veganský' | 'bezlepkový' | 'nízkosacharidový' | 'vysokoproteínový';
 export type PrimaryGoal = 'lose_weight' | 'maintain_weight' | 'gain_muscle' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
@@ -9,7 +10,6 @@ export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'rec
 
 export type UserProfile = {
   gender: Gender;
-  goal: Goal;
   primaryGoal: PrimaryGoal;
   trainingGoal: TrainingGoalKind;
   sessionsPerWeek: number;

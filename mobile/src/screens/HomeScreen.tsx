@@ -4,7 +4,7 @@ import { Button, Card, Field, H1, Label, Subtitle, FadeInView } from '../compone
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
-import { normalizeFoodEstimate, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
+import { normalizeFoodEstimate, primaryGoalLabel, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
 import type { TrainingSession, TrainingGoalKind } from '../types';
 import { DateHeader } from '../components/DateHeader';
 import { useNavigation } from '@react-navigation/native';
@@ -83,7 +83,7 @@ export function HomeScreen() {
     <Screen>
       <DateHeader />
       <H1>Dnes</H1>
-      <Subtitle>{profile.goal} · {profile.diet} · BMI {macros.bmi}</Subtitle>
+      <Subtitle>{primaryGoalLabel(profile.primaryGoal)} · {profile.diet} · BMI {macros.bmi}</Subtitle>
 
       {/* Modern Circular Macro Visual Grid */}
       <FadeInView delay={100}>
