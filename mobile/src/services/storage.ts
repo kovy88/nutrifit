@@ -10,6 +10,7 @@ import type {
   DailySessionRecord,
 } from '../types';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
+import { ManualHealthDataProvider } from '../lib/health';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -34,9 +35,13 @@ function allNutriFitKeys(): string[] {
   return Object.values(keys);
 }
 
-/** Removes all NutriFit data from the device. Used after account deletion. */
+/** Removes all NutriFit data from the device. Used after account deletion.
+ *  Includes core storage keys AND every manual health record (nutrifit.health.manual.*). */
 export async function purgeAllLocalData(): Promise<void> {
-  await AsyncStorage.multiRemove(allNutriFitKeys());
+  await Promise.all([
+    AsyncStorage.multiRemove(allNutriFitKeys()),
+    ManualHealthDataProvider.purge(),
+  ]);
 }
 
 /** Drop date-bound entries older than RETENTION_DAYS to bound AsyncStorage growth. */
