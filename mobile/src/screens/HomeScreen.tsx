@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoaching } from '../hooks/useDailyCoaching';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
+import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -26,6 +27,9 @@ export function HomeScreen() {
   const health = useDailyHealth(new Date(selectedDate));
   // Readiness assessment (green / yellow / red) from sleep + HRV + RHR.
   const coaching = useDailyCoaching(new Date(selectedDate));
+  // If readiness suggests a reduction, compute what the downgraded session would look like
+  // (we don't apply it automatically — user taps "Snížit intenzitu" CTA on the readiness card).
+  const suggestedDowngrade = todaySession ? applyReadinessToSession(todaySession, coaching.assessment) : null;
 
   if (!profile || !macros) return null;
 
@@ -180,6 +184,20 @@ export function HomeScreen() {
                   </Text>
                 ))}
             </View>
+            {suggestedDowngrade?.adjusted && (
+              <View style={[styles.readinessCta, { borderTopColor: colors.border }]}>
+                <Text style={[styles.readinessCtaLabel, { color: colors.faint }]}>Doporučená úprava plánu</Text>
+                <Text style={[styles.readinessCtaText, { color: colors.ink }]}>
+                  {todaySession?.title} → {suggestedDowngrade.session.title} ({suggestedDowngrade.session.durationMinutes} min, {suggestedDowngrade.session.intensity})
+                </Text>
+                <Button
+                  variant="primary"
+                  onPress={() => setTodaySession(suggestedDowngrade.session)}
+                >
+                  Upravit dnešní trénink
+                </Button>
+              </View>
+            )}
           </Card>
         </FadeInView>
       )}
@@ -452,4 +470,7 @@ const styles = StyleSheet.create({
   readinessRec: { fontSize: 14, lineHeight: 20, fontWeight: '600', marginBottom: 12 },
   readinessFactors: { gap: 6 },
   readinessFactor: { fontSize: 12, lineHeight: 16, fontWeight: '600', borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  readinessCta: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, gap: 8 },
+  readinessCtaLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  readinessCtaText: { fontSize: 13, lineHeight: 18, fontWeight: '700', marginBottom: 4 },
 });
