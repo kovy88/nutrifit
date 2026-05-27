@@ -356,16 +356,16 @@ async function analyzeFoodText() {
   setPhotoActionsVisible(false);
   setPhotoOutputMessage(out, 'AI počítá makra z popisu…');
 
-  const systemPrompt = `Jsi NutriPlan AI — český výživový poradce. Z popisu jídla od uživatele vrať JSON s odhadem nutričních hodnot. Vrátíš POUZE validní JSON, žádný další text. Veškerý text v JSON je v češtině.
+  const systemPrompt = `You are NutriPlan AI, a Czech nutrition assistant. From the user's meal description, return a JSON object with an estimated nutrition breakdown. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech.
 
-Pravidla odhadu:
-- Pokud popis obsahuje gramáž (např. "300g"), použij ji. Jinak odhadni průměrnou porci dospělého.
-- kcal musí odpovídat: protein*4 + carbs*4 + fat*9 (±5 kcal).
-- confidence: "vysoká" pokud popis obsahuje konkrétní gramáže, "střední" pro běžná jídla bez gramáží, "nízká" pro vágní popisy.`;
+Estimation rules:
+- If the description contains a quantity, for example "300g", use it. Otherwise estimate an average adult portion.
+- kcal must match: protein*4 + carbs*4 + fat*9 (±5 kcal).
+- confidence must be "vysoká" when the description contains specific quantities, "střední" for common meals without quantities, and "nízká" for vague descriptions.`;
 
-  const prompt = `Popis jídla: "${description.replace(/"/g, "'")}"
+  const prompt = `Meal description: "${description.replace(/"/g, "'")}"
 
-Vrať JSON v tomto formátu:
+Return JSON in this format:
 {"foodName":"Český název jídla","portionGuess":"Odhadovaná porce (např. 300g, 1 talíř)","kcal":0,"protein":0,"carbs":0,"fat":0,"confidence":"střední","note":"Krátká poznámka k odhadu (1 věta)"}`;
 
   try {

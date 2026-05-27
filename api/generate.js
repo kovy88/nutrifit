@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
     return sendError(res, 400, 'missing_prompt', 'Chybí parametr prompt.');
   }
 
-  const model   = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  const model   = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   const url     = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const geminiRes = await fetch(url, {

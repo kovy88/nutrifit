@@ -40,13 +40,14 @@ module.exports = async function handler(req, res) {
     return sendError(res, 400, 'invalid_base64', 'Obrázek není validní base64.');
   }
 
-  const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_VISION_MODEL || 'gemini-3.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const prompt = `
-Jsi výživový asistent. Z obrázku odhadni jídlo a orientační makra.
-Vrať POUZE validní JSON v češtině bez markdownu, komentářů nebo dalšího textu.
-Pokud na obrázku není jídlo nebo porce nejde poznat, vrať JSON s nulovými makry a nízkou jistotou.
+You are a nutrition assistant. Estimate the food and approximate macros from the image.
+Return ONLY valid JSON with no markdown, comments, or extra text.
+All user-facing JSON string values must be in Czech.
+If there is no food in the image or the portion cannot be recognized, return JSON with zero macros and low confidence.
 {
   "foodName": "Název jídla",
   "portionGuess": "Krátký odhad porce",
@@ -57,7 +58,7 @@ Pokud na obrázku není jídlo nebo porce nejde poznat, vrať JSON s nulovými m
   "confidence": "nízká|střední|vysoká",
   "note": "Krátké upozornění, že jde o orientační odhad"
 }
-Používej celá čísla pro kcal/protein/carbs/fat.
+Use integers for kcal/protein/carbs/fat.
 `;
 
   const geminiRes = await fetch(url, {
