@@ -1,6 +1,36 @@
 // ── KALKULAČKA MAKER + EDITACE MAKER
+//
+// UI vrstva. Vstup/výstup je DOM, vlastní matematika sídlí v
+// js/domain/nutrition.js (BMR, TDEE, makra). Tato refaktorace zachovává
+// dosavadní chování (kcal, makra, voda, BMI varování) — jen delegování
+// na čistý modul, aby šly hodnoty také unit-testovat.
 
 import { appState, MACRO_LIMITS } from './state.js?v=8';
+import {
+  calcMacroTargets,
+  ACTIVITY_FACTORS,
+} from './domain/nutrition.js?v=1';
+
+// Mapování mezi legacy CS hodnotami a doménovými typy.
+function legacyGoalToDomain(goal) {
+  return ({
+    'hubnutí': 'fat_loss',
+    'udržení': 'maintenance',
+    'nabírání': 'muscle_gain',
+  })[goal] || 'maintenance';
+}
+
+function activityFactorToLevel(factor) {
+  // Hledá nejbližší doménovou úroveň pro daný factor (dayplanner.js generuje
+  // libovolnou hodnotu mezi 1.2 a 1.95).
+  let best = 'light';
+  let bestDiff = Infinity;
+  for (const [k, v] of Object.entries(ACTIVITY_FACTORS)) {
+    const diff = Math.abs(v - factor);
+    if (diff < bestDiff) { bestDiff = diff; best = k; }
+  }
+  return best;
+}
 
 // ── ANIMACE HODNOT
 
@@ -52,12 +82,7 @@ export function calculate(setStepFn) {
   const height = parseInt(document.getElementById('height').value);
   const weight = parseInt(document.getElementById('weight').value);
 
-  // 2. Výpočet maker (Mifflin-St Jeor)
-  const bmr  = appState.gender === 'muz'
-    ? 10 * weight + 6.25 * height - 5 * age + 5
-    : 10 * weight + 6.25 * height - 5 * age - 161;
-  const tdee = Math.round(bmr * appState.activityFactor);
-
+  // 2. Výpočet maker — deleguj na doménový modul (deterministicky testované)
   // BMI auto-switch: při podváze hubnutí nemá smysl → přepni na udržení
   const bmi = weight / ((height / 100) ** 2);
   if (bmi < 18.5 && appState.goal === 'hubnutí') {
@@ -66,14 +91,26 @@ export function calculate(setStepFn) {
     document.querySelector('.goal-card[data-goal="udržení"]')?.classList.add('active');
   }
 
-  const cal     = appState.goal === 'hubnutí' ? Math.round(tdee * 0.82) : appState.goal === 'nabírání' ? Math.round(tdee * 1.12) : tdee;
-  const protein = Math.round(weight * 2);
-  const fat     = Math.round(cal * 0.27 / 9);
-  const carbs   = Math.max(Math.round((cal - protein * 4 - fat * 9) / 4), 0);
-  const fiber   = appState.goal === 'hubnutí' ? Math.round(weight * 0.42) : Math.round(weight * 0.35);
+  const targets = calcMacroTargets(
+    {
+      sex: appState.gender === 'muz' ? 'male' : 'female',
+      ageYears: age,
+      heightCm: height,
+      weightKg: weight,
+      activityLevel: activityFactorToLevel(appState.activityFactor),
+    },
+    { kind: legacyGoalToDomain(appState.goal) },
+  );
+  const bmr = targets.bmr;
+  const tdee = targets.tdee;
+  const cal = targets.kcal;
+  const protein = targets.proteinG;
+  const fat = targets.fatG;
+  const carbs = targets.carbsG;
+  const fiber = targets.fiberG;
 
-  appState.macros = { kcal: cal, protein, carbs, fat, fiber, tdee, bmr: Math.round(bmr), weight, height, age, gender: appState.gender, goal: appState.goal };
-  setMacroLimits(weight, Math.round(bmr));
+  appState.macros = { kcal: cal, protein, carbs, fat, fiber, tdee, bmr, weight, height, age, gender: appState.gender, goal: appState.goal };
+  setMacroLimits(weight, bmr);
 
   // 3. Zobrazení výsledků + animace hodnot
   const res = document.getElementById('results');

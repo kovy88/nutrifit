@@ -1,7 +1,11 @@
 {
   "name": "nutrifit",
   "private": true,
+  "scripts": {
+    "test": "node tests/run.js"
+  },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "stripe": "^17.7.0"
   }
 }
