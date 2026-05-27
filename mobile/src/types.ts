@@ -1,10 +1,19 @@
 export type Gender = 'muz' | 'zena';
 export type Goal = 'hubnutí' | 'udržení' | 'nabírání';
 export type DietStyle = 'standardní' | 'vegetariánský' | 'veganský' | 'bezlepkový' | 'nízkosacharidový' | 'vysokoproteínový';
+export type PrimaryGoal = 'lose_weight' | 'maintain_weight' | 'gain_muscle' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
+export type TrainingGoalKind = 'general_fitness' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'sports_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+export type NutritionGoalKind = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';
+export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional';
 
 export type UserProfile = {
   gender: Gender;
   goal: Goal;
+  primaryGoal: PrimaryGoal;
+  trainingGoal: TrainingGoalKind;
+  sessionsPerWeek: number;
+  experience: ExperienceLevel;
   age: number;
   height: number;
   weight: number;
@@ -21,15 +30,34 @@ export type Macros = {
   carbs: number;
   fat: number;
   fiber: number;
+  waterMl: number;
   bmr: number;
   tdee: number;
   bmi: number;
+  goal: NutritionGoalKind;
+};
+
+export type TrainingSession = {
+  date: string;
+  kind: SessionKind;
+  title: string;
+  durationMinutes: number;
+  intensity: 'easy' | 'moderate' | 'hard' | 'rest';
+};
+
+export type DailyAdjustment = {
+  note: string;
+  kcalDelta: number;
+  carbsDelta: number;
+  fatDelta: number;
+  proteinDelta: number;
+  source: 'profile_training_goal' | 'manual_today_session';
 };
 
 export type FoodLogItem = {
   id: string;
   createdAt: string;
-  source: 'manual' | 'photo';
+  source: 'manual' | 'photo' | 'planned';
   foodName: string;
   portionGuess?: string;
   kcal: number;
@@ -38,6 +66,7 @@ export type FoodLogItem = {
   fat: number;
   confidence?: string;
   note?: string;
+  plannedMealKey?: string;
 };
 
 export type Meal = {
@@ -55,3 +84,25 @@ export type Meal = {
 };
 
 export type FoodEstimate = Omit<FoodLogItem, 'id' | 'createdAt' | 'source'>;
+
+export type MealPlanValidationResult = {
+  valid: boolean;
+  errors: string[];
+  totals: {
+    kcal: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+};
+
+export type ShoppingListGroup = {
+  category: string;
+  items: string[];
+};
+
+export type DateKey = string;
+export type DailyPlanRecord = Record<DateKey, Meal[]>;
+export type DailyFoodLogRecord = Record<DateKey, FoodLogItem[]>;
+export type DailySessionRecord = Record<DateKey, TrainingSession>;
+
