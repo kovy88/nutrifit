@@ -17,7 +17,7 @@
  *
  * @typedef {'fat_loss'|'maintenance'|'muscle_gain'|'endurance'|'general_fitness'} NutritionGoalKind
  *
- * @typedef {'general_fitness'|'run_5k'|'run_10k'|'half_marathon'|'marathon'|'strength_basics'|'sports_conditioning'} TrainingGoalKind
+ * @typedef {'general_fitness'|'run_5k'|'run_10k'|'half_marathon'|'marathon'|'strength_basics'|'sports_conditioning'|'hyrox'|'sprint_triathlon'|'olympic_triathlon'|'half_ironman'|'full_ironman'|'ocr'} TrainingGoalKind
  *
  * @typedef {'omnivore'|'vegetarian'|'vegan'|'pescatarian'|'keto'|'gluten_free'|'lactose_free'} DietType
  */
@@ -55,6 +55,8 @@
  * @property {number} [longestRecentRunKm]
  * @property {number} [avgPaceSecPerKm]
  * @property {number} [sessionsPerWeek]
+ * @property {number} [currentWeeklySwimKm]  Triatlon: aktuální týdenní objem plavání.
+ * @property {number} [currentWeeklyBikeKm]  Triatlon: aktuální týdenní objem cyklistiky.
  */
 
 /**
@@ -155,7 +157,7 @@
  */
 
 /**
- * @typedef {'easy_run'|'tempo'|'intervals'|'long_run'|'recovery_run'|'strength'|'mobility'|'rest'|'cross_training'|'race'} SessionKind
+ * @typedef {'easy_run'|'tempo'|'intervals'|'long_run'|'recovery_run'|'strength'|'mobility'|'rest'|'cross_training'|'race'|'swim'|'bike'|'brick'|'functional'} SessionKind
  *
  * @typedef {Object} TrainingSession
  * @property {string} date
@@ -173,7 +175,9 @@
  * @property {string} weekStartISO
  * @property {number} weekIndex           Index týdne v rámci plánu (0 = první týden).
  * @property {TrainingSession[]} sessions
- * @property {number} totalKm
+ * @property {number} totalKm             Pouze běžecké km. Swim a bike jsou oddělené.
+ * @property {number} [totalSwimKm]       Pouze triatlon.
+ * @property {number} [totalBikeKm]       Pouze triatlon.
  * @property {string[]} warnings
  */
 

@@ -108,3 +108,132 @@ test('progressVolume bez baseKm → fallback na beginner minimum', () => {
   const vol = progressVolume(0, 0, 30);
   expect(vol).toBeGreaterThanOrEqual(TRAINING_RULES.MIN_RUN_KM_BEGINNER);
 });
+
+// ── NOVÉ CÍLE ─────────────────────────────────────────────────────────
+
+test('peakWeeklyKm: full_ironman >= half_ironman >= olympic >= sprint', () => {
+  expect(peakWeeklyKm('full_ironman')).toBeGreaterThanOrEqual(peakWeeklyKm('half_ironman'));
+  expect(peakWeeklyKm('half_ironman')).toBeGreaterThanOrEqual(peakWeeklyKm('olympic_triathlon'));
+  expect(peakWeeklyKm('olympic_triathlon')).toBeGreaterThan(peakWeeklyKm('sprint_triathlon'));
+});
+
+test('peakWeeklyKm: hyrox a ocr mají nenulový běžecký objem', () => {
+  expect(peakWeeklyKm('hyrox')).toBeGreaterThan(0);
+  expect(peakWeeklyKm('ocr')).toBeGreaterThan(0);
+});
+
+// ── HYROX ──────────────────────────────────────────────────────────────
+
+test('hyrox: plán obsahuje alespoň 2 funkční sessiony', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'hyrox' }, weekStartISO: '2026-01-05' });
+  expect(plan.sessions.filter(s => s.kind === 'functional').length).toBeGreaterThanOrEqual(2);
+});
+
+test('hyrox: totalKm > 0 (běžecká složka)', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'hyrox', currentWeeklyKm: 25 }, weekStartISO: '2026-01-05' });
+  expect(plan.totalKm).toBeGreaterThan(0);
+});
+
+test('hyrox: žádné swim ani bike sessiony (není multi-sport)', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'hyrox', currentWeeklyKm: 25 }, weekStartISO: '2026-01-05' });
+  expect(plan.sessions.every(s => s.kind !== 'swim' && s.kind !== 'bike')).toBe(true);
+});
+
+test('hyrox: špatný spánek snižuje intenzitu functional sessionů', () => {
+  const plan = generateTrainingPlan({
+    goal: { kind: 'hyrox', currentWeeklyKm: 25 },
+    weekStartISO: '2026-01-05',
+    recentSleep: Array.from({ length: 5 }, (_, i) => ({ date: `2026-01-0${i + 1}`, totalMinutes: 320 })),
+  });
+  const functionals = plan.sessions.filter(s => s.kind === 'functional');
+  expect(functionals.every(s => s.intensity !== 'hard')).toBe(true);
+  expect(plan.warnings.length).toBeGreaterThan(0);
+});
+
+// ── TRIATLON ───────────────────────────────────────────────────────────
+
+test('sprint triatlon: obsahuje swim, bike, brick sessiony', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'sprint_triathlon' }, weekStartISO: '2026-01-05' });
+  const kinds = plan.sessions.map(s => s.kind);
+  expect(kinds).toContain('swim');
+  expect(kinds).toContain('bike');
+  expect(kinds).toContain('brick');
+});
+
+test('sprint triatlon: totalSwimKm, totalBikeKm, totalKm jsou kladné', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'sprint_triathlon' }, weekStartISO: '2026-01-05' });
+  expect(plan.totalKm).toBeGreaterThan(0);
+  expect(plan.totalSwimKm).toBeGreaterThan(0);
+  expect(plan.totalBikeKm).toBeGreaterThan(0);
+});
+
+test('sprint triatlon: brick session má nenulovou distanceKm (kombinovaná)', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'sprint_triathlon' }, weekStartISO: '2026-01-05' });
+  const brick = plan.sessions.find(s => s.kind === 'brick');
+  expect(brick).toBeTruthy();
+  expect(brick.distanceKm).toBeGreaterThan(0);
+});
+
+test('olympic triatlon: větší objemy než sprint', () => {
+  const sprint = generateTrainingPlan({ goal: { kind: 'sprint_triathlon' }, weekStartISO: '2026-01-05' });
+  const olympic = generateTrainingPlan({ goal: { kind: 'olympic_triathlon' }, weekStartISO: '2026-01-05' });
+  expect(olympic.totalSwimKm).toBeGreaterThan(sprint.totalSwimKm);
+  expect(olympic.totalBikeKm).toBeGreaterThan(sprint.totalBikeKm);
+});
+
+test('full ironman: neděle má easy_run nebo rest (long-distance recovery)', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'full_ironman', currentWeeklyKm: 40, currentWeeklySwimKm: 8, currentWeeklyBikeKm: 120 }, weekStartISO: '2026-01-05' });
+  const sun = plan.sessions[6];
+  expect(['easy_run', 'rest']).toContain(sun.kind);
+});
+
+test('triatlon: špatný spánek přepne Friday swim na easy', () => {
+  const plan = generateTrainingPlan({
+    goal: { kind: 'olympic_triathlon' },
+    weekStartISO: '2026-01-05',
+    recentSleep: Array.from({ length: 5 }, (_, i) => ({ date: `2026-01-0${i + 1}`, totalMinutes: 320 })),
+  });
+  // Žádná hard session (Fri swim měl být hard threshold, ale přepnuto na easy)
+  expect(plan.sessions.filter(s => s.intensity === 'hard').length).toBe(0);
+});
+
+// ── OCR ────────────────────────────────────────────────────────────────
+
+test('OCR: obsahuje functional a long_run', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'ocr' }, weekStartISO: '2026-01-05' });
+  const kinds = plan.sessions.map(s => s.kind);
+  expect(kinds).toContain('functional');
+  expect(kinds).toContain('long_run');
+});
+
+test('OCR: totalKm > 0', () => {
+  const plan = generateTrainingPlan({ goal: { kind: 'ocr', currentWeeklyKm: 20 }, weekStartISO: '2026-01-05' });
+  expect(plan.totalKm).toBeGreaterThan(0);
+});
+
+test('OCR: špatný spánek snižuje intenzitu functional', () => {
+  const plan = generateTrainingPlan({
+    goal: { kind: 'ocr', currentWeeklyKm: 20 },
+    weekStartISO: '2026-01-05',
+    recentSleep: Array.from({ length: 5 }, (_, i) => ({ date: `2026-01-0${i + 1}`, totalMinutes: 320 })),
+  });
+  const functional = plan.sessions.find(s => s.kind === 'functional');
+  expect(functional.intensity).toBe('moderate');
+});
+
+// ── KOMPLETNOST VŠECH NOVÝCH CÍLŮ ──────────────────────────────────────
+
+test('všech 6 nových cílů: každý plán má 7 sessionů se všemi povinnými poli', () => {
+  const newKinds = ['hyrox', 'sprint_triathlon', 'olympic_triathlon', 'half_ironman', 'full_ironman', 'ocr'];
+  for (const kind of newKinds) {
+    const plan = generateTrainingPlan({ goal: { kind }, weekStartISO: '2026-01-05' });
+    expect(plan.sessions.length).toBe(7);
+    plan.sessions.forEach(s => {
+      expect(typeof s.date).toBe('string');
+      expect(/^\d{4}-\d{2}-\d{2}$/.test(s.date)).toBe(true);
+      expect(typeof s.kind).toBe('string');
+      expect(typeof s.title).toBe('string');
+      expect(typeof s.intensity).toBe('string');
+    });
+  }
+});

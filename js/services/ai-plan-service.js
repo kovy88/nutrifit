@@ -72,7 +72,11 @@ export function buildAIPlanPrompt(input) {
   const dislikesLine = profile.dislikes?.length ? `dislikes=${profile.dislikes.join(', ')}` : '';
 
   const trainingBlock = includeWeek && trainingPlan
-    ? trainingPlan.sessions.map(s => `  - ${s.date} ${s.kind} | ${s.title} | ${s.distanceKm ?? '-'} km | ${s.durationMinutes ?? '-'} min | intensity=${s.intensity}`).join('\n')
+    ? [
+        trainingPlan.totalSwimKm != null ? `total_swim_km=${trainingPlan.totalSwimKm}` : null,
+        trainingPlan.totalBikeKm != null ? `total_bike_km=${trainingPlan.totalBikeKm}` : null,
+        ...trainingPlan.sessions.map(s => `  - ${s.date} ${s.kind} | ${s.title} | ${s.distanceKm ?? '-'} km | ${s.durationMinutes ?? '-'} min | intensity=${s.intensity}`),
+      ].filter(Boolean).join('\n')
     : 'none';
 
   const activityBlock = recentActivity.length
@@ -117,7 +121,7 @@ ${trainingBlock}
   "trainingPlan": [
     {
       "day": "Pondělí",
-      "type": "<easy_run|tempo|intervals|long_run|recovery_run|strength|mobility|rest|cross_training|race>",
+      "type": "<easy_run|tempo|intervals|long_run|recovery_run|strength|mobility|rest|cross_training|race|swim|bike|brick|functional>",
       "title": "<Czech>",
       "durationMinutes": 0,
       "intensity": "<easy|moderate|hard|rest>",

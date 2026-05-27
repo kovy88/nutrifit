@@ -47,11 +47,17 @@ export function estimateWeeklyBaseKm(goal, recentWorkouts) {
  */
 export function peakWeeklyKm(kind) {
   switch (kind) {
-    case 'run_5k': return 30;
-    case 'run_10k': return 45;
-    case 'half_marathon': return 60;
-    case 'marathon': return 80;
-    default: return 0;
+    case 'run_5k':            return 30;
+    case 'run_10k':           return 45;
+    case 'half_marathon':     return 60;
+    case 'marathon':          return 80;
+    case 'hyrox':             return 45;  // 8 km/závod × 5–6 závodů ekvivalentu / týden
+    case 'sprint_triathlon':  return 20;
+    case 'olympic_triathlon': return 35;
+    case 'half_ironman':      return 45;
+    case 'full_ironman':      return 60;
+    case 'ocr':               return 50;
+    default:                  return 0;
   }
 }
 
@@ -118,6 +124,12 @@ export function generateTrainingPlan(input) {
   if (goal.kind === 'strength_basics') return strengthPlan(weekStartISO, weekIndex, readiness, warnings);
   if (goal.kind === 'sports_conditioning') return conditioningPlan(weekStartISO, weekIndex, readiness, warnings);
   if (goal.kind === 'general_fitness') return generalFitnessPlan(weekStartISO, weekIndex, readiness, warnings);
+  if (goal.kind === 'hyrox') return hyroxPlan(weekStartISO, weekIndex, goal, recentWorkouts, readiness, warnings);
+  if (goal.kind === 'sprint_triathlon' || goal.kind === 'olympic_triathlon' ||
+      goal.kind === 'half_ironman'     || goal.kind === 'full_ironman') {
+    return triathlonPlan(goal.kind, weekStartISO, weekIndex, goal, readiness, warnings);
+  }
+  if (goal.kind === 'ocr') return ocrPlan(weekStartISO, weekIndex, goal, recentWorkouts, readiness, warnings);
 
   return runningPlan(goal, weekStartISO, weekIndex, recentWorkouts, readiness, warnings);
 }
@@ -211,6 +223,121 @@ function generalFitnessPlan(weekStartISO, weekIndex, readiness, warnings) {
   return { goalKind: 'general_fitness', weekStartISO, weekIndex, sessions, totalKm: 7, warnings };
 }
 
+// ── HYROX ──────────────────────────────────────────────────────────────
+// Hybrid race: 8 km běhu (8× 1 km) + 8 funkčních stanic (SkiErg, sled push/pull,
+// RowErg, farmer carry, sandbag lunges, wall balls, burpee broad jump, kettlebell).
+// Trénink kombinuje běžeckou bázi a funkční sílu.
+
+function hyroxPlan(weekStartISO, weekIndex, goal, recentWorkouts, readiness, warnings) {
+  const baseKm = estimateWeeklyBaseKm(goal, recentWorkouts) || 20;
+  if (!goal.currentWeeklyKm && !(recentWorkouts || []).some(w => w.kind === 'run')) {
+    warnings.push('Bez běžecké historie startujeme konzervativně. Hyrox vyžaduje solidní aerobní základ.');
+  }
+  const isDeload = weekIndex > 0 && weekIndex % 4 === 3;
+  const runKm = progressVolume(baseKm, weekIndex, 45);
+  const satRunKm = isDeload ? 6 : Math.min(10, round(runKm * 0.35));
+  const funcDur = isDeload ? 30 : 50;
+
+  const sessions = [
+    session(weekStartISO, 0, 'easy_run',   `Lehký běh ${round(runKm * 0.30)} km (aerobní báze, tempo závodu)`, round(runKm * 0.30), 'easy'),
+    session(weekStartISO, 1, 'functional', `Stanice A ${funcDur} min — SkiErg, farmer carry, wall balls, burpee broad jump`, 0, readiness === 'red' ? 'moderate' : 'hard'),
+    session(weekStartISO, 2, 'strength',   'Silový základ 35 min — výpady, pull-upy, nošení zátěže, plank', 0, 'moderate'),
+    session(weekStartISO, 3, 'easy_run',   `Recovery běh ${round(runKm * 0.20)} km`, round(runKm * 0.20), 'easy'),
+    session(weekStartISO, 4, 'functional', `Stanice B ${funcDur} min — RowErg, sled push/pull, box jump, kettlebell carry`, 0, readiness === 'red' ? 'moderate' : 'hard'),
+    session(weekStartISO, 5, 'brick',      `Závod-simulace: ${satRunKm} km běh + funkční dokončovací okruh 20 min`, satRunKm, readiness === 'red' ? 'moderate' : 'hard'),
+    session(weekStartISO, 6, 'rest',       'Volno — aktivní regenerace (chůze, strečink)', 0, 'rest'),
+  ];
+
+  return { goalKind: 'hyrox', weekStartISO, weekIndex, sessions, totalKm: runKm, warnings };
+}
+
+// ── TRIATHLON ──────────────────────────────────────────────────────────
+// Podporuje Sprint / Olympijský / Half Ironman (70.3) / Full Ironman.
+// totalKm = pouze běžecká složka (pro konzistenci s ostatními plány).
+// totalSwimKm a totalBikeKm jsou extra pole v TrainingPlan.
+
+/** @type {Record<string,{swim:{base:number,peak:number},bike:{base:number,peak:number},run:{base:number,peak:number}}>} */
+const TRIATHLON_VOLUMES = {
+  sprint_triathlon:  { swim: { base: 2,  peak: 6  }, bike: { base: 30,  peak: 80  }, run: { base: 10, peak: 20 } },
+  olympic_triathlon: { swim: { base: 3,  peak: 10 }, bike: { base: 50,  peak: 120 }, run: { base: 15, peak: 35 } },
+  half_ironman:      { swim: { base: 5,  peak: 14 }, bike: { base: 80,  peak: 200 }, run: { base: 20, peak: 45 } },
+  full_ironman:      { swim: { base: 8,  peak: 20 }, bike: { base: 120, peak: 300 }, run: { base: 30, peak: 60 } },
+};
+
+function triathlonPlan(goalKind, weekStartISO, weekIndex, goal, readiness, warnings) {
+  const vol = TRIATHLON_VOLUMES[goalKind];
+  const swimBase = goal.currentWeeklySwimKm || vol.swim.base;
+  const bikeBase = goal.currentWeeklyBikeKm || vol.bike.base;
+  const runBase  = goal.currentWeeklyKm      || vol.run.base;
+
+  const swimKm = progressVolume(swimBase, weekIndex, vol.swim.peak);
+  const bikeKm = progressVolume(bikeBase, weekIndex, vol.bike.peak);
+  const runKm  = progressVolume(runBase,  weekIndex, vol.run.peak);
+
+  // Distribuce km v týdnu — swim Mon+Fri, bike Tue, run Wed+neděle(u 70.3/IM), brick Sat
+  const swimMon  = round(swimKm * 0.55);
+  const swimFri  = round(swimKm - swimMon);
+  const brickBikeKm = round(bikeKm * 0.55);
+  const brickRunKm  = round(runKm  * 0.30);
+  const easyRunKm   = round(runKm  * 0.40);
+  const isLongDistance = goalKind === 'half_ironman' || goalKind === 'full_ironman';
+
+  // Pátý swim — při red readiness přechází na easy tempo
+  const friSwimIntensity = readiness === 'red' ? 'easy' : 'hard';
+  const friSwimTitle = readiness === 'red'
+    ? `Lehké plavání ${swimFri} km (náhrada threshold za únavu)`
+    : `Threshold plavání ${swimFri} km — intervalové série`;
+
+  const sessions = [
+    session(weekStartISO, 0, 'swim',     `Technicko-aerobní plavání ${swimMon} km — drily a základní tempo`, swimMon, 'easy'),
+    session(weekStartISO, 1, 'bike',     `Vytrvalostní kolo ${round(bikeKm * 0.35)} km — zóna 2`, round(bikeKm * 0.35), 'moderate'),
+    session(weekStartISO, 2, 'easy_run', `Lehký běh ${easyRunKm} km + volitelné plavecké drily`, easyRunKm, 'easy'),
+    session(weekStartISO, 3, 'strength', 'Triatlon síla 35 min — jednodohné dřepy, stabilita kyčle, tlak ramene, core', 0, 'moderate'),
+    session(weekStartISO, 4, 'swim',     friSwimTitle, swimFri, friSwimIntensity),
+    session(weekStartISO, 5, 'brick',    `Brick: ${brickBikeKm} km kolo + ${brickRunKm} km běh (trénink přechodu)`, brickBikeKm + brickRunKm, readiness === 'red' ? 'moderate' : 'hard'),
+    isLongDistance
+      ? session(weekStartISO, 6, 'easy_run', `Recovery běh ${round(runKm * 0.20)} km`, round(runKm * 0.20), 'easy')
+      : session(weekStartISO, 6, 'rest',     'Volno — aktivní regenerace', 0, 'rest'),
+  ];
+
+  return {
+    goalKind,
+    weekStartISO,
+    weekIndex,
+    sessions,
+    totalKm: runKm,
+    totalSwimKm: swimKm,
+    totalBikeKm: bikeKm,
+    warnings,
+  };
+}
+
+// ── OCR (Spartan / Tough Mudder) ────────────────────────────────────────
+// Obstacle Course Racing — trail běh + funkční síla (grip, lezení, přenášení,
+// překonávání překážek). Trénink podobný maratonu, ale s důrazem na sílu horní
+// poloviny těla a koordinaci.
+
+function ocrPlan(weekStartISO, weekIndex, goal, recentWorkouts, readiness, warnings) {
+  const baseKm = estimateWeeklyBaseKm(goal, recentWorkouts) || TRAINING_RULES.MIN_RUN_KM_BEGINNER;
+  if (!goal.currentWeeklyKm && !(recentWorkouts || []).some(w => w.kind === 'run')) {
+    warnings.push('Bez běžecké historie startujeme konzervativně. OCR vyžaduje solidní běžeckou i silovou bázi.');
+  }
+  const runKm = progressVolume(baseKm, weekIndex, 50);
+  const funcIntensity = readiness === 'red' ? 'moderate' : 'hard';
+
+  const sessions = [
+    session(weekStartISO, 0, 'easy_run',  `Trail běh ${round(runKm * 0.25)} km (terén, nerovný povrch)`, round(runKm * 0.25), 'easy'),
+    session(weekStartISO, 1, 'functional', `Překážkový okruh 45 min — grip (dead hangs, rope climb), přenášení, burpees`, 0, funcIntensity),
+    session(weekStartISO, 2, 'strength',   'Síla horní poloviny těla 40 min — shyby, farmer carry, sandbag, core', 0, 'moderate'),
+    session(weekStartISO, 3, 'easy_run',   `Trail běh ${round(runKm * 0.18)} km`, round(runKm * 0.18), 'easy'),
+    session(weekStartISO, 4, 'mobility',   'Mobilita + příprava 25 min (ramena, kyčle, kotníky)', 0, 'easy'),
+    session(weekStartISO, 5, 'long_run',   `Trail long run ${round(runKm * 0.45)} km s převýšením`, round(runKm * 0.45), 'moderate'),
+    session(weekStartISO, 6, 'rest',       'Volno', 0, 'rest'),
+  ];
+
+  return { goalKind: 'ocr', weekStartISO, weekIndex, sessions, totalKm: runKm, warnings };
+}
+
 /**
  * @param {string} weekStartISO
  * @param {number} dayOffset
@@ -238,6 +365,10 @@ function estimateMinutes(kind, km) {
   if (kind === 'cross_training') return 45;
   if (kind === 'intervals') return 35;
   if (kind === 'tempo') return 40;
+  if (kind === 'functional') return 50;
+  if (kind === 'swim') return km ? Math.round(km * 25) : 40;   // ~2 min/100m easy
+  if (kind === 'bike') return km ? Math.round(km * 2.5) : 60;  // ~24 km/h easy
+  if (kind === 'brick') return km ? Math.round(km * 3.5) : 75; // bike+run combined
   if (!km) return 30;
   // Easy ~6:30/km, recovery ~7:00/km
   const paceMin = kind === 'recovery_run' ? 7 : kind === 'long_run' ? 6.5 : 6.2;
