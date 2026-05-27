@@ -10,6 +10,7 @@ import { DateHeader } from '../components/DateHeader';
 import { useNavigation } from '@react-navigation/native';
 import { MacroRing } from '../components/MacroRing';
 import { useTheme } from '../context/ThemeContext';
+import { useDailyHealth } from '../hooks/useDailyHealth';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -17,6 +18,10 @@ export function HomeScreen() {
   const { colors } = useTheme();
   const [manual, setManual] = useState({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });
   const [weightInput, setWeightInput] = useState('');
+  // Health snapshot for today (steps / sleep / RHR / latest weight from provider).
+  // In dev returns deterministic mock; in production returns Manual data (empty
+  // until user enters values, or until AppleHealthProvider lands).
+  const health = useDailyHealth(new Date(selectedDate));
 
   if (!profile || !macros) return null;
 
@@ -139,6 +144,33 @@ export function HomeScreen() {
               </View>
             </View>
           </View>
+        </Card>
+      </FadeInView>
+
+      {/* Health snapshot from HealthDataProvider (steps / sleep / RHR).
+          In dev shows mock data; production will show Apple Health after EAS prebuild. */}
+      <FadeInView delay={150}>
+        <Card>
+          <Label>Aktivita dnes</Label>
+          {health.isLoading ? (
+            <Text style={[styles.healthEmpty, { color: colors.muted }]}>Načítám…</Text>
+          ) : health.isEmpty ? (
+            <View>
+              <Text style={[styles.healthEmpty, { color: colors.muted }]}>
+                Zatím nemáme žádná data ze zdravotních zdrojů.
+              </Text>
+              <Text style={[styles.healthEmptySub, { color: colors.faint }]}>
+                Apple Health se přidá v příští verzi. Zatím můžeš zapisovat ručně.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.healthRow}>
+              <HealthStat label="Kroky" value={health.activity?.steps?.toLocaleString('cs-CZ') ?? '—'} accent={colors.green} />
+              <HealthStat label="Aktivní kcal" value={health.activity?.activeEnergyKcal ? String(health.activity.activeEnergyKcal) : '—'} accent={colors.orange} />
+              <HealthStat label="Spánek" value={health.sleep?.totalMinutes ? `${Math.floor(health.sleep.totalMinutes / 60)}h ${health.sleep.totalMinutes % 60}m` : '—'} accent={colors.blue} />
+              <HealthStat label="Klidový tep" value={health.restingHeartRate?.bpm ? `${health.restingHeartRate.bpm} bpm` : '—'} accent={colors.red} />
+            </View>
+          )}
         </Card>
       </FadeInView>
 
@@ -268,6 +300,17 @@ export function HomeScreen() {
   );
 }
 
+/** Compact stat tile used inside the "Aktivita dnes" card. */
+function HealthStat({ label, value, accent }: { label: string; value: string; accent: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.healthStat, { borderColor: colors.border }]}>
+      <Text style={[styles.healthStatLabel, { color: colors.faint }]}>{label}</Text>
+      <Text style={[styles.healthStatValue, { color: accent }]}>{value}</Text>
+    </View>
+  );
+}
+
 function todayOptions(date: string, trainingGoal: TrainingGoalKind): Array<TrainingSession & { label: string }> {
   const base = [
     { date, kind: 'rest' as const, title: 'Volno', durationMinutes: 0, intensity: 'rest' as const, label: 'Volno' },
@@ -351,4 +394,10 @@ const styles = StyleSheet.create({
   trendItem: { flex: 1, alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 2 },
   trendItemDate: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   trendItemVal: { fontSize: 13, fontWeight: '900', marginTop: 4 },
+  healthRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  healthStat: { flex: 1, minWidth: '47%', borderWidth: 1, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  healthStatLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  healthStatValue: { fontSize: 18, fontWeight: '900' },
+  healthEmpty: { fontSize: 13, marginTop: 8, lineHeight: 18 },
+  healthEmptySub: { fontSize: 12, marginTop: 4, lineHeight: 16, fontStyle: 'italic' },
 });
