@@ -28,6 +28,8 @@ const keys = {
   checkIns: 'nutrifit.checkIns.v1',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
+  /** Rozpracovaný onboarding (step + draft profile + last-touched). */
+  onboardingDraft: 'nutrifit.onboardingDraft.v1',
 };
 
 /** Storage retention: drop date-bound entries older than this many days. */
@@ -221,6 +223,26 @@ export async function loadBaselineKcalDelta(): Promise<number> {
 
 export async function saveBaselineKcalDelta(value: number): Promise<void> {
   await AsyncStorage.setItem(keys.baselineKcalDelta, JSON.stringify({ value }));
+}
+
+// ── Onboarding draft ────────────────────────────────────────────────────────
+
+export type OnboardingDraft = {
+  step: number;
+  draft: UserProfile;
+  updatedAt: string;
+};
+
+export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
+  return readJson<OnboardingDraft>(keys.onboardingDraft);
+}
+
+export async function saveOnboardingDraft(value: OnboardingDraft): Promise<void> {
+  await AsyncStorage.setItem(keys.onboardingDraft, JSON.stringify(value));
+}
+
+export async function clearOnboardingDraft(): Promise<void> {
+  await AsyncStorage.removeItem(keys.onboardingDraft);
 }
 
 // Weight logs helpers

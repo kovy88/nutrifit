@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
@@ -6,6 +6,7 @@ import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
 import type { DietStyle, ExperienceLevel, Gender, PrimaryGoal, TrainingGoalKind, UserProfile } from '../types';
 import { DEFAULT_PROFILE, validateProfile, activityFactorForSessions } from '../utils/nutrition';
+import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '../services/storage';
 
 export function OnboardingScreen() {
   const { setProfile } = useNutriFit();
@@ -16,6 +17,38 @@ export function OnboardingScreen() {
     height: 0,
     weight: 0,
   }));
+  // Hydrate from a stored draft on mount (covers app kill mid-onboarding).
+  // If a draft exists AND is < 24 h old, we resume; older drafts are discarded
+  // so we don't pre-fill stale numbers if the user comes back next week.
+  const hydrated = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await loadOnboardingDraft();
+      if (!stored || cancelled) {
+        hydrated.current = true;
+        return;
+      }
+      const ageMs = Date.now() - new Date(stored.updatedAt).getTime();
+      if (ageMs > 24 * 3600 * 1000) {
+        await clearOnboardingDraft();
+        hydrated.current = true;
+        return;
+      }
+      setDraft(stored.draft);
+      setStep(Math.min(3, Math.max(0, stored.step)));
+      hydrated.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Persist on every change AFTER hydration completes (otherwise initial empty
+  // state would overwrite the stored draft before we get a chance to read it).
+  useEffect(() => {
+    if (!hydrated.current) return;
+    void saveOnboardingDraft({ step, draft, updatedAt: new Date().toISOString() });
+  }, [step, draft]);
+
   const progress = useMemo(() => `${step + 1}/4`, [step]);
 
   function setField<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
@@ -29,6 +62,9 @@ export function OnboardingScreen() {
       return;
     }
     await setProfile(draft);
+    // Profile is now saved — clear the draft so a future "Spustit onboarding
+    // znovu" start cleanly.
+    await clearOnboardingDraft();
   }
 
   return (

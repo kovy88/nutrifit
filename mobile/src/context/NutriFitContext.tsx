@@ -34,6 +34,7 @@ import {
   saveCheckIn,
   loadBaselineKcalDelta,
   saveBaselineKcalDelta,
+  clearOnboardingDraft,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
 import type { NutritionGoalKind } from '../types';
@@ -194,7 +195,10 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   }
 
   async function resetLocalProfile() {
-    await clearProfile();
+    // Clear both the saved profile AND the onboarding draft so the next entry
+    // starts on a clean step 0. Without this, "Spustit onboarding znovu"
+    // hydrated the OLD draft and felt like nothing happened.
+    await Promise.all([clearProfile(), clearOnboardingDraft()]);
     setProfileState(null);
   }
 
