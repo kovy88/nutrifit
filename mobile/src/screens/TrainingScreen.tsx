@@ -9,12 +9,16 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
 import { WorkoutCard } from '../components/WorkoutCard';
+import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
+import { useState } from 'react';
+import type { WorkoutSummary } from '../lib/health';
 
 export function TrainingScreen() {
   const { profile, selectedDate, setSelectedDate } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors: themeColors, fonts } = useTheme();
   const recent = useRecentWorkouts(14);
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSummary | null>(null);
 
   if (!profile) return null;
 
@@ -153,16 +157,17 @@ export function TrainingScreen() {
             <FadeInView key={w.id || idx} delay={idx * 40}>
               <WorkoutCard
                 workout={w}
-                onPress={() => {
-                  const day = w.startedAt.slice(0, 10);
-                  setSelectedDate(day);
-                  navigation.navigate('Dnes');
-                }}
+                onPress={() => setSelectedWorkout(w)}
               />
             </FadeInView>
           ))}
         </View>
       )}
+
+      <WorkoutDetailModal
+        workout={selectedWorkout}
+        onClose={() => setSelectedWorkout(null)}
+      />
     </Screen>
   );
 }
