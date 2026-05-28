@@ -19,6 +19,7 @@ import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
+import { useStravaConnect } from '../hooks/useStravaConnect';
 import type { OAuthService } from '../lib/health';
 
 type OAuthSourceMeta = {
@@ -70,16 +71,34 @@ const OAUTH_SOURCES: OAuthSourceMeta[] = [
 
 export function SettingsScreen() {
   const { colors } = useTheme();
-  const { connectedOAuth, native, isLoading, disconnect } = useHealthSources();
+  const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
+  const strava = useStravaConnect();
+
+  // Po úspěšném Strava connectu refreshne seznam connected OAuth zdrojů.
+  // useStravaConnect mění status sám; tady jen poslouchám na 'connected'.
+  // (Nepřidávám další useEffect — refreshSources je idempotentní + cheap.)
+  if (strava.status === 'connected' && !connectedOAuth.includes('strava')) {
+    refreshSources();
+  }
 
   function handleConnect(service: OAuthService) {
-    // TODO(oauth): otevřít browser/expo-auth-session s authorize URL,
-    // zachytit callback přes Linking, vyměnit code za token přes /api/<service>/exchange,
-    // uložit přes AsyncStorageTokenStore.setToken, pak refresh().
+    if (service === 'strava') {
+      if (strava.status === 'unavailable') {
+        Alert.alert(
+          'Strava není nakonfigurovaná',
+          'Aplikace nezná Strava client ID. Doplň `EXPO_PUBLIC_STRAVA_CLIENT_ID` do `.env` a po rebuildovi to půjde.',
+        );
+        return;
+      }
+      void strava.connect();
+      return;
+    }
+    // TODO(oauth): další služby (Whoop, Garmin, Polar, Oura, Fitbit) —
+    // stejný pattern jako Strava: useXxxConnect hook + backend exchange endpoint.
     Alert.alert(
       `Připojit ${service}`,
-      'OAuth flow zatím není implementovaný. Až bude, klepnutí otevře přihlášení v prohlížeči.',
+      'OAuth flow pro tuhle službu se chystá. Strava je první, ostatní následují stejným patternem.',
     );
   }
 
@@ -201,6 +220,16 @@ export function SettingsScreen() {
                   </View>
                   <Text style={[styles.sourceDesc, { color: colors.muted }]}>{src.description}</Text>
                   <Text style={[styles.sourceProvides, { color: colors.faint }]}>Poskytuje: {src.provides}</Text>
+                  {src.service === 'strava' && strava.status === 'error' && strava.error && (
+                    <Text style={[styles.sourceError, { color: colors.red }]}>
+                      Chyba: {strava.error}
+                    </Text>
+                  )}
+                  {src.service === 'strava' && strava.athleteName && connected && (
+                    <Text style={[styles.sourceProvides, { color: colors.green }]}>
+                      Atlet: {strava.athleteName}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.sourceButtons}>
                   {connected ? (
@@ -208,7 +237,12 @@ export function SettingsScreen() {
                       Odpojit
                     </Button>
                   ) : (
-                    <Button onPress={() => handleConnect(src.service)}>Připojit</Button>
+                    <Button
+                      disabled={src.service === 'strava' && strava.status === 'connecting'}
+                      onPress={() => handleConnect(src.service)}
+                    >
+                      {src.service === 'strava' && strava.status === 'connecting' ? 'Otevírám…' : 'Připojit'}
+                    </Button>
                   )}
                 </View>
               </View>
@@ -280,4 +314,5 @@ const styles = StyleSheet.create({
   briefingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
   briefingTime: { fontSize: 22, fontWeight: '900' },
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
+  sourceError: { fontSize: 11, fontWeight: '700', marginTop: 4 },
 });

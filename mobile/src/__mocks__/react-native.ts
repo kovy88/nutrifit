@@ -28,5 +28,11 @@ export const TextInput = 'TextInput';
 export const ActivityIndicator = 'ActivityIndicator';
 export const Modal = 'Modal';
 export const Share = { share: async () => ({ action: 'sharedAction' }) };
-export const Linking = { openURL: async (_url: string) => undefined };
+export const Linking = {
+  openURL: async (_url: string) => undefined,
+  addEventListener: (_event: string, _handler: (e: { url: string }) => void) => ({
+    remove: () => undefined,
+  }),
+  getInitialURL: async () => null,
+};
 export const useColorScheme = () => 'light';

@@ -19,6 +19,12 @@ export {
   type OAuthTokenStore,
 } from './oauth/OAuthTokenStore';
 export {
+  StravaOAuth,
+  parseQuery,
+  type StravaOAuthConfig,
+  type StravaConnectResult,
+} from './oauth/StravaOAuth';
+export {
   createHealthDataProvider,
   type CreateHealthDataProviderOptions,
   type HealthDataProviderMode,
