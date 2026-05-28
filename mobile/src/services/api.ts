@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
-import { buildMealPlanRequest } from '../utils/mealPrompts';
+import { buildMealPlanRequest, buildSingleMealRequest } from '../utils/mealPrompts';
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
 
@@ -53,6 +53,38 @@ export async function generateMealPlan(profile: UserProfile, macros: Macros, ses
     throw new Error(`AI vrátila neúplný jídelníček. ${validation.errors.slice(0, 2).join(' ')}`);
   }
   return meals;
+}
+
+/**
+ * Regenerate a single meal slot. AI returns ONE meal hitting the target macros
+ * within ±10 % so daily totals don't drift. Throws if the response is out of
+ * tolerance — caller should let user retry or keep the original.
+ */
+export async function regenerateMeal(opts: {
+  profile: UserProfile;
+  session?: TrainingSession | null;
+  current: Meal;
+  otherMeals?: Meal[];
+}): Promise<Meal> {
+  const request = buildSingleMealRequest(opts);
+  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parsed = parseJson(text);
+  // Some AI runs wrap the object in {"meals":[…]} or {"meal":{…}}; handle both.
+  const rawMeal = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
+  const meal = normalizeMeal(rawMeal || {}, opts.current.mealType);
+
+  // Don't accept a near-duplicate of the rejected one.
+  if (meal.name.trim().toLowerCase() === opts.current.name.trim().toLowerCase()) {
+    throw new Error('AI vrátila stejné jídlo. Zkus to znovu nebo uprav preference.');
+  }
+  // Macro tolerance ±10 % per macro (or ±5 g floor for tiny values)
+  const within = (actual: number, target: number) =>
+    Math.abs(actual - target) <= Math.max(5, target * 0.1);
+  if (!within(meal.kcal, opts.current.kcal)) {
+    throw new Error(`AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`);
+  }
+  return meal;
 }
 
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg'): Promise<FoodEstimate> {
