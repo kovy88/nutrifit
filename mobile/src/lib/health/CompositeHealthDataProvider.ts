@@ -104,6 +104,18 @@ export class CompositeHealthDataProvider implements HealthDataProvider {
     return null;
   }
 
+  async getBodyWeightRange(start: Date, end: Date): Promise<BodyWeightSample[]> {
+    const all = await Promise.all(this.providers.map(p => safe(p.getBodyWeightRange(start, end), [] as BodyWeightSample[])));
+    // Per-date priority pick — first non-null entry per date wins.
+    const byDate = new Map<string, BodyWeightSample>();
+    for (const list of all) {
+      for (const w of list) {
+        if (!byDate.has(w.date)) byDate.set(w.date, w);
+      }
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   async getSleepSummary(start: Date, end: Date): Promise<SleepSummary[]> {
     const all = await Promise.all(this.providers.map(p => safe(p.getSleepSummary(start, end), [] as SleepSummary[])));
     const byDate = new Map<string, SleepSummary>();

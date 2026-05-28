@@ -69,6 +69,11 @@ export class AppleHealthProvider implements HealthDataProvider {
     return null;
   }
 
+  async getBodyWeightRange(_start: Date, _end: Date): Promise<BodyWeightSample[]> {
+    // TODO(ios): query bodyMass samples in range, sort asc by date.
+    return [];
+  }
+
   async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> {
     // TODO(ios): HKCategoryType.sleepAnalysis — agregovat na den.
     // Apple konvence: spánek se přiřazuje k datu probuzení (hranice 18:00).

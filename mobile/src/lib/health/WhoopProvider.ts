@@ -64,6 +64,11 @@ export class WhoopProvider implements HealthDataProvider {
     return null;
   }
 
+  async getBodyWeightRange(_start: Date, _end: Date): Promise<BodyWeightSample[]> {
+    // Whoop nemá public body_measurement history endpoint, jen latest.
+    return [];
+  }
+
   async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> {
     // TODO(whoop): GET /activity/sleep?start=...&end=...
     // mapovat na SleepSummary (total/deep/rem/awake minutes)

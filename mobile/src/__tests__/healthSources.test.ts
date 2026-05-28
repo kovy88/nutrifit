@@ -226,6 +226,7 @@ class FakeProvider implements HealthDataProvider {
     return this.opts.workouts ?? [];
   }
   async getLatestBodyWeight() { return this.opts.weight ?? null; }
+  async getBodyWeightRange() { return this.opts.weight ? [this.opts.weight] : []; }
   async getSleepSummary() { return this.opts.sleep ?? []; }
   async getRestingHeartRate() { return this.opts.rhr ?? null; }
   async getHrv() { return this.opts.hrv ?? null; }

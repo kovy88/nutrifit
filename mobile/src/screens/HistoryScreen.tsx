@@ -18,6 +18,19 @@ type DaySummary = {
   loggedKcal: number;
 };
 
+import type { TrendPoint } from '../components/MiniTrendChart';
+
+/** Provider source wins per date; manual fills gaps. Both arrays must already
+ *  cover the same date range (same length, chronological). */
+function mergeWeightTrend(primary: TrendPoint[], fallback: TrendPoint[]): TrendPoint[] {
+  const byDate = new Map<string, TrendPoint>();
+  for (const p of fallback) byDate.set(p.date, p);
+  for (const p of primary) {
+    if (p.value != null) byDate.set(p.date, p);
+  }
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function HistoryScreen() {
   const { setSelectedDate, weights } = useNutriFit();
   const navigation = useNavigation<any>();
@@ -28,9 +41,11 @@ export function HistoryScreen() {
   const hrvTrend = useTrend('hrv', 14);
   const rhrTrend = useTrend('rhr', 14);
   const stepsTrend = useTrend('steps', 14);
-  // Weight comes from local NutriFitContext (manual entries) — provider has
-  // only single-shot getLatestBodyWeight, not a daily history endpoint yet.
-  const weightTrend = buildTrendFromRecord(weights, 30);
+  const weightProviderTrend = useTrend('weight', 30);
+  // Weight: merge provider history with locally-entered weights (manual log).
+  // Provider source wins per-date; manual fills any gaps the provider doesn't
+  // know about.
+  const weightTrend = mergeWeightTrend(weightProviderTrend.data, buildTrendFromRecord(weights, 30));
 
   useEffect(() => {
     if (isFocused) {

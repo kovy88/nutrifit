@@ -61,6 +61,9 @@ export interface HealthDataProvider {
   /** Nejnovější záznam tělesné hmotnosti, ne starší než `maxDaysOld`. */
   getLatestBodyWeight(maxDaysOld?: number): Promise<BodyWeightSample | null>;
 
+  /** Tělesné hmotnosti v daném časovém rozsahu (pro trend graf). */
+  getBodyWeightRange(start: Date, end: Date): Promise<BodyWeightSample[]>;
+
   /** Spánkové souhrny v daném časovém rozsahu (datum = ráno probuzení). */
   getSleepSummary(start: Date, end: Date): Promise<SleepSummary[]>;
 

@@ -84,6 +84,13 @@ export class ManualHealthDataProvider implements HealthDataProvider {
     return last;
   }
 
+  async getBodyWeightRange(start: Date, end: Date): Promise<BodyWeightSample[]> {
+    const all = (await readJson<BodyWeightSample[]>(KEYS.weights)) || [];
+    const startKey = toDateKey(start);
+    const endKey = toDateKey(end);
+    return all.filter(w => w.date >= startKey && w.date <= endKey);
+  }
+
   async getSleepSummary(start: Date, end: Date): Promise<SleepSummary[]> {
     const out: SleepSummary[] = [];
     for (const date of dateRange(start, end)) {

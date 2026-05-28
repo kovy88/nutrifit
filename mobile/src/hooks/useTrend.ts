@@ -65,6 +65,14 @@ async function fetchTrend(
 ): Promise<TrendPoint[]> {
   const out: TrendPoint[] = [];
 
+  if (metric === 'weight') {
+    const list = await provider.getBodyWeightRange(start, end);
+    return fillRange(start, end, dateKey => {
+      const w = list.find(x => x.date === dateKey);
+      return w ? w.weightKg : null;
+    });
+  }
+
   if (metric === 'sleep') {
     const list = await provider.getSleepSummary(start, end);
     return fillRange(start, end, dateKey => {
