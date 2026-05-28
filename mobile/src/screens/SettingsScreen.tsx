@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 import { useStravaConnect } from '../hooks/useStravaConnect';
+import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import type { OAuthService } from '../lib/health';
 
 type OAuthSourceMeta = {
@@ -74,11 +75,13 @@ export function SettingsScreen() {
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
   const strava = useStravaConnect();
+  const whoop = useWhoopConnect();
 
-  // Po úspěšném Strava connectu refreshne seznam connected OAuth zdrojů.
-  // useStravaConnect mění status sám; tady jen poslouchám na 'connected'.
-  // (Nepřidávám další useEffect — refreshSources je idempotentní + cheap.)
+  // Po úspěšném OAuth connectu refreshne seznam connected zdrojů.
   if (strava.status === 'connected' && !connectedOAuth.includes('strava')) {
+    refreshSources();
+  }
+  if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) {
     refreshSources();
   }
 
@@ -94,11 +97,22 @@ export function SettingsScreen() {
       void strava.connect();
       return;
     }
-    // TODO(oauth): další služby (Whoop, Garmin, Polar, Oura, Fitbit) —
-    // stejný pattern jako Strava: useXxxConnect hook + backend exchange endpoint.
+    if (service === 'whoop') {
+      if (whoop.status === 'unavailable') {
+        Alert.alert(
+          'Whoop není nakonfigurovaný',
+          'Aplikace nezná Whoop client ID. Doplň `EXPO_PUBLIC_WHOOP_CLIENT_ID` do `.env` (a nastav `WHOOP_CLIENT_SECRET` na Vercelu) a po rebuildovi to půjde.',
+        );
+        return;
+      }
+      void whoop.connect();
+      return;
+    }
+    // TODO(oauth): zbývající služby (Garmin, Polar, Oura, Fitbit) —
+    // stejný pattern jako Strava + Whoop.
     Alert.alert(
       `Připojit ${service}`,
-      'OAuth flow pro tuhle službu se chystá. Strava je první, ostatní následují stejným patternem.',
+      'OAuth flow pro tuhle službu se chystá. Strava a Whoop jsou hotové, zbytek následuje stejným patternem.',
     );
   }
 
@@ -230,6 +244,11 @@ export function SettingsScreen() {
                       Atlet: {strava.athleteName}
                     </Text>
                   )}
+                  {src.service === 'whoop' && whoop.status === 'error' && whoop.error && (
+                    <Text style={[styles.sourceError, { color: colors.red }]}>
+                      Chyba: {whoop.error}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.sourceButtons}>
                   {connected ? (
@@ -238,10 +257,16 @@ export function SettingsScreen() {
                     </Button>
                   ) : (
                     <Button
-                      disabled={src.service === 'strava' && strava.status === 'connecting'}
+                      disabled={
+                        (src.service === 'strava' && strava.status === 'connecting') ||
+                        (src.service === 'whoop' && whoop.status === 'connecting')
+                      }
                       onPress={() => handleConnect(src.service)}
                     >
-                      {src.service === 'strava' && strava.status === 'connecting' ? 'Otevírám…' : 'Připojit'}
+                      {(src.service === 'strava' && strava.status === 'connecting') ||
+                      (src.service === 'whoop' && whoop.status === 'connecting')
+                        ? 'Otevírám…'
+                        : 'Připojit'}
                     </Button>
                   )}
                 </View>

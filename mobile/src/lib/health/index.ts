@@ -25,6 +25,11 @@ export {
   type StravaConnectResult,
 } from './oauth/StravaOAuth';
 export {
+  WhoopOAuth,
+  type WhoopOAuthConfig,
+  type WhoopConnectResult,
+} from './oauth/WhoopOAuth';
+export {
   createHealthDataProvider,
   type CreateHealthDataProviderOptions,
   type HealthDataProviderMode,
