@@ -13,42 +13,76 @@
 
 import { Platform } from 'react-native';
 import { AppleHealthProvider } from './AppleHealthProvider';
+import { CompositeHealthDataProvider } from './CompositeHealthDataProvider';
+import { HealthConnectProvider } from './HealthConnectProvider';
 import { ManualHealthDataProvider } from './ManualHealthDataProvider';
 import { MockHealthDataProvider, type MockHealthDataProviderOptions } from './MockHealthDataProvider';
+import { StravaProvider } from './StravaProvider';
+import { WhoopProvider } from './WhoopProvider';
+import { AsyncStorageTokenStore, type OAuthTokenStore } from './oauth/OAuthTokenStore';
 import type { HealthDataProvider } from './HealthDataProvider';
 
-export type HealthDataProviderMode = 'auto' | 'mock' | 'manual' | 'apple_health';
+export type HealthDataProviderMode =
+  | 'auto'             // chytrý výběr podle platformy + dostupných OAuth tokenů
+  | 'mock'
+  | 'manual'
+  | 'apple_health'
+  | 'health_connect'
+  | 'strava'
+  | 'whoop';
 
 export type CreateHealthDataProviderOptions = {
   mode?: HealthDataProviderMode;
   weightKg?: number;
   mock?: MockHealthDataProviderOptions;
+  /** Token store pro OAuth providery. Default = AsyncStorageTokenStore. */
+  tokenStore?: OAuthTokenStore;
 };
 
 export function createHealthDataProvider(opts: CreateHealthDataProviderOptions = {}): HealthDataProvider {
   const mode = opts.mode ?? 'auto';
+  const tokens = opts.tokenStore ?? new AsyncStorageTokenStore();
 
-  if (mode === 'mock') {
-    return new MockHealthDataProvider({ weightKg: opts.weightKg, ...opts.mock });
-  }
-  if (mode === 'manual') {
-    return new ManualHealthDataProvider();
-  }
-  if (mode === 'apple_health') {
-    // Bypass auto-detection; useful for testing flow even before native plugin lands.
-    return new AppleHealthProvider();
-  }
+  if (mode === 'mock')         return new MockHealthDataProvider({ weightKg: opts.weightKg, ...opts.mock });
+  if (mode === 'manual')       return new ManualHealthDataProvider();
+  if (mode === 'apple_health') return new AppleHealthProvider();
+  if (mode === 'health_connect') return new HealthConnectProvider();
+  if (mode === 'strava')       return new StravaProvider(tokens);
+  if (mode === 'whoop')        return new WhoopProvider(tokens);
 
-  // auto: iOS → AppleHealth (zatím stub → unavailable → fallback);
-  //       jinak → Manual (uživatel zapisuje sám)
+  // ── auto mode ──────────────────────────────────────────────────────────────
+  //
+  // Vrátíme CompositeHealthDataProvider s priority pořadím:
+  //   1. native (Apple Health / Health Connect) — primárně steps, sleep, RHR
+  //   2. Strava — pokud připojeno, dostává prioritu pro workouts
+  //   3. Whoop  — pokud připojeno, prioritní pro HRV / recovery
+  //   4. Manual — fallback pro vše, co se zapisuje ručně
+  //
+  // Composite všechno dotáže najednou a zmerguje, takže UI nemusí řešit
+  // "odkud to vlastně přišlo". Dedup workoutů řeší Composite sám.
+  const providers: HealthDataProvider[] = [];
+
+  // Native: Apple Health (iOS) nebo Health Connect (Android). Stuby vrací []
+  // dokud nebude nainstalovaný native plugin — neškodí být v compositu.
   if (Platform.OS === 'ios' && AppleHealthProvider.isSupported()) {
-    // V budoucnu (po EAS prebuild + native plugin) vrátí reálná data.
-    // Dnes vrací 'unavailable' — proto vracíme MOCK pro vývoj, aby UI nebylo prázdné.
-    if (__DEV__) {
-      return new MockHealthDataProvider({ weightKg: opts.weightKg, ...opts.mock });
-    }
-    return new ManualHealthDataProvider();
+    providers.push(new AppleHealthProvider());
+  } else if (Platform.OS === 'android' && HealthConnectProvider.isSupported()) {
+    providers.push(new HealthConnectProvider());
   }
 
-  return new ManualHealthDataProvider();
+  // OAuth providery — composite je obsahuje vždy; když uživatel není připojený,
+  // jejich isAvailable() vrátí false a getX() vrátí prázdná pole, takže
+  // composite je transparentně přeskočí.
+  providers.push(new StravaProvider(tokens));
+  providers.push(new WhoopProvider(tokens));
+
+  // V dev modu přidáme Mock jako poslední — UI dostane data i bez setupu.
+  // V produkci přidáme Manual jako fallback pro váhu / kroky / spánek.
+  if (__DEV__) {
+    providers.push(new MockHealthDataProvider({ weightKg: opts.weightKg, ...opts.mock }));
+  } else {
+    providers.push(new ManualHealthDataProvider());
+  }
+
+  return new CompositeHealthDataProvider(providers);
 }

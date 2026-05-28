@@ -24,9 +24,24 @@ import type {
   WorkoutSummary,
 } from '../../types/health';
 
+export type HealthDataProviderName =
+  | 'mock'
+  | 'manual'
+  | 'apple_health'
+  | 'health_connect'
+  | 'google_fit'
+  | 'strava'
+  | 'whoop'
+  | 'garmin'
+  | 'polar'
+  | 'oura'
+  | 'fitbit'
+  | 'zepp'
+  | 'composite';
+
 export interface HealthDataProvider {
   /** Identifikátor implementace — pro logging / debug UI. */
-  readonly name: 'mock' | 'manual' | 'apple_health' | 'google_fit';
+  readonly name: HealthDataProviderName;
 
   /** True pokud na současné platformě může fungovat (iOS pro AppleHealth atd.). */
   isAvailable(): Promise<boolean>;

@@ -38,7 +38,16 @@ export type HealthPermissionResult = {
 export type HealthDataSource =
   | 'apple_health'
   | 'apple_watch'
-  | 'google_fit'
+  | 'health_connect'   // Android unified API (Samsung Health, Fitbit, Garmin sync sem)
+  | 'google_fit'       // legacy, postupně nahrazen Health Connect
+  | 'strava'           // OAuth REST API
+  | 'whoop'            // OAuth REST API
+  | 'garmin'           // OAuth REST API (partner)
+  | 'polar'            // AccessLink OAuth
+  | 'oura'             // OAuth REST API
+  | 'fitbit'           // OAuth REST API
+  | 'zepp'             // CSV import (Zepp app nemá public API)
+  | 'suunto'           // pouze přes Strava sync
   | 'mock'
   | 'manual';
 

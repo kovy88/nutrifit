@@ -209,8 +209,10 @@ describe('createHealthDataProvider factory', () => {
     expect(await p.getPermissionStatus()).toBe('unavailable');
   });
 
-  it('mode=auto returns a valid provider', () => {
+  it('mode=auto returns a valid provider (typically composite)', () => {
     const p = createHealthDataProvider({ mode: 'auto' });
-    expect(['mock', 'manual', 'apple_health']).toContain(p.name);
+    // auto mode now returns CompositeHealthDataProvider wrapping platform-native
+    // + OAuth providers + a fallback (Mock in dev, Manual in prod).
+    expect(['composite', 'mock', 'manual', 'apple_health', 'health_connect']).toContain(p.name);
   });
 });

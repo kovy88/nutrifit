@@ -10,7 +10,7 @@ import type {
   DailySessionRecord,
 } from '../types';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
-import { ManualHealthDataProvider } from '../lib/health';
+import { ManualHealthDataProvider, AsyncStorageTokenStore } from '../lib/health';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -39,11 +39,13 @@ function allNutriFitKeys(): string[] {
 }
 
 /** Removes all NutriFit data from the device. Used after account deletion.
- *  Includes core storage keys AND every manual health record (nutrifit.health.manual.*). */
+ *  Includes core storage keys, every manual health record, AND every stored
+ *  OAuth token (Strava, Whoop, etc.) so the device leaves no trace. */
 export async function purgeAllLocalData(): Promise<void> {
   await Promise.all([
     AsyncStorage.multiRemove(allNutriFitKeys()),
     ManualHealthDataProvider.purge(),
+    AsyncStorageTokenStore.purge(),
   ]);
 }
 

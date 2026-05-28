@@ -1,0 +1,166 @@
+// ── STRAVA PROVIDER
+//
+// Strava poskytuje workouty (běh / kolo / plavání / …) přes REST API.
+// **Nedostává** sleep, RHR, HRV ani daily steps — Strava není wellness
+// platforma, je to tréninkový deník. Pro spánek a regeneraci je nutné
+// kombinovat s jiným zdrojem (Whoop / Oura / Apple Health / Health Connect).
+//
+// Pro tuto třídu je relevantní jen getWorkoutSummaries(). Ostatní metody
+// vrací prázdná data — composite provider je pak doplní z jiného zdroje.
+//
+// OAuth flow:
+//   1. App opens `https://www.strava.com/oauth/authorize?client_id=<id>
+//        &response_type=code&redirect_uri=nutrifit://strava/callback
+//        &scope=activity:read_all,profile:read_all`
+//   2. User authorizes, Strava redirectne s ?code=...
+//   3. Mobile zachytí deep link a pošle `code` na **backend**
+//      (`POST /api/strava/exchange`), protože client_secret tam nesmí být.
+//   4. Backend vymění code → token a vrátí access_token + refresh_token.
+//   5. Mobile uloží token přes OAuthTokenStore.setToken('strava', …)
+//
+// TODO(oauth): Až bude implementován flow + backend endpoint, doplnit
+// `connect()` metodu, která to celé spustí. Zatím provider funguje jen
+// pokud uživatel uloží token ručně (debug / E2E test).
+
+import type { HealthDataProvider } from './HealthDataProvider';
+import type {
+  BodyWeightSample,
+  DailyActivitySummary,
+  HealthDataType,
+  HealthPermissionResult,
+  HealthPermissionStatus,
+  HrvSample,
+  RestingHeartRateSample,
+  SleepSummary,
+  WorkoutKind,
+  WorkoutSummary,
+} from '../../types/health';
+import { isExpired, type OAuthToken, type OAuthTokenStore } from './oauth/OAuthTokenStore';
+
+const STRAVA_API_BASE = 'https://www.strava.com/api/v3';
+
+/** Mapování Strava activity.type → naše WorkoutKind. */
+const STRAVA_TYPE_TO_KIND: Record<string, WorkoutKind> = {
+  Run: 'run',
+  TrailRun: 'run',
+  VirtualRun: 'run',
+  Walk: 'walk',
+  Hike: 'walk',
+  Ride: 'cycle',
+  VirtualRide: 'cycle',
+  GravelRide: 'cycle',
+  MountainBikeRide: 'cycle',
+  Swim: 'swim',
+  WeightTraining: 'strength',
+  Crossfit: 'functional',
+  HighIntensityIntervalTraining: 'hiit',
+  Yoga: 'yoga',
+  Rowing: 'rowing',
+};
+
+function mapType(stravaType: string): WorkoutKind {
+  return STRAVA_TYPE_TO_KIND[stravaType] ?? 'other';
+}
+
+export class StravaProvider implements HealthDataProvider {
+  readonly name = 'strava' as const;
+
+  constructor(private tokens: OAuthTokenStore) {}
+
+  async isAvailable(): Promise<boolean> {
+    const token = await this.tokens.getToken('strava');
+    return token !== null;
+  }
+
+  async getPermissionStatus(): Promise<HealthPermissionStatus> {
+    const token = await this.tokens.getToken('strava');
+    if (!token) return 'not_determined';
+    if (isExpired(token) && !token.refreshToken) return 'denied';
+    return 'granted';
+  }
+
+  async requestPermissions(types: HealthDataType[]): Promise<HealthPermissionResult> {
+    // TODO(oauth): spustí connect() flow. Zatím vrací 'not_determined'.
+    const token = await this.tokens.getToken('strava');
+    const status = token ? 'granted' : 'not_determined';
+    return {
+      status,
+      granted: status === 'granted' ? types.filter(t => t === 'workout') : [],
+      denied: status === 'granted' ? types.filter(t => t !== 'workout') : types,
+    };
+  }
+
+  // Strava NEPOSKYTUJE — vrátíme prázdná data, ať composite provider doplní z jinud.
+  async getDailyActivityRange(): Promise<DailyActivitySummary[]> { return []; }
+  async getLatestBodyWeight(): Promise<BodyWeightSample | null> { return null; }
+  async getSleepSummary(): Promise<SleepSummary[]> { return []; }
+  async getRestingHeartRate(): Promise<RestingHeartRateSample | null> { return null; }
+  async getHrv(): Promise<HrvSample | null> { return null; }
+
+  async getWorkoutSummaries(start: Date, end: Date): Promise<WorkoutSummary[]> {
+    const token = await this.tokens.getToken('strava');
+    if (!token) return [];
+
+    // TODO(oauth): pokud isExpired(token) && refreshToken, zavolat refresh přes backend.
+
+    const params = new URLSearchParams({
+      after: String(Math.floor(start.getTime() / 1000)),
+      before: String(Math.floor(end.getTime() / 1000) + 86_399),
+      per_page: '100',
+    });
+    let res: Response;
+    try {
+      res = await fetch(`${STRAVA_API_BASE}/athlete/activities?${params}`, {
+        headers: { Authorization: `Bearer ${token.accessToken}` },
+      });
+    } catch {
+      return [];
+    }
+    if (!res.ok) return [];
+    const raw = (await res.json()) as StravaActivity[];
+    return raw.map(a => mapActivity(a));
+  }
+}
+
+// ── Strava response shape (jen pole, která čteme) ────────────────────────────
+
+type StravaActivity = {
+  id: number;
+  name: string;
+  type: string;
+  start_date: string;     // ISO 8601 UTC
+  start_date_local: string;
+  elapsed_time: number;   // seconds
+  moving_time: number;
+  distance: number;       // meters
+  average_heartrate?: number;
+  max_heartrate?: number;
+  calories?: number;
+};
+
+function mapActivity(a: StravaActivity): WorkoutSummary {
+  const startMs = new Date(a.start_date).getTime();
+  const endIso = new Date(startMs + a.elapsed_time * 1000).toISOString();
+  const durationMinutes = Math.round(a.moving_time / 60);
+  const distanceKm = a.distance > 0 ? Math.round((a.distance / 1000) * 100) / 100 : undefined;
+  const avgPaceSecPerKm = distanceKm && a.moving_time > 0
+    ? Math.round(a.moving_time / distanceKm)
+    : undefined;
+  return {
+    id: `strava-${a.id}`,
+    externalId: String(a.id),
+    startedAt: a.start_date,
+    endedAt: endIso,
+    kind: mapType(a.type),
+    durationMinutes,
+    distanceKm,
+    avgPaceSecPerKm,
+    avgHeartRate: a.average_heartrate ? Math.round(a.average_heartrate) : undefined,
+    maxHeartRate: a.max_heartrate ? Math.round(a.max_heartrate) : undefined,
+    activeEnergyKcal: a.calories ? Math.round(a.calories) : undefined,
+    source: 'strava',
+  };
+}
+
+/** Exported pro testy. */
+export const __test__ = { mapActivity, mapType };
