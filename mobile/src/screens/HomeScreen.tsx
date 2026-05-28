@@ -14,6 +14,7 @@ import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoaching } from '../hooks/useDailyCoaching';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
+import type { LoadStatus } from '../lib/coaching/trainingLoad';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -202,6 +203,42 @@ export function HomeScreen() {
         </FadeInView>
       )}
 
+      {/* Training load (ACWR) — 7-day vs 28-day workout volume.
+          Skryje se, pokud uživatel nemá za 28 dní žádný trénink. */}
+      {coaching.trainingLoad && coaching.trainingLoad.workoutCountChronic > 0 && (
+        <FadeInView delay={140}>
+          <Card>
+            <View style={styles.readinessHeader}>
+              <View style={[styles.readinessBadge, { backgroundColor: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
+                <Text style={styles.readinessBadgeText}>{trainingLoadLabel(coaching.trainingLoad.status)}</Text>
+              </View>
+              <Text style={[styles.readinessTitle, { color: colors.ink }]}>Tréninková zátěž</Text>
+            </View>
+            <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.trainingLoad.message}</Text>
+            <Text style={[styles.small, { color: colors.muted }]}>{coaching.trainingLoad.recommendation}</Text>
+            <View style={styles.loadStatsRow}>
+              <View style={[styles.loadStat, { borderColor: colors.border }]}>
+                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>7 dní</Text>
+                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.acute} TRIMP/d</Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{coaching.trainingLoad.workoutCountAcute} tréninků</Text>
+              </View>
+              <View style={[styles.loadStat, { borderColor: colors.border }]}>
+                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>28 dní</Text>
+                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.chronic} TRIMP/d</Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{coaching.trainingLoad.workoutCountChronic} tréninků</Text>
+              </View>
+              <View style={[styles.loadStat, { borderColor: colors.border }]}>
+                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>ACWR</Text>
+                <Text style={[styles.loadStatValue, { color: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
+                  {coaching.trainingLoad.acwr ?? '—'}
+                </Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>acute / chronic</Text>
+              </View>
+            </View>
+          </Card>
+        </FadeInView>
+      )}
+
       {/* Health snapshot from HealthDataProvider (steps / sleep / RHR).
           In dev shows mock data; production will show Apple Health after EAS prebuild. */}
       <FadeInView delay={150}>
@@ -374,6 +411,24 @@ function readinessColor(level: ReadinessLevel, palette: { green: string; orange:
   return level === 'green' ? palette.green : level === 'yellow' ? palette.orange : palette.red;
 }
 
+function trainingLoadLabel(status: LoadStatus): string {
+  switch (status) {
+    case 'optimal':      return 'Optimum';
+    case 'detraining':   return 'Klesá';
+    case 'overreaching': return 'Hodně';
+    case 'high_risk':    return 'Riziko';
+  }
+}
+
+function trainingLoadColor(status: LoadStatus, palette: { green: string; orange: string; red: string; blue: string }): string {
+  switch (status) {
+    case 'optimal':      return palette.green;
+    case 'detraining':   return palette.blue;
+    case 'overreaching': return palette.orange;
+    case 'high_risk':    return palette.red;
+  }
+}
+
 function todayOptions(date: string, trainingGoal: TrainingGoalKind): Array<TrainingSession & { label: string }> {
   const base = [
     { date, kind: 'rest' as const, title: 'Volno', durationMinutes: 0, intensity: 'rest' as const, label: 'Volno' },
@@ -473,4 +528,9 @@ const styles = StyleSheet.create({
   readinessCta: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, gap: 8 },
   readinessCtaLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
   readinessCtaText: { fontSize: 13, lineHeight: 18, fontWeight: '700', marginBottom: 4 },
+  loadStatsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  loadStat: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 10 },
+  loadStatLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
+  loadStatValue: { fontSize: 15, fontWeight: '900' },
+  loadStatSub: { fontSize: 10, lineHeight: 14, marginTop: 2 },
 });

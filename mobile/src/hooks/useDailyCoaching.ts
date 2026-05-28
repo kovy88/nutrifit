@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useHealthDataProvider } from './useHealthDataProvider';
 import { evaluateReadiness, type ReadinessAssessment } from '../lib/coaching/readiness';
 import { computePersonalBaselines, type PersonalBaselines } from '../lib/coaching/baselines';
+import { computeTrainingLoad, type TrainingLoadAssessment } from '../lib/coaching/trainingLoad';
 
 export type DailyCoachingState = {
   assessment: ReadinessAssessment | null;
   /** 14-day rolling baseline used to make readiness personal. null = not enough data yet. */
   baselines: PersonalBaselines | null;
+  /** Training load (ACWR) over 7-day acute / 28-day chronic window. */
+  trainingLoad: TrainingLoadAssessment | null;
   isLoading: boolean;
 };
 
@@ -20,7 +23,12 @@ export type DailyCoachingState = {
  */
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
-  const [state, setState] = useState<DailyCoachingState>({ assessment: null, baselines: null, isLoading: true });
+  const [state, setState] = useState<DailyCoachingState>({
+    assessment: null,
+    baselines: null,
+    trainingLoad: null,
+    isLoading: true,
+  });
 
   // Stable date key so the effect doesn't re-run on every render's new Date.
   const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -28,14 +36,17 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      // Fetch today's signals + 14-day baseline in parallel. Baseline computation
-      // is bounded — it queries provider once per day for last 13 days, so even
-      // with the chatty Mock provider it stays well under 50ms.
-      const [sleepArr, rhr, hrv, baselines] = await Promise.all([
+      // Single 28-day workout query feeds both ACWR + workouts list.
+      const chronicStart = new Date(date);
+      chronicStart.setDate(chronicStart.getDate() - 28);
+
+      // Fetch today's signals + 14-day baseline + 28-day workouts in parallel.
+      const [sleepArr, rhr, hrv, baselines, workouts] = await Promise.all([
         provider.getSleepSummary(date, date),
         provider.getRestingHeartRate(date),
         provider.getHrv(date),
         computePersonalBaselines(provider, { endDate: date, days: 14 }),
+        provider.getWorkoutSummaries(chronicStart, date).catch(() => []),
       ]);
       if (cancelled) return;
       const sleep = sleepArr[0] || null;
@@ -49,7 +60,8 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
           sleepMeanMinutes: baselines.sleepMeanMinutes,
         },
       });
-      setState({ assessment, baselines, isLoading: false });
+      const trainingLoad = computeTrainingLoad({ workouts, endDate: date });
+      setState({ assessment, baselines, trainingLoad, isLoading: false });
     }
     void load();
     return () => {
