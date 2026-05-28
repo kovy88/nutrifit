@@ -9,6 +9,8 @@ import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { PhotoScreen } from '../screens/PhotoScreen';
 import { PlanScreen } from '../screens/PlanScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { TrainingScreen } from '../screens/TrainingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -30,8 +32,9 @@ function MainTabs() {
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             Dnes: 'today-outline',
             Jídelníček: 'restaurant-outline',
+            Trénink: 'barbell-outline',
             Foto: 'camera-outline',
-            Historie: 'time-outline',
+            Uloženo: 'bookmark-outline',
             Profil: 'person-circle-outline',
           };
           return <Ionicons name={icons[route.name] || 'ellipse-outline'} size={size} color={color} />;
@@ -40,8 +43,9 @@ function MainTabs() {
     >
       <Tab.Screen name="Dnes" component={HomeScreen} />
       <Tab.Screen name="Jídelníček" component={PlanScreen} />
+      <Tab.Screen name="Trénink" component={TrainingScreen} />
       <Tab.Screen name="Foto" component={PhotoScreen} />
-      <Tab.Screen name="Historie" component={HistoryScreen} />
+      <Tab.Screen name="Uloženo" component={HistoryScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -53,7 +57,14 @@ export function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {profile ? (
-        <Stack.Screen name="Main" component={MainTabs} />
+        <>
+          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ headerShown: true, title: 'Nastavení', presentation: 'card' }}
+          />
+        </>
       ) : (
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       )}

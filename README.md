@@ -34,3 +34,42 @@ NutriPlan je interaktivní webová aplikace pro výpočet denních maker, genero
 - Databáze a autentizace: Supabase
 - Platby / premium: Stripe
 - Deployment: Vercel
+
+## Architektura (adaptivní v2)
+
+Aplikace se posouvá od kalkulačky maker k adaptivnímu nutričnímu a
+tréninkovému plánovači. Detail najdeš v [ARCHITECTURE.md](ARCHITECTURE.md).
+
+- `js/domain/` — deterministické jádro (BMR/TDEE/makra, denní a týdenní
+  úpravy, generátor tréninkového plánu pro 5k–maraton, sílu, kondici).
+  Žádný DOM, žádné side-efekty.
+- `js/services/` — orchestrační vrstva: `NutritionPlanService`,
+  `TrainingPlanService`, `AIPlanService` (prompt builder + validátor),
+  `HealthDataProvider` (Mock / Manual / Apple Health placeholder).
+- `js/calculator.js` a další UI moduly delegují matematiku na doménu.
+
+### Bezpečnost a privacy
+
+- App není zdravotnická rada. Cíle a recepty jsou obecné vodítko.
+- Hubnutí je tvrdě limitované: max 1 % tělesné hmotnosti / týden,
+  minimum 1500 kcal (M) / 1200 kcal (Ž).
+- Tréninkový objem roste max o 10 % / týden, deload každý 4. týden.
+- Při nízkém spánku či poklesu HRV se kvalitní session vymění za easy běh.
+
+### Apple Health
+
+Web build NEPŘEDSTÍRÁ HealthKit data. `AppleHealthProvider` je placeholder
+s `TODO(ios)` značkami a deleguje na MockHealthDataProvider. Reálné napojení
+přijde s iOS buildem (Expo shell v `mobile/` + react-native-health nebo
+nativní HealthKit bridge). Plánované typy: `stepCount`, `activeEnergyBurned`,
+`basalEnergyBurned`, `distanceWalkingRunning`, `heartRate`,
+`restingHeartRate`, `heartRateVariabilitySDNN`, `bodyMass` a `HKWorkoutType`.
+
+## Testy
+
+```bash
+npm test
+```
+
+Spouští `tests/run.js` (zero-dep ES module runner) nad všemi `tests/*.test.js`.
+Aktuálně 47 testů pro nutrition, training, health-provider a AI validátor.

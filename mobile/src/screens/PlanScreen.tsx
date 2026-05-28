@@ -1,22 +1,94 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
-import { generateMealPlan } from '../services/api';
+import { generateMealPlan, regenerateMeal } from '../services/api';
+import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
+import type { Meal } from '../types';
+import { DateHeader } from '../components/DateHeader';
+
+function PlanLoadingIndicator() {
+  const [msgIdx, setMsgIdx] = useState(0);
+  const messages = [
+    'Sestavujeme jídelníček na míru... 🍳',
+    'Počítáme optimální poměr bílkovin... 🍗',
+    'Přizpůsobujeme sacharidy tvému tréninku... 🍚',
+    'Sestavujeme nákupní seznam... 🛒',
+    'Doplňujeme zdravé recepty... 🥑',
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setMsgIdx(prev => (prev + 1) % messages.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Card style={styles.loadingCard}>
+      <ActivityIndicator size="large" color={colors.green} />
+      <Text style={styles.loadingText}>{messages[msgIdx]}</Text>
+      <Text style={styles.loadingSub}>Už to skoro bude, AI sestavuje kompletní plán a recepty podle tvých preferencí.</Text>
+    </Card>
+  );
+}
 
 export function PlanScreen() {
-  const { profile, macros, meals, setMeals, setProfile } = useNutriFit();
+  const { profile, todayMacros, todaySession, meals, foodLog, setMeals, setProfile, addFood, ensureAiConsent, selectedDate } = useNutriFit();
   const [loading, setLoading] = useState(false);
-  if (!profile || !macros) return null;
+  const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+
+  // Debouncing local states for likes and dislikes
+  const [likes, setLikes] = useState(profile?.likes || '');
+  const [dislikes, setDislikes] = useState(profile?.dislikes || '');
+
+  useEffect(() => {
+    if (profile) {
+      setLikes(profile.likes);
+      setDislikes(profile.dislikes);
+    }
+  }, [profile?.likes, profile?.dislikes]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const timer = setTimeout(() => {
+      if (likes !== profile.likes || dislikes !== profile.dislikes) {
+        setProfile({ ...profile, likes, dislikes });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [likes, dislikes]);
+
+  if (!profile || !todayMacros) return null;
   const activeProfile = profile;
-  const activeMacros = macros;
+  const activeMacros = todayMacros;
+  const shoppingGroups = buildShoppingList(meals);
 
   async function generate() {
+    const consent = await ensureAiConsent();
+    if (!consent) return;
+
+    const isPast = selectedDate < toDateKey(new Date());
+    if (isPast) {
+      const confirm = await new Promise<boolean>(resolve => {
+        Alert.alert(
+          'Přepsat minulý plán?',
+          'Generování nového plánu přepíše plán pro vybraný den.',
+          [
+            { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Přepsat', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!confirm) return;
+    }
+
     setLoading(true);
     try {
-      const next = await generateMealPlan(activeProfile, activeMacros);
+      const next = await generateMealPlan(activeProfile, activeMacros, todaySession);
       await setMeals(next);
     } catch (err) {
       Alert.alert('Generování selhalo', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
@@ -25,15 +97,77 @@ export function PlanScreen() {
     }
   }
 
+  async function logPlannedMeal(meal: Meal) {
+    if (isMealLogged(meal)) return;
+
+    const isFuture = selectedDate > toDateKey(new Date());
+    if (isFuture) {
+      const confirm = await new Promise<boolean>(resolve => {
+        Alert.alert(
+          'Zápis do budoucího dne',
+          'Zapisuješ jídlo do budoucího dne?',
+          [
+            { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Zapsat', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!confirm) return;
+    }
+
+    await addFood(mealToFoodEstimate(meal), 'planned');
+    Alert.alert('Zapsáno', `${meal.name} je přidané do příjmu pro ${formatDateLabel(selectedDate)}.`);
+  }
+
+  function isMealLogged(meal: Meal) {
+    const key = plannedMealKey(meal);
+    return foodLog.some(item => item.source === 'planned' && item.plannedMealKey === key);
+  }
+
+  /** Regenerate a single meal slot. Replaces only that one in the array;
+   *  the rest of the plan and the daily total stay untouched (±10 % per macro). */
+  async function handleRegenerate(meal: Meal, index: number) {
+    const consent = await ensureAiConsent();
+    if (!consent) return;
+    if (isMealLogged(meal)) {
+      Alert.alert('Nelze regenerovat', 'Toto jídlo už máš v denním zápisu. Smaž zápis a zkus to znovu.');
+      return;
+    }
+    setRegeneratingIndex(index);
+    try {
+      const next = await regenerateMeal({
+        profile: activeProfile,
+        session: todaySession,
+        current: meal,
+        otherMeals: meals,
+      });
+      const nextMeals = meals.slice();
+      nextMeals[index] = next;
+      await setMeals(nextMeals);
+    } catch (err) {
+      Alert.alert('Regenerace selhala', err instanceof Error ? err.message : 'Zkus to znovu.');
+    } finally {
+      setRegeneratingIndex(null);
+    }
+  }
+
+  function shareShoppingList() {
+    const body = shoppingGroups
+      .map(group => `${group.category}\n${group.items.map(item => `- ${item}`).join('\n')}`)
+      .join('\n\n');
+    Share.share({ message: `Nákupní seznam NutriFit\n\n${body}` });
+  }
+
   return (
     <Screen>
+      <DateHeader />
       <H1>Jídelníček</H1>
-      <Subtitle>Plán je uložený offline pro čtení. AI výstupy ber jako orientační a uprav podle reality.</Subtitle>
+      <Subtitle>Plán se generuje pro {formatDateLabel(selectedDate)} proti cíli ({todaySession?.title || 'volný den'}). AI výstupy ber jako orientační.</Subtitle>
 
       <Card>
         <Label>Preference pro další generaci</Label>
-        <Field value={profile.likes} onChangeText={likes => setProfile({ ...profile, likes })} placeholder="Co rád/a jíš?" multiline />
-        <Field value={profile.dislikes} onChangeText={dislikes => setProfile({ ...profile, dislikes })} placeholder="Alergie, omezení, co vynechat" multiline />
+        <Field value={likes} onChangeText={setLikes} placeholder="Co rád/a jíš?" multiline />
+        <Field value={dislikes} onChangeText={setDislikes} placeholder="Alergie, omezení, co vynechat" multiline />
         <View style={styles.row}>
           <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.max(2, profile.mealCount - 1) })}>− jídlo</Button>
           <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.min(6, profile.mealCount + 1) })}>+ jídlo</Button>
@@ -42,31 +176,121 @@ export function PlanScreen() {
         <Button disabled={loading} onPress={generate}>{loading ? 'Generuju…' : 'Vygenerovat plán'}</Button>
       </Card>
 
-      {loading && <ActivityIndicator color={colors.green} />}
+      {loading && <PlanLoadingIndicator />}
 
       <Card>
         <Label>Poslední plán</Label>
         {meals.length === 0 ? (
           <Text style={styles.empty}>Zatím nemáš uložený plán.</Text>
-        ) : meals.map((meal, index) => (
-          <View key={`${meal.mealType}-${index}`} style={styles.meal}>
-            <Text style={styles.mealType}>{meal.mealType}</Text>
-            <Text style={styles.mealName}>{meal.name}</Text>
-            <Text style={styles.small}>{meal.kcal} kcal · B {meal.protein}g · S {meal.carbs}g · T {meal.fat}g · {meal.prepTime} min</Text>
-            <Text style={styles.ingredients}>{meal.ingredients.slice(0, 6).join(', ')}</Text>
-          </View>
-        ))}
+        ) : (
+          <>
+            {meals.map((meal, index) => (
+              <View key={`${meal.mealType}-${index}`} style={styles.mealCard}>
+                <Text style={styles.mealType}>{meal.mealType}</Text>
+                <Text style={styles.mealName}>{meal.name}</Text>
+                <View style={styles.macroRow}>
+                  <Text style={styles.macroPill}>{meal.kcal} kcal</Text>
+                  <Text style={styles.macroPill}>B {meal.protein}g</Text>
+                  <Text style={styles.macroPill}>S {meal.carbs}g</Text>
+                  <Text style={styles.macroPill}>T {meal.fat}g</Text>
+                </View>
+                <Text style={styles.small}>{meal.prepTime} min · {meal.difficulty} · vláknina {meal.fiber}g</Text>
+                <Text style={styles.ingredients}>{meal.ingredients.slice(0, 6).join(', ')}</Text>
+                <View style={styles.row}>
+                  <Button variant="secondary" onPress={() => setSelectedMeal(meal)}>Detail</Button>
+                  <Button
+                    variant="secondary"
+                    disabled={regeneratingIndex !== null}
+                    onPress={() => handleRegenerate(meal, index)}
+                  >
+                    {regeneratingIndex === index ? '⏳' : '🔄'}
+                  </Button>
+                  <Button disabled={isMealLogged(meal)} onPress={() => logPlannedMeal(meal)}>
+                    {isMealLogged(meal) ? 'Zapsáno' : 'Snědl jsem'}
+                  </Button>
+                </View>
+              </View>
+            ))}
+            <Text style={styles.planDisclaimer}>
+              Recepty a výživové hodnoty jsou vygenerovány AI. Skutečné hodnoty surovin se mohou lišit. Před konzumací si prosím ověř složení, zejména pokud máš alergie nebo zdravotní omezení.
+            </Text>
+          </>
+        )}
       </Card>
+
+      {shoppingGroups.length > 0 && (
+        <Card>
+          <View style={styles.headerRow}>
+            <Label>Nákupní seznam</Label>
+            <Text style={styles.link} onPress={shareShoppingList}>Sdílet</Text>
+          </View>
+          {shoppingGroups.map(group => (
+            <View key={group.category} style={styles.shoppingGroup}>
+              <Text style={styles.shoppingTitle}>{group.category}</Text>
+              {group.items.map(item => (
+                <Text key={item} style={styles.shoppingItem}>• {item}</Text>
+              ))}
+            </View>
+          ))}
+        </Card>
+      )}
+
+      <MealDetailModal meal={selectedMeal} onClose={() => setSelectedMeal(null)} />
     </Screen>
+  );
+}
+
+function MealDetailModal({ meal, onClose }: { meal: Meal | null; onClose: () => void }) {
+  return (
+    <Modal visible={Boolean(meal)} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <Pressable style={styles.modalScrim} onPress={onClose} />
+        {meal && (
+          <View style={styles.modalSheet}>
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text style={styles.mealType}>{meal.mealType}</Text>
+              <Text style={styles.modalTitle}>{meal.name}</Text>
+              <Text style={styles.small}>{meal.kcal} kcal · B {meal.protein}g · S {meal.carbs}g · T {meal.fat}g · {meal.prepTime} min</Text>
+              <Label>Suroviny</Label>
+              {meal.ingredients.map((ingredient, index) => (
+                <Text key={`${ingredient}-${index}`} style={styles.detailLine}>• {ingredient}</Text>
+              ))}
+              <Label>Postup</Label>
+              {meal.steps.map((step, index) => (
+                <Text key={`${step}-${index}`} style={styles.detailLine}>{index + 1}. {step}</Text>
+              ))}
+            </ScrollView>
+            <Button variant="secondary" onPress={onClose}>Zavřít</Button>
+          </View>
+        )}
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   small: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   empty: { color: colors.faint },
-  meal: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, gap: 4 },
+  mealCard: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14, gap: 8 },
   mealType: { color: colors.green, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.8 },
   mealName: { color: colors.ink, fontWeight: '900', fontSize: 17 },
+  macroRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  macroPill: { color: colors.ink, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontWeight: '800', fontSize: 12, backgroundColor: '#fbfbf8' },
   ingredients: { color: colors.muted, lineHeight: 20 },
+  link: { color: colors.green, fontWeight: '900' },
+  shoppingGroup: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, gap: 4 },
+  shoppingTitle: { color: colors.ink, fontWeight: '900' },
+  shoppingItem: { color: colors.muted, lineHeight: 20 },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
+  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25, 33, 29, 0.38)' },
+  modalSheet: { maxHeight: '82%', backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
+  modalContent: { gap: 12, paddingBottom: 6 },
+  modalTitle: { color: colors.ink, fontSize: 22, fontWeight: '900' },
+  detailLine: { color: colors.muted, fontSize: 15, lineHeight: 22 },
+  planDisclaimer: { color: colors.faint, fontSize: 12, lineHeight: 18, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, fontStyle: 'italic' },
+  loadingCard: { alignItems: 'center', paddingVertical: 30, gap: 14, backgroundColor: '#f4fbf7', borderColor: '#dcf2e6', borderWidth: 1, marginVertical: 10 },
+  loadingText: { color: colors.green, fontSize: 16, fontWeight: '900', textAlign: 'center', marginTop: 10 },
+  loadingSub: { color: colors.muted, fontSize: 13, textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
 });
