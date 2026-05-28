@@ -16,6 +16,7 @@ import type { ReadinessLevel } from '../lib/coaching/readiness';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
 import type { LoadStatus } from '../lib/coaching/trainingLoad';
 import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
+import type { StrainBand } from '../lib/coaching/strainScore';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -227,6 +228,32 @@ export function HomeScreen() {
                 </Button>
               </View>
             )}
+          </Card>
+        </FadeInView>
+      )}
+
+      {/* Whoop-style daily strain score 0–21. Pokud dnes není trénink ani plán,
+          karta se skryje (neukazovat nulu zbytečně). */}
+      {coaching.strain && (coaching.strain.workoutCount > 0 || coaching.strain.score > 0) && (
+        <FadeInView delay={130}>
+          <Card>
+            <View style={styles.readinessHeader}>
+              <View style={[styles.strainScoreCircle, { borderColor: strainColor(coaching.strain.band, colors) }]}>
+                <Text style={[styles.strainScoreValue, { color: strainColor(coaching.strain.band, colors) }]}>
+                  {coaching.strain.score}
+                </Text>
+                <Text style={[styles.strainScoreMax, { color: colors.faint }]}>/ 21</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.readinessTitle, { color: colors.ink }]}>{coaching.strain.label}</Text>
+                <Text style={[styles.small, { color: colors.muted }]}>
+                  {coaching.strain.workoutCount > 0
+                    ? `${coaching.strain.workoutCount} trénink${coaching.strain.workoutCount === 1 ? '' : 'y'} · ${coaching.strain.trimp} TRIMP`
+                    : `Plánováno: ${coaching.strain.trimp} TRIMP`}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.strain.recommendation}</Text>
           </Card>
         </FadeInView>
       )}
@@ -448,6 +475,16 @@ function trainingLoadLabel(status: LoadStatus): string {
   }
 }
 
+function strainColor(band: StrainBand, palette: { green: string; orange: string; red: string; blue: string }): string {
+  switch (band) {
+    case 'recovery': return palette.blue;
+    case 'light':    return palette.green;
+    case 'moderate': return palette.green;
+    case 'high':     return palette.orange;
+    case 'all_out':  return palette.red;
+  }
+}
+
 function trainingLoadColor(status: LoadStatus, palette: { green: string; orange: string; red: string; blue: string }): string {
   switch (status) {
     case 'optimal':      return palette.green;
@@ -567,4 +604,14 @@ const styles = StyleSheet.create({
   briefingHeadline: { flex: 1, fontSize: 17, fontWeight: '900', lineHeight: 22 },
   briefingDetail: { fontSize: 13, lineHeight: 18 },
   briefingRec: { fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
+  strainScoreCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  strainScoreValue: { fontSize: 22, fontWeight: '900', lineHeight: 24 },
+  strainScoreMax: { fontSize: 10, fontWeight: '700' },
 });

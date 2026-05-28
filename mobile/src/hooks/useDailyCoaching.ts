@@ -3,6 +3,8 @@ import { useHealthDataProvider } from './useHealthDataProvider';
 import { evaluateReadiness, type ReadinessAssessment } from '../lib/coaching/readiness';
 import { computePersonalBaselines, type PersonalBaselines } from '../lib/coaching/baselines';
 import { computeTrainingLoad, type TrainingLoadAssessment } from '../lib/coaching/trainingLoad';
+import { computeDailyStrain, type StrainAssessment } from '../lib/coaching/strainScore';
+import { useNutriFit } from '../context/NutriFitContext';
 
 export type DailyCoachingState = {
   assessment: ReadinessAssessment | null;
@@ -10,6 +12,8 @@ export type DailyCoachingState = {
   baselines: PersonalBaselines | null;
   /** Training load (ACWR) over 7-day acute / 28-day chronic window. */
   trainingLoad: TrainingLoadAssessment | null;
+  /** Today's strain score 0–21 (Whoop-style). */
+  strain: StrainAssessment | null;
   isLoading: boolean;
 };
 
@@ -23,10 +27,12 @@ export type DailyCoachingState = {
  */
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
+  const { todaySession } = useNutriFit();
   const [state, setState] = useState<DailyCoachingState>({
     assessment: null,
     baselines: null,
     trainingLoad: null,
+    strain: null,
     isLoading: true,
   });
 
@@ -61,14 +67,24 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
         },
       });
       const trainingLoad = computeTrainingLoad({ workouts, endDate: date });
-      setState({ assessment, baselines, trainingLoad, isLoading: false });
+      // Today's workouts: filter the 28-day list to only today
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+      const todaysWorkouts = workouts.filter(w => {
+        const t = new Date(w.startedAt).getTime();
+        return t >= dayStart.getTime() && t <= dayEnd.getTime();
+      });
+      const strain = computeDailyStrain({ plannedSession: todaySession, todaysWorkouts });
+      setState({ assessment, baselines, trainingLoad, strain, isLoading: false });
     }
     void load();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, dateKey]);
+  }, [provider, dateKey, todaySession?.kind, todaySession?.durationMinutes, todaySession?.intensity]);
 
   return state;
 }
