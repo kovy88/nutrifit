@@ -11,6 +11,7 @@ import { DateHeader } from '../components/DateHeader';
 import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
+import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
 
 type DaySummary = {
   dateKey: string;
@@ -37,6 +38,7 @@ export function HistoryScreen() {
   const isFocused = useIsFocused();
   const { colors: themeColors } = useTheme();
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
+  const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
   const sleepTrend = useTrend('sleep', 14);
   const hrvTrend = useTrend('hrv', 14);
   const rhrTrend = useTrend('rhr', 14);
@@ -46,6 +48,7 @@ export function HistoryScreen() {
   // Provider source wins per-date; manual fills any gaps the provider doesn't
   // know about.
   const weightTrend = mergeWeightTrend(weightProviderTrend.data, buildTrendFromRecord(weights, 30));
+  const adherencePoints = adherenceToTrendPoints(adherence.days);
 
   useEffect(() => {
     if (isFocused) {
@@ -72,6 +75,8 @@ export function HistoryScreen() {
       // Sort descending so the most recent dates are first
       items.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
       setSummaries(items);
+      // Adherence trend uses the same plans + logs we just loaded.
+      setAdherence(computeAdherenceTrend(plans, logs, 14));
     } catch (err) {
       console.error('Failed to load history summaries', err);
     }
@@ -121,6 +126,30 @@ export function HistoryScreen() {
           color={themeColors.orange}
           format={v => `${Math.round(v).toLocaleString('cs-CZ')} kroků`}
         />
+      </Card>
+
+      <Card>
+        <Label>🎯 Adherence k cílům (14 dní)</Label>
+        <MiniTrendChart
+          data={adherencePoints}
+          unit="%"
+          color={
+            adherence.averageRatio == null
+              ? themeColors.muted
+              : adherence.averageRatio >= 0.95 && adherence.averageRatio <= 1.05
+                ? themeColors.green
+                : Math.abs((adherence.averageRatio ?? 1) - 1) > 0.15
+                  ? themeColors.red
+                  : themeColors.orange
+          }
+          format={v => `${Math.round(v)} % cíle`}
+        />
+        <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
+          {describeAdherence(adherence.averageRatio)}
+        </Text>
+        <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
+          Logged: {adherence.loggedDays}/14 · Plán: {adherence.plannedDays}/14
+        </Text>
       </Card>
 
       <Card>
@@ -196,4 +225,6 @@ const styles = StyleSheet.create({
   loggedColor: {
     color: colors.green,
   },
+  adherenceNote: { fontSize: 12, lineHeight: 18, marginTop: 8 },
+  adherenceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },
 });
