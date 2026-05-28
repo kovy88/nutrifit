@@ -7,11 +7,14 @@ import { useNutriFit } from '../context/NutriFitContext';
 import { buildTrainingSessionForDate, toDateKey, formatDateLabel } from '../utils/nutrition';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
+import { WorkoutCard } from '../components/WorkoutCard';
 
 export function TrainingScreen() {
   const { profile, selectedDate, setSelectedDate } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors: themeColors, fonts } = useTheme();
+  const recent = useRecentWorkouts(14);
 
   if (!profile) return null;
 
@@ -131,12 +134,42 @@ export function TrainingScreen() {
           );
         })}
       </View>
+
+      {/* Recent workouts — REAL activity from active provider (Strava / Apple
+          Health / Whoop / Mock / Manual via Composite). Klepnutím se přepneš
+          na daný den, takže můžeš porovnat plán vs. odtréninkovaný workout. */}
+      <Label>Nedávné tréninky (14 dní)</Label>
+      {recent.isLoading ? (
+        <Text style={{ color: themeColors.muted, fontSize: 13 }}>Načítám tréninky ze zdravotních zdrojů…</Text>
+      ) : recent.workouts.length === 0 ? (
+        <Card>
+          <Text style={{ color: themeColors.muted, fontSize: 13, lineHeight: 18 }}>
+            Žádné odtréninkované workouty za posledních 14 dní. Připoj zdroj v Nastavení (Profil → ⚙️ Zdravotní zdroje) nebo nech appku napojit na Apple Health po EAS Build.
+          </Text>
+        </Card>
+      ) : (
+        <View style={styles.workoutsList}>
+          {recent.workouts.map((w, idx) => (
+            <FadeInView key={w.id || idx} delay={idx * 40}>
+              <WorkoutCard
+                workout={w}
+                onPress={() => {
+                  const day = w.startedAt.slice(0, 10);
+                  setSelectedDate(day);
+                  navigation.navigate('Dnes');
+                }}
+              />
+            </FadeInView>
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   daysList: { gap: 14 },
+  workoutsList: { gap: 10 },
   pressableCard: { width: '100%' },
   dayCard: { padding: 14, gap: 10 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
