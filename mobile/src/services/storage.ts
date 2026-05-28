@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore } from '../lib/health';
+import { NoopNotificationScheduler } from '../lib/notifications';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -41,13 +42,16 @@ function allNutriFitKeys(): string[] {
 }
 
 /** Removes all NutriFit data from the device. Used after account deletion.
- *  Includes core storage keys, every manual health record, AND every stored
- *  OAuth token (Strava, Whoop, etc.) so the device leaves no trace. */
+ *  Includes core storage keys, every manual health record, every stored OAuth
+ *  token (Strava, Whoop, etc.), AND every scheduled notification record so
+ *  the device leaves no trace. */
 export async function purgeAllLocalData(): Promise<void> {
   await Promise.all([
     AsyncStorage.multiRemove(allNutriFitKeys()),
+    AsyncStorage.removeItem('nutrifit.briefing.schedule.v1'),
     ManualHealthDataProvider.purge(),
     AsyncStorageTokenStore.purge(),
+    NoopNotificationScheduler.purge(),
   ]);
 }
 

@@ -14,10 +14,11 @@
 //     Apple Health / Health Connect sync (chain).
 
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, H1, Label, Subtitle } from '../components/UI';
+import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useHealthSources } from '../hooks/useHealthSources';
+import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 import type { OAuthService } from '../lib/health';
 
 type OAuthSourceMeta = {
@@ -70,6 +71,7 @@ const OAUTH_SOURCES: OAuthSourceMeta[] = [
 export function SettingsScreen() {
   const { colors } = useTheme();
   const { connectedOAuth, native, isLoading, disconnect } = useHealthSources();
+  const briefing = useMorningBriefingSchedule();
 
   function handleConnect(service: OAuthService) {
     // TODO(oauth): otevřít browser/expo-auth-session s authorize URL,
@@ -97,6 +99,54 @@ export function SettingsScreen() {
         <Subtitle>
           Propoj zdroje zdravotních dat. NutriPlan sjednotí všechno do jednoho přehledu, automaticky deduplikuje tréninky a doporučí úpravy podle dat z nejlepšího zdroje.
         </Subtitle>
+
+        {/* ── Morning push notification ─────────────────────────────────── */}
+        <Card>
+          <Label>🔔 Ranní coaching</Label>
+          <Text style={[styles.body, { color: colors.muted }]}>
+            Pošleme ti každé ráno push s readiness + dnešním tréninkem + úpravou jídelníčku.{'\n\n'}
+            <Text style={{ fontStyle: 'italic', color: colors.faint }}>
+              Reálné notifikace fungují až po `npx expo install expo-notifications` + EAS Build. Zatím se nastavení pamatuje a tělo zprávy je vidět v Pokrok obrazovce.
+            </Text>
+          </Text>
+          <View style={styles.briefingRow}>
+            <Pill
+              active={briefing.settings.enabled}
+              onPress={() => briefing.update({ enabled: !briefing.settings.enabled })}
+            >
+              {briefing.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+            </Pill>
+            <Text style={[styles.briefingTime, { color: colors.ink }]}>
+              {String(briefing.settings.hour).padStart(2, '0')}:{String(briefing.settings.minute).padStart(2, '0')}
+            </Text>
+          </View>
+          {briefing.settings.enabled && (
+            <>
+              <Label>Čas notifikace</Label>
+              <View style={styles.timeRow}>
+                {[6, 7, 8, 9, 10].map(h => (
+                  <Pill
+                    key={h}
+                    active={briefing.settings.hour === h}
+                    onPress={() => briefing.update({ hour: h })}
+                  >
+                    {String(h).padStart(2, '0')}:00
+                  </Pill>
+                ))}
+              </View>
+              {briefing.permission !== 'granted' && briefing.permission !== 'unavailable' && (
+                <Button variant="secondary" onPress={briefing.requestPermission}>
+                  Povolit notifikace v systému
+                </Button>
+              )}
+              {briefing.permission === 'unavailable' && (
+                <Text style={[styles.note, { color: colors.faint }]}>
+                  💡 Expo Go bez balíčku `expo-notifications` neumí native notifikace. Nastavení se uloží a aktivuje po doinstalování.
+                </Text>
+              )}
+            </>
+          )}
+        </Card>
 
         {/* ── Native source: Apple Health or Health Connect ─────────────── */}
         <Card>
@@ -227,4 +277,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   loading: { textAlign: 'center', fontSize: 12, marginTop: 12 },
+  briefingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
+  briefingTime: { fontSize: 22, fontWeight: '900' },
+  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
 });
