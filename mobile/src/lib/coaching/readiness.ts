@@ -62,10 +62,20 @@ export type ReadinessInput = {
   todaySleepMinutes?: number | null;
   todayRhrBpm?: number | null;
   todayHrvMs?: number | null;
+  /** Personalní baseline (z posledních 14 dní). Když je dodán, použijí se
+   *  RELATIVNÍ thresholdy ("HRV pod 70 % průměru") místo absolutních
+   *  ("HRV pod 25 ms"). Pro každý signál stačí jeden non-null klíč —
+   *  ostatní spadnou zpět na absolutní pravidla. */
+  baseline?: {
+    rhrMeanBpm?: number | null;
+    hrvMeanMs?: number | null;
+    sleepMeanMinutes?: number | null;
+  };
 };
 
 // ── Thresholds (named constants — easy to tune from a single place) ─────────
 
+// Absolutní (fallback když nemáme baseline):
 const SLEEP_MIN_OK = 420;          // 7 h
 const SLEEP_MIN_BORDERLINE = 360;  // 6 h
 const HRV_MIN_OK = 35;
@@ -73,76 +83,120 @@ const HRV_MIN_BORDERLINE = 25;
 const RHR_MAX_OK = 75;
 const RHR_MAX_BORDERLINE = 85;
 
+// Relativní (když máme baseline) — vyjádřeno jako poměr proti průměru:
+const HRV_RATIO_OK = 0.85;          // <70% = red, 70–85% = yellow, ≥85% = green
+const HRV_RATIO_RED = 0.70;
+const RHR_RATIO_OK = 1.10;          // >120% baseline = red, 110–120% = yellow
+const RHR_RATIO_RED = 1.20;
+const SLEEP_RATIO_OK = 0.90;        // <70% = red, 70–90% = yellow, ≥90% = green
+const SLEEP_RATIO_RED = 0.70;
+
 export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const factors: ReadinessFactor[] = [];
+  const baseline = input.baseline ?? {};
 
   // ── Sleep ──────────────────────────────────────────────────────────────────
   if (input.todaySleepMinutes == null) {
     factors.push({ key: 'sleep_missing', severity: 'green', message: 'Spánek dnes nemáme.' });
-  } else if (input.todaySleepMinutes < SLEEP_MIN_BORDERLINE) {
-    factors.push({
-      key: 'sleep_short',
-      severity: 'red',
-      message: `Spal jsi méně než 6 h (${formatHours(input.todaySleepMinutes)}).`,
-    });
-  } else if (input.todaySleepMinutes < SLEEP_MIN_OK) {
-    factors.push({
-      key: 'sleep_moderate',
-      severity: 'yellow',
-      message: `Spánek pod optimem (${formatHours(input.todaySleepMinutes)}).`,
-    });
+  } else if (baseline.sleepMeanMinutes && baseline.sleepMeanMinutes > 0) {
+    // Relativní: porovnání s vlastním průměrem
+    const ratio = input.todaySleepMinutes / baseline.sleepMeanMinutes;
+    if (ratio < SLEEP_RATIO_RED) {
+      factors.push({
+        key: 'sleep_short',
+        severity: 'red',
+        message: `Spal jsi ${formatHours(input.todaySleepMinutes)} — ${Math.round(ratio * 100)} % tvého průměru (${formatHours(baseline.sleepMeanMinutes)}).`,
+      });
+    } else if (ratio < SLEEP_RATIO_OK) {
+      factors.push({
+        key: 'sleep_moderate',
+        severity: 'yellow',
+        message: `Spánek pod průměrem (${formatHours(input.todaySleepMinutes)} vs. ${formatHours(baseline.sleepMeanMinutes)}).`,
+      });
+    } else {
+      factors.push({
+        key: 'sleep_ok',
+        severity: 'green',
+        message: `Spánek v normě (${formatHours(input.todaySleepMinutes)}).`,
+      });
+    }
   } else {
-    factors.push({
-      key: 'sleep_ok',
-      severity: 'green',
-      message: `Spánek v normě (${formatHours(input.todaySleepMinutes)}).`,
-    });
+    // Absolutní fallback
+    if (input.todaySleepMinutes < SLEEP_MIN_BORDERLINE) {
+      factors.push({ key: 'sleep_short', severity: 'red', message: `Spal jsi méně než 6 h (${formatHours(input.todaySleepMinutes)}).` });
+    } else if (input.todaySleepMinutes < SLEEP_MIN_OK) {
+      factors.push({ key: 'sleep_moderate', severity: 'yellow', message: `Spánek pod optimem (${formatHours(input.todaySleepMinutes)}).` });
+    } else {
+      factors.push({ key: 'sleep_ok', severity: 'green', message: `Spánek v normě (${formatHours(input.todaySleepMinutes)}).` });
+    }
   }
 
   // ── HRV ────────────────────────────────────────────────────────────────────
   if (input.todayHrvMs == null) {
     factors.push({ key: 'hrv_missing', severity: 'green', message: 'HRV dnes nemáme.' });
-  } else if (input.todayHrvMs < HRV_MIN_BORDERLINE) {
-    factors.push({
-      key: 'hrv_low',
-      severity: 'red',
-      message: `HRV velmi nízké (${Math.round(input.todayHrvMs)} ms) — možná stres nebo nemoc.`,
-    });
-  } else if (input.todayHrvMs < HRV_MIN_OK) {
-    factors.push({
-      key: 'hrv_moderate',
-      severity: 'yellow',
-      message: `HRV mírně snížené (${Math.round(input.todayHrvMs)} ms).`,
-    });
+  } else if (baseline.hrvMeanMs && baseline.hrvMeanMs > 0) {
+    const ratio = input.todayHrvMs / baseline.hrvMeanMs;
+    if (ratio < HRV_RATIO_RED) {
+      factors.push({
+        key: 'hrv_low',
+        severity: 'red',
+        message: `HRV ${Math.round(input.todayHrvMs)} ms — ${Math.round(ratio * 100)} % průměru (${Math.round(baseline.hrvMeanMs)} ms). Vysoký stres nebo nemoc.`,
+      });
+    } else if (ratio < HRV_RATIO_OK) {
+      factors.push({
+        key: 'hrv_moderate',
+        severity: 'yellow',
+        message: `HRV mírně snížené (${Math.round(input.todayHrvMs)} ms vs. ${Math.round(baseline.hrvMeanMs)} ms).`,
+      });
+    } else {
+      factors.push({
+        key: 'hrv_ok',
+        severity: 'green',
+        message: `HRV v normě (${Math.round(input.todayHrvMs)} ms).`,
+      });
+    }
   } else {
-    factors.push({
-      key: 'hrv_ok',
-      severity: 'green',
-      message: `HRV v normě (${Math.round(input.todayHrvMs)} ms).`,
-    });
+    if (input.todayHrvMs < HRV_MIN_BORDERLINE) {
+      factors.push({ key: 'hrv_low', severity: 'red', message: `HRV velmi nízké (${Math.round(input.todayHrvMs)} ms) — možná stres nebo nemoc.` });
+    } else if (input.todayHrvMs < HRV_MIN_OK) {
+      factors.push({ key: 'hrv_moderate', severity: 'yellow', message: `HRV mírně snížené (${Math.round(input.todayHrvMs)} ms).` });
+    } else {
+      factors.push({ key: 'hrv_ok', severity: 'green', message: `HRV v normě (${Math.round(input.todayHrvMs)} ms).` });
+    }
   }
 
   // ── RHR ────────────────────────────────────────────────────────────────────
   if (input.todayRhrBpm == null) {
     factors.push({ key: 'rhr_missing', severity: 'green', message: 'Klidový tep nemáme.' });
-  } else if (input.todayRhrBpm > RHR_MAX_BORDERLINE) {
-    factors.push({
-      key: 'rhr_high',
-      severity: 'red',
-      message: `Klidový tep vysoký (${input.todayRhrBpm} bpm) — možná nemoc.`,
-    });
-  } else if (input.todayRhrBpm > RHR_MAX_OK) {
-    factors.push({
-      key: 'rhr_elevated',
-      severity: 'yellow',
-      message: `Klidový tep zvýšený (${input.todayRhrBpm} bpm).`,
-    });
+  } else if (baseline.rhrMeanBpm && baseline.rhrMeanBpm > 0) {
+    const ratio = input.todayRhrBpm / baseline.rhrMeanBpm;
+    if (ratio > RHR_RATIO_RED) {
+      factors.push({
+        key: 'rhr_high',
+        severity: 'red',
+        message: `Klidový tep ${input.todayRhrBpm} bpm — ${Math.round(ratio * 100)} % průměru (${Math.round(baseline.rhrMeanBpm)} bpm). Možná nemoc.`,
+      });
+    } else if (ratio > RHR_RATIO_OK) {
+      factors.push({
+        key: 'rhr_elevated',
+        severity: 'yellow',
+        message: `Klidový tep zvýšený (${input.todayRhrBpm} bpm vs. ${Math.round(baseline.rhrMeanBpm)} bpm průměr).`,
+      });
+    } else {
+      factors.push({
+        key: 'rhr_ok',
+        severity: 'green',
+        message: `Klidový tep v normě (${input.todayRhrBpm} bpm).`,
+      });
+    }
   } else {
-    factors.push({
-      key: 'rhr_ok',
-      severity: 'green',
-      message: `Klidový tep v normě (${input.todayRhrBpm} bpm).`,
-    });
+    if (input.todayRhrBpm > RHR_MAX_BORDERLINE) {
+      factors.push({ key: 'rhr_high', severity: 'red', message: `Klidový tep vysoký (${input.todayRhrBpm} bpm) — možná nemoc.` });
+    } else if (input.todayRhrBpm > RHR_MAX_OK) {
+      factors.push({ key: 'rhr_elevated', severity: 'yellow', message: `Klidový tep zvýšený (${input.todayRhrBpm} bpm).` });
+    } else {
+      factors.push({ key: 'rhr_ok', severity: 'green', message: `Klidový tep v normě (${input.todayRhrBpm} bpm).` });
+    }
   }
 
   // ── Aggregate ──────────────────────────────────────────────────────────────
