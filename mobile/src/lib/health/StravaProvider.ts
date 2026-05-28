@@ -91,11 +91,12 @@ export class StravaProvider implements HealthDataProvider {
   }
 
   // Strava NEPOSKYTUJE — vrátíme prázdná data, ať composite provider doplní z jinud.
-  async getDailyActivityRange(): Promise<DailyActivitySummary[]> { return []; }
-  async getLatestBodyWeight(): Promise<BodyWeightSample | null> { return null; }
-  async getSleepSummary(): Promise<SleepSummary[]> { return []; }
-  async getRestingHeartRate(): Promise<RestingHeartRateSample | null> { return null; }
-  async getHrv(): Promise<HrvSample | null> { return null; }
+  // Parametry musí být přítomné, aby concrete-class call site v testech / kódu prošel TS.
+  async getDailyActivityRange(_start: Date, _end: Date): Promise<DailyActivitySummary[]> { return []; }
+  async getLatestBodyWeight(_maxDaysOld?: number): Promise<BodyWeightSample | null> { return null; }
+  async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> { return []; }
+  async getRestingHeartRate(_date: Date): Promise<RestingHeartRateSample | null> { return null; }
+  async getHrv(_date: Date): Promise<HrvSample | null> { return null; }
 
   async getWorkoutSummaries(start: Date, end: Date): Promise<WorkoutSummary[]> {
     const token = await this.tokens.getToken('strava');
