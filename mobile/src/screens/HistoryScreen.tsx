@@ -12,6 +12,7 @@ import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
+import { useStrainTrend } from '../hooks/useStrainTrend';
 
 type DaySummary = {
   dateKey: string;
@@ -43,6 +44,7 @@ export function HistoryScreen() {
   const hrvTrend = useTrend('hrv', 14);
   const rhrTrend = useTrend('rhr', 14);
   const stepsTrend = useTrend('steps', 14);
+  const strainTrend = useStrainTrend(14);
   const weightProviderTrend = useTrend('weight', 30);
   // Weight: merge provider history with locally-entered weights (manual log).
   // Provider source wins per-date; manual fills any gaps the provider doesn't
@@ -126,6 +128,19 @@ export function HistoryScreen() {
           color={themeColors.orange}
           format={v => `${Math.round(v).toLocaleString('cs-CZ')} kroků`}
         />
+      </Card>
+
+      <Card>
+        <Label>🔥 Tréninkový strain (14 dní)</Label>
+        <MiniTrendChart
+          data={strainTrend.data}
+          unit=""
+          color={themeColors.orange}
+          format={v => `${v.toFixed(1)} / 21`}
+        />
+        <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
+          Whoop-style score 0-21 z TRIMP. Mezera = den bez tréninku.
+        </Text>
       </Card>
 
       <Card>
