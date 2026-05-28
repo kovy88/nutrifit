@@ -15,6 +15,7 @@ import { useDailyCoaching } from '../hooks/useDailyCoaching';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
 import type { LoadStatus } from '../lib/coaching/trainingLoad';
+import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
 
 export function HomeScreen() {
   const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
@@ -98,6 +99,33 @@ export function HomeScreen() {
       <DateHeader />
       <H1>Dnes</H1>
       <Subtitle>{primaryGoalLabel(profile.primaryGoal)} · {profile.diet} · BMI {macros.bmi}</Subtitle>
+
+      {/* Morning briefing — synthesises today's session + readiness + load + macros
+          into a single human sentence. Same content will feed the morning push
+          notification once expo-notifications lands. */}
+      {(() => {
+        const briefing = composeMorningBriefing({
+          session: todaySession,
+          readiness: coaching.assessment,
+          trainingLoad: coaching.trainingLoad,
+          macros,
+          baselineMacros,
+        });
+        return (
+          <FadeInView delay={60}>
+            <Card style={[styles.briefingCard, { borderColor: colors.green }]}>
+              <View style={styles.briefingHeader}>
+                <Text style={styles.briefingEmoji}>{briefing.emoji}</Text>
+                <Text style={[styles.briefingHeadline, { color: colors.ink }]}>{briefing.headline}</Text>
+              </View>
+              {briefing.detail.length > 0 && (
+                <Text style={[styles.briefingDetail, { color: colors.muted }]}>{briefing.detail}</Text>
+              )}
+              <Text style={[styles.briefingRec, { color: colors.green }]}>→ {briefing.recommendation}</Text>
+            </Card>
+          </FadeInView>
+        );
+      })()}
 
       {/* Modern Circular Macro Visual Grid */}
       <FadeInView delay={100}>
@@ -533,4 +561,10 @@ const styles = StyleSheet.create({
   loadStatLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
   loadStatValue: { fontSize: 15, fontWeight: '900' },
   loadStatSub: { fontSize: 10, lineHeight: 14, marginTop: 2 },
+  briefingCard: { borderWidth: 2, gap: 8 },
+  briefingHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  briefingEmoji: { fontSize: 28 },
+  briefingHeadline: { flex: 1, fontSize: 17, fontWeight: '900', lineHeight: 22 },
+  briefingDetail: { fontSize: 13, lineHeight: 18 },
+  briefingRec: { fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
 });
