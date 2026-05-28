@@ -23,8 +23,26 @@ export type AdherenceDay = {
   date: string;
   plannedKcal: number;
   loggedKcal: number;
-  /** ratio logged/planned, null pokud plán = 0 (uživatel nevygeneroval). */
+  plannedProtein: number;
+  loggedProtein: number;
+  plannedCarbs: number;
+  loggedCarbs: number;
+  plannedFat: number;
+  loggedFat: number;
+  /** ratio logged/planned for kcal, null pokud plán = 0. */
   ratio: number | null;
+  /** Per-macro ratios — null pokud daná plánovaná hodnota = 0. */
+  proteinRatio: number | null;
+  carbsRatio: number | null;
+  fatRatio: number | null;
+};
+
+export type MacroAverages = {
+  /** Průměr poměrů (logged/planned) za dny s plánem. null = žádná data. */
+  kcal: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
 };
 
 export type AdherenceSummary = {
@@ -32,6 +50,8 @@ export type AdherenceSummary = {
   days: AdherenceDay[];
   /** Průměr ratio přes dny, které mají plán i log. null pokud žádný. */
   averageRatio: number | null;
+  /** Per-macro průměry. */
+  averages: MacroAverages;
   /** Kolik dní mělo log (uživatel se aktivně zapsal). */
   loggedDays: number;
   /** Kolik dní mělo plán. */
@@ -51,26 +71,66 @@ export function computeAdherenceTrend(
     const date = toDateKey(d);
     const planMeals = plans[date] || [];
     const logItems = logs[date] || [];
-    const plannedKcal = sumKcal(planMeals);
-    const loggedKcal = sumKcalLog(logItems);
-    const ratio = plannedKcal > 0 ? loggedKcal / plannedKcal : null;
-    dayList.push({ date, plannedKcal, loggedKcal, ratio });
+    const plannedKcal = sumMeals(planMeals, 'kcal');
+    const loggedKcal = sumLog(logItems, 'kcal');
+    const plannedProtein = sumMeals(planMeals, 'protein');
+    const loggedProtein = sumLog(logItems, 'protein');
+    const plannedCarbs = sumMeals(planMeals, 'carbs');
+    const loggedCarbs = sumLog(logItems, 'carbs');
+    const plannedFat = sumMeals(planMeals, 'fat');
+    const loggedFat = sumLog(logItems, 'fat');
+    dayList.push({
+      date,
+      plannedKcal, loggedKcal,
+      plannedProtein, loggedProtein,
+      plannedCarbs, loggedCarbs,
+      plannedFat, loggedFat,
+      ratio: plannedKcal > 0 ? loggedKcal / plannedKcal : null,
+      proteinRatio: plannedProtein > 0 ? loggedProtein / plannedProtein : null,
+      carbsRatio: plannedCarbs > 0 ? loggedCarbs / plannedCarbs : null,
+      fatRatio: plannedFat > 0 ? loggedFat / plannedFat : null,
+    });
   }
-  const ratios = dayList.map(d => d.ratio).filter((r): r is number => r != null);
-  const averageRatio = ratios.length
-    ? Math.round((ratios.reduce((a, b) => a + b, 0) / ratios.length) * 100) / 100
-    : null;
+  const averages: MacroAverages = {
+    kcal: avg(dayList.map(d => d.ratio)),
+    protein: avg(dayList.map(d => d.proteinRatio)),
+    carbs: avg(dayList.map(d => d.carbsRatio)),
+    fat: avg(dayList.map(d => d.fatRatio)),
+  };
   const loggedDays = dayList.filter(d => d.loggedKcal > 0).length;
   const plannedDays = dayList.filter(d => d.plannedKcal > 0).length;
-  return { days: dayList, averageRatio, loggedDays, plannedDays };
+  return { days: dayList, averageRatio: averages.kcal, averages, loggedDays, plannedDays };
 }
 
-/** Helper: AdherenceDay[] → TrendPoint[] pro MiniTrendChart. */
-export function adherenceToTrendPoints(days: AdherenceDay[]): TrendPoint[] {
-  return days.map(d => ({
-    date: d.date,
-    value: d.ratio != null ? Math.round(d.ratio * 100) : null,  // procenta 85, 100, 110, ...
-  }));
+function avg(values: (number | null)[]): number | null {
+  const xs = values.filter((v): v is number => v != null);
+  if (xs.length === 0) return null;
+  return Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 100) / 100;
+}
+
+/** Helper: AdherenceDay[] → TrendPoint[] pro daný makro (kcal default). */
+export function adherenceToTrendPoints(
+  days: AdherenceDay[],
+  macro: 'kcal' | 'protein' | 'carbs' | 'fat' = 'kcal',
+): TrendPoint[] {
+  return days.map(d => {
+    const r = macro === 'kcal' ? d.ratio
+      : macro === 'protein' ? d.proteinRatio
+      : macro === 'carbs' ? d.carbsRatio
+      : d.fatRatio;
+    return {
+      date: d.date,
+      value: r != null ? Math.round(r * 100) : null,
+    };
+  });
+}
+
+/** Krátký label statusu pro per-macro průměr — používá UI pro chip color. */
+export function macroAdherenceBand(ratio: number | null): 'unknown' | 'low' | 'on_target' | 'high' {
+  if (ratio == null) return 'unknown';
+  if (ratio < 0.85) return 'low';
+  if (ratio > 1.15) return 'high';
+  return 'on_target';
 }
 
 /** Vrátí lidský popisek pro průměrné ratio. */
@@ -94,12 +154,14 @@ export function describeAdherence(averageRatio: number | null): string {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function sumKcal(meals: Meal[]): number {
-  return meals.reduce((sum, m) => sum + (m.kcal || 0), 0);
+type MacroKey = 'kcal' | 'protein' | 'carbs' | 'fat';
+
+function sumMeals(meals: Meal[], key: MacroKey): number {
+  return meals.reduce((sum, m) => sum + (m[key] || 0), 0);
 }
 
-function sumKcalLog(items: FoodLogItem[]): number {
-  return items.reduce((sum, item) => sum + (item.kcal || 0), 0);
+function sumLog(items: FoodLogItem[], key: MacroKey): number {
+  return items.reduce((sum, item) => sum + (item[key] || 0), 0);
 }
 
 function toDateKey(d: Date): string {

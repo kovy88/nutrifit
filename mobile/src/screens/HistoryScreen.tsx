@@ -11,7 +11,7 @@ import { DateHeader } from '../components/DateHeader';
 import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
-import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
+import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence, macroAdherenceBand } from '../lib/nutrition/adherenceTrend';
 import { useStrainTrend } from '../hooks/useStrainTrend';
 
 type DaySummary = {
@@ -162,6 +162,27 @@ export function HistoryScreen() {
         <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
           {describeAdherence(adherence.averageRatio)}
         </Text>
+        {/* Per-macro breakdown — 4 chips s % vs cíli za 14 dní */}
+        <View style={styles.macroChipsRow}>
+          {(['protein', 'carbs', 'fat'] as const).map(macro => {
+            const ratio = adherence.averages[macro];
+            const band = macroAdherenceBand(ratio);
+            const color =
+              band === 'on_target' ? themeColors.green
+              : band === 'high' ? themeColors.orange
+              : band === 'low' ? themeColors.red
+              : themeColors.muted;
+            const label = macro === 'protein' ? 'B' : macro === 'carbs' ? 'S' : 'T';
+            return (
+              <View key={macro} style={[styles.macroChip, { borderColor: color }]}>
+                <Text style={[styles.macroChipLabel, { color: themeColors.faint }]}>{label}</Text>
+                <Text style={[styles.macroChipValue, { color }]}>
+                  {ratio != null ? `${Math.round(ratio * 100)} %` : '—'}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
         <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
           Logged: {adherence.loggedDays}/14 · Plán: {adherence.plannedDays}/14
         </Text>
@@ -242,4 +263,8 @@ const styles = StyleSheet.create({
   },
   adherenceNote: { fontSize: 12, lineHeight: 18, marginTop: 8 },
   adherenceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },
+  macroChipsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  macroChip: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 8, alignItems: 'center' },
+  macroChipLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  macroChipValue: { fontSize: 15, fontWeight: '900', marginTop: 2 },
 });

@@ -3,27 +3,28 @@ import {
   computeAdherenceTrend,
   adherenceToTrendPoints,
   describeAdherence,
+  macroAdherenceBand,
 } from '../lib/nutrition/adherenceTrend';
 import type { Meal, FoodLogItem, DailyPlanRecord, DailyFoodLogRecord } from '../types';
 
-function meal(kcal: number): Meal {
+function meal(kcal: number, p = 0, c = 0, f = 0): Meal {
   return {
     mealType: 'Snídaně',
     name: 'X',
     kcal,
-    protein: 0, carbs: 0, fat: 0, fiber: 0, prepTime: 10,
+    protein: p, carbs: c, fat: f, fiber: 0, prepTime: 10,
     difficulty: 'Jednoduchá', ingredients: [], steps: [],
   };
 }
 
-function logItem(kcal: number): FoodLogItem {
+function logItem(kcal: number, p = 0, c = 0, f = 0): FoodLogItem {
   return {
     id: 'x',
     createdAt: '2026-05-28T08:00:00.000Z',
     source: 'manual',
     foodName: 'X',
     kcal,
-    protein: 0, carbs: 0, fat: 0,
+    protein: p, carbs: c, fat: f,
   };
 }
 
@@ -139,5 +140,114 @@ describe('describeAdherence', () => {
 
   it('> 115% → warns about surplus', () => {
     expect(describeAdherence(1.2).toLowerCase()).toMatch(/surplus|výrazný|brzda/);
+  });
+});
+
+describe('computeAdherenceTrend — per-macro tracking', () => {
+  it('tracks protein, carbs, fat plan + logged per day', () => {
+    const plans: DailyPlanRecord = {
+      '2026-05-28': [meal(2000, 150, 200, 70)],
+    };
+    const logs: DailyFoodLogRecord = {
+      '2026-05-28': [logItem(2000, 150, 200, 70)],
+    };
+    const r = computeAdherenceTrend(plans, logs, 1, new Date('2026-05-28'));
+    const today = r.days[0];
+    expect(today.plannedProtein).toBe(150);
+    expect(today.loggedProtein).toBe(150);
+    expect(today.plannedCarbs).toBe(200);
+    expect(today.loggedCarbs).toBe(200);
+    expect(today.plannedFat).toBe(70);
+    expect(today.loggedFat).toBe(70);
+    expect(today.proteinRatio).toBe(1);
+    expect(today.carbsRatio).toBe(1);
+    expect(today.fatRatio).toBe(1);
+  });
+
+  it('per-macro ratios respect partial plan/log', () => {
+    const plans: DailyPlanRecord = {
+      '2026-05-28': [meal(2000, 150, 200, 70)],
+    };
+    const logs: DailyFoodLogRecord = {
+      // Under target on protein, over on carbs
+      '2026-05-28': [logItem(2000, 120, 250, 60)],
+    };
+    const r = computeAdherenceTrend(plans, logs, 1, new Date('2026-05-28'));
+    const today = r.days[0];
+    expect(today.proteinRatio).toBeCloseTo(0.8, 2);
+    expect(today.carbsRatio).toBeCloseTo(1.25, 2);
+    expect(today.fatRatio).toBeCloseTo(60 / 70, 2);
+  });
+
+  it('averages all four macros independently', () => {
+    const plans: DailyPlanRecord = {
+      '2026-05-27': [meal(2000, 150, 200, 70)],
+      '2026-05-28': [meal(2000, 150, 200, 70)],
+    };
+    const logs: DailyFoodLogRecord = {
+      '2026-05-27': [logItem(2000, 150, 200, 70)],   // perfect
+      '2026-05-28': [logItem(2200, 150, 250, 70)],   // over kcal+carbs
+    };
+    const r = computeAdherenceTrend(plans, logs, 2, new Date('2026-05-28'));
+    expect(r.averages.kcal).toBeCloseTo(1.05, 2);
+    expect(r.averages.protein).toBe(1);
+    expect(r.averages.carbs).toBeCloseTo(1.125, 2);
+    expect(r.averages.fat).toBe(1);
+  });
+
+  it('averages return null when no days have plans', () => {
+    const r = computeAdherenceTrend({}, {}, 5, new Date('2026-05-28'));
+    expect(r.averages.kcal).toBeNull();
+    expect(r.averages.protein).toBeNull();
+    expect(r.averages.carbs).toBeNull();
+    expect(r.averages.fat).toBeNull();
+  });
+});
+
+describe('adherenceToTrendPoints — per-macro selector', () => {
+  it('default selects kcal ratio', () => {
+    const plans: DailyPlanRecord = { '2026-05-28': [meal(2000, 150, 200, 70)] };
+    const logs: DailyFoodLogRecord = { '2026-05-28': [logItem(2000, 100, 200, 70)] };
+    const r = computeAdherenceTrend(plans, logs, 1, new Date('2026-05-28'));
+    const points = adherenceToTrendPoints(r.days);
+    expect(points[0].value).toBe(100); // kcal ratio 1.0 → 100%
+  });
+
+  it('selects protein ratio when requested', () => {
+    const plans: DailyPlanRecord = { '2026-05-28': [meal(2000, 150, 200, 70)] };
+    const logs: DailyFoodLogRecord = { '2026-05-28': [logItem(2000, 100, 200, 70)] };
+    const r = computeAdherenceTrend(plans, logs, 1, new Date('2026-05-28'));
+    const points = adherenceToTrendPoints(r.days, 'protein');
+    expect(points[0].value).toBe(67); // 100/150 = 0.667 → 67%
+  });
+
+  it('selects fat ratio when requested', () => {
+    const plans: DailyPlanRecord = { '2026-05-28': [meal(2000, 150, 200, 70)] };
+    const logs: DailyFoodLogRecord = { '2026-05-28': [logItem(2000, 150, 200, 105)] };
+    const r = computeAdherenceTrend(plans, logs, 1, new Date('2026-05-28'));
+    const points = adherenceToTrendPoints(r.days, 'fat');
+    expect(points[0].value).toBe(150); // 105/70 = 1.5 → 150%
+  });
+});
+
+describe('macroAdherenceBand', () => {
+  it('null → unknown', () => {
+    expect(macroAdherenceBand(null)).toBe('unknown');
+  });
+
+  it('< 0.85 → low', () => {
+    expect(macroAdherenceBand(0.7)).toBe('low');
+    expect(macroAdherenceBand(0.84)).toBe('low');
+  });
+
+  it('0.85–1.15 → on_target', () => {
+    expect(macroAdherenceBand(0.85)).toBe('on_target');
+    expect(macroAdherenceBand(1.0)).toBe('on_target');
+    expect(macroAdherenceBand(1.15)).toBe('on_target');
+  });
+
+  it('> 1.15 → high', () => {
+    expect(macroAdherenceBand(1.2)).toBe('high');
+    expect(macroAdherenceBand(2.0)).toBe('high');
   });
 });
