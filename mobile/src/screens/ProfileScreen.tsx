@@ -4,6 +4,7 @@ import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
 import { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
 import type { PrimaryGoal, TrainingGoalKind } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
@@ -12,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
+  const navigation = useNavigation<any>();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
 
@@ -93,7 +95,12 @@ export function ProfileScreen() {
         <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
           🎯 Spustit týdenní check-in
         </Button>
-        
+
+        {/* Settings — manage health data sources (Apple Health, Strava, Whoop, ...) */}
+        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => navigation.navigate('Settings')}>
+          ⚙️ Zdravotní zdroje a nastavení
+        </Button>
+
         <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>Spustit onboarding znovu</Button>
       </Card>
 
