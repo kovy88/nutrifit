@@ -41,6 +41,11 @@ export {
   type GarminConnectResult,
 } from './oauth/GarminOAuth';
 export {
+  OuraOAuth,
+  type OuraOAuthConfig,
+  type OuraConnectResult,
+} from './oauth/OuraOAuth';
+export {
   createHealthDataProvider,
   type CreateHealthDataProviderOptions,
   type HealthDataProviderMode,

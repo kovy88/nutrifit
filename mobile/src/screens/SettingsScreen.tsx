@@ -22,6 +22,7 @@ import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule'
 import { useStravaConnect } from '../hooks/useStravaConnect';
 import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import { useGarminConnect } from '../hooks/useGarminConnect';
+import { useOuraConnect } from '../hooks/useOuraConnect';
 import type { OAuthService } from '../lib/health';
 
 type OAuthSourceMeta = {
@@ -78,10 +79,12 @@ export function SettingsScreen() {
   const strava = useStravaConnect();
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
+  const oura = useOuraConnect();
 
   if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
   if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) refreshSources();
   if (garmin.status === 'connected' && !connectedOAuth.includes('garmin')) refreshSources();
+  if (oura.status === 'connected' && !connectedOAuth.includes('oura')) refreshSources();
 
   function handleConnect(service: OAuthService) {
     if (service === 'strava') {
@@ -117,10 +120,21 @@ export function SettingsScreen() {
       void garmin.connect();
       return;
     }
-    // TODO(oauth): Polar, Oura, Fitbit — stejný pattern.
+    if (service === 'oura') {
+      if (oura.status === 'unavailable') {
+        Alert.alert(
+          'Oura není nakonfigurovaná',
+          'Aplikace nezná Oura client ID. Registrace na https://cloud.ouraring.com/oauth/applications, pak doplň `EXPO_PUBLIC_OURA_CLIENT_ID` do `.env` + `OURA_CLIENT_SECRET` na Vercelu.',
+        );
+        return;
+      }
+      void oura.connect();
+      return;
+    }
+    // TODO(oauth): Polar, Fitbit — stejný pattern.
     Alert.alert(
       `Připojit ${service}`,
-      'OAuth flow pro tuhle službu se chystá. Strava, Whoop a Garmin jsou hotové, zbytek následuje stejným patternem.',
+      'OAuth flow pro tuhle službu se chystá. Strava, Whoop, Garmin a Oura jsou hotové, zbytek následuje stejným patternem.',
     );
   }
 
@@ -262,6 +276,11 @@ export function SettingsScreen() {
                       Chyba: {garmin.error}
                     </Text>
                   )}
+                  {src.service === 'oura' && oura.status === 'error' && oura.error && (
+                    <Text style={[styles.sourceError, { color: colors.red }]}>
+                      Chyba: {oura.error}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.sourceButtons}>
                   {connected ? (
@@ -273,13 +292,15 @@ export function SettingsScreen() {
                       disabled={
                         (src.service === 'strava' && strava.status === 'connecting') ||
                         (src.service === 'whoop' && whoop.status === 'connecting') ||
-                        (src.service === 'garmin' && garmin.status === 'connecting')
+                        (src.service === 'garmin' && garmin.status === 'connecting') ||
+                        (src.service === 'oura' && oura.status === 'connecting')
                       }
                       onPress={() => handleConnect(src.service)}
                     >
                       {(src.service === 'strava' && strava.status === 'connecting') ||
                       (src.service === 'whoop' && whoop.status === 'connecting') ||
-                      (src.service === 'garmin' && garmin.status === 'connecting')
+                      (src.service === 'garmin' && garmin.status === 'connecting') ||
+                      (src.service === 'oura' && oura.status === 'connecting')
                         ? 'Otevírám…'
                         : 'Připojit'}
                     </Button>
