@@ -35,6 +35,12 @@ export {
   type WhoopConnectResult,
 } from './oauth/WhoopOAuth';
 export {
+  GarminOAuth,
+  sha256Base64Url,
+  type GarminOAuthConfig,
+  type GarminConnectResult,
+} from './oauth/GarminOAuth';
+export {
   createHealthDataProvider,
   type CreateHealthDataProviderOptions,
   type HealthDataProviderMode,

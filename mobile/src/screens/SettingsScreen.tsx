@@ -21,6 +21,7 @@ import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 import { useStravaConnect } from '../hooks/useStravaConnect';
 import { useWhoopConnect } from '../hooks/useWhoopConnect';
+import { useGarminConnect } from '../hooks/useGarminConnect';
 import type { OAuthService } from '../lib/health';
 
 type OAuthSourceMeta = {
@@ -76,14 +77,11 @@ export function SettingsScreen() {
   const briefing = useMorningBriefingSchedule();
   const strava = useStravaConnect();
   const whoop = useWhoopConnect();
+  const garmin = useGarminConnect();
 
-  // Po úspěšném OAuth connectu refreshne seznam connected zdrojů.
-  if (strava.status === 'connected' && !connectedOAuth.includes('strava')) {
-    refreshSources();
-  }
-  if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) {
-    refreshSources();
-  }
+  if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
+  if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) refreshSources();
+  if (garmin.status === 'connected' && !connectedOAuth.includes('garmin')) refreshSources();
 
   function handleConnect(service: OAuthService) {
     if (service === 'strava') {
@@ -108,11 +106,21 @@ export function SettingsScreen() {
       void whoop.connect();
       return;
     }
-    // TODO(oauth): zbývající služby (Garmin, Polar, Oura, Fitbit) —
-    // stejný pattern jako Strava + Whoop.
+    if (service === 'garmin') {
+      if (garmin.status === 'unavailable') {
+        Alert.alert(
+          'Garmin Connect není nakonfigurovaný',
+          'Aplikace nezná Garmin client ID. Doplň `EXPO_PUBLIC_GARMIN_CLIENT_ID` do `.env` (a `GARMIN_CLIENT_SECRET` na Vercelu). Pozn: Garmin developer access vyžaduje review (~2 týdny).',
+        );
+        return;
+      }
+      void garmin.connect();
+      return;
+    }
+    // TODO(oauth): Polar, Oura, Fitbit — stejný pattern.
     Alert.alert(
       `Připojit ${service}`,
-      'OAuth flow pro tuhle službu se chystá. Strava a Whoop jsou hotové, zbytek následuje stejným patternem.',
+      'OAuth flow pro tuhle službu se chystá. Strava, Whoop a Garmin jsou hotové, zbytek následuje stejným patternem.',
     );
   }
 
@@ -249,6 +257,11 @@ export function SettingsScreen() {
                       Chyba: {whoop.error}
                     </Text>
                   )}
+                  {src.service === 'garmin' && garmin.status === 'error' && garmin.error && (
+                    <Text style={[styles.sourceError, { color: colors.red }]}>
+                      Chyba: {garmin.error}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.sourceButtons}>
                   {connected ? (
@@ -259,12 +272,14 @@ export function SettingsScreen() {
                     <Button
                       disabled={
                         (src.service === 'strava' && strava.status === 'connecting') ||
-                        (src.service === 'whoop' && whoop.status === 'connecting')
+                        (src.service === 'whoop' && whoop.status === 'connecting') ||
+                        (src.service === 'garmin' && garmin.status === 'connecting')
                       }
                       onPress={() => handleConnect(src.service)}
                     >
                       {(src.service === 'strava' && strava.status === 'connecting') ||
-                      (src.service === 'whoop' && whoop.status === 'connecting')
+                      (src.service === 'whoop' && whoop.status === 'connecting') ||
+                      (src.service === 'garmin' && garmin.status === 'connecting')
                         ? 'Otevírám…'
                         : 'Připojit'}
                     </Button>
