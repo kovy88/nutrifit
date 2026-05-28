@@ -12,7 +12,8 @@ import type {
   DailyFoodLogRecord,
   DailySessionRecord,
 } from '../types';
-import { adjustForDay, buildTrainingSessionForDate, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, toDateKey } from '../utils/nutrition';
+import { adjustForDay, buildTrainingSessionForDate, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
+import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
   loadConsent,
@@ -29,7 +30,13 @@ import {
   loadWeights,
   saveWeightForDate,
   purgeAllLocalData,
+  loadCheckIns,
+  saveCheckIn,
+  loadBaselineKcalDelta,
+  saveBaselineKcalDelta,
 } from '../services/storage';
+import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
+import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
 
 type AuthUser = {
@@ -61,6 +68,16 @@ type NutriFitContextValue = {
   setTodaySession: (session: TrainingSession) => Promise<void>;
   resetLocalProfile: () => Promise<void>;
   purgeAllUserData: () => Promise<void>;
+  // Weekly check-in history (chronological, oldest first)
+  checkIns: WeeklyCheckIn[];
+  /** Cumulative kcal delta from accepted weekly adjustments. */
+  baselineKcalDelta: number;
+  /** Override goal kind applied after a weekly check-in (e.g. fat_loss → maintenance). */
+  overrideGoalKind: NutritionGoalKind | null;
+  /** Submit a new check-in. Returns the computed adjustment so UI can prompt the user. */
+  recordCheckIn: (checkIn: WeeklyCheckIn) => Promise<PlanAdjustment>;
+  /** Apply an adjustment (updates baselineKcalDelta + overrideGoalKind, triggers macro re-calc). */
+  applyAdjustment: (adjustment: PlanAdjustment) => Promise<void>;
   addFood: (estimate: FoodEstimate, source: FoodLogItem['source']) => Promise<void>;
   removeFood: (id: string) => Promise<void>;
   clearFood: () => Promise<void>;
@@ -85,6 +102,9 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   
   const [user, setUser] = useState<AuthUser | null>(null);
   const [hasAiConsent, setHasAiConsent] = useState(false);
+  const [checkIns, setCheckIns] = useState<WeeklyCheckIn[]>([]);
+  const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
+  const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -99,8 +119,10 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
         loadConsent(),
         supabase.auth.getUser(),
         loadWeights(),
+        loadCheckIns(),
+        loadBaselineKcalDelta(),
       ]);
-    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights]) => {
+    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta]) => {
       if (!active) return;
       setProfileState(storedProfile);
       setPlansByDate(storedPlans || {});
@@ -109,6 +131,8 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
       setHasAiConsent(storedConsent);
       setUser(auth.data.user ? { id: auth.data.user.id, email: auth.data.user.email } : null);
       setWeightsByDate(storedWeights || {});
+      setCheckIns(storedCheckIns || []);
+      setBaselineKcalDelta(storedDelta || 0);
       setIsReady(true);
     });
 
@@ -121,7 +145,16 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const baselineMacros = useMemo(() => profile ? calculateMacros(profile) : null, [profile]);
+  const baselineMacros = useMemo(
+    () =>
+      profile
+        ? calculateMacros(profile, {
+            baselineKcalDelta,
+            overrideGoalKind: overrideGoalKind ?? undefined,
+          })
+        : null,
+    [profile, baselineKcalDelta, overrideGoalKind],
+  );
 
   // Derived current states for the selectedDate
   const currentMeals = useMemo(() => plansByDate[selectedDate] || [], [plansByDate, selectedDate]);
@@ -176,6 +209,29 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     setSessionsByDate({});
     setWeightsByDate({});
     setHasAiConsent(false);
+    setCheckIns([]);
+    setBaselineKcalDelta(0);
+    setOverrideGoalKind(null);
+  }
+
+  /** Persist a new weekly check-in and compute the suggested PlanAdjustment.
+   *  Doesn't apply the adjustment automatically — UI shows it to user for review. */
+  async function recordCheckIn(checkIn: WeeklyCheckIn): Promise<PlanAdjustment> {
+    const next = await saveCheckIn(checkIn);
+    setCheckIns(next);
+    const goalKind = profile ? primaryGoalToNutritionKind(profile.primaryGoal) : 'maintenance';
+    return planWeeklyAdjustment({ goalKind, recentCheckIns: next.slice(-4) });
+  }
+
+  /** Apply a PlanAdjustment: bump baseline kcal delta, set override goal if any.
+   *  Triggers baselineMacros recalculation via state change. */
+  async function applyAdjustment(adjustment: PlanAdjustment) {
+    const nextDelta = baselineKcalDelta + adjustment.kcalDelta;
+    setBaselineKcalDelta(nextDelta);
+    await saveBaselineKcalDelta(nextDelta);
+    if (adjustment.adjustedGoalKind) {
+      setOverrideGoalKind(adjustment.adjustedGoalKind);
+    }
   }
 
   async function addFood(estimate: FoodEstimate, source: FoodLogItem['source']) {
@@ -282,6 +338,11 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
       setTodaySession: persistTodaySession,
       resetLocalProfile,
       purgeAllUserData,
+      checkIns,
+      baselineKcalDelta,
+      overrideGoalKind,
+      recordCheckIn,
+      applyAdjustment,
       addFood,
       removeFood,
       clearFood,

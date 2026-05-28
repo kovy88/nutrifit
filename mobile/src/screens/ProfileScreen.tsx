@@ -6,6 +6,7 @@ import { useNutriFit } from '../context/NutriFitContext';
 import { useState } from 'react';
 import { deleteAccount, exportAccountData } from '../services/api';
 import type { PrimaryGoal, TrainingGoalKind } from '../types';
+import type { PlanAdjustment } from '../types/checkin';
 import { activityFactorForSessions, primaryGoalLabel, toDateKey } from '../utils/nutrition';
 import { useTheme } from '../context/ThemeContext';
 
@@ -131,66 +132,68 @@ export function ProfileScreen() {
 }
 
 function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { profile, setProfile, weights, selectedDate } = useNutriFit();
+  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment } = useNutriFit();
   const { colors } = useTheme();
-  
-  const [energyLevel, setEnergyLevel] = useState<'great' | 'normal' | 'tired'>('normal');
-  const [hunger, setHunger] = useState<'low' | 'normal' | 'high'>('normal');
+
+  const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [hungerLevel, setHungerLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [adherencePct, setAdherencePct] = useState<number>(80);
   const [currentWeight, setCurrentWeight] = useState(profile ? String(profile.weight) : '');
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
-  const [suggestedAdjustment, setSuggestedAdjustment] = useState<number>(0);
+  const [pending, setPending] = useState<PlanAdjustment | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!profile) return null;
 
   async function evaluateCheckIn() {
-    if (!profile) return;
+    if (!profile || submitting) return;
     const nextWeight = parseFloat(currentWeight.replace(',', '.'));
     if (!nextWeight || nextWeight < 30 || nextWeight > 300) {
       Alert.alert('Chyba', 'Zadej prosím platnou váhu.');
       return;
     }
 
-    // Retrieve weight from 7 days ago to compute difference
+    // Week start = Monday of the week containing selectedDate
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 7);
-    const sevenDaysAgoKey = toDateKey(d);
-    const weight7DaysAgo = weights[sevenDaysAgoKey] || profile.weight;
+    const dayOfWeek = d.getDay() || 7;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - (dayOfWeek - 1));
+    const weekStartISO = toDateKey(monday);
 
-    const diff = nextWeight - weight7DaysAgo;
-    let adjustment = 0;
-    let msg = '';
-
-    if (profile.primaryGoal === 'lose_weight') {
-      if (diff > -0.2) {
-        adjustment = -100;
-        msg = `Za poslední týden tvá váha klesla o ${diff.toFixed(2)} kg (cíl je aspoň -0.3 kg/týden). Doporučujeme mírně snížit denní příjem o 100 kcal, aby se hubnutí opět nastartovalo.`;
-      } else {
-        msg = `Skvělá práce! Tvá váha klesla o ${Math.abs(diff).toFixed(2)} kg. Hubnutí probíhá zdravým tempem. Pokračuj v aktuálním nastavení příjmu.`;
-      }
-    } else if (profile.primaryGoal === 'gain_muscle') {
-      if (diff < 0.1) {
-        adjustment = 100;
-        msg = `Za poslední týden se tvá váha zvýšila o ${diff.toFixed(2)} kg (cíl je aspoň +0.15 kg/týden). Doporučujeme navýšit denní příjem o 100 kcal pro podporu svalového růstu.`;
-      } else {
-        msg = `Skvělá práce! Tvá váha roste tempem +${diff.toFixed(2)} kg za týden. Pokračuj v aktuálním nastavení příjmu.`;
-      }
-    } else {
-      msg = `Tvá váha se změnila o ${diff > 0 ? '+' : ''}${diff.toFixed(2)} kg. Pro udržování hmotnosti je toto ideální rozmezí. Pokračuj v aktuálním nastavení.`;
+    setSubmitting(true);
+    try {
+      const adjustment = await recordCheckIn({
+        weekStartISO,
+        weightKg: nextWeight,
+        energyLevel,
+        hungerLevel,
+        adherence: adherencePct / 100,
+        createdAt: new Date().toISOString(),
+      });
+      // Also persist the new weight on profile so calculateMacros picks it up immediately
+      await setProfile({ ...profile, weight: nextWeight });
+      setPending(adjustment);
+    } catch (err) {
+      Alert.alert('Chyba', err instanceof Error ? err.message : 'Check-in se nepodařil.');
+    } finally {
+      setSubmitting(false);
     }
-
-    setSuggestedAdjustment(adjustment);
-    setResultMessage(msg);
   }
 
-  async function applyAdjustment() {
-    if (!profile) return;
-    const nextWeight = parseFloat(currentWeight.replace(',', '.'));
-    await setProfile({
-      ...profile,
-      weight: nextWeight,
-    });
-    Alert.alert('Použito', 'Váha byla uložena a denní energetické cíle byly přepočítány.');
-    setResultMessage(null);
+  async function acceptAdjustment() {
+    if (!pending) return;
+    await applyAdjustment(pending);
+    Alert.alert(
+      'Použito',
+      pending.kcalDelta === 0
+        ? 'Plán zůstává beze změny. Pokračuj jak máš.'
+        : `Denní cíl ${pending.kcalDelta > 0 ? 'zvýšen' : 'snížen'} o ${Math.abs(pending.kcalDelta)} kcal pro příští týden.`,
+    );
+    setPending(null);
+    onClose();
+  }
+
+  function dismissAdjustment() {
+    setPending(null);
     onClose();
   }
 
@@ -205,28 +208,29 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
               Zhodnoť svůj týden. NutriFit porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
             </Text>
 
-            <Label>Jak se cítíš (energie)?</Label>
+            <Label>Energie tento týden (1–5)</Label>
             <View style={styles.row}>
-              {(['great', 'normal', 'tired'] as const).map(item => (
-                <Pill
-                  key={item}
-                  active={energyLevel === item}
-                  onPress={() => setEnergyLevel(item)}
-                >
-                  {item === 'great' ? '🔋 Výborně' : item === 'normal' ? '⚡ Normálně' : '🪫 Unaveně'}
+              {([1, 2, 3, 4, 5] as const).map(n => (
+                <Pill key={`e-${n}`} active={energyLevel === n} onPress={() => setEnergyLevel(n)}>
+                  {n === 1 ? '🪫 1' : n === 5 ? '🔋 5' : String(n)}
                 </Pill>
               ))}
             </View>
 
-            <Label>Pociťuješ přes den hlad?</Label>
+            <Label>Hlad přes den (1 = ne, 5 = stále)</Label>
             <View style={styles.row}>
-              {(['low', 'normal', 'high'] as const).map(item => (
-                <Pill
-                  key={item}
-                  active={hunger === item}
-                  onPress={() => setHunger(item)}
-                >
-                  {item === 'low' ? '🟢 Minimální' : item === 'normal' ? '🟡 Běžný' : '🔴 Hlad'}
+              {([1, 2, 3, 4, 5] as const).map(n => (
+                <Pill key={`h-${n}`} active={hungerLevel === n} onPress={() => setHungerLevel(n)}>
+                  {String(n)}
+                </Pill>
+              ))}
+            </View>
+
+            <Label>Adherence — kolik % plánu jsi dodržel/a?</Label>
+            <View style={styles.row}>
+              {[40, 60, 80, 100].map(pct => (
+                <Pill key={`a-${pct}`} active={adherencePct === pct} onPress={() => setAdherencePct(pct)}>
+                  {pct}%
                 </Pill>
               ))}
             </View>
@@ -239,19 +243,41 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
               placeholder="Zadej aktuální váhu..."
             />
 
-            {resultMessage ? (
+            {pending ? (
               <View style={[styles.resultBox, { backgroundColor: colors.isDark ? '#151d1a' : '#f4fbf7', borderColor: colors.isDark ? '#2a3630' : '#dcf2e6' }]}>
                 <Text style={[styles.resultText, { color: colors.isDark ? '#309965' : colors.green }]}>
-                  {resultMessage}
+                  {pending.reason}
                 </Text>
-                {suggestedAdjustment !== 0 && (
-                  <Button style={{ marginTop: 12 }} onPress={applyAdjustment}>
-                    Uložit váhu a přepočítat cíle
-                  </Button>
+                {pending.kcalDelta !== 0 && (
+                  <Text style={[styles.resultText, { color: colors.ink, marginTop: 6 }]}>
+                    {pending.kcalDelta > 0 ? '+' : ''}{pending.kcalDelta} kcal / den pro příští týden
+                  </Text>
                 )}
+                {pending.adjustedGoalKind && (
+                  <Text style={[styles.resultText, { color: colors.orange, marginTop: 6, fontWeight: '900' }]}>
+                    ⚠ Cíl dočasně přepneme na: {pending.adjustedGoalKind}
+                  </Text>
+                )}
+                {pending.warnings.length > 0 && (
+                  <View style={{ marginTop: 10, gap: 4 }}>
+                    {pending.warnings.map((w, i) => (
+                      <Text key={i} style={[styles.resultText, { color: colors.muted }]}>• {w}</Text>
+                    ))}
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                  <Button style={{ flex: 1 }} variant="secondary" onPress={dismissAdjustment}>
+                    Tento týden nepoužít
+                  </Button>
+                  <Button style={{ flex: 1 }} onPress={acceptAdjustment}>
+                    Použít na příští týden
+                  </Button>
+                </View>
               </View>
             ) : (
-              <Button onPress={evaluateCheckIn}>Vyhodnotit týden</Button>
+              <Button onPress={evaluateCheckIn}>
+                {submitting ? 'Vyhodnocuji…' : 'Vyhodnotit týden'}
+              </Button>
             )}
           </ScrollView>
           <Button variant="secondary" onPress={onClose}>Zavřít</Button>

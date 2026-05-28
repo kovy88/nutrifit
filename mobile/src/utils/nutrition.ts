@@ -52,14 +52,30 @@ export function primaryGoalLabel(goal: PrimaryGoal): string {
   }
 }
 
-export function calculateMacros(profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor'>): Macros {
+export type CalculateMacrosOptions = {
+  /** Cumulative kcal delta from weekly check-ins (e.g. -150 if hubnutí stagnates).
+   *  Applied AFTER safety floors so we never drop below MIN_KCAL_*. */
+  baselineKcalDelta?: number;
+  /** Override the goal kind derived from primaryGoal — used when weekly check-in
+   *  auto-switched fat_loss → maintenance due to chronic low energy. */
+  overrideGoalKind?: NutritionGoalKind;
+};
+
+export function calculateMacros(
+  profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor'>,
+  options: CalculateMacrosOptions = {},
+): Macros {
   const bmr = calcBMR(profile);
   const tdee = Math.round(bmr * profile.activityFactor);
   const bmi = profile.weight / ((profile.height / 100) ** 2);
-  const intendedGoal = primaryGoalToNutritionKind(profile.primaryGoal);
+  const intendedGoal = options.overrideGoalKind ?? primaryGoalToNutritionKind(profile.primaryGoal);
   const safety = assessProfileSafety(profile, { kind: intendedGoal });
   const goal = safety.adjustedGoalKind || intendedGoal;
-  const kcal = calcCalorieTarget(profile, goal, tdee);
+  // Apply weekly-adjustment delta to the calorie target. Safety floor is re-applied
+  // so cumulative negative deltas can't push below 1200/1500 kcal.
+  const targetWithDelta = calcCalorieTarget(profile, goal, tdee) + (options.baselineKcalDelta ?? 0);
+  const floor = profile.gender === 'muz' ? 1500 : 1200;
+  const kcal = Math.max(targetWithDelta, floor);
   const protein = Math.round(profile.weight * proteinPerKg(goal));
   const fat = Math.round(Math.max((kcal * 0.27) / 9, profile.weight * 0.6));
   const carbs = Math.max(Math.round((kcal - protein * 4 - fat * 9) / 4), 0);

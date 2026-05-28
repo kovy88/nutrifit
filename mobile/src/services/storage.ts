@@ -25,6 +25,9 @@ const keys = {
   foodLogsByDate: 'nutrifit.foodLogsByDate.v1',
   sessionsByDate: 'nutrifit.sessionsByDate.v1',
   weightsByDate: 'nutrifit.weightsByDate.v1',
+  checkIns: 'nutrifit.checkIns.v1',
+  /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
+  baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
 };
 
 /** Storage retention: drop date-bound entries older than this many days. */
@@ -189,6 +192,33 @@ export async function runMigration(): Promise<void> {
   // Bound storage growth: drop date-bound records older than RETENTION_DAYS.
   // Cheap on each startup; AsyncStorage size stays linear in retention window, not lifetime.
   await pruneDateBoundedStores();
+}
+
+// ── Weekly check-ins ─────────────────────────────────────────────────────────
+import type { WeeklyCheckIn } from '../types/checkin';
+
+export async function loadCheckIns(): Promise<WeeklyCheckIn[]> {
+  return (await readJson<WeeklyCheckIn[]>(keys.checkIns)) || [];
+}
+
+export async function saveCheckIn(checkIn: WeeklyCheckIn): Promise<WeeklyCheckIn[]> {
+  const all = await loadCheckIns();
+  // De-dup by weekStartISO — re-submitting overwrites
+  const next = all.filter(c => c.weekStartISO !== checkIn.weekStartISO).concat(checkIn);
+  next.sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
+  await AsyncStorage.setItem(keys.checkIns, JSON.stringify(next));
+  return next;
+}
+
+/** Cumulative kcal delta applied to baseline from accepted weekly adjustments.
+ *  Persisted so the next macro calculation can reflect last week's coaching. */
+export async function loadBaselineKcalDelta(): Promise<number> {
+  const raw = await readJson<{ value: number }>(keys.baselineKcalDelta);
+  return raw?.value ?? 0;
+}
+
+export async function saveBaselineKcalDelta(value: number): Promise<void> {
+  await AsyncStorage.setItem(keys.baselineKcalDelta, JSON.stringify({ value }));
 }
 
 // Weight logs helpers
