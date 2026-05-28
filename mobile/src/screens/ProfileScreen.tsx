@@ -9,11 +9,13 @@ import { deleteAccount, exportAccountData } from '../services/api';
 import type { PrimaryGoal, TrainingGoalKind } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
 import { activityFactorForSessions, primaryGoalLabel, toDateKey } from '../utils/nutrition';
+import { useWeeklySummary } from '../hooks/useWeeklySummary';
 import { useTheme } from '../context/ThemeContext';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
   const navigation = useNavigation<any>();
+  const weeklySummary = useWeeklySummary();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
 
@@ -96,6 +98,16 @@ export function ProfileScreen() {
           🎯 Spustit týdenní check-in
         </Button>
 
+        {/* AI weekly summary trigger */}
+        <Button
+          style={{ marginTop: 6 }}
+          variant="secondary"
+          disabled={weeklySummary.isGenerating}
+          onPress={() => weeklySummary.generate()}
+        >
+          {weeklySummary.isGenerating ? '🤖 Sestavuji shrnutí…' : '🤖 AI týdenní shrnutí'}
+        </Button>
+
         {/* Settings — manage health data sources (Apple Health, Strava, Whoop, ...) */}
         <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => navigation.navigate('Settings')}>
           ⚙️ Zdravotní zdroje a nastavení
@@ -103,6 +115,48 @@ export function ProfileScreen() {
 
         <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>Spustit onboarding znovu</Button>
       </Card>
+
+      {/* AI weekly summary — last generated review */}
+      {weeklySummary.summary && (
+        <Card>
+          <Label>🧠 Týdenní AI shrnutí</Label>
+          <Text style={styles.summaryHeadline}>{weeklySummary.summary.headline}</Text>
+          {weeklySummary.summary.highlights.length > 0 && (
+            <View style={{ marginTop: 8, gap: 4 }}>
+              <Text style={styles.summarySectionLabel}>✓ Co šlo</Text>
+              {weeklySummary.summary.highlights.map((h, i) => (
+                <Text key={`hl-${i}`} style={styles.summaryBullet}>• {h}</Text>
+              ))}
+            </View>
+          )}
+          {weeklySummary.summary.concerns.length > 0 && (
+            <View style={{ marginTop: 10, gap: 4 }}>
+              <Text style={styles.summarySectionLabel}>⚠ Hlídej</Text>
+              {weeklySummary.summary.concerns.map((c, i) => (
+                <Text key={`cn-${i}`} style={styles.summaryBullet}>• {c}</Text>
+              ))}
+            </View>
+          )}
+          {weeklySummary.summary.recommendation && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.summarySectionLabel}>→ Příští týden</Text>
+              <Text style={styles.summaryRec}>{weeklySummary.summary.recommendation}</Text>
+            </View>
+          )}
+          {weeklySummary.generatedAt && (
+            <Text style={styles.summaryMeta}>
+              Vygenerováno {new Date(weeklySummary.generatedAt).toLocaleDateString('cs-CZ')} pro týden {weeklySummary.weekStartISO}
+            </Text>
+          )}
+        </Card>
+      )}
+      {weeklySummary.error && (
+        <Card>
+          <Text style={{ color: colors.red, fontSize: 12 }}>
+            Chyba při generování AI shrnutí: {weeklySummary.error}
+          </Text>
+        </Card>
+      )}
 
       <Card>
         <Label>Účet</Label>
@@ -317,4 +371,9 @@ const styles = StyleSheet.create({
   small: { fontSize: 13, lineHeight: 18 },
   resultBox: { marginTop: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
   resultText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  summaryHeadline: { color: colors.ink, fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 6 },
+  summarySectionLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  summaryBullet: { color: colors.ink, fontSize: 13, lineHeight: 19 },
+  summaryRec: { color: colors.green, fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
+  summaryMeta: { color: colors.faint, fontSize: 11, marginTop: 10 },
 });

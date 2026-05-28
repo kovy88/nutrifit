@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
 import { buildMealPlanRequest, buildSingleMealRequest } from '../utils/mealPrompts';
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
+import { buildWeeklySummaryRequest, parseWeeklySummary, type WeeklySummary, type WeeklySummaryInput } from '../lib/ai/weeklySummary';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';
@@ -85,6 +86,24 @@ export async function regenerateMeal(opts: {
     throw new Error(`AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`);
   }
   return meal;
+}
+
+/**
+ * Generuje týdenní AI shrnutí. Vstup = pre-computed metrics (váha trend,
+ * adherence, readiness counts, ACWR, strain, sleep, HRV, check-in). AI je
+ * jen INTERPRETUJE — žádné counting/computing, tím eliminujeme halucinace.
+ *
+ * Returns null pokud AI vrátí non-parseable nebo invalid JSON.
+ */
+export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<WeeklySummary> {
+  const request = buildWeeklySummaryRequest(input);
+  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('AI nevrátila žádný text.');
+  const parsed = parseJson(text);
+  const summary = parseWeeklySummary(parsed);
+  if (!summary) throw new Error('AI vrátila neplatný JSON pro týdenní shrnutí.');
+  return summary;
 }
 
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg'): Promise<FoodEstimate> {
