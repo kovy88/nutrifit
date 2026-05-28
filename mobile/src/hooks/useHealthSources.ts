@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import {
   AppleHealthProvider,
-  AsyncStorageTokenStore,
+  createOAuthTokenStore,
   HealthConnectProvider,
   type HealthPermissionStatus,
   type OAuthService,
@@ -45,7 +45,7 @@ export function useHealthSources(): HealthSourcesState {
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
-    const store = new AsyncStorageTokenStore();
+    const store = createOAuthTokenStore();
     const oauth = await store.listConnected();
 
     let nextNative: NativeSourceState;
@@ -73,7 +73,7 @@ export function useHealthSources(): HealthSourcesState {
   }, []);
 
   const disconnect = useCallback(async (service: OAuthService) => {
-    const store = new AsyncStorageTokenStore();
+    const store = createOAuthTokenStore();
     await store.clearToken(service);
     await refresh();
   }, [refresh]);

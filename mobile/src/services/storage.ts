@@ -10,7 +10,7 @@ import type {
   DailySessionRecord,
 } from '../types';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
-import { ManualHealthDataProvider, AsyncStorageTokenStore } from '../lib/health';
+import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
 import { NoopNotificationScheduler } from '../lib/notifications';
 
 const keys = {
@@ -51,6 +51,9 @@ export async function purgeAllLocalData(): Promise<void> {
     AsyncStorage.removeItem('nutrifit.briefing.schedule.v1'),
     ManualHealthDataProvider.purge(),
     AsyncStorageTokenStore.purge(),
+    // SecureStore tokens (iOS Keychain / Android Keystore) — wipe these too
+    // so account deletion leaves no trace at the system level either.
+    SecureOAuthTokenStore.purge(),
     NoopNotificationScheduler.purge(),
   ]);
 }

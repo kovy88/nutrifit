@@ -19,6 +19,11 @@ export {
   type OAuthTokenStore,
 } from './oauth/OAuthTokenStore';
 export {
+  SecureOAuthTokenStore,
+  createOAuthTokenStore,
+  isSecureStoreAvailable,
+} from './oauth/SecureOAuthTokenStore';
+export {
   StravaOAuth,
   parseQuery,
   type StravaOAuthConfig,

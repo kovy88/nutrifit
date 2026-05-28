@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AsyncStorageTokenStore,
+  createOAuthTokenStore,
   WhoopOAuth,
   type WhoopConnectResult,
 } from '../lib/health';
@@ -20,7 +20,7 @@ export type UseWhoopConnectState = {
 
 export function useWhoopConnect(): UseWhoopConnectState {
   const clientId = process.env.EXPO_PUBLIC_WHOOP_CLIENT_ID;
-  const tokensRef = useRef(new AsyncStorageTokenStore());
+  const tokensRef = useRef(createOAuthTokenStore());
   const oauthRef = useRef<WhoopOAuth | null>(
     clientId ? new WhoopOAuth({ clientId }, tokensRef.current) : null,
   );

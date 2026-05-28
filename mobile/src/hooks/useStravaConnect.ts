@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AsyncStorageTokenStore,
+  createOAuthTokenStore,
   StravaOAuth,
   type StravaConnectResult,
 } from '../lib/health';
@@ -27,7 +27,7 @@ export type UseStravaConnectState = {
 
 export function useStravaConnect(): UseStravaConnectState {
   const clientId = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID;
-  const tokensRef = useRef(new AsyncStorageTokenStore());
+  const tokensRef = useRef(createOAuthTokenStore());
   const oauthRef = useRef<StravaOAuth | null>(
     clientId ? new StravaOAuth({ clientId }, tokensRef.current) : null,
   );

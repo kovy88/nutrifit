@@ -19,7 +19,8 @@ import { ManualHealthDataProvider } from './ManualHealthDataProvider';
 import { MockHealthDataProvider, type MockHealthDataProviderOptions } from './MockHealthDataProvider';
 import { StravaProvider } from './StravaProvider';
 import { WhoopProvider } from './WhoopProvider';
-import { AsyncStorageTokenStore, type OAuthTokenStore } from './oauth/OAuthTokenStore';
+import { type OAuthTokenStore } from './oauth/OAuthTokenStore';
+import { createOAuthTokenStore } from './oauth/SecureOAuthTokenStore';
 import type { HealthDataProvider } from './HealthDataProvider';
 
 export type HealthDataProviderMode =
@@ -35,13 +36,15 @@ export type CreateHealthDataProviderOptions = {
   mode?: HealthDataProviderMode;
   weightKg?: number;
   mock?: MockHealthDataProviderOptions;
-  /** Token store pro OAuth providery. Default = AsyncStorageTokenStore. */
+  /** Token store pro OAuth providery. Default = SecureOAuthTokenStore (iOS
+   *  Keychain / Android Keystore via expo-secure-store; falls back to
+   *  AsyncStorage if the package is missing). */
   tokenStore?: OAuthTokenStore;
 };
 
 export function createHealthDataProvider(opts: CreateHealthDataProviderOptions = {}): HealthDataProvider {
   const mode = opts.mode ?? 'auto';
-  const tokens = opts.tokenStore ?? new AsyncStorageTokenStore();
+  const tokens = opts.tokenStore ?? createOAuthTokenStore();
 
   if (mode === 'mock')         return new MockHealthDataProvider({ weightKg: opts.weightKg, ...opts.mock });
   if (mode === 'manual')       return new ManualHealthDataProvider();
