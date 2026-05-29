@@ -6,6 +6,8 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from './UI';
 import { useTheme } from '../context/ThemeContext';
+import { useNutriFit } from '../context/NutriFitContext';
+import { computeFueling } from '../lib/nutrition/workoutFueling';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
 const KIND_EMOJI: Record<WorkoutKind, string> = {
@@ -44,7 +46,10 @@ export type WorkoutDetailModalProps = {
 
 export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps) {
   const { colors } = useTheme();
+  const { profile } = useNutriFit();
   if (!workout) return null;
+
+  const fueling = profile ? computeFueling({ workout, weightKg: profile.weight }) : null;
 
   const emoji = KIND_EMOJI[workout.kind] || '🏅';
   const kindLabel = KIND_LABEL[workout.kind] || 'Trénink';
@@ -107,6 +112,45 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
                 <Metric label="Spáleno" value={`${workout.activeEnergyKcal} kcal`} color={colors.orange} />
               )}
             </View>
+
+            {/* Fueling recommendation — pre/intra/post per workout intensity */}
+            {fueling && (
+              <View style={[styles.fuelingBox, { borderTopColor: colors.border }]}>
+                <Text style={[styles.fuelingTitle, { color: colors.ink }]}>🍌 Doporučený fueling</Text>
+                <Text style={[styles.fuelingSummary, { color: colors.muted }]}>{fueling.summary}</Text>
+                {fueling.pre && (
+                  <View style={styles.fuelingRow}>
+                    <Text style={[styles.fuelingLabel, { color: colors.faint }]}>
+                      Pre · {fueling.pre.timingMinBefore} min předem
+                    </Text>
+                    <Text style={[styles.fuelingValue, { color: colors.green }]}>
+                      {fueling.pre.carbsG}g sacharidů + {fueling.pre.proteinG}g bílkovin
+                    </Text>
+                    <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.pre.note}</Text>
+                  </View>
+                )}
+                {fueling.intra && (
+                  <View style={styles.fuelingRow}>
+                    <Text style={[styles.fuelingLabel, { color: colors.faint }]}>Během tréninku</Text>
+                    <Text style={[styles.fuelingValue, { color: colors.orange }]}>
+                      {fueling.intra.carbsGPerHour}g sacharidů / hodinu
+                    </Text>
+                    <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.intra.note}</Text>
+                  </View>
+                )}
+                {fueling.post && (
+                  <View style={styles.fuelingRow}>
+                    <Text style={[styles.fuelingLabel, { color: colors.faint }]}>
+                      Post · do {fueling.post.timingMinAfter} min po
+                    </Text>
+                    <Text style={[styles.fuelingValue, { color: colors.red }]}>
+                      {fueling.post.carbsG}g sacharidů + {fueling.post.proteinG}g bílkovin
+                    </Text>
+                    <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.post.note}</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* External ID footer (debug-ish, useful for support) */}
             {workout.externalId && (
@@ -208,4 +252,11 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 17, fontWeight: '900' },
   metricValueBig: { fontSize: 28, fontWeight: '900' },
   externalId: { fontSize: 11, fontFamily: 'System', marginTop: 8 },
+  fuelingBox: { borderTopWidth: 1, paddingTop: 14, gap: 10 },
+  fuelingTitle: { fontSize: 15, fontWeight: '900' },
+  fuelingSummary: { fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
+  fuelingRow: { gap: 2, marginTop: 6 },
+  fuelingLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3, textTransform: 'uppercase' },
+  fuelingValue: { fontSize: 14, fontWeight: '900' },
+  fuelingNote: { fontSize: 11, lineHeight: 15, marginTop: 2 },
 });
