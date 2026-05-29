@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 import { usePreWorkoutReminder } from '../hooks/usePreWorkoutReminder';
+import { usePostWorkoutReminder } from '../hooks/usePostWorkoutReminder';
 import { useStravaConnect } from '../hooks/useStravaConnect';
 import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import { useGarminConnect } from '../hooks/useGarminConnect';
@@ -78,6 +79,7 @@ export function SettingsScreen() {
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
   const preWorkout = usePreWorkoutReminder();
+  const postWorkout = usePostWorkoutReminder();
   const strava = useStravaConnect();
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
@@ -238,6 +240,44 @@ export function SettingsScreen() {
               </View>
               <Text style={[styles.note, { color: colors.faint }]}>
                 💡 Reminder se neplánuje pro rest day. Tréninkový čas se odhaduje (ranní pro běh, večerní pro silovku).
+              </Text>
+            </>
+          )}
+        </Card>
+
+        {/* ── Post-workout refuel reminder ───────────────────────────────── */}
+        <Card>
+          <Label>🔋 Post-workout refuel reminder</Label>
+          <Text style={[styles.body, { color: colors.muted }]}>
+            X minut po skončení tréninku ti připomeneme anabolic window — protein + sacharidy pro regeneraci.
+          </Text>
+          <View style={styles.briefingRow}>
+            <Pill
+              active={postWorkout.settings.enabled}
+              onPress={() => postWorkout.update({ enabled: !postWorkout.settings.enabled })}
+            >
+              {postWorkout.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+            </Pill>
+            <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
+              {postWorkout.settings.minutesAfter} min po
+            </Text>
+          </View>
+          {postWorkout.settings.enabled && (
+            <>
+              <Label>Kdy upozornit</Label>
+              <View style={styles.timeRow}>
+                {[0, 5, 15, 30].map(m => (
+                  <Pill
+                    key={m}
+                    active={postWorkout.settings.minutesAfter === m}
+                    onPress={() => postWorkout.update({ minutesAfter: m })}
+                  >
+                    {m === 0 ? 'Hned po' : `+${m} min`}
+                  </Pill>
+                ))}
+              </View>
+              <Text style={[styles.note, { color: colors.faint }]}>
+                💡 Pro hypertrofii doporučujeme do 30 min — "anabolic window" pro maximální resyntézu svalového proteinu.
               </Text>
             </>
           )}
