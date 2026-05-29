@@ -49,6 +49,7 @@ export async function purgeAllLocalData(): Promise<void> {
   await Promise.all([
     AsyncStorage.multiRemove(allNutriFitKeys()),
     AsyncStorage.removeItem('nutrifit.briefing.schedule.v1'),
+    AsyncStorage.removeItem('nutrifit.preWorkoutReminder.settings.v1'),
     AsyncStorage.removeItem('nutrifit.weeklySummary.v1'),
     ManualHealthDataProvider.purge(),
     AsyncStorageTokenStore.purge(),

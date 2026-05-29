@@ -19,6 +19,7 @@ import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
+import { usePreWorkoutReminder } from '../hooks/usePreWorkoutReminder';
 import { useStravaConnect } from '../hooks/useStravaConnect';
 import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import { useGarminConnect } from '../hooks/useGarminConnect';
@@ -76,6 +77,7 @@ export function SettingsScreen() {
   const { colors } = useTheme();
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
+  const preWorkout = usePreWorkoutReminder();
   const strava = useStravaConnect();
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
@@ -199,6 +201,44 @@ export function SettingsScreen() {
                   💡 Expo Go bez balíčku `expo-notifications` neumí native notifikace. Nastavení se uloží a aktivuje po doinstalování.
                 </Text>
               )}
+            </>
+          )}
+        </Card>
+
+        {/* ── Pre-workout fueling reminder ───────────────────────────────── */}
+        <Card>
+          <Label>🍌 Pre-workout fueling reminder</Label>
+          <Text style={[styles.body, { color: colors.muted }]}>
+            X minut před plánovaným tréninkem dostaneš push s přesnými dávkami sacharidů + bílkovin podle workout intensity a tvé váhy.
+          </Text>
+          <View style={styles.briefingRow}>
+            <Pill
+              active={preWorkout.settings.enabled}
+              onPress={() => preWorkout.update({ enabled: !preWorkout.settings.enabled })}
+            >
+              {preWorkout.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+            </Pill>
+            <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
+              {preWorkout.settings.minutesBefore} min předem
+            </Text>
+          </View>
+          {preWorkout.settings.enabled && (
+            <>
+              <Label>Kdy upozornit</Label>
+              <View style={styles.timeRow}>
+                {[30, 60, 90, 120].map(m => (
+                  <Pill
+                    key={m}
+                    active={preWorkout.settings.minutesBefore === m}
+                    onPress={() => preWorkout.update({ minutesBefore: m })}
+                  >
+                    {m} min
+                  </Pill>
+                ))}
+              </View>
+              <Text style={[styles.note, { color: colors.faint }]}>
+                💡 Reminder se neplánuje pro rest day. Tréninkový čas se odhaduje (ranní pro běh, večerní pro silovku).
+              </Text>
             </>
           )}
         </Card>
