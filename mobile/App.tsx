@@ -5,14 +5,18 @@ import { StatusBar } from 'expo-status-bar';
 import { NutriFitProvider, useNutriFit } from './src/context/NutriFitContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { LoadingScreen } from './src/screens/LoadingScreen';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 
 function AppShell() {
   const { isReady } = useNutriFit();
+  const { isDark } = useTheme();
+
   if (!isReady) return <LoadingScreen />;
 
   return (
     <NavigationContainer>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <RootNavigator />
     </NavigationContainer>
   );
@@ -20,8 +24,13 @@ function AppShell() {
 
 export default function App() {
   return (
-    <NutriFitProvider>
-      <AppShell />
-    </NutriFitProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <NutriFitProvider>
+          <AppShell />
+        </NutriFitProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
+
