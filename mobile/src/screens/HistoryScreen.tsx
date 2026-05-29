@@ -13,6 +13,8 @@ import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence, macroAdherenceBand } from '../lib/nutrition/adherenceTrend';
 import { computeLogStreak, computeAdherenceStreak, describeStreak } from '../lib/nutrition/streaks';
+import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
+import { primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useStrainTrend } from '../hooks/useStrainTrend';
 
 type DaySummary = {
@@ -35,12 +37,15 @@ function mergeWeightTrend(primary: TrendPoint[], fallback: TrendPoint[]): TrendP
 }
 
 export function HistoryScreen() {
-  const { setSelectedDate, weights } = useNutriFit();
+  const { setSelectedDate, weights, baselineMacros, profile } = useNutriFit();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { colors: themeColors } = useTheme();
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
   const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
+  const [energyBalance, setEnergyBalance] = useState(() =>
+    computeEnergyBalance({ logs: {}, tdee: 2000, days: 14 }),
+  );
   const sleepTrend = useTrend('sleep', 14);
   const hrvTrend = useTrend('hrv', 14);
   const rhrTrend = useTrend('rhr', 14);
@@ -82,6 +87,9 @@ export function HistoryScreen() {
       setSummaries(items);
       // Adherence trend uses the same plans + logs we just loaded.
       setAdherence(computeAdherenceTrend(plans, logs, 14));
+      if (baselineMacros) {
+        setEnergyBalance(computeEnergyBalance({ logs, tdee: baselineMacros.tdee, days: 14 }));
+      }
     } catch (err) {
       console.error('Failed to load history summaries', err);
     }
@@ -208,6 +216,32 @@ export function HistoryScreen() {
         </Text>
       </Card>
 
+      {/* Energy balance vs TDEE — skutečné energetické saldo */}
+      {profile && baselineMacros && energyBalance.loggedDays >= 3 && (
+        <Card>
+          <Label>⚡ Energetické saldo vs TDEE (14 dní)</Label>
+          <View style={styles.balanceHeader}>
+            <Text style={[styles.balanceValue, {
+              color:
+                energyBalance.theoreticalKgChange < -0.2 ? themeColors.green
+                : energyBalance.theoreticalKgChange > 0.2 ? themeColors.orange
+                : themeColors.muted,
+            }]}>
+              {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{energyBalance.theoreticalKgChange.toFixed(2)} kg
+            </Text>
+            <Text style={[styles.balanceSub, { color: themeColors.muted }]}>
+              teoretická změna z {energyBalance.totalBalance > 0 ? '+' : ''}{energyBalance.totalBalance} kcal
+            </Text>
+          </View>
+          <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
+            {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal))}
+          </Text>
+          <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
+            TDEE {Math.round(baselineMacros.tdee)} kcal · prům. {energyBalance.averageDailyBalance ?? 0} kcal/den nad TDEE
+          </Text>
+        </Card>
+      )}
+
       <Card>
         <Label>Přehled dnů</Label>
         {summaries.length === 0 ? (
@@ -292,4 +326,7 @@ const styles = StyleSheet.create({
   streakValue: { fontSize: 18, fontWeight: '900' },
   streakLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3, marginTop: 2 },
   streakSub: { fontSize: 11, lineHeight: 14, marginTop: 6 },
+  balanceHeader: { alignItems: 'center', paddingVertical: 12 },
+  balanceValue: { fontSize: 32, fontWeight: '900' },
+  balanceSub: { fontSize: 12, fontWeight: '600', marginTop: 4 },
 });
