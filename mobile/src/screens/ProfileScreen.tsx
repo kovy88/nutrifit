@@ -8,14 +8,16 @@ import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
 import type { PrimaryGoal, TrainingGoalKind } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
-import { activityFactorForSessions, primaryGoalLabel, toDateKey } from '../utils/nutrition';
+import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
   const navigation = useNavigation<any>();
   const weeklySummary = useWeeklySummary();
+  const { t } = useLanguage();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
 
@@ -69,33 +71,33 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <H1>Profil</H1>
+      <H1>{t('profile.title')}</H1>
 
       <Card>
-        <Label>Hlavní cíl</Label>
+        <Label>{t('profile.mainGoal')}</Label>
         <View style={styles.rowWrap}>
           {(['lose_weight', 'maintain_weight', 'gain_muscle', 'run_race'] as PrimaryGoal[]).map(goal => (
-            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{primaryGoalLabel(goal)}</Pill>
+            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{t(('goal.' + goal) as 'goal.lose_weight')}</Pill>
           ))}
         </View>
-        <Label>Tréninkový cíl</Label>
+        <Label>{t('profile.trainingGoal')}</Label>
         <View style={styles.rowWrap}>
           {trainingGoals.map(goal => (
             <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => setProfile({ ...profile, trainingGoal: goal.value })}>{goal.label}</Pill>
           ))}
         </View>
-        <Label>Tréninků týdně</Label>
+        <Label>{t('profile.sessionsPerWeek')}</Label>
         <View style={styles.rowWrap}>
           {[1, 2, 3, 4, 5, 6].map(count => (
             <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>{count}×</Pill>
           ))}
         </View>
-        <Label>Aktuální váha (kg)</Label>
+        <Label>{t('profile.currentWeight')}</Label>
         <Field keyboardType="number-pad" value={String(profile.weight)} onChangeText={weight => setProfile({ ...profile, weight: Number(weight) || profile.weight })} />
-        
+
         {/* Adaptive Weekly Check-In trigger */}
         <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
-          🎯 Spustit týdenní check-in
+          {t('profile.weeklyCheckIn')}
         </Button>
 
         {/* AI weekly summary trigger */}
@@ -105,15 +107,15 @@ export function ProfileScreen() {
           disabled={weeklySummary.isGenerating}
           onPress={() => weeklySummary.generate()}
         >
-          {weeklySummary.isGenerating ? '🤖 Sestavuji shrnutí…' : '🤖 AI týdenní shrnutí'}
+          {weeklySummary.isGenerating ? t('profile.aiSummaryGenerating') : t('profile.aiSummary')}
         </Button>
 
         {/* Settings — manage health data sources (Apple Health, Strava, Whoop, ...) */}
         <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => navigation.navigate('Settings')}>
-          ⚙️ Zdravotní zdroje a nastavení
+          {t('profile.healthSettings')}
         </Button>
 
-        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>Spustit onboarding znovu</Button>
+        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
       </Card>
 
       {/* AI weekly summary — last generated review */}
@@ -159,13 +161,13 @@ export function ProfileScreen() {
       )}
 
       <Card>
-        <Label>Účet</Label>
+        <Label>{t('profile.account')}</Label>
         {user ? (
           <>
             <Text style={styles.user}>{user.email}</Text>
-            <Button variant="secondary" onPress={exportData}>Exportovat data</Button>
-            <Button variant="secondary" onPress={signOut}>Odhlásit se</Button>
-            <Button variant="danger" onPress={confirmDelete}>Smazat účet a data</Button>
+            <Button variant="secondary" onPress={exportData}>{t('profile.exportData')}</Button>
+            <Button variant="secondary" onPress={signOut}>{t('profile.signOut')}</Button>
+            <Button variant="danger" onPress={confirmDelete}>{t('profile.deleteAccount')}</Button>
           </>
         ) : (
           <>

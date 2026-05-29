@@ -31,6 +31,8 @@ import { useStravaConnect } from '../hooks/useStravaConnect';
 import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import { useGarminConnect } from '../hooks/useGarminConnect';
 import { useOuraConnect } from '../hooks/useOuraConnect';
+import { useLanguage } from '../context/LanguageContext';
+import { SUPPORTED_LOCALES, LOCALE_LABELS } from '../lib/i18n';
 import type { OAuthService } from '../lib/health';
 
 // Mirror of app.json `extra`. Kept here as plain constants so the screen has
@@ -87,6 +89,7 @@ const OAUTH_SOURCES: OAuthSourceMeta[] = [
 
 export function SettingsScreen() {
   const { colors } = useTheme();
+  const { locale, setLocale, t } = useLanguage();
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
   const preWorkout = usePreWorkoutReminder();
@@ -227,14 +230,25 @@ export function SettingsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <H1>Nastavení</H1>
-        <Subtitle>
-          Propoj zdroje zdravotních dat. NutriPlan sjednotí všechno do jednoho přehledu, automaticky deduplikuje tréninky a doporučí úpravy podle dat z nejlepšího zdroje.
-        </Subtitle>
+        <H1>{t('settings.title')}</H1>
+        <Subtitle>{t('settings.subtitle')}</Subtitle>
+
+        {/* ── Language switcher ─────────────────────────────────────────── */}
+        <Card>
+          <Label>{t('settings.language')}</Label>
+          <Text style={[styles.body, { color: colors.muted }]}>{t('settings.languageDesc')}</Text>
+          <View style={styles.timeRow}>
+            {SUPPORTED_LOCALES.map(loc => (
+              <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
+                {LOCALE_LABELS[loc]}
+              </Pill>
+            ))}
+          </View>
+        </Card>
 
         {/* ── Morning push notification ─────────────────────────────────── */}
         <Card>
-          <Label>🔔 Ranní coaching</Label>
+          <Label>{t('settings.morningCoaching')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
             Pošleme ti každé ráno push s readiness + dnešním tréninkem + úpravou jídelníčku.{'\n\n'}
             <Text style={{ fontStyle: 'italic', color: colors.faint }}>
@@ -403,7 +417,7 @@ export function SettingsScreen() {
                     <Text style={[styles.sourceLabel, { color: colors.ink }]}>{src.label}</Text>
                     {connected && (
                       <Text style={[styles.connectedBadge, { color: colors.green, borderColor: colors.green }]}>
-                        ✓ Připojeno
+                        {t('settings.connected')}
                       </Text>
                     )}
                   </View>
@@ -438,7 +452,7 @@ export function SettingsScreen() {
                 <View style={styles.sourceButtons}>
                   {connected ? (
                     <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect)}>
-                      Odpojit
+                      {t('settings.disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -454,8 +468,8 @@ export function SettingsScreen() {
                       (src.service === 'whoop' && whoop.status === 'connecting') ||
                       (src.service === 'garmin' && garmin.status === 'connecting') ||
                       (src.service === 'oura' && oura.status === 'connecting')
-                        ? 'Otevírám…'
-                        : 'Připojit'}
+                        ? t('settings.opening')
+                        : t('settings.connect')}
                     </Button>
                   )}
                 </View>
