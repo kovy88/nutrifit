@@ -105,6 +105,60 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
     const r = buildWeeklySummaryRequest(baseInput);
     expect(r.prompt.toLowerCase()).toContain('exact numbers');
   });
+
+  it('embeds energy balance kcal when present', () => {
+    const r = buildWeeklySummaryRequest({
+      ...baseInput,
+      energyBalanceKcal: -3500,
+    });
+    expect(r.prompt).toContain('-3500');
+    expect(r.prompt).toContain('TDEE');
+  });
+
+  it('embeds theoretical kg change with sign', () => {
+    const r1 = buildWeeklySummaryRequest({ ...baseInput, theoreticalKgChange: -0.45 });
+    expect(r1.prompt).toContain('-0.45');
+    const r2 = buildWeeklySummaryRequest({ ...baseInput, theoreticalKgChange: 0.32 });
+    expect(r2.prompt).toContain('+0.32');
+  });
+
+  it('embeds streaks when > 0', () => {
+    const r = buildWeeklySummaryRequest({
+      ...baseInput,
+      currentLogStreak: 5,
+      currentAdherenceStreak: 3,
+    });
+    expect(r.prompt).toContain('5 dní v řadě se zápisem');
+    expect(r.prompt).toContain('3 dní v řadě v cíli');
+  });
+
+  it('omits zero streaks (no need to highlight nothing)', () => {
+    const r = buildWeeklySummaryRequest({
+      ...baseInput,
+      currentLogStreak: 0,
+      currentAdherenceStreak: 0,
+    });
+    expect(r.prompt).not.toContain('log streak');
+    expect(r.prompt).not.toContain('Adherence streak');
+  });
+
+  it('embeds per-macro adherence when provided', () => {
+    const r = buildWeeklySummaryRequest({
+      ...baseInput,
+      macroAdherence: { protein: 0.92, carbs: 1.08, fat: 0.78 },
+    });
+    expect(r.prompt).toContain('Protein 92%');
+    expect(r.prompt).toContain('Carbs 108%');
+    expect(r.prompt).toContain('Fat 78%');
+  });
+
+  it('omits per-macro line when all macros are null', () => {
+    const r = buildWeeklySummaryRequest({
+      ...baseInput,
+      macroAdherence: { protein: null, carbs: null, fat: null },
+    });
+    expect(r.prompt).not.toContain('Per-macro');
+  });
 });
 
 describe('parseWeeklySummary', () => {

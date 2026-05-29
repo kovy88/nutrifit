@@ -18,6 +18,10 @@ import { computeTrainingLoad } from '../lib/coaching/trainingLoad';
 import { evaluateReadiness } from '../lib/coaching/readiness';
 import { primaryGoalToNutritionKind } from '../utils/nutrition';
 import { generateWeeklySummary } from '../services/api';
+import { computeAdherenceTrend } from '../lib/nutrition/adherenceTrend';
+import { computeLogStreak, computeAdherenceStreak } from '../lib/nutrition/streaks';
+import { computeEnergyBalance } from '../lib/nutrition/energyBalance';
+import { loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
 import type { WeeklySummary, WeeklySummaryInput } from '../lib/ai/weeklySummary';
 
 const STORAGE_KEY = 'nutrifit.weeklySummary.v1';
@@ -45,7 +49,7 @@ function toDateKey(d: Date): string {
 }
 
 export function useWeeklySummary(): WeeklySummaryState {
-  const { profile, checkIns, ensureAiConsent } = useNutriFit();
+  const { profile, checkIns, ensureAiConsent, baselineMacros } = useNutriFit();
   const provider = useHealthDataProvider();
   const [state, setState] = useState<WeeklySummaryState>({
     summary: null,
@@ -162,13 +166,26 @@ export function useWeeklySummary(): WeeklySummaryState {
       // Latest check-in
       const latestCheckIn = checkIns.length > 0 ? checkIns[checkIns.length - 1] : undefined;
 
+      // Nutrition extras — plans + logs feed adherence, streaks, energy balance.
+      // Tyto výpočty jsou bezpečné i bez backendu (jen z AsyncStorage).
+      const [plans, foodLogs] = await Promise.all([
+        loadPlansByDate(),
+        loadFoodLogsByDate(),
+      ]);
+      const adherenceTrend = computeAdherenceTrend(plans, foodLogs, 7, lastSunday);
+      const logStreak = computeLogStreak(adherenceTrend.days, toDateKey(today));
+      const adherenceStreakInfo = computeAdherenceStreak(adherenceTrend.days, toDateKey(today));
+      const energyBalance = baselineMacros
+        ? computeEnergyBalance({ logs: foodLogs, tdee: baselineMacros.tdee, days: 7, endDate: lastSunday })
+        : null;
+
       const input: WeeklySummaryInput = {
         weekStartISO,
         weekEndISO,
         goalKind: primaryGoalToNutritionKind(profile.primaryGoal),
         weightStartKg,
         weightEndKg,
-        averageAdherence: latestCheckIn?.adherence,
+        averageAdherence: adherenceTrend.averageRatio ?? latestCheckIn?.adherence,
         readinessCounts: { red, yellow, green },
         totalTrimp,
         acwr: trainingLoad.acwr,
@@ -176,6 +193,16 @@ export function useWeeklySummary(): WeeklySummaryState {
         latestCheckIn,
         averageSleepMinutes: sleepMinutes,
         averageHrvMs: averageHrv,
+        // New fields — give AI the full nutrition picture, ne jen jednu metriku
+        energyBalanceKcal: energyBalance?.totalBalance,
+        theoreticalKgChange: energyBalance?.theoreticalKgChange,
+        currentLogStreak: logStreak.current,
+        currentAdherenceStreak: adherenceStreakInfo.current,
+        macroAdherence: {
+          protein: adherenceTrend.averages.protein,
+          carbs: adherenceTrend.averages.carbs,
+          fat: adherenceTrend.averages.fat,
+        },
       };
 
       const summary = await generateWeeklySummary(input);
@@ -198,7 +225,7 @@ export function useWeeklySummary(): WeeklySummaryState {
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.weight, profile?.primaryGoal, checkIns.length]);
+  }, [profile?.weight, profile?.primaryGoal, checkIns.length, baselineMacros?.tdee]);
 
   useEffect(() => {
     setState(s => (s.generate === generate ? s : { ...s, generate }));

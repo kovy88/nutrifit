@@ -38,6 +38,20 @@ export type WeeklySummaryInput = {
   averageSleepMinutes?: number;
   /** Prům. HRV (ms). */
   averageHrvMs?: number;
+  /** Týdenní energetické saldo vs TDEE (kcal). Záporné = deficit. */
+  energyBalanceKcal?: number;
+  /** Teoretická změna váhy ze saldo (kg). */
+  theoreticalKgChange?: number;
+  /** Délka aktuálního log streaku (dní v řadě se zápisem). */
+  currentLogStreak?: number;
+  /** Délka aktuálního adherence streaku (dní v řadě v cíli). */
+  currentAdherenceStreak?: number;
+  /** Per-macro adherence průměry (logged/planned ratios). */
+  macroAdherence?: {
+    protein?: number | null;
+    carbs?: number | null;
+    fat?: number | null;
+  };
 };
 
 export type WeeklySummaryRequest = {
@@ -93,6 +107,28 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     if (input.latestCheckIn.energyLevel != null) lines.push(`Subjektivní energie (1–5): ${input.latestCheckIn.energyLevel}`);
     if (input.latestCheckIn.hungerLevel != null) lines.push(`Subjektivní hlad (1–5): ${input.latestCheckIn.hungerLevel}`);
     if (input.latestCheckIn.notes) lines.push(`Uživatelská poznámka: "${input.latestCheckIn.notes}"`);
+  }
+  if (input.energyBalanceKcal != null) {
+    const sign = input.energyBalanceKcal >= 0 ? '+' : '';
+    lines.push(`Energetické saldo vs TDEE: ${sign}${input.energyBalanceKcal} kcal za týden`);
+  }
+  if (input.theoreticalKgChange != null) {
+    const sign = input.theoreticalKgChange >= 0 ? '+' : '';
+    lines.push(`Teoretická změna váhy ze saldo: ${sign}${input.theoreticalKgChange.toFixed(2)} kg`);
+  }
+  if (input.currentLogStreak != null && input.currentLogStreak > 0) {
+    lines.push(`Aktuální log streak: ${input.currentLogStreak} dní v řadě se zápisem`);
+  }
+  if (input.currentAdherenceStreak != null && input.currentAdherenceStreak > 0) {
+    lines.push(`Adherence streak: ${input.currentAdherenceStreak} dní v řadě v cíli 85-115%`);
+  }
+  if (input.macroAdherence) {
+    const ma = input.macroAdherence;
+    const parts: string[] = [];
+    if (ma.protein != null) parts.push(`Protein ${Math.round(ma.protein * 100)}%`);
+    if (ma.carbs != null) parts.push(`Carbs ${Math.round(ma.carbs * 100)}%`);
+    if (ma.fat != null) parts.push(`Fat ${Math.round(ma.fat * 100)}%`);
+    if (parts.length) lines.push(`Per-macro adherence: ${parts.join(', ')}`);
   }
 
   const prompt = [
