@@ -19,7 +19,21 @@ import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
 import type { StrainBand } from '../lib/coaching/strainScore';
 
 export function HomeScreen() {
-  const { profile, macros, baselineMacros, todaySession, dailyAdjustment, setTodaySession, foodLog, addFood, removeFood, clearFood, selectedDate, weights, logWeight } = useNutriFit();
+  const {
+    profile,
+    currentMacros: macros,
+    baselineMacros,
+    currentSession: todaySession,
+    dailyAdjustment,
+    setTodaySession,
+    currentFoodLog: foodLog,
+    addFood,
+    removeFood,
+    clearFood,
+    selectedDate,
+    weights,
+    logWeight,
+  } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const [manual, setManual] = useState({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });

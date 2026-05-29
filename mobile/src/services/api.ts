@@ -1,7 +1,8 @@
 import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
-import { buildMealPlanRequest, buildSingleMealRequest } from '../utils/mealPrompts';
+import { buildAllergenRepairRequest, buildMealPlanRequest, buildSingleMealRequest } from '../utils/mealPrompts';
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
+import { parseAllergensFromFreeText, validateMealsAgainstAllergens } from '../lib/nutrition/allergens';
 import { buildWeeklySummaryRequest, parseWeeklySummary, type WeeklySummary, type WeeklySummaryInput } from '../lib/ai/weeklySummary';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
 
@@ -53,7 +54,53 @@ export async function generateMealPlan(profile: UserProfile, macros: Macros, ses
   if (!validation.valid) {
     throw new Error(`AI vrátila neúplný jídelníček. ${validation.errors.slice(0, 2).join(' ')}`);
   }
-  return meals;
+  return await repairAllergenViolations(meals, profile, session);
+}
+
+/**
+ * Post-validation safety net: if the AI returned a meal containing any of the
+ * user's declared allergens (parsed from profile.dislikes), call Gemini once
+ * per offending meal with an explicit denylist. If repair still trips the
+ * detector, we throw — the user sees an error instead of an unsafe plan.
+ */
+async function repairAllergenViolations(
+  meals: Meal[],
+  profile: UserProfile,
+  session?: TrainingSession | null,
+): Promise<Meal[]> {
+  const allergens = parseAllergensFromFreeText(profile.dislikes);
+  if (!allergens.length) return meals;
+
+  const initial = validateMealsAgainstAllergens(meals, allergens);
+  if (initial.ok) return meals;
+
+  const repaired = [...meals];
+  for (const hit of initial.hits) {
+    const otherMeals = repaired.filter((_, i) => i !== hit.mealIndex);
+    const request = buildAllergenRepairRequest({
+      profile,
+      session,
+      current: hit.meal,
+      forbidden: hit.matched,
+      otherMeals,
+    });
+    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = parseJson(text);
+    const raw = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
+    repaired[hit.mealIndex] = normalizeMeal(raw || {}, hit.meal.mealType);
+  }
+
+  const post = validateMealsAgainstAllergens(repaired, allergens);
+  if (!post.ok) {
+    const stuckList = post.hits
+      .map(h => `${h.meal.mealType}: ${h.matched.join(', ')}`)
+      .join(' | ');
+    throw new Error(
+      `AI nedokázala vyhnout se tvým alergenům (${stuckList}). Zkus to znovu nebo uprav preference v profilu.`,
+    );
+  }
+  return repaired;
 }
 
 /**

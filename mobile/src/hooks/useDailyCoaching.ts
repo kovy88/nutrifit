@@ -32,7 +32,7 @@ export type DailyCoachingState = {
  */
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
-  const { todaySession } = useNutriFit();
+  const { currentSession: todaySession } = useNutriFit();
   const [state, setState] = useState<DailyCoachingState>({
     assessment: null,
     baselines: null,

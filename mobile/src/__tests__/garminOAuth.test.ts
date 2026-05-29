@@ -1,5 +1,60 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AsyncStorageTokenStore, GarminOAuth, sha256Base64Url } from '../lib/health';
+import { AsyncStorageTokenStore, GarminOAuth, sha256Base64Url, base64UrlEncode } from '../lib/health';
+
+// Node's Buffer is available at runtime in vitest but isn't typed here
+// (no @types/node, and we don't want to widen tsconfig for a test). Access it
+// through a locally-typed globalThis accessor.
+const NodeBuffer = (globalThis as unknown as {
+  Buffer: { from(data: Uint8Array): { toString(encoding: string): string } };
+}).Buffer;
+
+/** Oracle: Node's Buffer → reference base64url, no padding.
+ *  base64UrlEncode must match this for every input. */
+function bufferBase64Url(bytes: Uint8Array): string {
+  return NodeBuffer.from(bytes)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+describe('base64UrlEncode (Hermes-safe, no btoa/Buffer)', () => {
+  it('encodes empty input to empty string', () => {
+    expect(base64UrlEncode(new Uint8Array([]))).toBe('');
+  });
+
+  it('handles all three padding remainders (1, 2, 0 mod 3)', () => {
+    expect(base64UrlEncode(new Uint8Array([77]))).toBe(bufferBase64Url(new Uint8Array([77]))); // 1 byte
+    expect(base64UrlEncode(new Uint8Array([77, 97]))).toBe(bufferBase64Url(new Uint8Array([77, 97]))); // 2 bytes
+    expect(base64UrlEncode(new Uint8Array([77, 97, 110]))).toBe('TWFu'); // 3 bytes → "Man"
+  });
+
+  it('uses URL-safe alphabet (- and _, never + or /)', () => {
+    // 0xFB,0xFF,0xBF in standard base64 contains both + and /
+    const bytes = new Uint8Array([0xfb, 0xff, 0xbf]);
+    const out = base64UrlEncode(bytes);
+    expect(out).not.toMatch(/[+/=]/);
+    expect(out).toBe(bufferBase64Url(bytes));
+  });
+
+  it('matches the Buffer oracle across fuzzed byte arrays', () => {
+    let seed = 12345;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed % 256;
+    };
+    for (let len = 0; len <= 40; len++) {
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = rand();
+      expect(base64UrlEncode(bytes)).toBe(bufferBase64Url(bytes));
+    }
+  });
+
+  it('encodes a 32-byte SHA-256-sized buffer to 43 chars', () => {
+    const bytes = new Uint8Array(32).map((_, i) => (i * 37) % 256);
+    expect(base64UrlEncode(bytes)).toHaveLength(43);
+  });
+});
 
 describe('sha256Base64Url (PKCE code_challenge)', () => {
   it('produces RFC 7636 fixture: empty string → "47DEQpj…"', async () => {

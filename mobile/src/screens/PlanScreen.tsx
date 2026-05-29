@@ -36,7 +36,18 @@ function PlanLoadingIndicator() {
 }
 
 export function PlanScreen() {
-  const { profile, todayMacros, todaySession, meals, foodLog, setMeals, setProfile, addFood, ensureAiConsent, selectedDate } = useNutriFit();
+  const {
+    profile,
+    currentMacros: todayMacros,
+    currentSession: todaySession,
+    currentMeals: meals,
+    currentFoodLog: foodLog,
+    setMeals,
+    setProfile,
+    addFood,
+    ensureAiConsent,
+    selectedDate,
+  } = useNutriFit();
   const [loading, setLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);

@@ -56,7 +56,7 @@ function estimatedStartTime(session: TrainingSession, today: Date = new Date()):
 }
 
 export function usePreWorkoutReminder(mode: NotificationMode = 'auto'): PreWorkoutReminderState {
-  const { profile, todaySession } = useNutriFit();
+  const { profile, currentSession: todaySession } = useNutriFit();
   const [settings, setSettings] = useState<PreWorkoutReminderSettings>(DEFAULT_SETTINGS);
   const [isReady, setIsReady] = useState(false);
   const scheduler = createNotificationScheduler(mode);

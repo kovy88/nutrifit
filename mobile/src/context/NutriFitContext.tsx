@@ -48,13 +48,11 @@ type AuthUser = {
 type NutriFitContextValue = {
   isReady: boolean;
   profile: UserProfile | null;
-  macros: Macros | null;
+  /** Profile-derived macros WITHOUT the selected day's training adjustment. */
   baselineMacros: Macros | null;
-  todayMacros: Macros | null;
-  todaySession: TrainingSession | null;
+  /** baselineMacros adjusted for the selected day's session (the number the UI shows). */
+  currentMacros: Macros | null;
   dailyAdjustment: DailyAdjustment | null;
-  foodLog: FoodLogItem[];
-  meals: Meal[];
   user: AuthUser | null;
   hasAiConsent: boolean;
   selectedDate: string;
@@ -179,14 +177,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     };
   }, [baselineMacros, currentSession, profile, sessionsByDate, selectedDate]);
 
-  const selectedDateMacros = daily.macros;
-  
-  // Public Aliases for backward compatibility
-  const meals = currentMeals;
-  const foodLog = currentFoodLog;
-  const todaySession = currentSession;
-  const todayMacros = selectedDateMacros;
-  const macros = selectedDateMacros;
+  const currentMacros = daily.macros;
   const dailyAdjustment = daily.adjustment;
 
   async function persistProfile(next: UserProfile) {
@@ -321,13 +312,9 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     <Context.Provider value={{
       isReady,
       profile: profile || null,
-      macros,
       baselineMacros,
-      todayMacros,
-      todaySession,
+      currentMacros,
       dailyAdjustment,
-      foodLog,
-      meals,
       user,
       hasAiConsent,
       selectedDate,

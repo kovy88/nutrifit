@@ -31,7 +31,12 @@ const keys = {
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
   /** Rozpracovaný onboarding (step + draft profile + last-touched). */
   onboardingDraft: 'nutrifit.onboardingDraft.v1',
+  /** Marker so the one-time legacy migration runs once, not on every boot. */
+  schemaVersion: 'nutrifit.schemaVersion.v1',
 };
+
+/** Bump when a NEW one-time migration step is added to runMigration(). */
+const CURRENT_SCHEMA_VERSION = 2;
 
 /** Storage retention: drop date-bound entries older than this many days. */
 const RETENTION_DAYS = 90;
@@ -169,6 +174,26 @@ export async function listStoredDates(): Promise<DateKey[]> {
 
 // Migration Helper
 export async function runMigration(): Promise<void> {
+  // The legacy-key migration (v1 single-plan/foodLog/session → date-keyed maps)
+  // only needs to run ONCE. After it has run we record the schema version and
+  // skip the three legacy readJson + removeItem round-trips on every cold start.
+  const stored = await readJson<{ version?: number }>(keys.schemaVersion);
+  if (!stored || (stored.version ?? 0) < CURRENT_SCHEMA_VERSION) {
+    await migrateLegacyKeys();
+    await AsyncStorage.setItem(
+      keys.schemaVersion,
+      JSON.stringify({ version: CURRENT_SCHEMA_VERSION, migratedAt: new Date().toISOString() }),
+    );
+  }
+
+  // Bound storage growth: drop date-bound records older than RETENTION_DAYS.
+  // This is NOT a one-time migration — it runs every startup so AsyncStorage
+  // size stays linear in the retention window, not lifetime.
+  await pruneDateBoundedStores();
+}
+
+/** One-time migration from the v1 single-record keys to date-keyed maps. */
+async function migrateLegacyKeys(): Promise<void> {
   const today = toDateKey(new Date());
 
   // Migrate lastPlan
@@ -202,10 +227,6 @@ export async function runMigration(): Promise<void> {
     }
     await AsyncStorage.removeItem(keys.legacyTodaySession);
   }
-
-  // Bound storage growth: drop date-bound records older than RETENTION_DAYS.
-  // Cheap on each startup; AsyncStorage size stays linear in retention window, not lifetime.
-  await pruneDateBoundedStores();
 }
 
 // ── Weekly check-ins ─────────────────────────────────────────────────────────

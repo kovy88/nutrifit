@@ -257,10 +257,23 @@ function rotr(x: number, n: number): number {
   return ((x >>> n) | (x << (32 - n))) >>> 0;
 }
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  // btoa is universally available in RN/Node20+; safe fallback below for older
-  const b64 = typeof btoa === 'function' ? btoa(bin) : Buffer.from(bin, 'binary').toString('base64');
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const BASE64URL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/** Encode bytes to base64url (RFC 4648 §5), no padding. Pure JS table encoder
+ *  so it works in Hermes/React Native, where neither `btoa` nor `Buffer`
+ *  exists. (The old impl relied on both and crashed at runtime.) */
+export function base64UrlEncode(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const remaining = bytes.length - i;
+    const b0 = bytes[i];
+    const b1 = remaining > 1 ? bytes[i + 1] : 0;
+    const b2 = remaining > 2 ? bytes[i + 2] : 0;
+    const triplet = (b0 << 16) | (b1 << 8) | b2;
+    out += BASE64URL_ALPHABET[(triplet >>> 18) & 0x3f];
+    out += BASE64URL_ALPHABET[(triplet >>> 12) & 0x3f];
+    if (remaining > 1) out += BASE64URL_ALPHABET[(triplet >>> 6) & 0x3f];
+    if (remaining > 2) out += BASE64URL_ALPHABET[triplet & 0x3f];
+  }
+  return out;
 }

@@ -37,6 +37,7 @@ export {
 export {
   GarminOAuth,
   sha256Base64Url,
+  base64UrlEncode,
   type GarminOAuthConfig,
   type GarminConnectResult,
 } from './oauth/GarminOAuth';

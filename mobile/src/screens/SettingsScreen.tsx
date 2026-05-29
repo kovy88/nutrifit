@@ -13,10 +13,16 @@
 //   - Vše ostatní (Zepp / Suunto / Mi Fit): pouze poznámka, že lze přes
 //     Apple Health / Health Connect sync (chain).
 
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+// Legacy subpath: expo-file-system@56's default export is the new Paths/File
+// API; cacheDirectory + writeAsStringAsync live under /legacy.
+import * as FileSystem from 'expo-file-system/legacy';
 import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
+import { useNutriFit } from '../context/NutriFitContext';
+import { deleteAccount, exportAccountData } from '../services/api';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 import { usePreWorkoutReminder } from '../hooks/usePreWorkoutReminder';
@@ -26,6 +32,11 @@ import { useWhoopConnect } from '../hooks/useWhoopConnect';
 import { useGarminConnect } from '../hooks/useGarminConnect';
 import { useOuraConnect } from '../hooks/useOuraConnect';
 import type { OAuthService } from '../lib/health';
+
+// Mirror of app.json `extra`. Kept here as plain constants so the screen has
+// no dependency on expo-constants resolution at runtime.
+const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
+const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
 
 type OAuthSourceMeta = {
   service: OAuthService;
@@ -84,6 +95,9 @@ export function SettingsScreen() {
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
+  const { user, purgeAllUserData, signOut } = useNutriFit();
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
   if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) refreshSources();
@@ -148,6 +162,65 @@ export function SettingsScreen() {
       native.platform === 'ios'
         ? 'Reálné napojení vyžaduje EAS Build s nainstalovaným @kingstinct/react-native-healthkit a HealthKit entitlement v app.json.'
         : 'Reálné napojení vyžaduje EAS Build s nainstalovaným react-native-health-connect a Android 14+ (nebo Health Connect z Play Store).',
+    );
+  }
+
+  /** Export all server-side account data as JSON, write to a temp file and
+   *  open the system share sheet so the user can save/send it. Requires sign-in
+   *  because the endpoint is auth-gated (api/export-data). */
+  async function handleExport() {
+    if (!user) {
+      Alert.alert('Export dat', 'Pro export svých dat ze serveru se nejdřív přihlas v profilu.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const data = await exportAccountData();
+      const json = JSON.stringify(data, null, 2);
+      const fileUri = `${FileSystem.cacheDirectory}nutrifit-export-${new Date().toISOString().slice(0, 10)}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await Share.share({ url: fileUri, title: 'NutriFit export dat' });
+    } catch (err) {
+      Alert.alert('Export se nepodařil', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  /** Two-step destructive flow: confirm, delete server-side account + data
+   *  (api/delete-account), then purge everything on-device and sign out. After
+   *  purge, profile becomes null and RootNavigator returns to onboarding. */
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Smazat účet a data?',
+      user
+        ? 'Trvale smažeme tvůj účet a všechna data na serveru i v telefonu. Tuto akci nelze vrátit zpět.'
+        : 'Smažeme všechna data v telefonu (profil, plány, záznamy, váhu, tokeny). Tuto akci nelze vrátit zpět.',
+      [
+        { text: 'Zrušit', style: 'cancel' },
+        {
+          text: 'Smazat',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              if (user) await deleteAccount();
+              await purgeAllUserData();
+              if (user) await signOut();
+            } catch (err) {
+              Alert.alert('Smazání se nepodařilo', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function openUrl(url: string) {
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Nepodařilo se otevřít odkaz', url),
     );
   }
 
@@ -401,6 +474,35 @@ export function SettingsScreen() {
           </Text>
         </Card>
 
+        {/* ── Privacy & data (GDPR: export + erase + policy) ─────────────── */}
+        <Card>
+          <Label>🔒 Soukromí a data</Label>
+          <Text style={[styles.body, { color: colors.muted }]}>
+            Máš plnou kontrolu nad svými daty. Můžeš si je kdykoliv vyexportovat nebo trvale smazat účet.
+          </Text>
+
+          <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>
+            Zásady ochrany osobních údajů
+          </Button>
+          <View style={styles.privacySpacer} />
+          <Button variant="secondary" onPress={() => openUrl(TERMS_URL)}>
+            Podmínky použití
+          </Button>
+          <View style={styles.privacySpacer} />
+          <Button variant="secondary" disabled={exporting} onPress={handleExport}>
+            {exporting ? 'Exportuji…' : 'Exportovat moje data (JSON)'}
+          </Button>
+          <View style={styles.privacySpacer} />
+          <Button variant="danger" disabled={deleting} onPress={handleDeleteAccount}>
+            {deleting ? 'Mažu…' : user ? 'Smazat účet a data' : 'Smazat data z telefonu'}
+          </Button>
+          {!user && (
+            <Text style={[styles.note, { color: colors.faint }]}>
+              💡 Nejsi přihlášen — smaže se jen lokální kopie dat na tomto telefonu.
+            </Text>
+          )}
+        </Card>
+
         {isLoading && (
           <Text style={[styles.loading, { color: colors.faint }]}>Načítám stav zdrojů…</Text>
         )}
@@ -456,4 +558,5 @@ const styles = StyleSheet.create({
   briefingTime: { fontSize: 22, fontWeight: '900' },
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
   sourceError: { fontSize: 11, fontWeight: '700', marginTop: 4 },
+  privacySpacer: { height: 8 },
 });

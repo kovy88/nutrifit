@@ -57,7 +57,7 @@ export type MorningBriefingScheduleState = {
  *             Předej 'expo' explicitně až po `expo install expo-notifications`.
  */
 export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): MorningBriefingScheduleState {
-  const { profile, macros, baselineMacros, todaySession } = useNutriFit();
+  const { profile, currentMacros: macros, baselineMacros, currentSession: todaySession } = useNutriFit();
   const coaching = useDailyCoaching(new Date());
   const [settings, setSettings] = useState<MorningBriefingSettings>(DEFAULT_SETTINGS);
   const [permission, setPermission] = useState<NotificationPermission>('undetermined');
