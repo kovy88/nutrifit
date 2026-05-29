@@ -12,6 +12,7 @@ import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence, macroAdherenceBand } from '../lib/nutrition/adherenceTrend';
+import { computeLogStreak, computeAdherenceStreak, describeStreak } from '../lib/nutrition/streaks';
 import { useStrainTrend } from '../hooks/useStrainTrend';
 
 type DaySummary = {
@@ -51,6 +52,8 @@ export function HistoryScreen() {
   // know about.
   const weightTrend = mergeWeightTrend(weightProviderTrend.data, buildTrendFromRecord(weights, 30));
   const adherencePoints = adherenceToTrendPoints(adherence.days);
+  const logStreak = computeLogStreak(adherence.days);
+  const adherenceStreak = computeAdherenceStreak(adherence.days);
 
   useEffect(() => {
     if (isFocused) {
@@ -183,6 +186,23 @@ export function HistoryScreen() {
             );
           })}
         </View>
+        {/* Streaks — gamification co odměňuje pravidelnost */}
+        <View style={styles.streakRow}>
+          <View style={[styles.streakChip, { borderColor: logStreak.current > 0 ? themeColors.orange : themeColors.border }]}>
+            <Text style={[styles.streakValue, { color: themeColors.ink }]}>
+              {logStreak.current > 0 ? `🔥 ${logStreak.current}` : '—'}
+            </Text>
+            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{logStreak.current === 1 ? 'den zapsáno' : 'dní zapsáno'}</Text>
+            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(logStreak, 'log')}</Text>
+          </View>
+          <View style={[styles.streakChip, { borderColor: adherenceStreak.current > 0 ? themeColors.green : themeColors.border }]}>
+            <Text style={[styles.streakValue, { color: themeColors.ink }]}>
+              {adherenceStreak.current > 0 ? `✓ ${adherenceStreak.current}` : '—'}
+            </Text>
+            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{adherenceStreak.current === 1 ? 'den v cíli' : 'dní v cíli'}</Text>
+            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(adherenceStreak, 'adherence')}</Text>
+          </View>
+        </View>
         <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
           Logged: {adherence.loggedDays}/14 · Plán: {adherence.plannedDays}/14
         </Text>
@@ -267,4 +287,9 @@ const styles = StyleSheet.create({
   macroChip: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 8, alignItems: 'center' },
   macroChipLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
   macroChipValue: { fontSize: 15, fontWeight: '900', marginTop: 2 },
+  streakRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  streakChip: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 10 },
+  streakValue: { fontSize: 18, fontWeight: '900' },
+  streakLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3, marginTop: 2 },
+  streakSub: { fontSize: 11, lineHeight: 14, marginTop: 6 },
 });
