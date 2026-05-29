@@ -7,6 +7,7 @@ import { useNutriFit } from '../context/NutriFitContext';
 import { buildTrainingSessionForDate, toDateKey, formatDateLabel } from '../utils/nutrition';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
 import { WorkoutCard } from '../components/WorkoutCard';
 import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
@@ -17,6 +18,7 @@ export function TrainingScreen() {
   const { profile, selectedDate, setSelectedDate } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors: themeColors, fonts } = useTheme();
+  const { t } = useLanguage();
   const recent = useRecentWorkouts(14);
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSummary | null>(null);
 
@@ -39,8 +41,7 @@ export function TrainingScreen() {
       const dateKey = toDateKey(d);
       const session = buildTrainingSessionForDate(profile, d);
       
-      const dayNames = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
-      const dayLabel = dayNames[d.getDay()];
+      const dayLabel = t('training.weekdayFull', { dow: d.getDay() });
 
       list.push({
         dateKey,
@@ -63,8 +64,8 @@ export function TrainingScreen() {
 
   return (
     <Screen>
-      <H1>Trénink</H1>
-      <Subtitle>Tvůj vygenerovaný tréninkový týden na základě cíle: {profile.trainingGoal.toUpperCase().replace('_', ' ')}.</Subtitle>
+      <H1>{t('training.title')}</H1>
+      <Subtitle>{t('training.subtitle', { goal: profile.trainingGoal.toUpperCase().replace('_', ' ') })}</Subtitle>
 
       <View style={styles.daysList}>
         {weekList.map((item, idx) => {
@@ -93,19 +94,19 @@ export function TrainingScreen() {
                     </View>
                     <View style={styles.badges}>
                       {item.isToday && (
-                        <Text style={[styles.todayBadge, { backgroundColor: themeColors.green }]}>Dnes</Text>
+                        <Text style={[styles.todayBadge, { backgroundColor: themeColors.green }]}>{t('common.today')}</Text>
                       )}
                       {item.isSelected && (
-                        <Text style={[styles.selectedBadge, { backgroundColor: themeColors.blue }]}>Vybráno</Text>
+                        <Text style={[styles.selectedBadge, { backgroundColor: themeColors.blue }]}>{t('training.selected')}</Text>
                       )}
                     </View>
                   </View>
 
                   {isRest ? (
                     <View style={styles.restBody}>
-                      <Text style={styles.restText}>☕ Volno & Regenerace</Text>
+                      <Text style={styles.restText}>{t('training.restTitle')}</Text>
                       <Text style={[styles.restSub, { color: themeColors.muted }]}>
-                        Svaly rostou v klidu. Ideální čas na lehký strečink nebo procházku.
+                        {t('training.restSub')}
                       </Text>
                     </View>
                   ) : (
@@ -127,7 +128,7 @@ export function TrainingScreen() {
                             },
                           ]}
                         >
-                          🔥 Intenzita: {item.session.intensity.toUpperCase()}
+                          🔥 {t('training.intensityLabel')}: {item.session.intensity.toUpperCase()}
                         </Text>
                       </View>
                     </View>
@@ -142,13 +143,13 @@ export function TrainingScreen() {
       {/* Recent workouts — REAL activity from active provider (Strava / Apple
           Health / Whoop / Mock / Manual via Composite). Klepnutím se přepneš
           na daný den, takže můžeš porovnat plán vs. odtréninkovaný workout. */}
-      <Label>Nedávné tréninky (14 dní)</Label>
+      <Label>{t('training.recentTitle')}</Label>
       {recent.isLoading ? (
-        <Text style={{ color: themeColors.muted, fontSize: 13 }}>Načítám tréninky ze zdravotních zdrojů…</Text>
+        <Text style={{ color: themeColors.muted, fontSize: 13 }}>{t('training.loadingWorkouts')}</Text>
       ) : recent.workouts.length === 0 ? (
         <Card>
           <Text style={{ color: themeColors.muted, fontSize: 13, lineHeight: 18 }}>
-            Žádné odtréninkované workouty za posledních 14 dní. Připoj zdroj v Nastavení (Profil → ⚙️ Zdravotní zdroje) nebo nech appku napojit na Apple Health po EAS Build.
+            {t('training.noWorkouts')}
           </Text>
         </Card>
       ) : (

@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNutriFit } from '../context/NutriFitContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useDailyCoaching } from './useDailyCoaching';
 import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
 import {
@@ -58,6 +59,7 @@ export type MorningBriefingScheduleState = {
  */
 export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): MorningBriefingScheduleState {
   const { profile, currentMacros: macros, baselineMacros, currentSession: todaySession } = useNutriFit();
+  const { locale } = useLanguage();
   const coaching = useDailyCoaching(new Date());
   const [settings, setSettings] = useState<MorningBriefingSettings>(DEFAULT_SETTINGS);
   const [permission, setPermission] = useState<NotificationPermission>('undetermined');
@@ -105,6 +107,7 @@ export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): Mor
       trainingLoad: coaching.trainingLoad,
       macros,
       baselineMacros,
+      locale,
     });
     const body = briefing.detail
       ? `${briefing.headline}\n${briefing.detail}\n→ ${briefing.recommendation}`
@@ -127,6 +130,7 @@ export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): Mor
     coaching.assessment?.level,
     coaching.trainingLoad?.status,
     todaySession?.kind,
+    locale,
   ]);
 
   const update = useCallback(async (next: Partial<MorningBriefingSettings>) => {

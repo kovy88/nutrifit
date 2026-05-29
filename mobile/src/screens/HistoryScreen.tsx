@@ -11,6 +11,7 @@ import { DateHeader } from '../components/DateHeader';
 import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence, macroAdherenceBand } from '../lib/nutrition/adherenceTrend';
 import { computeLogStreak, computeAdherenceStreak, describeStreak } from '../lib/nutrition/streaks';
 import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
@@ -41,6 +42,7 @@ export function HistoryScreen() {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { colors: themeColors } = useTheme();
+  const { t, locale } = useLanguage();
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
   const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
   const [energyBalance, setEnergyBalance] = useState(() =>
@@ -103,16 +105,16 @@ export function HistoryScreen() {
   return (
     <Screen>
       <DateHeader />
-      <H1>Pokrok a uloženo</H1>
-      <Subtitle>Trendy posledních dnů ze všech připojených zdrojů. Klepnutím na řádek se na den přepneš.</Subtitle>
+      <H1>{t('history.title')}</H1>
+      <Subtitle>{t('history.subtitle')}</Subtitle>
 
       <Card>
-        <Label>📉 Váha (30 dní)</Label>
+        <Label>{t('history.weight30')}</Label>
         <MiniTrendChart data={weightTrend} unit="kg" color={themeColors.green} />
       </Card>
 
       <Card>
-        <Label>🌙 Spánek (14 dní)</Label>
+        <Label>{t('history.sleep14')}</Label>
         <MiniTrendChart
           data={sleepTrend.data}
           unit=""
@@ -122,27 +124,27 @@ export function HistoryScreen() {
       </Card>
 
       <Card>
-        <Label>💓 HRV (14 dní)</Label>
+        <Label>{t('history.hrv14')}</Label>
         <MiniTrendChart data={hrvTrend.data} unit="ms" color={themeColors.green} />
       </Card>
 
       <Card>
-        <Label>❤️ Klidový tep (14 dní)</Label>
+        <Label>{t('history.rhr14')}</Label>
         <MiniTrendChart data={rhrTrend.data} unit="bpm" color={themeColors.red} />
       </Card>
 
       <Card>
-        <Label>👣 Kroky (14 dní)</Label>
+        <Label>{t('history.steps14')}</Label>
         <MiniTrendChart
           data={stepsTrend.data}
           unit=""
           color={themeColors.orange}
-          format={v => `${Math.round(v).toLocaleString('cs-CZ')} kroků`}
+          format={v => t('history.stepsUnit', { n: Math.round(v).toLocaleString(locale === 'en' ? 'en-US' : 'cs-CZ') })}
         />
       </Card>
 
       <Card>
-        <Label>🔥 Tréninkový strain (14 dní)</Label>
+        <Label>{t('history.strain14')}</Label>
         <MiniTrendChart
           data={strainTrend.data}
           unit=""
@@ -150,12 +152,12 @@ export function HistoryScreen() {
           format={v => `${v.toFixed(1)} / 21`}
         />
         <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-          Whoop-style score 0-21 z TRIMP. Mezera = den bez tréninku.
+          {t('history.strainMeta')}
         </Text>
       </Card>
 
       <Card>
-        <Label>🎯 Adherence k cílům (14 dní)</Label>
+        <Label>{t('history.adherence14')}</Label>
         <MiniTrendChart
           data={adherencePoints}
           unit="%"
@@ -168,10 +170,10 @@ export function HistoryScreen() {
                   ? themeColors.red
                   : themeColors.orange
           }
-          format={v => `${Math.round(v)} % cíle`}
+          format={v => t('history.adherenceUnit', { n: Math.round(v) })}
         />
         <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
-          {describeAdherence(adherence.averageRatio)}
+          {describeAdherence(adherence.averageRatio, locale)}
         </Text>
         {/* Per-macro breakdown — 4 chips s % vs cíli za 14 dní */}
         <View style={styles.macroChipsRow}>
@@ -183,7 +185,7 @@ export function HistoryScreen() {
               : band === 'high' ? themeColors.orange
               : band === 'low' ? themeColors.red
               : themeColors.muted;
-            const label = macro === 'protein' ? 'B' : macro === 'carbs' ? 'S' : 'T';
+            const label = macro === 'protein' ? t('home.macroProteinShort') : macro === 'carbs' ? t('home.macroCarbsShort') : t('home.macroFatShort');
             return (
               <View key={macro} style={[styles.macroChip, { borderColor: color }]}>
                 <Text style={[styles.macroChipLabel, { color: themeColors.faint }]}>{label}</Text>
@@ -200,26 +202,26 @@ export function HistoryScreen() {
             <Text style={[styles.streakValue, { color: themeColors.ink }]}>
               {logStreak.current > 0 ? `🔥 ${logStreak.current}` : '—'}
             </Text>
-            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{logStreak.current === 1 ? 'den zapsáno' : 'dní zapsáno'}</Text>
-            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(logStreak, 'log')}</Text>
+            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{t('history.logStreakUnit', { n: logStreak.current })}</Text>
+            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
           </View>
           <View style={[styles.streakChip, { borderColor: adherenceStreak.current > 0 ? themeColors.green : themeColors.border }]}>
             <Text style={[styles.streakValue, { color: themeColors.ink }]}>
               {adherenceStreak.current > 0 ? `✓ ${adherenceStreak.current}` : '—'}
             </Text>
-            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{adherenceStreak.current === 1 ? 'den v cíli' : 'dní v cíli'}</Text>
-            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(adherenceStreak, 'adherence')}</Text>
+            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{t('history.targetStreakUnit', { n: adherenceStreak.current })}</Text>
+            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(adherenceStreak, 'adherence', locale)}</Text>
           </View>
         </View>
         <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-          Logged: {adherence.loggedDays}/14 · Plán: {adherence.plannedDays}/14
+          {t('history.loggedPlanMeta', { logged: adherence.loggedDays, planned: adherence.plannedDays })}
         </Text>
       </Card>
 
       {/* Energy balance vs TDEE — skutečné energetické saldo */}
       {profile && baselineMacros && energyBalance.loggedDays >= 3 && (
         <Card>
-          <Label>⚡ Energetické saldo vs TDEE (14 dní)</Label>
+          <Label>{t('history.energyBalance14')}</Label>
           <View style={styles.balanceHeader}>
             <Text style={[styles.balanceValue, {
               color:
@@ -230,22 +232,22 @@ export function HistoryScreen() {
               {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{energyBalance.theoreticalKgChange.toFixed(2)} kg
             </Text>
             <Text style={[styles.balanceSub, { color: themeColors.muted }]}>
-              teoretická změna z {energyBalance.totalBalance > 0 ? '+' : ''}{energyBalance.totalBalance} kcal
+              {t('history.theoreticalChange', { kcal: `${energyBalance.totalBalance > 0 ? '+' : ''}${energyBalance.totalBalance}` })}
             </Text>
           </View>
           <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
-            {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal))}
+            {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}
           </Text>
           <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-            TDEE {Math.round(baselineMacros.tdee)} kcal · prům. {energyBalance.averageDailyBalance ?? 0} kcal/den nad TDEE
+            {t('history.tdeeMeta', { tdee: Math.round(baselineMacros.tdee), avg: energyBalance.averageDailyBalance ?? 0 })}
           </Text>
         </Card>
       )}
 
       <Card>
-        <Label>Přehled dnů</Label>
+        <Label>{t('history.daysOverview')}</Label>
         {summaries.length === 0 ? (
-          <Text style={styles.empty}>Zatím nemáš uložené žádné dny s daty.</Text>
+          <Text style={styles.empty}>{t('history.noDays')}</Text>
         ) : (
           summaries.map(item => (
             <Pressable
@@ -259,10 +261,10 @@ export function HistoryScreen() {
               </View>
               <View style={styles.rightCol}>
                 <Text style={styles.kcalInfo}>
-                  Plán: <Text style={styles.boldKcal}>{item.plannedKcal}</Text> kcal
+                  {t('history.planLabel')} <Text style={styles.boldKcal}>{item.plannedKcal}</Text> kcal
                 </Text>
                 <Text style={styles.kcalInfo}>
-                  Zapsáno: <Text style={[styles.boldKcal, styles.loggedColor]}>{item.loggedKcal}</Text> kcal
+                  {t('history.loggedLabel')} <Text style={[styles.boldKcal, styles.loggedColor]}>{item.loggedKcal}</Text> kcal
                 </Text>
               </View>
             </Pressable>

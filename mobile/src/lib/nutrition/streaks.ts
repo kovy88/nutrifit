@@ -9,6 +9,7 @@
 // "ke včerejšku" (aby tlačítko ráno neukazovalo 0).
 
 import type { AdherenceDay } from './adherenceTrend';
+import type { Locale } from '../i18n';
 
 export type StreakInfo = {
   /** Aktuální streak ke dnešnímu / včerejšímu dni. */
@@ -92,20 +93,38 @@ function todayKey(): string {
 }
 
 /** Lidský label pro streak — 🔥 zazní jen pokud current >= 3. */
-export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence'): string {
-  if (streak.current === 0) {
+export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence', locale: Locale = 'cs'): string {
+  const en = locale === 'en';
+  const n = streak.current;
+  const day = (k: number) => (en ? (k === 1 ? 'day' : 'days') : pluralDay(k));
+  if (n === 0) {
+    if (en) {
+      return kind === 'log'
+        ? 'Start logging today and build a streak.'
+        : 'Hit 85–115% of your target today — start a new streak.';
+    }
     return kind === 'log'
       ? 'Začni zapisovat dnes a postav si streak.'
       : 'Cíl 85–115 % cíle dnes — start nové série.';
   }
-  if (streak.current < 3) {
+  if (n < 3) {
+    if (en) {
+      return kind === 'log'
+        ? `${n} ${day(n)} in a row logged. Keep going!`
+        : `${n} ${day(n)} on target. Push on.`;
+    }
     return kind === 'log'
-      ? `${streak.current} ${pluralDay(streak.current)} v řadě zapsáno. Pokračuj!`
-      : `${streak.current} ${pluralDay(streak.current)} v cíli. Tlač dál.`;
+      ? `${n} ${day(n)} v řadě zapsáno. Pokračuj!`
+      : `${n} ${day(n)} v cíli. Tlač dál.`;
+  }
+  if (en) {
+    return kind === 'log'
+      ? `🔥 ${n} ${day(n)} in a row. ${n >= streak.longest ? 'Your longest!' : `Longest: ${streak.longest}.`}`
+      : `🔥 ${n} ${day(n)} on target. ${n >= streak.longest ? 'Your longest!' : `Record: ${streak.longest}.`}`;
   }
   return kind === 'log'
-    ? `🔥 ${streak.current} ${pluralDay(streak.current)} v řadě. ${streak.current >= streak.longest ? 'Tvůj nejdelší!' : `Nejdelší: ${streak.longest}.`}`
-    : `🔥 ${streak.current} ${pluralDay(streak.current)} v cíli. ${streak.current >= streak.longest ? 'Tvůj nejdelší!' : `Rekord: ${streak.longest}.`}`;
+    ? `🔥 ${n} ${day(n)} v řadě. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Nejdelší: ${streak.longest}.`}`
+    : `🔥 ${n} ${day(n)} v cíli. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Rekord: ${streak.longest}.`}`;
 }
 
 function pluralDay(n: number): string {

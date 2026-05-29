@@ -4,14 +4,14 @@ import { Button, Card, Field, H1, Label, Subtitle, FadeInView } from '../compone
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
-import { normalizeFoodEstimate, primaryGoalLabel, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
+import { normalizeFoodEstimate, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
 import type { TrainingSession, TrainingGoalKind } from '../types';
 import { DateHeader } from '../components/DateHeader';
 import { useNavigation } from '@react-navigation/native';
 import { MacroRing } from '../components/MacroRing';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import type { Translate } from '../lib/i18n';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoaching } from '../hooks/useDailyCoaching';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
@@ -38,7 +38,7 @@ export function HomeScreen() {
   } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [manual, setManual] = useState({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });
   const [weightInput, setWeightInput] = useState('');
   // Health snapshot for today (steps / sleep / RHR / latest weight from provider).
@@ -115,7 +115,7 @@ export function HomeScreen() {
     <Screen>
       <DateHeader />
       <H1>{t('home.title')}</H1>
-      <Subtitle>{primaryGoalLabel(profile.primaryGoal)} · {profile.diet} · BMI {macros.bmi}</Subtitle>
+      <Subtitle>{t(`goal.${profile.primaryGoal}` as TranslationKey)} · {t(`diet.${profile.diet}` as TranslationKey)} · BMI {macros.bmi}</Subtitle>
 
       {/* Morning briefing — synthesises today's session + readiness + load + macros
           into a single human sentence. Same content will feed the morning push
@@ -127,6 +127,7 @@ export function HomeScreen() {
           trainingLoad: coaching.trainingLoad,
           macros,
           baselineMacros,
+          locale,
         });
         return (
           <FadeInView delay={60}>

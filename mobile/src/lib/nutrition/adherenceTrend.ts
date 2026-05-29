@@ -18,6 +18,7 @@
 
 import type { Meal, FoodLogItem, DailyPlanRecord, DailyFoodLogRecord } from '../../types';
 import type { TrendPoint } from '../../components/MiniTrendChart';
+import type { Locale } from '../i18n';
 
 export type AdherenceDay = {
   date: string;
@@ -134,22 +135,37 @@ export function macroAdherenceBand(ratio: number | null): 'unknown' | 'low' | 'o
 }
 
 /** Vrátí lidský popisek pro průměrné ratio. */
-export function describeAdherence(averageRatio: number | null): string {
-  if (averageRatio == null) return 'Zatím dost dat ne. Pro adherence trend potřebujeme alespoň jeden den s plánem + zápisem.';
+export function describeAdherence(averageRatio: number | null, locale: Locale = 'cs'): string {
+  const en = locale === 'en';
+  if (averageRatio == null) {
+    return en
+      ? 'Not enough data yet. The adherence trend needs at least one day with a plan + log.'
+      : 'Zatím dost dat ne. Pro adherence trend potřebujeme alespoň jeden den s plánem + zápisem.';
+  }
   const pct = Math.round(averageRatio * 100);
   if (averageRatio >= 0.95 && averageRatio <= 1.05) {
-    return `Skvělé! V průměru jíš ${pct} % cíle — přesně tam, kde má být.`;
+    return en
+      ? `Great! On average you eat ${pct}% of your target — right where it should be.`
+      : `Skvělé! V průměru jíš ${pct} % cíle — přesně tam, kde má být.`;
   }
   if (averageRatio < 0.85) {
-    return `Jíš v průměru ${pct} % cíle — to je výrazně méně. Pokud cíl je hubnutí, pozor na crash deficit; jinak doplň makra.`;
+    return en
+      ? `You eat ${pct}% of your target on average — that's significantly less. If your goal is weight loss, watch for a crash deficit; otherwise top up your macros.`
+      : `Jíš v průměru ${pct} % cíle — to je výrazně méně. Pokud cíl je hubnutí, pozor na crash deficit; jinak doplň makra.`;
   }
   if (averageRatio < 0.95) {
-    return `Jíš ${pct} % cíle. Pokud chceš udržet váhu, doplň ~${Math.round((1 - averageRatio) * 100)} % více.`;
+    return en
+      ? `You eat ${pct}% of your target. To maintain weight, add ~${Math.round((1 - averageRatio) * 100)}% more.`
+      : `Jíš ${pct} % cíle. Pokud chceš udržet váhu, doplň ~${Math.round((1 - averageRatio) * 100)} % více.`;
   }
   if (averageRatio <= 1.15) {
-    return `Jíš ${pct} % cíle. Lehký surplus — pokud nabíráš, OK. Pokud hubneš, zvaž korekci.`;
+    return en
+      ? `You eat ${pct}% of your target. A slight surplus — fine if you're bulking. If you're cutting, consider a correction.`
+      : `Jíš ${pct} % cíle. Lehký surplus — pokud nabíráš, OK. Pokud hubneš, zvaž korekci.`;
   }
-  return `Jíš ${pct} % cíle — výrazný surplus. Při hubnutí brzda, při udržování riziko přibrání.`;
+  return en
+    ? `You eat ${pct}% of your target — a significant surplus. A brake when cutting, risk of gaining when maintaining.`
+    : `Jíš ${pct} % cíle — výrazný surplus. Při hubnutí brzda, při udržování riziko přibrání.`;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

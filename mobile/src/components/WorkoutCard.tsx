@@ -5,6 +5,8 @@
 
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
 const KIND_EMOJI: Record<WorkoutKind, string> = {
@@ -18,19 +20,6 @@ const KIND_EMOJI: Record<WorkoutKind, string> = {
   functional: '💪',
   rowing: '🚣',
   other: '🏅',
-};
-
-const KIND_LABEL: Record<WorkoutKind, string> = {
-  run: 'Běh',
-  walk: 'Chůze',
-  cycle: 'Kolo',
-  swim: 'Plavání',
-  strength: 'Síla',
-  hiit: 'HIIT',
-  yoga: 'Jóga',
-  functional: 'Funkční',
-  rowing: 'Veslování',
-  other: 'Trénink',
 };
 
 const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
@@ -57,10 +46,11 @@ export type WorkoutCardProps = {
 
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const emoji = KIND_EMOJI[workout.kind];
-  const kindLabel = KIND_LABEL[workout.kind];
+  const kindLabel = t(`wkind.${workout.kind}` as TranslationKey);
   const sourceBadge = SOURCE_LABEL[workout.source] || workout.source;
-  const dateLabel = formatDateTime(workout.startedAt);
+  const dateLabel = formatDateTime(workout.startedAt, t);
 
   return (
     <Pressable
@@ -82,15 +72,15 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
         </Text>
       </View>
       <View style={styles.metricsRow}>
-        <Metric label="Délka" value={`${workout.durationMinutes} min`} color={colors.ink} />
+        <Metric label={t('workout.duration')} value={`${workout.durationMinutes} min`} color={colors.ink} />
         {workout.distanceKm != null && (
-          <Metric label="Vzdálenost" value={`${workout.distanceKm} km`} color={colors.blue} />
+          <Metric label={t('workout.distance')} value={`${workout.distanceKm} km`} color={colors.blue} />
         )}
         {workout.avgHeartRate != null && (
-          <Metric label="Avg HR" value={`${workout.avgHeartRate} bpm`} color={colors.red} />
+          <Metric label={t('workout.avgHr')} value={`${workout.avgHeartRate} bpm`} color={colors.red} />
         )}
         {workout.activeEnergyKcal != null && (
-          <Metric label="kcal" value={`${workout.activeEnergyKcal}`} color={colors.orange} />
+          <Metric label={t('workout.kcal')} value={`${workout.activeEnergyKcal}`} color={colors.orange} />
         )}
       </View>
     </Pressable>
@@ -107,7 +97,7 @@ function Metric({ label, value, color }: { label: string; value: string; color: 
   );
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTime(iso: string, t: Translate): string {
   const d = new Date(iso);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -115,9 +105,9 @@ function formatDateTime(iso: string): string {
   compared.setHours(0, 0, 0, 0);
   const diffDays = Math.round((today.getTime() - compared.getTime()) / 86_400_000);
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (diffDays === 0) return `Dnes · ${time}`;
-  if (diffDays === 1) return `Včera · ${time}`;
-  return `${d.getDate()}. ${d.getMonth() + 1}. · ${time}`;
+  if (diffDays === 0) return t('workout.dtToday', { time });
+  if (diffDays === 1) return t('workout.dtYesterday', { time });
+  return t('workout.dtDate', { date: `${d.getDate()}. ${d.getMonth() + 1}.`, time });
 }
 
 const styles = StyleSheet.create({

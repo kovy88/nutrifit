@@ -18,6 +18,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Line } from 'react-native-svg';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export type TrendPoint = {
   date: string;          // YYYY-MM-DD
@@ -49,6 +50,7 @@ export function MiniTrendChart({
   format,
 }: MiniTrendChartProps) {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const strokeColor = color ?? colors.green;
   const validPoints = data.filter(d => d.value != null);
 
@@ -56,7 +58,7 @@ export function MiniTrendChart({
     return (
       <View style={[styles.emptyBox, { borderColor: colors.border }]}>
         <Text style={[styles.emptyText, { color: colors.faint }]}>
-          {validPoints.length === 0 ? 'Zatím žádná data' : 'Potřebujeme aspoň 2 dny pro trend'}
+          {validPoints.length === 0 ? t('chart.noData') : t('chart.needTwoDays')}
         </Text>
       </View>
     );

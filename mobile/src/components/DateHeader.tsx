@@ -3,10 +3,12 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
+import { useLanguage } from '../context/LanguageContext';
 import { formatDateLabel, isToday, toDateKey } from '../utils/nutrition';
 
 export function DateHeader() {
   const { selectedDate, setSelectedDate } = useNutriFit();
+  const { t } = useLanguage();
 
   function adjustDate(days: number) {
     const current = new Date(selectedDate);
@@ -39,7 +41,7 @@ export function DateHeader() {
 
       {!today && (
         <Pressable onPress={goToToday} style={({ pressed }) => [styles.todayBtn, pressed && styles.pressed]}>
-          <Text style={styles.todayBtnText}>Dnes</Text>
+          <Text style={styles.todayBtnText}>{t('common.today')}</Text>
         </Pressable>
       )}
     </View>

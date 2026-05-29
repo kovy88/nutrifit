@@ -8,15 +8,17 @@ import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
 import type { Meal } from '../types';
 import { DateHeader } from '../components/DateHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 function PlanLoadingIndicator() {
+  const { t } = useLanguage();
   const [msgIdx, setMsgIdx] = useState(0);
   const messages = [
-    'Sestavujeme jídelníček na míru... 🍳',
-    'Počítáme optimální poměr bílkovin... 🍗',
-    'Přizpůsobujeme sacharidy tvému tréninku... 🍚',
-    'Sestavujeme nákupní seznam... 🛒',
-    'Doplňujeme zdravé recepty... 🥑',
+    t('plan.loading0'),
+    t('plan.loading1'),
+    t('plan.loading2'),
+    t('plan.loading3'),
+    t('plan.loading4'),
   ];
 
   useEffect(() => {
@@ -30,7 +32,7 @@ function PlanLoadingIndicator() {
     <Card style={styles.loadingCard}>
       <ActivityIndicator size="large" color={colors.green} />
       <Text style={styles.loadingText}>{messages[msgIdx]}</Text>
-      <Text style={styles.loadingSub}>Už to skoro bude, AI sestavuje kompletní plán a recepty podle tvých preferencí.</Text>
+      <Text style={styles.loadingSub}>{t('plan.loadingSub')}</Text>
     </Card>
   );
 }
@@ -48,6 +50,7 @@ export function PlanScreen() {
     ensureAiConsent,
     selectedDate,
   } = useNutriFit();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
@@ -86,11 +89,11 @@ export function PlanScreen() {
     if (isPast) {
       const confirm = await new Promise<boolean>(resolve => {
         Alert.alert(
-          'Přepsat minulý plán?',
-          'Generování nového plánu přepíše plán pro vybraný den.',
+          t('plan.overwritePastTitle'),
+          t('plan.overwritePastMsg'),
           [
-            { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Přepsat', onPress: () => resolve(true) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+            { text: t('plan.overwrite'), onPress: () => resolve(true) },
           ]
         );
       });
@@ -102,7 +105,7 @@ export function PlanScreen() {
       const next = await generateMealPlan(activeProfile, activeMacros, todaySession);
       await setMeals(next);
     } catch (err) {
-      Alert.alert('Generování selhalo', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+      Alert.alert(t('plan.generateFailed'), err instanceof Error ? err.message : t('plan.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -115,11 +118,11 @@ export function PlanScreen() {
     if (isFuture) {
       const confirm = await new Promise<boolean>(resolve => {
         Alert.alert(
-          'Zápis do budoucího dne',
-          'Zapisuješ jídlo do budoucího dne?',
+          t('plan.futureLogTitle'),
+          t('plan.futureLogMsg'),
           [
-            { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Zapsat', onPress: () => resolve(true) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+            { text: t('plan.log'), onPress: () => resolve(true) },
           ]
         );
       });
@@ -127,7 +130,7 @@ export function PlanScreen() {
     }
 
     await addFood(mealToFoodEstimate(meal), 'planned');
-    Alert.alert('Zapsáno', `${meal.name} je přidané do příjmu pro ${formatDateLabel(selectedDate)}.`);
+    Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate) }));
   }
 
   function isMealLogged(meal: Meal) {
@@ -141,7 +144,7 @@ export function PlanScreen() {
     const consent = await ensureAiConsent();
     if (!consent) return;
     if (isMealLogged(meal)) {
-      Alert.alert('Nelze regenerovat', 'Toto jídlo už máš v denním zápisu. Smaž zápis a zkus to znovu.');
+      Alert.alert(t('plan.cannotRegenTitle'), t('plan.cannotRegenMsg'));
       return;
     }
     setRegeneratingIndex(index);
@@ -156,7 +159,7 @@ export function PlanScreen() {
       nextMeals[index] = next;
       await setMeals(nextMeals);
     } catch (err) {
-      Alert.alert('Regenerace selhala', err instanceof Error ? err.message : 'Zkus to znovu.');
+      Alert.alert(t('plan.regenFailed'), err instanceof Error ? err.message : t('plan.tryAgainShort'));
     } finally {
       setRegeneratingIndex(null);
     }
@@ -166,33 +169,33 @@ export function PlanScreen() {
     const body = shoppingGroups
       .map(group => `${group.category}\n${group.items.map(item => `- ${item}`).join('\n')}`)
       .join('\n\n');
-    Share.share({ message: `Nákupní seznam NutriFit\n\n${body}` });
+    Share.share({ message: `${t('plan.shoppingShareHeader')}\n\n${body}` });
   }
 
   return (
     <Screen>
       <DateHeader />
-      <H1>Jídelníček</H1>
-      <Subtitle>Plán se generuje pro {formatDateLabel(selectedDate)} proti cíli ({todaySession?.title || 'volný den'}). AI výstupy ber jako orientační.</Subtitle>
+      <H1>{t('plan.title')}</H1>
+      <Subtitle>{t('plan.subtitle', { date: formatDateLabel(selectedDate), goal: todaySession?.title || t('plan.restDayGoal') })}</Subtitle>
 
       <Card>
-        <Label>Preference pro další generaci</Label>
-        <Field value={likes} onChangeText={setLikes} placeholder="Co rád/a jíš?" multiline />
-        <Field value={dislikes} onChangeText={setDislikes} placeholder="Alergie, omezení, co vynechat" multiline />
+        <Label>{t('plan.prefsTitle')}</Label>
+        <Field value={likes} onChangeText={setLikes} placeholder={t('plan.likesPlaceholder')} multiline />
+        <Field value={dislikes} onChangeText={setDislikes} placeholder={t('plan.dislikesPlaceholder')} multiline />
         <View style={styles.row}>
-          <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.max(2, profile.mealCount - 1) })}>− jídlo</Button>
-          <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.min(6, profile.mealCount + 1) })}>+ jídlo</Button>
+          <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.max(2, profile.mealCount - 1) })}>{t('plan.removeMeal')}</Button>
+          <Button variant="secondary" onPress={() => setProfile({ ...profile, mealCount: Math.min(6, profile.mealCount + 1) })}>{t('plan.addMeal')}</Button>
         </View>
-        <Text style={styles.small}>Počet jídel: {profile.mealCount}</Text>
-        <Button disabled={loading} onPress={generate}>{loading ? 'Generuju…' : 'Vygenerovat plán'}</Button>
+        <Text style={styles.small}>{t('plan.mealCount', { n: profile.mealCount })}</Text>
+        <Button disabled={loading} onPress={generate}>{loading ? t('plan.generating') : t('plan.generate')}</Button>
       </Card>
 
       {loading && <PlanLoadingIndicator />}
 
       <Card>
-        <Label>Poslední plán</Label>
+        <Label>{t('plan.lastPlan')}</Label>
         {meals.length === 0 ? (
-          <Text style={styles.empty}>Zatím nemáš uložený plán.</Text>
+          <Text style={styles.empty}>{t('plan.noPlan')}</Text>
         ) : (
           <>
             {meals.map((meal, index) => (
@@ -201,14 +204,14 @@ export function PlanScreen() {
                 <Text style={styles.mealName}>{meal.name}</Text>
                 <View style={styles.macroRow}>
                   <Text style={styles.macroPill}>{meal.kcal} kcal</Text>
-                  <Text style={styles.macroPill}>B {meal.protein}g</Text>
-                  <Text style={styles.macroPill}>S {meal.carbs}g</Text>
-                  <Text style={styles.macroPill}>T {meal.fat}g</Text>
+                  <Text style={styles.macroPill}>{t('home.macroProteinShort')} {meal.protein}g</Text>
+                  <Text style={styles.macroPill}>{t('home.macroCarbsShort')} {meal.carbs}g</Text>
+                  <Text style={styles.macroPill}>{t('home.macroFatShort')} {meal.fat}g</Text>
                 </View>
-                <Text style={styles.small}>{meal.prepTime} min · {meal.difficulty} · vláknina {meal.fiber}g</Text>
+                <Text style={styles.small}>{t('plan.mealMeta', { prep: meal.prepTime, difficulty: meal.difficulty, fiber: meal.fiber })}</Text>
                 <Text style={styles.ingredients}>{meal.ingredients.slice(0, 6).join(', ')}</Text>
                 <View style={styles.row}>
-                  <Button variant="secondary" onPress={() => setSelectedMeal(meal)}>Detail</Button>
+                  <Button variant="secondary" onPress={() => setSelectedMeal(meal)}>{t('plan.detail')}</Button>
                   <Button
                     variant="secondary"
                     disabled={regeneratingIndex !== null}
@@ -217,13 +220,13 @@ export function PlanScreen() {
                     {regeneratingIndex === index ? '⏳' : '🔄'}
                   </Button>
                   <Button disabled={isMealLogged(meal)} onPress={() => logPlannedMeal(meal)}>
-                    {isMealLogged(meal) ? 'Zapsáno' : 'Snědl jsem'}
+                    {isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}
                   </Button>
                 </View>
               </View>
             ))}
             <Text style={styles.planDisclaimer}>
-              Recepty a výživové hodnoty jsou vygenerovány AI. Skutečné hodnoty surovin se mohou lišit. Před konzumací si prosím ověř složení, zejména pokud máš alergie nebo zdravotní omezení.
+              {t('plan.disclaimer')}
             </Text>
           </>
         )}
@@ -232,8 +235,8 @@ export function PlanScreen() {
       {shoppingGroups.length > 0 && (
         <Card>
           <View style={styles.headerRow}>
-            <Label>Nákupní seznam</Label>
-            <Text style={styles.link} onPress={shareShoppingList}>Sdílet</Text>
+            <Label>{t('plan.shoppingList')}</Label>
+            <Text style={styles.link} onPress={shareShoppingList}>{t('plan.share')}</Text>
           </View>
           {shoppingGroups.map(group => (
             <View key={group.category} style={styles.shoppingGroup}>
@@ -252,6 +255,7 @@ export function PlanScreen() {
 }
 
 function MealDetailModal({ meal, onClose }: { meal: Meal | null; onClose: () => void }) {
+  const { t } = useLanguage();
   return (
     <Modal visible={Boolean(meal)} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
@@ -261,17 +265,17 @@ function MealDetailModal({ meal, onClose }: { meal: Meal | null; onClose: () => 
             <ScrollView contentContainerStyle={styles.modalContent}>
               <Text style={styles.mealType}>{meal.mealType}</Text>
               <Text style={styles.modalTitle}>{meal.name}</Text>
-              <Text style={styles.small}>{meal.kcal} kcal · B {meal.protein}g · S {meal.carbs}g · T {meal.fat}g · {meal.prepTime} min</Text>
-              <Label>Suroviny</Label>
+              <Text style={styles.small}>{t('plan.mealDetailMacros', { kcal: meal.kcal, p: meal.protein, c: meal.carbs, f: meal.fat, prep: meal.prepTime })}</Text>
+              <Label>{t('plan.ingredients')}</Label>
               {meal.ingredients.map((ingredient, index) => (
                 <Text key={`${ingredient}-${index}`} style={styles.detailLine}>• {ingredient}</Text>
               ))}
-              <Label>Postup</Label>
+              <Label>{t('plan.steps')}</Label>
               {meal.steps.map((step, index) => (
                 <Text key={`${step}-${index}`} style={styles.detailLine}>{index + 1}. {step}</Text>
               ))}
             </ScrollView>
-            <Button variant="secondary" onPress={onClose}>Zavřít</Button>
+            <Button variant="secondary" onPress={onClose}>{t('common.close')}</Button>
           </View>
         )}
       </View>

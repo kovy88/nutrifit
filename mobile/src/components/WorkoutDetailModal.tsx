@@ -7,6 +7,8 @@ import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { Button } from './UI';
 import { useTheme } from '../context/ThemeContext';
 import { useNutriFit } from '../context/NutriFitContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
@@ -14,12 +16,6 @@ const KIND_EMOJI: Record<WorkoutKind, string> = {
   run: '🏃', walk: '🚶', cycle: '🚴', swim: '🏊',
   strength: '🏋️', hiit: '⚡', yoga: '🧘',
   functional: '💪', rowing: '🚣', other: '🏅',
-};
-
-const KIND_LABEL: Record<WorkoutKind, string> = {
-  run: 'Běh', walk: 'Chůze', cycle: 'Kolo', swim: 'Plavání',
-  strength: 'Silový trénink', hiit: 'HIIT', yoga: 'Jóga',
-  functional: 'Funkční trénink', rowing: 'Veslování', other: 'Trénink',
 };
 
 const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
@@ -36,7 +32,6 @@ const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
   zepp:           'Zepp',
   suunto:         'Suunto',
   mock:           '🧪 Mock (dev)',
-  manual:         '✋ Ručně zapsáno',
 };
 
 export type WorkoutDetailModalProps = {
@@ -47,14 +42,15 @@ export type WorkoutDetailModalProps = {
 export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps) {
   const { colors } = useTheme();
   const { profile } = useNutriFit();
+  const { t, locale } = useLanguage();
   if (!workout) return null;
 
-  const fueling = profile ? computeFueling({ workout, weightKg: profile.weight }) : null;
+  const fueling = profile ? computeFueling({ workout, weightKg: profile.weight, locale }) : null;
 
   const emoji = KIND_EMOJI[workout.kind] || '🏅';
-  const kindLabel = KIND_LABEL[workout.kind] || 'Trénink';
-  const sourceLabel = SOURCE_LABEL[workout.source] || workout.source;
-  const startedAt = formatFullDateTime(workout.startedAt);
+  const kindLabel = t(`wkindFull.${workout.kind}` as TranslationKey);
+  const sourceLabel = workout.source === 'manual' ? t('workout.srcManual') : (SOURCE_LABEL[workout.source] || workout.source);
+  const startedAt = formatFullDateTime(workout.startedAt, t);
   const endedAt = formatTime(workout.endedAt);
   const pace = workout.avgPaceSecPerKm ? formatPace(workout.avgPaceSecPerKm) : null;
 
@@ -87,53 +83,53 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
             {/* Big primary metric */}
             <View style={[styles.primaryCol, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
               <Metric
-                label="Délka"
+                label={t('workout.duration')}
                 value={`${workout.durationMinutes} min`}
                 color={colors.ink}
                 big
               />
               {workout.distanceKm != null && (
-                <Metric label="Vzdálenost" value={`${workout.distanceKm} km`} color={colors.blue} big />
+                <Metric label={t('workout.distance')} value={`${workout.distanceKm} km`} color={colors.blue} big />
               )}
             </View>
 
             {/* Secondary metrics grid */}
             <View style={styles.metricsGrid}>
               {pace && (
-                <Metric label="Průměrné tempo" value={pace} color={colors.green} />
+                <Metric label={t('workout.avgPace')} value={pace} color={colors.green} />
               )}
               {workout.avgHeartRate != null && (
-                <Metric label="Avg HR" value={`${workout.avgHeartRate} bpm`} color={colors.red} />
+                <Metric label={t('workout.avgHr')} value={`${workout.avgHeartRate} bpm`} color={colors.red} />
               )}
               {workout.maxHeartRate != null && (
-                <Metric label="Max HR" value={`${workout.maxHeartRate} bpm`} color={colors.red} />
+                <Metric label={t('workout.maxHr')} value={`${workout.maxHeartRate} bpm`} color={colors.red} />
               )}
               {workout.activeEnergyKcal != null && (
-                <Metric label="Spáleno" value={`${workout.activeEnergyKcal} kcal`} color={colors.orange} />
+                <Metric label={t('workout.burned')} value={`${workout.activeEnergyKcal} kcal`} color={colors.orange} />
               )}
             </View>
 
             {/* Fueling recommendation — pre/intra/post per workout intensity */}
             {fueling && (
               <View style={[styles.fuelingBox, { borderTopColor: colors.border }]}>
-                <Text style={[styles.fuelingTitle, { color: colors.ink }]}>🍌 Doporučený fueling</Text>
+                <Text style={[styles.fuelingTitle, { color: colors.ink }]}>{t('workout.fuelingTitle')}</Text>
                 <Text style={[styles.fuelingSummary, { color: colors.muted }]}>{fueling.summary}</Text>
                 {fueling.pre && (
                   <View style={styles.fuelingRow}>
                     <Text style={[styles.fuelingLabel, { color: colors.faint }]}>
-                      Pre · {fueling.pre.timingMinBefore} min předem
+                      {t('workout.fuelPre', { min: fueling.pre.timingMinBefore })}
                     </Text>
                     <Text style={[styles.fuelingValue, { color: colors.green }]}>
-                      {fueling.pre.carbsG}g sacharidů + {fueling.pre.proteinG}g bílkovin
+                      {t('workout.fuelCarbsProtein', { c: fueling.pre.carbsG, p: fueling.pre.proteinG })}
                     </Text>
                     <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.pre.note}</Text>
                   </View>
                 )}
                 {fueling.intra && (
                   <View style={styles.fuelingRow}>
-                    <Text style={[styles.fuelingLabel, { color: colors.faint }]}>Během tréninku</Text>
+                    <Text style={[styles.fuelingLabel, { color: colors.faint }]}>{t('workout.duringWorkout')}</Text>
                     <Text style={[styles.fuelingValue, { color: colors.orange }]}>
-                      {fueling.intra.carbsGPerHour}g sacharidů / hodinu
+                      {t('workout.fuelCarbsPerHour', { c: fueling.intra.carbsGPerHour })}
                     </Text>
                     <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.intra.note}</Text>
                   </View>
@@ -141,10 +137,10 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
                 {fueling.post && (
                   <View style={styles.fuelingRow}>
                     <Text style={[styles.fuelingLabel, { color: colors.faint }]}>
-                      Post · do {fueling.post.timingMinAfter} min po
+                      {t('workout.fuelPost', { min: fueling.post.timingMinAfter })}
                     </Text>
                     <Text style={[styles.fuelingValue, { color: colors.red }]}>
-                      {fueling.post.carbsG}g sacharidů + {fueling.post.proteinG}g bílkovin
+                      {t('workout.fuelCarbsProtein', { c: fueling.post.carbsG, p: fueling.post.proteinG })}
                     </Text>
                     <Text style={[styles.fuelingNote, { color: colors.muted }]}>{fueling.post.note}</Text>
                   </View>
@@ -162,11 +158,11 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
             {/* Source action */}
             {workout.source === 'strava' && workout.externalId && (
               <Button variant="primary" onPress={openSource}>
-                🟠 Otevřít na Strava
+                {t('workout.openStrava')}
               </Button>
             )}
           </ScrollView>
-          <Button variant="secondary" onPress={onClose}>Zavřít</Button>
+          <Button variant="secondary" onPress={onClose}>{t('common.close')}</Button>
         </View>
       </View>
     </Modal>
@@ -183,7 +179,7 @@ function Metric({ label, value, color, big }: { label: string; value: string; co
   );
 }
 
-function formatFullDateTime(iso: string): string {
+function formatFullDateTime(iso: string, t: Translate): string {
   const d = new Date(iso);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -191,9 +187,9 @@ function formatFullDateTime(iso: string): string {
   compared.setHours(0, 0, 0, 0);
   const diffDays = Math.round((today.getTime() - compared.getTime()) / 86_400_000);
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  if (diffDays === 0) return `Dnes ${time}`;
-  if (diffDays === 1) return `Včera ${time}`;
-  return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} ${time}`;
+  if (diffDays === 0) return t('workout.dtTodayFull', { time });
+  if (diffDays === 1) return t('workout.dtYesterdayFull', { time });
+  return t('workout.dtFull', { date: `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`, time });
 }
 
 function formatTime(iso: string): string {
@@ -209,7 +205,7 @@ function formatPace(secondsPerKm: number): string {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(25,33,29,0.5)' },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25,33,29,0.5)' },
   sheet: {
     maxHeight: '85%',
     borderTopLeftRadius: 24,

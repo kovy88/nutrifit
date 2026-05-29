@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
+import { useLanguage } from '../context/LanguageContext';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -16,10 +17,20 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { t } = useLanguage();
+  const tabLabels: Record<string, string> = {
+    Dnes: t('tab.home'),
+    Jídelníček: t('tab.plan'),
+    Trénink: t('tab.training'),
+    Foto: t('tab.photo'),
+    Uloženo: t('tab.history'),
+    Profil: t('tab.profile'),
+  };
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarLabel: tabLabels[route.name] ?? route.name,
         tabBarActiveTintColor: colors.green,
         tabBarInactiveTintColor: colors.faint,
         tabBarStyle: {
@@ -53,6 +64,7 @@ function MainTabs() {
 
 export function RootNavigator() {
   const { profile } = useNutriFit();
+  const { t } = useLanguage();
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -62,7 +74,7 @@ export function RootNavigator() {
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ headerShown: true, title: 'Nastavení', presentation: 'card' }}
+            options={{ headerShown: true, title: t('settings.title'), presentation: 'card' }}
           />
         </>
       ) : (

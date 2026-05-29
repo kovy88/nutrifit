@@ -7,9 +7,12 @@ import { useNutriFit } from '../context/NutriFitContext';
 import type { DietStyle, ExperienceLevel, Gender, PrimaryGoal, TrainingGoalKind, UserProfile } from '../types';
 import { DEFAULT_PROFILE, validateProfile, activityFactorForSessions } from '../utils/nutrition';
 import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '../services/storage';
+import { useLanguage } from '../context/LanguageContext';
+import type { TranslationKey } from '../lib/i18n';
 
 export function OnboardingScreen() {
   const { setProfile } = useNutriFit();
+  const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<UserProfile>(() => ({
     ...DEFAULT_PROFILE,
@@ -58,7 +61,7 @@ export function OnboardingScreen() {
   async function finish() {
     const errors = validateProfile(draft);
     if (errors.length) {
-      Alert.alert('Ještě drobnost', errors.join('\n'));
+      Alert.alert(t('onb.validationTitle'), errors.join('\n'));
       return;
     }
     await setProfile(draft);
@@ -77,12 +80,12 @@ export function OnboardingScreen() {
         </View>
       </View>
 
-      <H1>NutriFit nastavíme za minutu.</H1>
-      <Subtitle>Mobilní verze počítá denní cíle, plánuje jídelníček a dovolí upravit AI odhady před uložením.</Subtitle>
+      <H1>{t('onb.title')}</H1>
+      <Subtitle>{t('onb.subtitle')}</Subtitle>
 
       {step === 0 && (
         <Card>
-          <Label>Hlavní cíl</Label>
+          <Label>{t('profile.mainGoal')}</Label>
           <View style={styles.column}>
             {primaryGoals.map(item => (
               <Pill
@@ -90,7 +93,7 @@ export function OnboardingScreen() {
                 active={draft.primaryGoal === item.value}
                 onPress={() => setDraft(current => ({ ...current, primaryGoal: item.value, trainingGoal: item.trainingGoal }))}
               >
-                {item.label}
+                {t(item.labelKey)}
               </Pill>
             ))}
           </View>
@@ -99,38 +102,38 @@ export function OnboardingScreen() {
 
       {step === 1 && (
         <Card>
-          <Label>Tělesné míry</Label>
+          <Label>{t('onb.bodyMetrics')}</Label>
           <View style={styles.row}>
             {(['muz', 'zena'] as Gender[]).map(g => (
-              <Pill key={g} active={draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? 'Muž' : 'Žena'}</Pill>
+              <Pill key={g} active={draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? t('onb.male') : t('onb.female')}</Pill>
             ))}
           </View>
           <View style={styles.grid}>
-            <Field keyboardType="number-pad" value={draft.age === 0 ? '' : String(draft.age)} onChangeText={v => setField('age', Number(v) || 0)} placeholder="Věk (např. 30)" />
-            <Field keyboardType="number-pad" value={draft.height === 0 ? '' : String(draft.height)} onChangeText={v => setField('height', Number(v) || 0)} placeholder="Výška cm (např. 175)" />
-            <Field keyboardType="number-pad" value={draft.weight === 0 ? '' : String(draft.weight)} onChangeText={v => setField('weight', Number(v) || 0)} placeholder="Váha kg (např. 75)" />
+            <Field keyboardType="number-pad" value={draft.age === 0 ? '' : String(draft.age)} onChangeText={v => setField('age', Number(v) || 0)} placeholder={t('onb.agePlaceholder')} />
+            <Field keyboardType="number-pad" value={draft.height === 0 ? '' : String(draft.height)} onChangeText={v => setField('height', Number(v) || 0)} placeholder={t('onb.heightPlaceholder')} />
+            <Field keyboardType="number-pad" value={draft.weight === 0 ? '' : String(draft.weight)} onChangeText={v => setField('weight', Number(v) || 0)} placeholder={t('onb.weightPlaceholder')} />
           </View>
         </Card>
       )}
 
       {step === 2 && (
         <Card>
-          <Label>Tréninková aktivita</Label>
+          <Label>{t('onb.trainingActivity')}</Label>
           <View style={styles.rowWrap}>
             {trainingGoalsFor(draft.primaryGoal).map(goal => (
-              <Pill key={goal.value} active={draft.trainingGoal === goal.value} onPress={() => setField('trainingGoal', goal.value)}>{goal.label}</Pill>
+              <Pill key={goal.value} active={draft.trainingGoal === goal.value} onPress={() => setField('trainingGoal', goal.value)}>{t(goal.labelKey)}</Pill>
             ))}
           </View>
-          <Label>Kolikrát týdně trénuješ?</Label>
+          <Label>{t('onb.sessionsQuestion')}</Label>
           <View style={styles.rowWrap}>
             {[1, 2, 3, 4, 5, 6].map(count => (
               <Pill key={count} active={draft.sessionsPerWeek === count} onPress={() => setDraft(current => ({ ...current, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) }))}>{count}×</Pill>
             ))}
           </View>
-          <Label>Zkušenosti s tréninkem</Label>
+          <Label>{t('onb.experienceQuestion')}</Label>
           <View style={styles.rowWrap}>
             {(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[]).map(exp => (
-              <Pill key={exp} active={draft.experience === exp} onPress={() => setField('experience', exp)}>{experienceLabel(exp)}</Pill>
+              <Pill key={exp} active={draft.experience === exp} onPress={() => setField('experience', exp)}>{t(experienceLabelKey(exp))}</Pill>
             ))}
           </View>
         </Card>
@@ -138,57 +141,57 @@ export function OnboardingScreen() {
 
       {step === 3 && (
         <Card>
-          <Label>Stravovací preference a diety</Label>
-          <Field value={draft.likes} onChangeText={v => setField('likes', v)} placeholder="Co rád/a jíš? (oblíbené suroviny)" multiline />
-          <Field value={draft.dislikes} onChangeText={v => setField('dislikes', v)} placeholder="Alergie, omezení, co vůbec nejíš" multiline />
+          <Label>{t('onb.dietPrefs')}</Label>
+          <Field value={draft.likes} onChangeText={v => setField('likes', v)} placeholder={t('onb.likesPlaceholder')} multiline />
+          <Field value={draft.dislikes} onChangeText={v => setField('dislikes', v)} placeholder={t('onb.dislikesPlaceholder')} multiline />
           <View style={styles.rowWrap}>
             {(['standardní', 'vegetariánský', 'veganský', 'bezlepkový', 'nízkosacharidový', 'vysokoproteínový'] as DietStyle[]).map(diet => (
-              <Pill key={diet} active={draft.diet === diet} onPress={() => setField('diet', diet)}>{diet}</Pill>
+              <Pill key={diet} active={draft.diet === diet} onPress={() => setField('diet', diet)}>{t(`diet.${diet}` as TranslationKey)}</Pill>
             ))}
           </View>
           <View style={styles.explainBox}>
             <Text style={styles.explainText}>
-              ✨ Po dokončení ti AI sestaví plnohodnotný denní plán jídelníčku na míru tvým preferencím a automaticky jej upraví podle tvého dnešního tréninku!
+              {t('onb.explain')}
             </Text>
           </View>
         </Card>
       )}
 
       <View style={styles.actions}>
-        {step > 0 && <Button variant="secondary" onPress={() => setStep(s => s - 1)}>Zpět</Button>}
-        <Button onPress={step === 3 ? finish : () => setStep(s => s + 1)}>{step === 3 ? 'Dokončit a vytvořit plán' : 'Pokračovat'}</Button>
+        {step > 0 && <Button variant="secondary" onPress={() => setStep(s => s - 1)}>{t('common.back')}</Button>}
+        <Button onPress={step === 3 ? finish : () => setStep(s => s + 1)}>{step === 3 ? t('onb.finish') : t('common.continue')}</Button>
       </View>
-      <Text style={styles.disclaimer}>NutriFit není zdravotnický prostředek. Nediagnostikuje, neléčí a nenahrazuje konzultaci s lékařem ani nutričním terapeutem.</Text>
+      <Text style={styles.disclaimer}>{t('onb.disclaimer')}</Text>
     </Screen>
   );
 }
 
-const primaryGoals: Array<{ value: PrimaryGoal; label: string; trainingGoal: TrainingGoalKind }> = [
-  { value: 'lose_weight', label: 'Zhubnout', trainingGoal: 'general_fitness' },
-  { value: 'maintain_weight', label: 'Udržet váhu', trainingGoal: 'general_fitness' },
-  { value: 'gain_muscle', label: 'Nabrat svalovou hmotu', trainingGoal: 'strength_basics' },
-  { value: 'run_race', label: 'Příprava na běžecký závod', trainingGoal: 'run_10k' },
+const primaryGoals: Array<{ value: PrimaryGoal; labelKey: TranslationKey; trainingGoal: TrainingGoalKind }> = [
+  { value: 'lose_weight', labelKey: 'onb.goalLoseWeight', trainingGoal: 'general_fitness' },
+  { value: 'maintain_weight', labelKey: 'onb.goalMaintainWeight', trainingGoal: 'general_fitness' },
+  { value: 'gain_muscle', labelKey: 'onb.goalGainMuscle', trainingGoal: 'strength_basics' },
+  { value: 'run_race', labelKey: 'onb.goalRunRace', trainingGoal: 'run_10k' },
 ];
 
-function trainingGoalsFor(primaryGoal: PrimaryGoal): Array<{ value: TrainingGoalKind; label: string }> {
+function trainingGoalsFor(primaryGoal: PrimaryGoal): Array<{ value: TrainingGoalKind; labelKey: TranslationKey }> {
   if (primaryGoal === 'run_race') return [
-    { value: 'run_5k', label: 'Běh 5 km' },
-    { value: 'run_10k', label: 'Běh 10 km' },
-    { value: 'half_marathon', label: 'Půlmaraton' },
-    { value: 'marathon', label: 'Maraton' },
+    { value: 'run_5k', labelKey: 'onb.tgRun5k' },
+    { value: 'run_10k', labelKey: 'onb.tgRun10k' },
+    { value: 'half_marathon', labelKey: 'onb.tgHalf' },
+    { value: 'marathon', labelKey: 'onb.tgMarathon' },
   ];
   if (primaryGoal === 'gain_muscle') return [
-    { value: 'strength_basics', label: 'Silové základy' },
-    { value: 'general_fitness', label: 'Celková kondice' },
+    { value: 'strength_basics', labelKey: 'onb.tgStrengthBasics' },
+    { value: 'general_fitness', labelKey: 'onb.tgGeneralFitnessAlt' },
   ];
   return [
-    { value: 'general_fitness', label: 'Obecná kondice' },
-    { value: 'sports_conditioning', label: 'Sportovní výkon' },
+    { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
+    { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
   ];
 }
 
-function experienceLabel(value: ExperienceLevel) {
-  return ({ beginner: 'Začátečník', intermediate: 'Pokročilý', advanced: 'Zkušený' }[value]);
+function experienceLabelKey(value: ExperienceLevel): TranslationKey {
+  return ({ beginner: 'onb.expBeginner', intermediate: 'onb.expIntermediate', advanced: 'onb.expAdvanced' } as const)[value];
 }
 
 const styles = StyleSheet.create({

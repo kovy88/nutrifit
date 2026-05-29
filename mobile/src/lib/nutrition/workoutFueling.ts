@@ -16,9 +16,10 @@
 //   strength          → primárně post (protein focus)
 
 import type { WorkoutKind, WorkoutSummary } from '../../types/health';
+import type { Locale } from '../i18n';
 
 export type FuelingRecommendation = {
-  /** Krátký Czech popis fuel strategy. */
+  /** Krátký popis fuel strategy. */
   summary: string;
   pre: { carbsG: number; proteinG: number; timingMinBefore: number; note: string } | null;
   intra: { carbsGPerHour: number; note: string } | null;
@@ -29,10 +30,18 @@ export type FuelingInput = {
   workout: Pick<WorkoutSummary, 'kind' | 'durationMinutes' | 'avgHeartRate' | 'maxHeartRate'>;
   /** Tělesná hmotnost pro per-kg dávkování. */
   weightKg: number;
+  /** Jazyk výstupních textů. Default 'cs'. */
+  locale?: Locale;
 };
+
+/** Pick localized string. */
+function L(locale: Locale, cs: string, en: string): string {
+  return locale === 'en' ? en : cs;
+}
 
 export function computeFueling(input: FuelingInput): FuelingRecommendation {
   const { workout, weightKg } = input;
+  const loc: Locale = input.locale ?? 'cs';
   const kind = workout.kind;
   const minutes = workout.durationMinutes;
   const intensity = inferIntensity(workout);
@@ -40,7 +49,7 @@ export function computeFueling(input: FuelingInput): FuelingRecommendation {
   // Easy / light krátké aktivity — žádné explicitní fueling
   if ((kind === 'walk' || kind === 'yoga') && minutes < 60) {
     return {
-      summary: 'Krátká nízká intenzita — voda stačí.',
+      summary: L(loc, 'Krátká nízká intenzita — voda stačí.', 'Short low intensity — water is enough.'),
       pre: null, intra: null, post: null,
     };
   }
@@ -48,22 +57,22 @@ export function computeFueling(input: FuelingInput): FuelingRecommendation {
   // Long endurance: pre + intra + post
   if (minutes >= 90 && (kind === 'run' || kind === 'cycle' || kind === 'swim' || kind === 'rowing')) {
     return {
-      summary: 'Dlouhý vytrvalostní výkon — fueling klíčový.',
+      summary: L(loc, 'Dlouhý vytrvalostní výkon — fueling klíčový.', 'Long endurance effort — fueling is key.'),
       pre: {
         carbsG: Math.round(weightKg * 2),       // ~2 g/kg
         proteinG: 20,
         timingMinBefore: 90,
-        note: 'Lehce stravitelné sacharidy (ovesné kaše, banán, toast).',
+        note: L(loc, 'Lehce stravitelné sacharidy (ovesné kaše, banán, toast).', 'Easily digestible carbs (oatmeal, banana, toast).'),
       },
       intra: {
         carbsGPerHour: 45,
-        note: 'Gel/iontový nápoj každých 30 min.',
+        note: L(loc, 'Gel/iontový nápoj každých 30 min.', 'Gel/sports drink every 30 min.'),
       },
       post: {
         carbsG: Math.round(weightKg * 1.0),
         proteinG: 30,
         timingMinAfter: 30,
-        note: 'Refuel + protein do 30 min — glykogen + svalová obnova.',
+        note: L(loc, 'Refuel + protein do 30 min — glykogen + svalová obnova.', 'Refuel + protein within 30 min — glycogen + muscle recovery.'),
       },
     };
   }
@@ -71,19 +80,19 @@ export function computeFueling(input: FuelingInput): FuelingRecommendation {
   // Hard cardio / intervals: pre + post
   if (intensity === 'hard' && (kind === 'run' || kind === 'cycle' || kind === 'hiit' || kind === 'functional')) {
     return {
-      summary: 'Vysoká intenzita — pre + post fueling pro výkon a regeneraci.',
+      summary: L(loc, 'Vysoká intenzita — pre + post fueling pro výkon a regeneraci.', 'High intensity — pre + post fueling for performance and recovery.'),
       pre: {
         carbsG: Math.round(weightKg * 1),
         proteinG: 15,
         timingMinBefore: 60,
-        note: 'Sacharidy + bílkoviny ~1h předem.',
+        note: L(loc, 'Sacharidy + bílkoviny ~1h předem.', 'Carbs + protein ~1h before.'),
       },
       intra: null,
       post: {
         carbsG: Math.round(weightKg * 0.8),
         proteinG: 25,
         timingMinAfter: 30,
-        note: 'Refuel glykogenu + protein pro regeneraci.',
+        note: L(loc, 'Refuel glykogenu + protein pro regeneraci.', 'Glycogen refuel + protein for recovery.'),
       },
     };
   }
@@ -91,38 +100,38 @@ export function computeFueling(input: FuelingInput): FuelingRecommendation {
   // Strength / functional: primárně post (protein)
   if (kind === 'strength' || kind === 'functional') {
     return {
-      summary: 'Silový trénink — protein focus pro hypertrofii.',
+      summary: L(loc, 'Silový trénink — protein focus pro hypertrofii.', 'Strength training — protein focus for hypertrophy.'),
       pre: {
         carbsG: 30,
         proteinG: 15,
         timingMinBefore: 60,
-        note: 'Lehčí svačina pro energii bez tíže v žaludku.',
+        note: L(loc, 'Lehčí svačina pro energii bez tíže v žaludku.', 'A lighter snack for energy without stomach heaviness.'),
       },
       intra: null,
       post: {
         carbsG: Math.round(weightKg * 0.5),
         proteinG: 35,
         timingMinAfter: 30,
-        note: '20–40 g protein během "anabolic window" pro hypertrofii.',
+        note: L(loc, '20–40 g protein během "anabolic window" pro hypertrofii.', '20–40 g protein during the "anabolic window" for hypertrophy.'),
       },
     };
   }
 
   // Moderate / default
   return {
-    summary: 'Středně náročný trénink — lehký pre + post.',
+    summary: L(loc, 'Středně náročný trénink — lehký pre + post.', 'Moderate workout — light pre + post.'),
     pre: {
       carbsG: 30,
       proteinG: 15,
       timingMinBefore: 45,
-      note: 'Banán + jogurt nebo lehká svačina.',
+      note: L(loc, 'Banán + jogurt nebo lehká svačina.', 'Banana + yogurt or a light snack.'),
     },
     intra: null,
     post: {
       carbsG: Math.round(weightKg * 0.5),
       proteinG: 20,
       timingMinAfter: 60,
-      note: 'Vyvážená svačina nebo jídlo do hodiny.',
+      note: L(loc, 'Vyvážená svačina nebo jídlo do hodiny.', 'A balanced snack or meal within the hour.'),
     },
   };
 }

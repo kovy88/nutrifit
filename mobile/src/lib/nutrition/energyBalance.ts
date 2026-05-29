@@ -16,6 +16,7 @@
 // Tahle metrika je INDIKATIVNÍ, ne lékařsky přesná.
 
 import type { FoodLogItem, DailyFoodLogRecord } from '../../types';
+import type { Locale } from '../i18n';
 
 export type EnergyBalanceDay = {
   date: string;
@@ -88,38 +89,62 @@ export function computeEnergyBalance(input: EnergyBalanceInput): EnergyBalanceSu
   };
 }
 
-/** Lidský popis výsledku — Czech, kontextový dle goal. */
+/** Lidský popis výsledku — kontextový dle goal. */
 export function describeEnergyBalance(
   summary: EnergyBalanceSummary,
   goal: 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness',
+  locale: Locale = 'cs',
 ): string {
+  const en = locale === 'en';
   if (summary.loggedDays < 3) {
-    return 'Pro spolehlivý odhad zaznamenej alespoň 3 dny.';
+    return en ? 'Log at least 3 days for a reliable estimate.' : 'Pro spolehlivý odhad zaznamenej alespoň 3 dny.';
   }
   const kg = summary.theoreticalKgChange;
   const balance = summary.averageDailyBalance!;
-  const direction = kg < 0 ? 'pokles' : kg > 0 ? 'nárůst' : 'stabilita';
+  const direction = en
+    ? (kg < 0 ? 'drop' : kg > 0 ? 'gain' : 'stable')
+    : (kg < 0 ? 'pokles' : kg > 0 ? 'nárůst' : 'stabilita');
   const kgAbs = Math.abs(kg).toFixed(2);
-  const balanceStr = `${balance >= 0 ? '+' : ''}${balance} kcal/den`;
+  const balanceStr = en ? `${balance >= 0 ? '+' : ''}${balance} kcal/day` : `${balance >= 0 ? '+' : ''}${balance} kcal/den`;
 
   // Per-goal kontext
   if (goal === 'fat_loss') {
+    if (en) {
+      if (kg <= -0.4) return `Great deficit — ${balanceStr}, theoretical ${direction} ~${kgAbs} kg over the period. Keep it up.`;
+      if (kg <= -0.1) return `Mild deficit (${balanceStr}). A pace of ~${kgAbs} kg/period is safe.`;
+      if (kg < 0.1)   return `Energy balance is near zero (${balanceStr}). Add a deficit to lose weight.`;
+      return `Watch out — energy surplus (${balanceStr}). With a fat-loss goal this slows progress.`;
+    }
     if (kg <= -0.4) return `Skvělý deficit — ${balanceStr}, teoretický ${direction} ~${kgAbs} kg za období. Drž to.`;
     if (kg <= -0.1) return `Mírný deficit (${balanceStr}). Tempo ~${kgAbs} kg/období je bezpečné.`;
     if (kg < 0.1)   return `Energy balance je téměř nulový (${balanceStr}). Pro hubnutí přidej deficit.`;
     return `Pozor — energy surplus (${balanceStr}). Při fat_loss cíli to brzdí pokrok.`;
   }
   if (goal === 'muscle_gain') {
+    if (en) {
+      if (kg >= 0.2)  return `Solid surplus (${balanceStr}), theoretical ${direction} ~${kgAbs} kg. Fine for muscle — just don't overdo it.`;
+      if (kg >= 0.05) return `Mild surplus (${balanceStr}). Muscle grows slowly but cleanly.`;
+      return `Muscle gain needs a surplus — currently ${balanceStr}. Add ~200–300 kcal.`;
+    }
     if (kg >= 0.2)  return `Solidní surplus (${balanceStr}), teoretický ${direction} ~${kgAbs} kg. Pro svaly OK, hlídej, ať to není moc.`;
     if (kg >= 0.05) return `Mírný surplus (${balanceStr}). Sval poroste pomalu, ale čistě.`;
     return `Pro muscle_gain potřebuješ surplus — aktuálně ${balanceStr}. Přidej ~200–300 kcal.`;
   }
   if (goal === 'endurance') {
+    if (en) {
+      if (Math.abs(kg) < 0.1) return `Stable (${balanceStr}). Ideal for endurance performance.`;
+      if (kg < -0.3) return `Large deficit (${balanceStr}) — risk of performance drop. Refill glycogen.`;
+      return `Currently ${balanceStr}. For endurance the goal is stable weight.`;
+    }
     if (Math.abs(kg) < 0.1) return `Stabilní (${balanceStr}). Ideální pro vytrvalostní výkon.`;
     if (kg < -0.3) return `Velký deficit (${balanceStr}) — riziko poklesu výkonu. Doplň glykogen.`;
     return `Aktuálně ${balanceStr}. Pro vytrvalost cíl je stabilní váha.`;
   }
   // maintenance / general_fitness
+  if (en) {
+    if (Math.abs(kg) < 0.1) return `Energy balance is in equilibrium (${balanceStr}). Stable weight.`;
+    return `Currently ${balanceStr}, theoretical ${direction} ~${kgAbs} kg over the period.`;
+  }
   if (Math.abs(kg) < 0.1) return `Energy balance v rovnováze (${balanceStr}). Stabilní váha.`;
   return `Aktuálně ${balanceStr}, teoretický ${direction} ~${kgAbs} kg za období.`;
 }

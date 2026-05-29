@@ -114,7 +114,7 @@ describe('adherenceToTrendPoints', () => {
       { date: '2026-05-27', plannedKcal: 2000, loggedKcal: 1800, ratio: 0.9 },
       { date: '2026-05-28', plannedKcal: 0, loggedKcal: 0, ratio: null },
     ];
-    const points = adherenceToTrendPoints(days);
+    const points = adherenceToTrendPoints(days as unknown as Parameters<typeof adherenceToTrendPoints>[0]);
     expect(points).toEqual([
       { date: '2026-05-26', value: 100 },
       { date: '2026-05-27', value: 90 },

@@ -10,11 +10,13 @@ import { normalizeFoodEstimate, formatDateLabel } from '../utils/nutrition';
 import type { FoodEstimate } from '../types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function PhotoScreen() {
   const { addFood, ensureAiConsent, selectedDate } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors: themeColors } = useTheme();
+  const { t } = useLanguage();
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [estimate, setEstimate] = useState<FoodEstimate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,7 @@ export function PhotoScreen() {
   async function takePhoto() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Chyba oprávnění', 'Povol prosím přístup k fotoaparátu v nastavení telefonu.');
+      Alert.alert(t('photo.permissionTitle'), t('photo.permissionMsg'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -56,7 +58,7 @@ export function PhotoScreen() {
       const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg');
       setEstimate(next);
     } catch (err) {
-      Alert.alert('Analýza selhala', err instanceof Error ? err.message : 'Zkus jinou fotku.');
+      Alert.alert(t('photo.analyzeFailed'), err instanceof Error ? err.message : t('photo.tryAnother'));
     } finally {
       setLoading(false);
     }
@@ -67,39 +69,39 @@ export function PhotoScreen() {
     await addFood(normalizeFoodEstimate(estimate), 'photo');
     setImage(null);
     setEstimate(null);
-    Alert.alert('Uloženo', `Jídlo je přidané do příjmu pro ${formatDateLabel(selectedDate)}.`);
+    Alert.alert(t('photo.savedTitle'), t('photo.savedMsg', { date: formatDateLabel(selectedDate) }));
     navigation.navigate('Dnes');
   }
 
   return (
     <Screen>
-      <H1>Foto jídla</H1>
-      <Subtitle>AI odhad je vždy editovatelný. Před uložením si zkontroluj porci i makra.</Subtitle>
+      <H1>{t('photo.title')}</H1>
+      <Subtitle>{t('photo.subtitle')}</Subtitle>
       <Card>
         <View style={styles.row}>
-          <Button style={{ flex: 1 }} onPress={takePhoto}>📸 Vyfotit</Button>
-          <Button style={{ flex: 1 }} variant="secondary" onPress={pickImage}>🖼️ Galerie</Button>
+          <Button style={{ flex: 1 }} onPress={takePhoto}>{t('photo.takePhoto')}</Button>
+          <Button style={{ flex: 1 }} variant="secondary" onPress={pickImage}>{t('photo.gallery')}</Button>
         </View>
         {image && <Image source={{ uri: image.uri }} style={[styles.image, { backgroundColor: themeColors.border }]} />}
-        {image && <Button disabled={loading} style={{ marginTop: 6 }} variant="secondary" onPress={analyze}>Odhadnout makra</Button>}
+        {image && <Button disabled={loading} style={{ marginTop: 6 }} variant="secondary" onPress={analyze}>{t('photo.estimateMacros')}</Button>}
         {loading && <ActivityIndicator color={themeColors.green} />}
       </Card>
 
       {estimate && (
         <Card>
-          <Label>Upravit odhad</Label>
+          <Label>{t('photo.editEstimate')}</Label>
           <Field value={estimate.foodName} onChangeText={foodName => setEstimate(v => v && ({ ...v, foodName }))} />
           <Field value={estimate.portionGuess} onChangeText={portionGuess => setEstimate(v => v && ({ ...v, portionGuess }))} />
           <View style={styles.row}>
             <Field keyboardType="number-pad" value={String(estimate.kcal)} onChangeText={kcal => setEstimate(v => v && ({ ...v, kcal: Number(kcal) || 0 }))} placeholder="kcal" />
-            <Field keyboardType="number-pad" value={String(estimate.protein)} onChangeText={protein => setEstimate(v => v && ({ ...v, protein: Number(protein) || 0 }))} placeholder="B" />
+            <Field keyboardType="number-pad" value={String(estimate.protein)} onChangeText={protein => setEstimate(v => v && ({ ...v, protein: Number(protein) || 0 }))} placeholder={t('home.macroProteinShort')} />
           </View>
           <View style={styles.row}>
-            <Field keyboardType="number-pad" value={String(estimate.carbs)} onChangeText={carbs => setEstimate(v => v && ({ ...v, carbs: Number(carbs) || 0 }))} placeholder="S" />
-            <Field keyboardType="number-pad" value={String(estimate.fat)} onChangeText={fat => setEstimate(v => v && ({ ...v, fat: Number(fat) || 0 }))} placeholder="T" />
+            <Field keyboardType="number-pad" value={String(estimate.carbs)} onChangeText={carbs => setEstimate(v => v && ({ ...v, carbs: Number(carbs) || 0 }))} placeholder={t('home.macroCarbsShort')} />
+            <Field keyboardType="number-pad" value={String(estimate.fat)} onChangeText={fat => setEstimate(v => v && ({ ...v, fat: Number(fat) || 0 }))} placeholder={t('home.macroFatShort')} />
           </View>
-          <Text style={[styles.note, { color: themeColors.muted }]}>{estimate.confidence} jistota · {estimate.note}</Text>
-          <Button onPress={save}>Přidat do dne</Button>
+          <Text style={[styles.note, { color: themeColors.muted }]}>{t('photo.confidenceNote', { confidence: estimate.confidence ?? '', note: estimate.note ?? '' })}</Text>
+          <Button onPress={save}>{t('photo.addToDay')}</Button>
         </Card>
       )}
     </Screen>
