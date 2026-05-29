@@ -11,6 +11,12 @@ function czDay(n: number): string {
   return 'dní';
 }
 
+function czWorkout(n: number): string {
+  if (n === 1) return 'trénink';
+  if (n >= 2 && n <= 4) return 'tréninky';
+  return 'tréninků';
+}
+
 export const cs = {
   // ── Common ────────────────────────────────────────────────────────────────
   'common.save': 'Uložit',
@@ -45,6 +51,7 @@ export const cs = {
   'home.weightTracking': '📈 Sledování váhy',
   'home.weightPlaceholder': 'Zadej váhu v kg…',
   'home.last7days': 'Posledních 7 dní:',
+  'home.weekdayShort': ({ dow }: Record<string, string | number>) => ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'][Number(dow)],
   'home.todayActivity': 'Aktivita dnes',
   'home.steps': 'Kroky',
   'home.activeKcal': 'Aktivní kcal',
@@ -64,6 +71,33 @@ export const cs = {
   'home.emptyLogPlan': '🗓️ Plán jídelníčku',
   'home.emptyLogPhoto': '📸 Vyfotit jídlo',
   'home.remove': 'Smazat',
+  'home.saveWeight': 'Uložit',
+  'home.sleepDebtBadge': ({ h }: Record<string, string | number>) => `💤 Spánkový dluh ${h}h za 14d`,
+  'home.recoveryDebtBadge': ({ n }: Record<string, string | number>) => `🔋 Recovery debt ${n} bodů`,
+  'home.strainWorkouts': ({ n, trimp }: Record<string, string | number>) => `${n} ${czWorkout(Number(n))} · ${trimp} TRIMP`,
+  'home.strainPlanned': ({ trimp }: Record<string, string | number>) => `Plánováno: ${trimp} TRIMP`,
+  'home.load7d': '7 dní',
+  'home.load28d': '28 dní',
+  'home.loadPerDay': 'TRIMP/d',
+  'home.loadAcuteChronic': 'acute / chronic',
+  'home.loadWorkoutsCount': ({ n }: Record<string, string | number>) => `${n} tréninků`,
+  'home.adjustmentTitle': 'Dnešní úprava podle tréninku',
+  'home.restDay': 'Volný den',
+  'home.adjCalories': 'Kalorie',
+  'home.adjCarbs': 'Sacharidy',
+  'home.adjFat': 'Tuky',
+  'home.baselineRec': ({ base, today }: Record<string, string | number>) => `Základní doporučení ${base} kcal → dnes ${today} kcal`,
+  'home.macroProteinShort': 'B',
+  'home.macroCarbsShort': 'S',
+  'home.macroFatShort': 'T',
+  'home.manualPortion': 'Ručně zadané',
+  'home.manualNote': 'Ručně upravená hodnota uživatelem.',
+  'home.foodMacros': ({ kcal, p, c, f }: Record<string, string | number>) => `${kcal} kcal · B ${p}g · S ${c}g · T ${f}g`,
+  'home.alertMissingName': 'Chybí název',
+  'home.alertMissingNameMsg': 'Napiš název jídla.',
+  'home.alertWeightInvalid': 'Zadej prosím platnou váhu mezi 30 a 300 kg.',
+  'home.alertSuccess': 'Úspěch',
+  'home.alertWeightSaved': ({ w, date }: Record<string, string | number>) => `Váha ${w} kg úspěšně uložena k datu ${date}.`,
 
   // ── Readiness levels ──────────────────────────────────────────────────────────
   'readiness.ready': 'Připraven',

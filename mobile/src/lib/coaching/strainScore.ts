@@ -12,6 +12,7 @@
 
 import type { TrainingSession } from '../../types';
 import type { WorkoutSummary } from '../../types/health';
+import type { Locale } from '../i18n';
 
 export type StrainBand = 'recovery' | 'light' | 'moderate' | 'high' | 'all_out';
 
@@ -34,6 +35,8 @@ export type StrainInput = {
   plannedSession?: TrainingSession | null;
   /** Skutečně absolvované workouty (z provideru) — pro daný den. */
   todaysWorkouts: WorkoutSummary[];
+  /** Jazyk label + recommendation. Default 'cs'. */
+  locale?: Locale;
 };
 
 const INTENSITY_FACTOR: Record<TrainingSession['intensity'], number> = {
@@ -67,29 +70,34 @@ function bandFromScore(score: number): StrainBand {
   return 'all_out';
 }
 
-function labelForBand(band: StrainBand): string {
-  switch (band) {
-    case 'recovery':  return 'Regenerační den';
-    case 'light':     return 'Lehká aktivita';
-    case 'moderate':  return 'Středně náročné';
-    case 'high':      return 'Vysoká zátěž';
-    case 'all_out':   return 'Extrémní zátěž';
-  }
+function labelForBand(band: StrainBand, loc: Locale): string {
+  const cs: Record<StrainBand, string> = {
+    recovery: 'Regenerační den', light: 'Lehká aktivita', moderate: 'Středně náročné',
+    high: 'Vysoká zátěž', all_out: 'Extrémní zátěž',
+  };
+  const en: Record<StrainBand, string> = {
+    recovery: 'Recovery day', light: 'Light activity', moderate: 'Moderate',
+    high: 'High strain', all_out: 'All-out',
+  };
+  return (loc === 'en' ? en : cs)[band];
 }
 
-function recommendationForBand(band: StrainBand): string {
-  switch (band) {
-    case 'recovery':
-      return 'Dnes málo. Pokud nemáš deload, zařaď zítra lehkou aktivitu.';
-    case 'light':
-      return 'Zdravá udržovací zátěž. Pokud trénuješ cíl, můžeš si dovolit jednu kvalitnější jednotku tento týden.';
-    case 'moderate':
-      return 'Tělo se po dnešku potřebuje regenerovat. Spánek 7–9 h, hydratace, 30 g bílkovin do 30 min po tréninku.';
-    case 'high':
-      return 'Velká zátěž. Zítra easy + extra spánek + carb refuel. Sleduj klidový tep + HRV.';
-    case 'all_out':
-      return 'Extrém. Zítra rest day NEBO max 30 min recovery walk. Vyšší energetický příjem, vyšší příjem solí.';
-  }
+function recommendationForBand(band: StrainBand, loc: Locale): string {
+  const cs: Record<StrainBand, string> = {
+    recovery: 'Dnes málo. Pokud nemáš deload, zařaď zítra lehkou aktivitu.',
+    light: 'Zdravá udržovací zátěž. Pokud trénuješ cíl, můžeš si dovolit jednu kvalitnější jednotku tento týden.',
+    moderate: 'Tělo se po dnešku potřebuje regenerovat. Spánek 7–9 h, hydratace, 30 g bílkovin do 30 min po tréninku.',
+    high: 'Velká zátěž. Zítra easy + extra spánek + carb refuel. Sleduj klidový tep + HRV.',
+    all_out: 'Extrém. Zítra rest day NEBO max 30 min recovery walk. Vyšší energetický příjem, vyšší příjem solí.',
+  };
+  const en: Record<StrainBand, string> = {
+    recovery: 'Light day. Unless this is a deload, add some easy activity tomorrow.',
+    light: 'Healthy maintenance load. If you train for a goal, you can afford one quality session this week.',
+    moderate: 'Your body needs to recover after today. 7–9 h sleep, hydration, 30 g protein within 30 min post-workout.',
+    high: 'Big load. Tomorrow go easy + extra sleep + carb refuel. Watch resting HR + HRV.',
+    all_out: 'Extreme. Tomorrow take a rest day OR max 30 min recovery walk. Higher energy + salt intake.',
+  };
+  return (loc === 'en' ? en : cs)[band];
 }
 
 function trimpFromWorkout(w: WorkoutSummary): number {
@@ -124,13 +132,14 @@ export function computeDailyStrain(input: StrainInput): StrainAssessment {
 
   const score = trimpToScore(totalTrimp);
   const band = bandFromScore(score);
+  const loc: Locale = input.locale ?? 'cs';
 
   return {
     score,
     band,
-    label: labelForBand(band),
+    label: labelForBand(band, loc),
     trimp: Math.round(totalTrimp),
     workoutCount: input.todaysWorkouts.length,
-    recommendation: recommendationForBand(band),
+    recommendation: recommendationForBand(band, loc),
   };
 }

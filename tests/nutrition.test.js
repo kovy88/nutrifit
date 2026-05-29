@@ -2,6 +2,7 @@ import {
   calcBMR,
   calcTDEE,
   calcMacroTargets,
+  assessProfileSafety,
   adjustForDay,
   planWeeklyAdjustment,
   validateMealPlanMacros,
@@ -37,6 +38,31 @@ test('fat_loss: kalorický deficit, neklesne pod safe minimum', () => {
   const out = calcMacroTargets(baseProfile, { kind: 'fat_loss' });
   expect(out.kcal).toBeLessThan(out.tdee);
   expect(out.kcal).toBeGreaterThanOrEqual(SAFETY.MIN_KCAL_MALE);
+});
+
+test('safety: věk pod 16 let hard-blockuje automatický plán', () => {
+  const safety = assessProfileSafety({ ...baseProfile, ageYears: 15 }, { kind: 'maintenance' });
+  expect(safety.allowed).toBe(false);
+  expect(safety.code).toBe('age_under_16');
+});
+
+test('safety: BMI pod 16 hard-blockuje automatický plán', () => {
+  const safety = assessProfileSafety({ ...baseProfile, heightCm: 180, weightKg: 50 }, { kind: 'maintenance' });
+  expect(safety.allowed).toBe(false);
+  expect(safety.code).toBe('bmi_under_16');
+});
+
+test('safety: BMI nad 40 hard-blockuje automatický plán', () => {
+  const safety = assessProfileSafety({ ...baseProfile, heightCm: 170, weightKg: 120 }, { kind: 'maintenance' });
+  expect(safety.allowed).toBe(false);
+  expect(safety.code).toBe('bmi_over_40');
+});
+
+test('safety: BMI pod 18.5 + fat_loss přepne na maintenance path', () => {
+  const safety = assessProfileSafety({ ...baseProfile, heightCm: 180, weightKg: 58 }, { kind: 'fat_loss' });
+  expect(safety.allowed).toBe(true);
+  expect(safety.code).toBe('underweight_fat_loss');
+  expect(safety.adjustedGoalKind).toBe('maintenance');
 });
 
 test('fat_loss: tempo přes 1 % tělesné hmotnosti se omezí na safe', () => {

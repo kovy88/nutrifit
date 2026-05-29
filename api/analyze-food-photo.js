@@ -1,6 +1,6 @@
 // Vercel serverless funkce — multimodální odhad maker z fotky jídla (Gemini Vision)
 
-const { method, rateLimit, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
 const EMPTY_ESTIMATE = {
@@ -16,6 +16,7 @@ const EMPTY_ESTIMATE = {
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await requireUser(req, res))) return;
   if (!(await rateLimit(req, res, 'analyze-food-photo', 20))) return;
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -40,7 +41,7 @@ module.exports = async function handler(req, res) {
     return sendError(res, 400, 'invalid_base64', 'Obrázek není validní base64.');
   }
 
-  const model = process.env.GEMINI_VISION_MODEL || 'gemini-3.5-flash';
+  const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const thinkingConfig = model.includes('gemini-3')
     ? { thinkingLevel: 'minimal' }

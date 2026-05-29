@@ -1,12 +1,13 @@
 // ── INDIVIDUÁLNÍ NÁVRH JÍDELNÍČKU — generování, zobrazení receptů + recipe modal
 
-import { appState, MEAL_NAMES } from './state.js?v=8';
-import { buildShoppingList } from './shopping.js?v=8';
-import { saveToHistory } from './profile.js?v=8';
+import { appState, MEAL_NAMES } from './state.js?v=9';
+import { buildShoppingList } from './shopping.js?v=9';
+import { saveToHistory } from './profile.js?v=9';
 import { getCurrentUser } from './auth.js?v=8';
 import { checkAndIncrement } from './generation-limit.js?v=8';
 import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON, sanitizeUserPrompt } from './ai-utils.js?v=8';
 import { dateKey } from './tracking-store.js?v=8';
+import { buildAIPlanPrompt, validateAIPlanOutput } from './services/ai-plan-service.js?v=1';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
@@ -88,84 +89,86 @@ export async function generateMealPlan(setStepFn) {
   const diet     = sanitizeUserPrompt(document.getElementById('diet-style')?.value, { maxLength: 50 });
   const names    = MEAL_NAMES[appState.mealCount];
 
-  const systemPrompt = `# Role
-You are NutriPlan AI, a Czech nutrition assistant and creative cook. All user-facing output MUST be in Czech only: ingredient names, meal names, recipe steps, notes, and labels.
+  const goalToDomain = (g) => ({
+    'hubnutí': 'fat_loss',
+    'udržení': 'maintenance',
+    'nabírání': 'muscle_gain',
+    fat_loss: 'fat_loss',
+    maintenance: 'maintenance',
+    muscle_gain: 'muscle_gain',
+    endurance: 'endurance',
+    general_fitness: 'general_fitness',
+  })[g] || 'maintenance';
 
-# Core directives
-1. MATHEMATICAL ACCURACY — For every meal: kcal = protein×4 + carbs×4 + fat×9. Tolerance: ±5 kcal per meal. The sum of all meal macros must match the daily target within ±3%.
-2. REALISTIC QUANTITIES — Every ingredient must have an exact amount, for example "150g kuřecích prsou", "2 vejce", "30ml olivového oleje". The quantities must match the listed macros.
-3. PRACTICALITY — Use ingredients commonly available in Czech supermarkets such as Billa, Albert, Kaufland, and Lidl. Use realistic preparation times.
-4. EDUCATIONAL STEPS — Every recipe step must be clear and doable for a beginner. Include temperatures, times, and visual doneness cues.
+  const readWizardTrainingGoal = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('nutriplan-training-goal') || 'null');
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
 
-# Diet guardrails
-- If diet = "keto": carbs < 20g/day; NO grains, potatoes, or high-GI fruit.
-- If diet = "vegan": NO animal products: meat, eggs, milk, honey, cheese. Use protein from legumes, tofu, tempeh, and seitan.
-- If diet = "bezlepkové": NO wheat, rye, barley, or spelt. Allowed: rice, corn, buckwheat, potatoes, and gluten-free oats.
-- If diet = "vegetariánské": no meat or fish, but eggs and dairy are OK.
+  const wizardGoal = readWizardTrainingGoal();
+  const inputPromptData = {
+    profile: {
+      sex: appState.macros.gender === 'muz' ? 'male' : 'female',
+      ageYears: Number(appState.macros.age || 30),
+      heightCm: Number(appState.macros.height || 175),
+      weightKg: Number(appState.macros.weight || 70),
+      diet: diet,
+      likes: likes.split(',').map(x => x.trim()).filter(Boolean),
+      dislikes: dislikes.split(',').map(x => x.trim()).filter(Boolean),
+    },
+    nutritionGoal: { kind: goalToDomain(appState.macros.goal || appState.goal) },
+    trainingGoal: wizardGoal ? { kind: wizardGoal.trainingGoal } : null,
+    macros: {
+      kcal: appState.macros.kcal,
+      proteinG: appState.macros.protein,
+      carbsG: appState.macros.carbs,
+      fatG: appState.macros.fat,
+      fiberG: appState.macros.fiber,
+      waterMl: appState.macros.waterGoalMl || appState.waterGoalMl || 0,
+      bmr: appState.macros.bmr || 0,
+      tdee: appState.macros.tdee || 0,
+    },
+    options: {
+      mealsPerDay: appState.mealCount,
+      ingredientLevel: appState.ingredientLevel || 'standard',
+      includeWeek: false,
+    }
+  };
 
-# Internal reasoning process (do not output)
-For each meal, first calculate:
-1. Split daily macros across meal types: breakfast ~20-25%, lunch ~30-35%, snacks ~10-15%, dinner ~25-30%.
-2. Pick the main protein source and calculate its quantity from the target protein.
-3. Add the carbohydrate source and calculate its quantity.
-4. Add the fat source and calculate its quantity.
-5. Verify: protein×4 + carbs×4 + fat×9 = kcal (±5 kcal).
-
-# Diversity and structure
-- The main protein source MUST NOT repeat across two meals, for example do not use chicken breast twice.
-- Side dishes must be varied: do not use rice twice; rotate rice, potatoes, pasta, couscous, bulgur, or quinoa depending on the ingredient level.
-- Every main meal must use a different type of vegetable.
-- Vary textures: crunchy + creamy, hot + cold.
-- Preparation time: breakfast max 15 min, snacks max 10 min, lunch/dinner max 45 min.
-
-# Return ONLY valid JSON with no extra text.`;
-
-  const levelDesc = appState.ingredientLevel === 'úsporný'
-    ? `BUDGET level (max ~80 CZK/serving):
-ALLOWED: eggs, lentils, beans, chickpeas, peas, frozen vegetables, carrots, onions, cabbage, tomatoes, rice, pasta, oats, quark/tvaroh, milk, plain yogurt, bananas, apples, bread, potatoes, canned tuna, chicken thighs, pork.
-FORBIDDEN: salmon, avocado, beef tenderloin, quinoa, granola, coconut milk, cashews, pistachios, mango, out-of-season blueberries, cheeses more expensive than eidam.
-RULES: Prefer seasonal ingredients. Use legumes as the main protein source at least twice per day. Frozen vegetables are OK.`
-    : appState.ingredientLevel === 'gourmet'
-    ? `GOURMET level (price is not limited):
-ALLOWED: salmon, fresh tuna, avocado, beef entrecote, veal, lamb, mango, granola, Greek yogurt, quinoa, Brazil nuts, cashews, pistachios, chia seeds, extra virgin olive oil, parmesan, buffalo mozzarella, tahini, coconut milk, fresh herbs, champignon mushrooms.
-AVOID: industrial processed foods, instant meals, cheap substitutes.
-RULES: Emphasize presentation and flavor complexity. Use fresh herbs and spices. Every meal should have a "wow" factor.`
-    : `STANDARD level (80-200 CZK/serving):
-ALLOWED: chicken breast, chicken thighs, pork tenderloin, canned tuna, seasonal vegetables, wholegrain bread, yogurt, eidam or gouda cheese, potatoes, fruit, rice, pasta, eggs, quark/tvaroh, cottage cheese, oats.
-AVOID: premium ingredients such as salmon, avocado, and quinoa, as well as very cheap substitutes.
-RULES: Balance price and quality. Use seasonal fruit and vegetables. Rotate animal and plant protein sources.`;
-
-  const prompt = `Create a 1-day meal plan with exactly ${appState.mealCount} meals.
-
-DAILY TARGETS: ${appState.macros.kcal} kcal | Protein: ${appState.macros.protein}g | Carbs: ${appState.macros.carbs}g | Fat: ${appState.macros.fat}g
-PERSON: ${appState.macros.gender === 'muz' ? 'Male' : 'Female'}, ${appState.macros.age} years old, ${appState.macros.weight} kg | GOAL: ${appState.macros.goal}
-DIET: ${diet} | LIKED FOODS: ${likes} | DISLIKES/ALLERGIES: ${dislikes}
-INGREDIENT LEVEL: ${levelDesc}
-MEALS: ${names.join(', ')}
-
-MACRO REQUIREMENTS:
-- Sum of kcal across all meals = ${appState.macros.kcal} ±3%
-- Sum of protein = ${appState.macros.protein}g ±5%
-- For every meal, verify: kcal = protein×4 + carbs×4 + fat×9 (±5 kcal)
-- Split calories: breakfast ~20-25%, lunch ~30-35%, snacks ~10-15%, dinner ~25-30%
-
-FORMAT — return ONLY valid JSON:
-{"meals":[{"mealType":"Snídaně","name":"Český název","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["200g ovesných vloček","300ml mléka"],"steps":["Krok 1.","Krok 2."]}]}
-
-RULES:
-- Output all user-facing JSON string values in Czech only. Do not use English in meal names, ingredient names, steps, notes, or labels.
-- difficulty must be one of: "Jednoduchá" | "Střední" | "Náročná"
-- prepTime: integer in minutes (breakfast max 15, snacks max 10, main meals max 45)
-- fiber: fiber in grams as an integer
-- ingredients: use the format "amount + name", for example "150g kuřecích prsou", "2 vejce"
-- steps: clear Czech steps with temperatures and times, for example "Předehřej troubu na 200°C.", "Opékej 3 minuty do zlatova."
-- Cover exactly these meals: ${names.join(', ')}
-- The main protein source MUST NOT repeat across two meals`;
+  const { systemPrompt, prompt } = buildAIPlanPrompt(inputPromptData);
 
   try {
     const text = await callGemini(systemPrompt, prompt, 3500);
     const parsed = parseGeminiJSON(text, 'Jídelníček');
-    appState.currentRecipes = withPlannedMealIds(normalizeMealPlanResponse(parsed, appState.mealCount).map(fixMacros));
+    
+    // Validate output using domain validator
+    const validation = validateAIPlanOutput(parsed, inputPromptData.macros);
+    if (!validation.ok) {
+      console.warn('AI validation errors:', validation.errors);
+      localStorage.setItem('nutriplan-ai-retry-count', String(Number(localStorage.getItem('nutriplan-ai-retry-count') || 0) + 1));
+      throw new Error(`Validační chyba AI výstupu: ${validation.errors[0]}`);
+    }
+
+    const dayPlan = validation.value.mealPlan[0];
+    const meals = dayPlan.meals.map((m, idx) => ({
+      mealType: m.name || names[idx] || 'Jídlo',
+      name: m.title || 'Recept',
+      kcal: m.calories,
+      protein: m.protein,
+      carbs: m.carbs,
+      fat: m.fat,
+      fiber: m.calories > 0 ? Math.round(m.calories * 0.01) : 4,
+      prepTime: m.prepTimeMinutes || 15,
+      difficulty: m.calories > 500 ? 'Střední' : 'Jednoduchá',
+      ingredients: m.ingredients || [],
+      steps: m.steps || [],
+    }));
+
+    appState.currentRecipes = withPlannedMealIds(meals.map(fixMacros));
     renderList(out, appState.currentRecipes);
     buildShoppingList(appState.currentRecipes);
     saveToHistory(appState.currentRecipes);
@@ -173,7 +176,7 @@ RULES:
     window.dispatchEvent(new CustomEvent('mealplan:ready', { detail: { meals: appState.currentRecipes } }));
   } catch (err) {
     const msg = err instanceof SyntaxError
-      ? 'AI vrátila neplatnou odpověď.'
+      ? 'AI vrátila neplatný JSON formát.'
       : (err.message || 'Chyba při generování.');
     out.innerHTML = `<div class="error-box">
       <div>${esc(msg)}</div>

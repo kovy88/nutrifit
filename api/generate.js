@@ -1,10 +1,11 @@
 // Vercel serverless funkce — proxy pro individuální návrh jídelníčku (Gemini)
 // API klíč zůstává na serveru, nikdy nedorazí do prohlížeče
 
-const { method, rateLimit, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await requireUser(req, res))) return;
   if (!(await rateLimit(req, res, 'generate', 15))) return;
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -18,8 +19,7 @@ module.exports = async function handler(req, res) {
     return sendError(res, 400, 'missing_prompt', 'Chybí parametr prompt.');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const maxTokens = model.includes('gemini-3')
     ? Math.min(requestedMaxTokens + 1200, 8192)
     : requestedMaxTokens;
@@ -27,6 +27,37 @@ module.exports = async function handler(req, res) {
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
 
+  let result = await callGeminiModel({
+    apiKey,
+    model,
+    systemPrompt,
+    prompt,
+    maxTokens,
+    thinkingConfig,
+  });
+
+  const fallbackModel = 'gemini-2.5-flash';
+  if (isModelFallbackError(result.status) && model !== fallbackModel) {
+    result = await callGeminiModel({
+      apiKey,
+      model: fallbackModel,
+      systemPrompt,
+      prompt,
+      maxTokens: requestedMaxTokens,
+      thinkingConfig: { thinkingBudget: 0 },
+      fallbackFrom: model,
+    });
+  }
+
+  return res.status(result.status).json(coalesceCandidateText({
+    ...result.data,
+    modelUsed: result.model,
+    fallbackFrom: result.fallbackFrom,
+  }));
+};
+
+async function callGeminiModel({ apiKey, model, systemPrompt, prompt, maxTokens, thinkingConfig, fallbackFrom }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const geminiRes = await fetch(url, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -40,10 +71,13 @@ module.exports = async function handler(req, res) {
       },
     }),
   });
-
   const data = await geminiRes.json();
-  return res.status(geminiRes.status).json(coalesceCandidateText(data));
-};
+  return { status: geminiRes.status, data, model, fallbackFrom };
+}
+
+function isModelFallbackError(status) {
+  return status === 400 || status === 404;
+}
 
 function coalesceCandidateText(data) {
   if (!data?.candidates) return data;

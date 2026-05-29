@@ -4,28 +4,17 @@
 // na základě spánku + HRV + klidového tepu. Inspirace: Whoop "Recovery",
 // Garmin "Body Battery", Oura "Readiness".
 //
-// Pravidla (absolutní prahy, ne personalizované — to přidáme s backendem):
-//   Spánek < 6 h         → red   (akutní spánkový deficit)
-//   Spánek 6–7 h         → yellow
-//   Spánek 7+ h          → green
+// Pravidla (absolutní prahy fallback; relativní když je baseline):
+//   Spánek < 6 h → red · 6–7 h → yellow · 7+ → green
+//   HRV SDNN < 25 ms → red · 25–35 → yellow · 35+ → green
+//   RHR > 85 → red · > 75 → yellow · ≤ 75 → green
+// Agregace: any red → red · 2+ yellow → red · 1 yellow → yellow · else green.
 //
-//   HRV SDNN < 25 ms     → red   (chronický stres / nemoc / přetrénování)
-//   HRV SDNN 25–35 ms    → yellow
-//   HRV SDNN 35+ ms      → green
-//
-//   Klidový tep > 75 bpm → yellow (zvýšený = stres/dehydratace/nemoc)
-//   Klidový tep > 85 bpm → red
-//   Klidový tep ≤ 75 bpm → green
-//
-// Agregace:
-//   - jakýkoli red         → red
-//   - dva nebo víc yellow  → red
-//   - jeden yellow         → yellow
-//   - vše green nebo data nedostupná → green
-//
-// Když nejsou dostupná data (Manual provider, prázdná lednice), vrátíme
-// 'green' s informativní zprávou — appka nemůže blokovat trénink jen
-// kvůli chybějícím datům.
+// Lokalizace: messages + recommendation respektují `input.locale` (default 'cs').
+// Logika (severity, level, trainingAdjustment) je jazykově nezávislá, takže
+// stávající testy bez locale zůstávají zelené.
+
+import type { Locale } from '../i18n';
 
 export type ReadinessLevel = 'green' | 'yellow' | 'red';
 
@@ -52,9 +41,7 @@ export type ReadinessFactor = {
 export type ReadinessAssessment = {
   level: ReadinessLevel;
   factors: ReadinessFactor[];
-  /** Krátká doporučující věta v češtině — co dnes dělat. */
   recommendation: string;
-  /** Doporučená úprava intenzity tréninku. null = beze změny. */
   trainingAdjustment: 'reduce_to_easy' | 'reduce_to_moderate' | null;
 };
 
@@ -62,140 +49,121 @@ export type ReadinessInput = {
   todaySleepMinutes?: number | null;
   todayRhrBpm?: number | null;
   todayHrvMs?: number | null;
-  /** Personalní baseline (z posledních 14 dní). Když je dodán, použijí se
-   *  RELATIVNÍ thresholdy ("HRV pod 70 % průměru") místo absolutních
-   *  ("HRV pod 25 ms"). Pro každý signál stačí jeden non-null klíč —
-   *  ostatní spadnou zpět na absolutní pravidla. */
   baseline?: {
     rhrMeanBpm?: number | null;
     hrvMeanMs?: number | null;
     sleepMeanMinutes?: number | null;
   };
+  /** Jazyk výstupních textů. Default 'cs'. */
+  locale?: Locale;
 };
 
-// ── Thresholds (named constants — easy to tune from a single place) ─────────
-
-// Absolutní (fallback když nemáme baseline):
-const SLEEP_MIN_OK = 420;          // 7 h
-const SLEEP_MIN_BORDERLINE = 360;  // 6 h
+// ── Thresholds ──────────────────────────────────────────────────────────────
+const SLEEP_MIN_OK = 420;
+const SLEEP_MIN_BORDERLINE = 360;
 const HRV_MIN_OK = 35;
 const HRV_MIN_BORDERLINE = 25;
 const RHR_MAX_OK = 75;
 const RHR_MAX_BORDERLINE = 85;
-
-// Relativní (když máme baseline) — vyjádřeno jako poměr proti průměru:
-const HRV_RATIO_OK = 0.85;          // <70% = red, 70–85% = yellow, ≥85% = green
+const HRV_RATIO_OK = 0.85;
 const HRV_RATIO_RED = 0.70;
-const RHR_RATIO_OK = 1.10;          // >120% baseline = red, 110–120% = yellow
+const RHR_RATIO_OK = 1.10;
 const RHR_RATIO_RED = 1.20;
-const SLEEP_RATIO_OK = 0.90;        // <70% = red, 70–90% = yellow, ≥90% = green
+const SLEEP_RATIO_OK = 0.90;
 const SLEEP_RATIO_RED = 0.70;
+
+/** Pick localized string. */
+function L(locale: Locale, cs: string, en: string): string {
+  return locale === 'en' ? en : cs;
+}
 
 export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const factors: ReadinessFactor[] = [];
   const baseline = input.baseline ?? {};
+  const loc: Locale = input.locale ?? 'cs';
+  const hrs = (m: number) => formatHours(m, loc);
 
   // ── Sleep ──────────────────────────────────────────────────────────────────
   if (input.todaySleepMinutes == null) {
-    factors.push({ key: 'sleep_missing', severity: 'green', message: 'Spánek dnes nemáme.' });
+    factors.push({ key: 'sleep_missing', severity: 'green', message: L(loc, 'Spánek dnes nemáme.', 'No sleep data today.') });
   } else if (baseline.sleepMeanMinutes && baseline.sleepMeanMinutes > 0) {
-    // Relativní: porovnání s vlastním průměrem
     const ratio = input.todaySleepMinutes / baseline.sleepMeanMinutes;
+    const pct = Math.round(ratio * 100);
     if (ratio < SLEEP_RATIO_RED) {
-      factors.push({
-        key: 'sleep_short',
-        severity: 'red',
-        message: `Spal jsi ${formatHours(input.todaySleepMinutes)} — ${Math.round(ratio * 100)} % tvého průměru (${formatHours(baseline.sleepMeanMinutes)}).`,
-      });
+      factors.push({ key: 'sleep_short', severity: 'red',
+        message: L(loc, `Spal jsi ${hrs(input.todaySleepMinutes)} — ${pct} % tvého průměru (${hrs(baseline.sleepMeanMinutes)}).`,
+                        `You slept ${hrs(input.todaySleepMinutes)} — ${pct}% of your average (${hrs(baseline.sleepMeanMinutes)}).`) });
     } else if (ratio < SLEEP_RATIO_OK) {
-      factors.push({
-        key: 'sleep_moderate',
-        severity: 'yellow',
-        message: `Spánek pod průměrem (${formatHours(input.todaySleepMinutes)} vs. ${formatHours(baseline.sleepMeanMinutes)}).`,
-      });
+      factors.push({ key: 'sleep_moderate', severity: 'yellow',
+        message: L(loc, `Spánek pod průměrem (${hrs(input.todaySleepMinutes)} vs. ${hrs(baseline.sleepMeanMinutes)}).`,
+                        `Sleep below average (${hrs(input.todaySleepMinutes)} vs. ${hrs(baseline.sleepMeanMinutes)}).`) });
     } else {
-      factors.push({
-        key: 'sleep_ok',
-        severity: 'green',
-        message: `Spánek v normě (${formatHours(input.todaySleepMinutes)}).`,
-      });
+      factors.push({ key: 'sleep_ok', severity: 'green',
+        message: L(loc, `Spánek v normě (${hrs(input.todaySleepMinutes)}).`, `Sleep on track (${hrs(input.todaySleepMinutes)}).`) });
     }
   } else {
-    // Absolutní fallback
     if (input.todaySleepMinutes < SLEEP_MIN_BORDERLINE) {
-      factors.push({ key: 'sleep_short', severity: 'red', message: `Spal jsi méně než 6 h (${formatHours(input.todaySleepMinutes)}).` });
+      factors.push({ key: 'sleep_short', severity: 'red', message: L(loc, `Spal jsi méně než 6 h (${hrs(input.todaySleepMinutes)}).`, `You slept under 6 h (${hrs(input.todaySleepMinutes)}).`) });
     } else if (input.todaySleepMinutes < SLEEP_MIN_OK) {
-      factors.push({ key: 'sleep_moderate', severity: 'yellow', message: `Spánek pod optimem (${formatHours(input.todaySleepMinutes)}).` });
+      factors.push({ key: 'sleep_moderate', severity: 'yellow', message: L(loc, `Spánek pod optimem (${hrs(input.todaySleepMinutes)}).`, `Sleep below optimum (${hrs(input.todaySleepMinutes)}).`) });
     } else {
-      factors.push({ key: 'sleep_ok', severity: 'green', message: `Spánek v normě (${formatHours(input.todaySleepMinutes)}).` });
+      factors.push({ key: 'sleep_ok', severity: 'green', message: L(loc, `Spánek v normě (${hrs(input.todaySleepMinutes)}).`, `Sleep on track (${hrs(input.todaySleepMinutes)}).`) });
     }
   }
 
   // ── HRV ────────────────────────────────────────────────────────────────────
   if (input.todayHrvMs == null) {
-    factors.push({ key: 'hrv_missing', severity: 'green', message: 'HRV dnes nemáme.' });
+    factors.push({ key: 'hrv_missing', severity: 'green', message: L(loc, 'HRV dnes nemáme.', 'No HRV data today.') });
   } else if (baseline.hrvMeanMs && baseline.hrvMeanMs > 0) {
     const ratio = input.todayHrvMs / baseline.hrvMeanMs;
+    const pct = Math.round(ratio * 100);
+    const v = Math.round(input.todayHrvMs);
+    const avg = Math.round(baseline.hrvMeanMs);
     if (ratio < HRV_RATIO_RED) {
-      factors.push({
-        key: 'hrv_low',
-        severity: 'red',
-        message: `HRV ${Math.round(input.todayHrvMs)} ms — ${Math.round(ratio * 100)} % průměru (${Math.round(baseline.hrvMeanMs)} ms). Vysoký stres nebo nemoc.`,
-      });
+      factors.push({ key: 'hrv_low', severity: 'red',
+        message: L(loc, `HRV ${v} ms — ${pct} % průměru (${avg} ms). Vysoký stres nebo nemoc.`,
+                        `HRV ${v} ms — ${pct}% of average (${avg} ms). High stress or illness.`) });
     } else if (ratio < HRV_RATIO_OK) {
-      factors.push({
-        key: 'hrv_moderate',
-        severity: 'yellow',
-        message: `HRV mírně snížené (${Math.round(input.todayHrvMs)} ms vs. ${Math.round(baseline.hrvMeanMs)} ms).`,
-      });
+      factors.push({ key: 'hrv_moderate', severity: 'yellow',
+        message: L(loc, `HRV mírně snížené (${v} ms vs. ${avg} ms průměr).`, `HRV slightly down (${v} ms vs. ${avg} ms average).`) });
     } else {
-      factors.push({
-        key: 'hrv_ok',
-        severity: 'green',
-        message: `HRV v normě (${Math.round(input.todayHrvMs)} ms).`,
-      });
+      factors.push({ key: 'hrv_ok', severity: 'green', message: L(loc, `HRV v normě (${v} ms).`, `HRV on track (${v} ms).`) });
     }
   } else {
+    const v = Math.round(input.todayHrvMs);
     if (input.todayHrvMs < HRV_MIN_BORDERLINE) {
-      factors.push({ key: 'hrv_low', severity: 'red', message: `HRV velmi nízké (${Math.round(input.todayHrvMs)} ms) — možná stres nebo nemoc.` });
+      factors.push({ key: 'hrv_low', severity: 'red', message: L(loc, `HRV velmi nízké (${v} ms) — možná stres nebo nemoc.`, `HRV very low (${v} ms) — possible stress or illness.`) });
     } else if (input.todayHrvMs < HRV_MIN_OK) {
-      factors.push({ key: 'hrv_moderate', severity: 'yellow', message: `HRV mírně snížené (${Math.round(input.todayHrvMs)} ms).` });
+      factors.push({ key: 'hrv_moderate', severity: 'yellow', message: L(loc, `HRV mírně snížené (${v} ms).`, `HRV slightly down (${v} ms).`) });
     } else {
-      factors.push({ key: 'hrv_ok', severity: 'green', message: `HRV v normě (${Math.round(input.todayHrvMs)} ms).` });
+      factors.push({ key: 'hrv_ok', severity: 'green', message: L(loc, `HRV v normě (${v} ms).`, `HRV on track (${v} ms).`) });
     }
   }
 
   // ── RHR ────────────────────────────────────────────────────────────────────
   if (input.todayRhrBpm == null) {
-    factors.push({ key: 'rhr_missing', severity: 'green', message: 'Klidový tep nemáme.' });
+    factors.push({ key: 'rhr_missing', severity: 'green', message: L(loc, 'Klidový tep nemáme.', 'No resting HR data.') });
   } else if (baseline.rhrMeanBpm && baseline.rhrMeanBpm > 0) {
     const ratio = input.todayRhrBpm / baseline.rhrMeanBpm;
+    const pct = Math.round(ratio * 100);
+    const avg = Math.round(baseline.rhrMeanBpm);
     if (ratio > RHR_RATIO_RED) {
-      factors.push({
-        key: 'rhr_high',
-        severity: 'red',
-        message: `Klidový tep ${input.todayRhrBpm} bpm — ${Math.round(ratio * 100)} % průměru (${Math.round(baseline.rhrMeanBpm)} bpm). Možná nemoc.`,
-      });
+      factors.push({ key: 'rhr_high', severity: 'red',
+        message: L(loc, `Klidový tep ${input.todayRhrBpm} bpm — ${pct} % průměru (${avg} bpm). Možná nemoc.`,
+                        `Resting HR ${input.todayRhrBpm} bpm — ${pct}% of average (${avg} bpm). Possible illness.`) });
     } else if (ratio > RHR_RATIO_OK) {
-      factors.push({
-        key: 'rhr_elevated',
-        severity: 'yellow',
-        message: `Klidový tep zvýšený (${input.todayRhrBpm} bpm vs. ${Math.round(baseline.rhrMeanBpm)} bpm průměr).`,
-      });
+      factors.push({ key: 'rhr_elevated', severity: 'yellow',
+        message: L(loc, `Klidový tep zvýšený (${input.todayRhrBpm} bpm vs. ${avg} bpm průměr).`, `Resting HR elevated (${input.todayRhrBpm} bpm vs. ${avg} bpm average).`) });
     } else {
-      factors.push({
-        key: 'rhr_ok',
-        severity: 'green',
-        message: `Klidový tep v normě (${input.todayRhrBpm} bpm).`,
-      });
+      factors.push({ key: 'rhr_ok', severity: 'green', message: L(loc, `Klidový tep v normě (${input.todayRhrBpm} bpm).`, `Resting HR on track (${input.todayRhrBpm} bpm).`) });
     }
   } else {
     if (input.todayRhrBpm > RHR_MAX_BORDERLINE) {
-      factors.push({ key: 'rhr_high', severity: 'red', message: `Klidový tep vysoký (${input.todayRhrBpm} bpm) — možná nemoc.` });
+      factors.push({ key: 'rhr_high', severity: 'red', message: L(loc, `Klidový tep vysoký (${input.todayRhrBpm} bpm) — možná nemoc.`, `Resting HR high (${input.todayRhrBpm} bpm) — possible illness.`) });
     } else if (input.todayRhrBpm > RHR_MAX_OK) {
-      factors.push({ key: 'rhr_elevated', severity: 'yellow', message: `Klidový tep zvýšený (${input.todayRhrBpm} bpm).` });
+      factors.push({ key: 'rhr_elevated', severity: 'yellow', message: L(loc, `Klidový tep zvýšený (${input.todayRhrBpm} bpm).`, `Resting HR elevated (${input.todayRhrBpm} bpm).`) });
     } else {
-      factors.push({ key: 'rhr_ok', severity: 'green', message: `Klidový tep v normě (${input.todayRhrBpm} bpm).` });
+      factors.push({ key: 'rhr_ok', severity: 'green', message: L(loc, `Klidový tep v normě (${input.todayRhrBpm} bpm).`, `Resting HR on track (${input.todayRhrBpm} bpm).`) });
     }
   }
 
@@ -205,46 +173,30 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const dataCount = factors.filter(f => !f.key.endsWith('_missing')).length;
 
   if (reds > 0) {
-    return {
-      level: 'red',
-      factors,
-      recommendation: 'Doporučujeme dnes regeneraci. Pokud trénuješ, drž jen lehkou aktivitu a přidej spánek.',
-      trainingAdjustment: 'reduce_to_easy',
-    };
+    return { level: 'red', factors, trainingAdjustment: 'reduce_to_easy',
+      recommendation: L(loc, 'Doporučujeme dnes regeneraci. Pokud trénuješ, drž jen lehkou aktivitu a přidej spánek.',
+                             'Recovery recommended today. If you train, keep it light and add sleep.') };
   }
   if (yellows >= 2) {
-    return {
-      level: 'red',
-      factors,
-      recommendation: 'Více faktorů pod normou. Zkrať trénink nebo sniž intenzitu.',
-      trainingAdjustment: 'reduce_to_easy',
-    };
+    return { level: 'red', factors, trainingAdjustment: 'reduce_to_easy',
+      recommendation: L(loc, 'Více faktorů pod normou. Zkrať trénink nebo sniž intenzitu.',
+                             'Multiple factors below normal. Shorten the workout or lower intensity.') };
   }
   if (yellows === 1) {
-    return {
-      level: 'yellow',
-      factors,
-      recommendation: 'Mírně snížená připravenost. Naplánovaný trénink zvládneš, ale poslouchej tělo.',
-      trainingAdjustment: 'reduce_to_moderate',
-    };
+    return { level: 'yellow', factors, trainingAdjustment: 'reduce_to_moderate',
+      recommendation: L(loc, 'Mírně snížená připravenost. Naplánovaný trénink zvládneš, ale poslouchej tělo.',
+                             'Slightly reduced readiness. You can do the planned workout, but listen to your body.') };
   }
   if (dataCount === 0) {
-    return {
-      level: 'green',
-      factors,
-      recommendation: 'Nemáme dnes data o spánku ani HRV. Trénuj podle plánu.',
-      trainingAdjustment: null,
-    };
+    return { level: 'green', factors, trainingAdjustment: null,
+      recommendation: L(loc, 'Nemáme dnes data o spánku ani HRV. Trénuj podle plánu.',
+                             'No sleep or HRV data today. Train as planned.') };
   }
-  return {
-    level: 'green',
-    factors,
-    recommendation: 'Připraven na trénink. Můžeš jet podle plánu.',
-    trainingAdjustment: null,
-  };
+  return { level: 'green', factors, trainingAdjustment: null,
+    recommendation: L(loc, 'Připraven na trénink. Můžeš jet podle plánu.', 'Ready to train. Go by your plan.') };
 }
 
-function formatHours(minutes: number): string {
+function formatHours(minutes: number, locale: Locale): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (m === 0) return `${h}h`;

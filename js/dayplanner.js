@@ -1,9 +1,10 @@
 // ── DENNÍ PLÁNOVAČ AKTIVIT
 
-import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=8';
+import { appState, DAYS, ACTIVITY_TYPES } from './state.js?v=9';
 
 export function toggleDayPlanner() {
   appState.dayPlannerOpen = !appState.dayPlannerOpen;
+  if (appState.dayPlannerOpen) appState.dayPlannerUsed = true;
   document.getElementById('day-planner').style.display = appState.dayPlannerOpen ? 'block' : 'none';
   document.getElementById('day-toggle')?.classList.toggle('open', appState.dayPlannerOpen);
   if (appState.dayPlannerOpen && !document.getElementById('day-rows').children.length) {
@@ -86,14 +87,23 @@ export function setDayRest(i, isRest) {
 
 export function recalcFromDays() {
   let totalMET = 0, activeMin = 0;
+  const activities = [];
   DAYS.forEach((_, i) => {
     const sel = document.getElementById(`day-type-${i}`);
     const btn = document.getElementById(`day-rest-${i}`);
-    if (!sel || btn?.dataset.resting === 'true') return;
+    const isRest = btn?.dataset.resting === 'true';
+    const durationMinutes = appState.dayDurations[i] || 0;
+    activities[i] = {
+      type: isRest ? 'rest' : (sel?.value || 'rest'),
+      durationMinutes: isRest ? 0 : durationMinutes,
+      isRest,
+    };
+    if (!sel || isRest) return;
     const d   = appState.dayDurations[i] || 0;
     const met = ACTIVITY_TYPES.find(t => t.value === sel.value)?.met || 5;
     if (d > 0) { totalMET += met * (d / 60); activeMin += d; }
   });
+  appState.dayPlannerActivities = activities;
   appState.activityFactor = Math.min(1.95, Math.round((1.2 + (totalMET / 7) * 0.055) * 1000) / 1000);
   document.querySelectorAll('.freq-card').forEach(c => c.classList.remove('active'));
   document.getElementById('day-planner-note').textContent =

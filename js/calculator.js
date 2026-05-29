@@ -5,11 +5,12 @@
 // dosavadní chování (kcal, makra, voda, BMI varování) — jen delegování
 // na čistý modul, aby šly hodnoty také unit-testovat.
 
-import { appState, MACRO_LIMITS } from './state.js?v=8';
+import { appState, MACRO_LIMITS } from './state.js?v=9';
 import {
+  assessProfileSafety,
   calcMacroTargets,
   ACTIVITY_FACTORS,
-} from './domain/nutrition.js?v=1';
+} from './domain/nutrition.js?v=2';
 
 // Mapování mezi legacy CS hodnotami a doménovými typy.
 function legacyGoalToDomain(goal) {
@@ -18,6 +19,16 @@ function legacyGoalToDomain(goal) {
     'udržení': 'maintenance',
     'nabírání': 'muscle_gain',
   })[goal] || 'maintenance';
+}
+
+function domainGoalToLegacy(goal) {
+  return ({
+    fat_loss: 'hubnutí',
+    maintenance: 'udržení',
+    muscle_gain: 'nabírání',
+    endurance: 'udržení',
+    general_fitness: 'udržení',
+  })[goal] || 'udržení';
 }
 
 function activityFactorToLevel(factor) {
@@ -30,6 +41,10 @@ function activityFactorToLevel(factor) {
     if (diff < bestDiff) { bestDiff = diff; best = k; }
   }
   return best;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
 // ── ANIMACE HODNOT
@@ -83,23 +98,36 @@ export function calculate(setStepFn) {
   const weight = parseInt(document.getElementById('weight').value);
 
   // 2. Výpočet maker — deleguj na doménový modul (deterministicky testované)
-  // BMI auto-switch: při podváze hubnutí nemá smysl → přepni na udržení
+  const requestedGoal = appState.goal;
+  let goalKind = legacyGoalToDomain(appState.goal);
+  const profile = {
+    sex: appState.gender === 'muz' ? 'male' : 'female',
+    ageYears: age,
+    heightCm: height,
+    weightKg: weight,
+    activityLevel: activityFactorToLevel(appState.activityFactor),
+  };
   const bmi = weight / ((height / 100) ** 2);
-  if (bmi < 18.5 && appState.goal === 'hubnutí') {
-    appState.goal = 'udržení';
+
+  const safety = assessProfileSafety(profile, { kind: goalKind });
+  if (!safety.allowed) {
+    appState.macros = {};
+    appState.baselineMacros = {};
+    showSafetyBlock(safety, setStepFn);
+    return;
+  }
+
+  // BMI auto-switch: při podváze hubnutí nemá smysl → přepni na udržení
+  if (safety.adjustedGoalKind) {
+    goalKind = safety.adjustedGoalKind;
+    appState.goal = domainGoalToLegacy(safety.adjustedGoalKind);
     document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('active'));
-    document.querySelector('.goal-card[data-goal="udržení"]')?.classList.add('active');
+    document.querySelector(`.goal-card[data-goal="${appState.goal}"]`)?.classList.add('active');
   }
 
   const targets = calcMacroTargets(
-    {
-      sex: appState.gender === 'muz' ? 'male' : 'female',
-      ageYears: age,
-      heightCm: height,
-      weightKg: weight,
-      activityLevel: activityFactorToLevel(appState.activityFactor),
-    },
-    { kind: legacyGoalToDomain(appState.goal) },
+    profile,
+    { kind: goalKind },
   );
   const bmr = targets.bmr;
   const tdee = targets.tdee;
@@ -109,7 +137,8 @@ export function calculate(setStepFn) {
   const carbs = targets.carbsG;
   const fiber = targets.fiberG;
 
-  appState.macros = { kcal: cal, protein, carbs, fat, fiber, tdee, bmr, weight, height, age, gender: appState.gender, goal: appState.goal };
+  appState.baselineMacros = { kcal: cal, protein, carbs, fat, fiber, tdee, bmr, weight, height, age, gender: appState.gender, goal: appState.goal, waterMl: targets.waterMl };
+  appState.macros = { ...appState.baselineMacros };
   setMacroLimits(weight, bmr);
 
   // 3. Zobrazení výsledků + animace hodnot
@@ -147,9 +176,41 @@ export function calculate(setStepFn) {
   document.getElementById('result-note').innerHTML = `Tvůj cíl: <strong>${goalText}</strong>`;
 
   renderWater(weight, appState.activityFactor);
-  renderBmiWarning(bmi, appState.goal);
+  renderBmiWarning(bmi, requestedGoal);
+  renderSafetyNotice(safety);
 
   setTimeout(() => res.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+function showSafetyBlock(safety, setStepFn) {
+  setStepFn(1);
+  const results = document.getElementById('results');
+  if (results) results.style.display = 'block';
+  document.getElementById('meal-plan-section').style.display = 'none';
+  document.getElementById('shopping-section').style.display = 'none';
+  document.getElementById('water-section').style.display = 'none';
+  document.getElementById('first-run-card')?.style.setProperty('display', 'none');
+  document.getElementById('daily-overview')?.style.setProperty('display', 'none');
+  ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'bmr', 'tdee'].forEach(key => {
+    const el = document.getElementById(`r-${key}`);
+    if (el) el.textContent = '—';
+  });
+  const warnEl = document.getElementById('bmi-warning');
+  if (warnEl) {
+    warnEl.className = 'bmi-warning danger';
+    warnEl.style.display = 'flex';
+    warnEl.innerHTML = `<div class="bmi-warning-icon">!</div><div class="bmi-warning-body"><div class="bmi-warning-title">${escapeHtml(safety.title || 'Automatický plán nejde bezpečně sestavit')}</div><div class="bmi-warning-text">${escapeHtml(safety.message || 'Zadané hodnoty vyžadují individuální posouzení odborníkem.')}</div></div>`;
+  }
+  setTimeout(() => warnEl?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+}
+
+function renderSafetyNotice(safety) {
+  if (!safety || safety.level !== 'warning') return;
+  const note = document.getElementById('macro-note');
+  if (!note) return;
+  note.style.display = 'block';
+  note.className = 'macro-note macro-note-warn';
+  note.textContent = safety.message || 'Cíl jsme upravili kvůli bezpečnosti.';
 }
 
 // ── VODA

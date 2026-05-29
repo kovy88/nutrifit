@@ -6,6 +6,7 @@ import { computeTrainingLoad, type TrainingLoadAssessment } from '../lib/coachin
 import { computeDailyStrain, type StrainAssessment } from '../lib/coaching/strainScore';
 import { computeSleepDebt, computeRecoveryDebt, type SleepDebtSummary, type RecoveryDebtSummary } from '../lib/coaching/debtTracker';
 import { useNutriFit } from '../context/NutriFitContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export type DailyCoachingState = {
   assessment: ReadinessAssessment | null;
@@ -32,6 +33,7 @@ export type DailyCoachingState = {
  */
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
+  const { locale } = useLanguage();
   const { currentSession: todaySession } = useNutriFit();
   const [state, setState] = useState<DailyCoachingState>({
     assessment: null,
@@ -64,6 +66,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
       if (cancelled) return;
       const sleep = sleepArr[0] || null;
       const assessment = evaluateReadiness({
+        locale,
         todaySleepMinutes: sleep?.totalMinutes ?? null,
         todayRhrBpm: rhr?.bpm ?? null,
         todayHrvMs: hrv?.ms ?? null,
@@ -73,7 +76,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
           sleepMeanMinutes: baselines.sleepMeanMinutes,
         },
       });
-      const trainingLoad = computeTrainingLoad({ workouts, endDate: date });
+      const trainingLoad = computeTrainingLoad({ workouts, endDate: date, locale });
       // Today's workouts: filter the 28-day list to only today
       const dayStart = new Date(date);
       dayStart.setHours(0, 0, 0, 0);
@@ -83,7 +86,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
         const t = new Date(w.startedAt).getTime();
         return t >= dayStart.getTime() && t <= dayEnd.getTime();
       });
-      const strain = computeDailyStrain({ plannedSession: todaySession, todaysWorkouts });
+      const strain = computeDailyStrain({ plannedSession: todaySession, todaysWorkouts, locale });
 
       // Sleep + recovery debt — 14-day cumulative trackers.
       // Fetch 14 days of sleeps in one shot; per-day readiness needs HRV+RHR
@@ -136,7 +139,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, dateKey, todaySession?.kind, todaySession?.durationMinutes, todaySession?.intensity]);
+  }, [provider, dateKey, locale, todaySession?.kind, todaySession?.durationMinutes, todaySession?.intensity]);
 
   return state;
 }

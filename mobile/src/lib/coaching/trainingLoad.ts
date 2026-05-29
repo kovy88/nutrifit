@@ -22,6 +22,7 @@
 // max HR data, která nemáme garantovaná.)
 
 import type { WorkoutSummary } from '../../types/health';
+import type { Locale } from '../i18n';
 
 export type LoadStatus = 'detraining' | 'optimal' | 'overreaching' | 'high_risk';
 
@@ -44,6 +45,8 @@ export type TrainingLoadInput = {
   workouts: WorkoutSummary[];
   /** Referenční datum (default dnes). */
   endDate?: Date;
+  /** Jazyk message + recommendation. Default 'cs'. */
+  locale?: Locale;
 };
 
 const INTENSITY_FACTOR: Record<'easy' | 'moderate' | 'hard' | 'rest' | 'unknown', number> = {
@@ -97,7 +100,7 @@ export function computeTrainingLoad(input: TrainingLoadInput): TrainingLoadAsses
   const hasMeaningfulBaseline = chronicCount >= 4 && chronicAvgPerDay >= 1;
   const acwr = hasMeaningfulBaseline ? acuteAvgPerDay / chronicAvgPerDay : null;
 
-  const { status, message, recommendation } = classify(acwr, acuteCount);
+  const { status, message, recommendation } = classify(acwr, acuteCount, input.locale ?? 'cs');
 
   return {
     acute: Math.round(acuteAvgPerDay * 10) / 10,
@@ -132,45 +135,47 @@ function trimp(workout: WorkoutSummary): number {
   return workout.durationMinutes * intensityFactor;
 }
 
-function classify(acwr: number | null, acuteCount: number): { status: LoadStatus; message: string; recommendation: string } {
+function classify(acwr: number | null, acuteCount: number, loc: Locale): { status: LoadStatus; message: string; recommendation: string } {
+  const en = loc === 'en';
   if (acuteCount === 0) {
     return {
       status: 'detraining',
-      message: 'Tento týden žádný trénink.',
-      recommendation: 'Pokud chceš udržet formu, naplánuj 2–3 lehké jednotky tento týden.',
+      message: en ? 'No training this week.' : 'Tento týden žádný trénink.',
+      recommendation: en ? 'To keep your fitness, plan 2–3 easy sessions this week.' : 'Pokud chceš udržet formu, naplánuj 2–3 lehké jednotky tento týden.',
     };
   }
   if (acwr == null) {
     return {
       status: 'optimal',
-      message: 'Stavíme tvůj baseline. Pokračuj v aktuálním tempu.',
-      recommendation: 'Za pár týdnů budeme schopni ti dát přesnější doporučení.',
+      message: en ? "Building your baseline. Keep your current pace." : 'Stavíme tvůj baseline. Pokračuj v aktuálním tempu.',
+      recommendation: en ? 'In a few weeks we can give more precise guidance.' : 'Za pár týdnů budeme schopni ti dát přesnější doporučení.',
     };
   }
+  const a = acwr.toFixed(2);
   if (acwr < 0.8) {
     return {
       status: 'detraining',
-      message: `Týdenní objem klesl pod 80 % průměru (ACWR ${acwr.toFixed(2)}).`,
-      recommendation: 'Forma postupně klesá. Přidej 1–2 lehké jednotky pro udržení.',
+      message: en ? `Weekly volume dropped below 80% of average (ACWR ${a}).` : `Týdenní objem klesl pod 80 % průměru (ACWR ${a}).`,
+      recommendation: en ? 'Fitness is slowly declining. Add 1–2 easy sessions to maintain.' : 'Forma postupně klesá. Přidej 1–2 lehké jednotky pro udržení.',
     };
   }
   if (acwr <= 1.3) {
     return {
       status: 'optimal',
-      message: `Zátěž v optimálním rozsahu (ACWR ${acwr.toFixed(2)}).`,
-      recommendation: 'Pokračuj v tomto rytmu, forma roste bezpečně.',
+      message: en ? `Load in the optimal range (ACWR ${a}).` : `Zátěž v optimálním rozsahu (ACWR ${a}).`,
+      recommendation: en ? 'Keep this rhythm — fitness builds safely.' : 'Pokračuj v tomto rytmu, forma roste bezpečně.',
     };
   }
   if (acwr <= 1.5) {
     return {
       status: 'overreaching',
-      message: `Tento týden výrazně víc než průměr (ACWR ${acwr.toFixed(2)}).`,
-      recommendation: 'Zařaď deload — sniž týdenní objem o ~20 % příští týden a hlídej spánek.',
+      message: en ? `This week well above average (ACWR ${a}).` : `Tento týden výrazně víc než průměr (ACWR ${a}).`,
+      recommendation: en ? 'Add a deload — cut weekly volume ~20% next week and watch your sleep.' : 'Zařaď deload — sniž týdenní objem o ~20 % příští týden a hlídej spánek.',
     };
   }
   return {
     status: 'high_risk',
-    message: `Velmi rychlý nárůst zátěže (ACWR ${acwr.toFixed(2)}) — zvýšené riziko zranění.`,
-    recommendation: 'Doporučujeme tento týden uvolnit. Sniž objem o ~30 % a žádné nové sporty.',
+    message: en ? `Very fast load increase (ACWR ${a}) — elevated injury risk.` : `Velmi rychlý nárůst zátěže (ACWR ${a}) — zvýšené riziko zranění.`,
+    recommendation: en ? 'We recommend easing off this week. Cut volume ~30% and no new sports.' : 'Doporučujeme tento týden uvolnit. Sniž objem o ~30 % a žádné nové sporty.',
   };
 }

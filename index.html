@@ -52,7 +52,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/variables.css?v=8">
 <link rel="stylesheet" href="css/layout.css?v=8">
-<link rel="stylesheet" href="css/components.css?v=9">
+<link rel="stylesheet" href="css/components.css?v=10">
 <link rel="stylesheet" href="css/modals.css?v=8">
 <link rel="stylesheet" href="css/print.css?v=8">
 <link rel="icon" type="image/png" href="favicon.jpg">
@@ -159,7 +159,7 @@
 <section class="hero">
   <div class="hero-badge">AI · česky · zdarma</div>
   <h1>Jídelníček na míru<br><span>za minutu.</span></h1>
-  <p>Bez vážení, bez databází. Řekni AI co máš rád — dostaneš plán dne, recepty a nákupní seznam z českých obchodů.</p>
+  <p>Bez logování každého sousta. AI ti navrhne den podle cíle, chutí a pohybu — s recepty a nákupním seznamem z českých obchodů.</p>
 </section>
 
 <div class="container">
@@ -241,6 +241,7 @@
       <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="plan">Plán</button>
       <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="log">Zapsat</button>
       <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="progress">Pokrok</button>
+      <button class="app-tab" type="button" role="tab" aria-selected="false" data-app-tab="training">Trénink</button>
     </div>
 
     <div class="app-panels">
@@ -280,6 +281,14 @@
             </div>
           </div>
           <div class="macro-note" id="macro-note" style="display:none;"></div>
+          <div class="daily-adjustment-card" id="daily-adjustment-card" style="display:none;">
+            <div>
+              <div class="daily-adjustment-kicker">Dnešní úprava</div>
+              <div class="daily-title" id="daily-adjustment-title">Volný den</div>
+              <div class="daily-subtitle" id="daily-adjustment-text">Dnešní cíl je upravený podle tréninku.</div>
+            </div>
+            <div class="daily-adjustment-metrics" id="daily-adjustment-metrics"></div>
+          </div>
 
           <!-- Kontext-aware primary CTA — mění se podle stavu (žádný plán / plán hotov / log nad cíl) -->
           <div class="first-run-card" id="first-run-card">
@@ -302,6 +311,8 @@
           <details class="today-detail-toggle" id="today-detail-toggle">
             <summary>Detaily o cíli a metabolismu</summary>
             <div class="info-pill" id="result-note"></div>
+            <div class="info-pill adaptive-detail" id="daily-adjustment-detail" style="display:none;"></div>
+            <div class="info-pill plan-disclaimer">NutriPlan je orientační výpočet a AI návrh, ne lékařské doporučení. Pokud máš zdravotní potíže, těhotenství, kojení nebo poruchy příjmu potravy, řeš plán s odborníkem.</div>
             <div class="fiber-row">
               <span class="fiber-label">Vláknina</span>
               <span class="fiber-val" id="r-fiber">—</span><span class="fiber-unit">g / den</span>
@@ -581,6 +592,36 @@
           </div>
         </div>
 
+        <div class="card dashboard-card coaching-card" style="margin-top: 16px;">
+          <div class="card-header">
+            <div class="card-kicker">Koučink</div>
+            <div class="card-title">Týdenní reflexe a adaptace</div>
+            <div class="card-subtitle">Zhodnoť svůj pokrok za poslední týden a nech si automaticky upravit kalorie podle trendu a pocitů.</div>
+          </div>
+          <div style="padding: 16px 20px;">
+            <button class="btn-primary" id="btn-start-checkin" type="button" style="width: 100%;">Spustit týdenní reflexi</button>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="app-panel" data-app-panel="training">
+        <div class="card dashboard-card training-plan-card">
+          <div class="card-header">
+            <div class="card-kicker">Tréninkový plán</div>
+            <div class="card-title">Tvůj celotýdenní trénink</div>
+            <div class="card-subtitle">Plán se odvíjí od tvého cíle nastaveného v onboardingovém dotazníku.</div>
+          </div>
+          
+          <div class="training-warnings" id="training-warnings-box" style="display:none; padding: 12px 20px; border-left: 4px solid var(--accent); background: rgba(196, 224, 182, 0.05); margin: 16px 20px 0; font-size: 0.85rem; color: var(--text-secondary);">
+            <strong>Upozornění kouče:</strong>
+            <ul id="training-warnings-list" style="margin: 6px 0 0; padding-left: 16px; list-style-type: disc;"></ul>
+          </div>
+
+          <div class="training-sessions-list" id="training-sessions-list" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Tréninky budou vygenerovány JS -->
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -779,6 +820,93 @@
   </div>
 </div>
 
+<!-- WEEKLY CHECK-IN MODAL -->
+<div class="modal-overlay" id="checkin-modal">
+  <div class="modal-card" style="max-width: 500px;">
+    <button class="modal-close" id="checkin-close">×</button>
+    <div class="modal-title">Týdenní reflexe</div>
+    <p class="modal-subtitle" style="margin-bottom: 20px; color: var(--text-secondary); font-size: 0.9rem;">
+      Vyhodnoťme tvůj pokrok, pociťovaný hlad a energii, abychom mohli přizpůsobit tvůj příjem.
+    </p>
+    
+    <form id="checkin-form" style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="input-group">
+        <label for="checkin-weight-input" style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Aktuální váha (kg)</label>
+        <input type="number" id="checkin-weight-input" step="0.1" required min="30" max="300" class="input-field" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-1); color: var(--text);">
+      </div>
+
+      <div class="input-group">
+        <label for="checkin-adherence-input" style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">
+          Jak moc se ti dařilo dodržovat jídelníček? (<span id="checkin-adherence-val">80</span> %)
+        </label>
+        <input type="range" id="checkin-adherence-input" min="0" max="100" value="80" style="width: 100%; accent-color: var(--accent);">
+      </div>
+
+      <div class="input-group">
+        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Pociťovaný hlad</label>
+        <div class="rating-group" id="checkin-hunger-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button type="button" class="toggle-btn" data-value="1" style="padding: 6px 12px; font-size: 0.8rem;">Žádný</button>
+          <button type="button" class="toggle-btn" data-value="2" style="padding: 6px 12px; font-size: 0.8rem;">Mírný</button>
+          <button type="button" class="toggle-btn active" data-value="3" style="padding: 6px 12px; font-size: 0.8rem;">Střední</button>
+          <button type="button" class="toggle-btn" data-value="4" style="padding: 6px 12px; font-size: 0.8rem;">Velký</button>
+          <button type="button" class="toggle-btn" data-value="5" style="padding: 6px 12px; font-size: 0.8rem;">Extrémní</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Úroveň energie</label>
+        <div class="rating-group" id="checkin-energy-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button type="button" class="toggle-btn" data-value="1" style="padding: 6px 12px; font-size: 0.8rem;">Vyčerpání</button>
+          <button type="button" class="toggle-btn" data-value="2" style="padding: 6px 12px; font-size: 0.8rem;">Únava</button>
+          <button type="button" class="toggle-btn active" data-value="3" style="padding: 6px 12px; font-size: 0.8rem;">Průměr</button>
+          <button type="button" class="toggle-btn" data-value="4" style="padding: 6px 12px; font-size: 0.8rem;">Dobrá</button>
+          <button type="button" class="toggle-btn" data-value="5" style="padding: 6px 12px; font-size: 0.8rem;">Skvělá</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="checkin-notes-input" style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; display: block;">Poznámky (volitelné)</label>
+        <textarea id="checkin-notes-input" rows="2" class="input-field" placeholder="Jak se cítíš? Co se ti dařilo?" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-1); color: var(--text); resize: vertical;"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px;">Vyhodnotit týdenní reflexi</button>
+    </form>
+    
+    <div id="checkin-result-card" class="card" style="display: none; margin-top: 20px; padding: 16px; border: 1px solid var(--accent); background: rgba(196, 224, 182, 0.05); flex-direction: column; gap: 10px;">
+      <h3 style="font-size: 1rem; font-weight: 700; color: var(--accent); margin: 0;">Výsledek analýzy</h3>
+      <div id="checkin-result-reason" style="font-size: 0.9rem; font-weight: 500; line-height: 1.4; color: var(--text);"></div>
+      <div id="checkin-result-warnings" style="font-size: 0.82rem; line-height: 1.4; color: #ff9800; display: flex; flex-direction: column; gap: 4px;"></div>
+      <button class="btn-primary" id="btn-apply-checkin-adjustment" type="button" style="width: 100%; margin-top: 8px;">Uplatnit doporučení a uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAFETY DISCLAIMER MODAL -->
+<div class="modal-overlay" id="safety-disclaimer-modal">
+  <div class="paywall-card" style="max-width: 500px;">
+    <div class="paywall-icon" style="color: var(--accent); background: var(--accent-bg);">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h2 class="paywall-title" style="margin-top: 16px;">Bezpečnostní upozornění</h2>
+    <p class="paywall-subtitle" style="margin-bottom: 20px;">Předtím než ti AI poprvé sestaví plán jídelníčku, vezmi prosím na vědomí následující pravidla:</p>
+    <div class="paywall-benefits" style="text-align: left; margin-bottom: 24px; gap: 14px;">
+      <div class="paywall-benefit" style="align-items: flex-start;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--border-strong); color: var(--accent); font-size: 0.76rem; font-weight: 700; margin-right: 8px; margin-top: 2px; flex-shrink: 0;">1</span>
+        <div><strong>NutriPlan není zdravotní péče.</strong> Všechna doporučení a jídelníčky jsou generovány umělou inteligencí a mají čistě informativní charakter.</div>
+      </div>
+      <div class="paywall-benefit" style="align-items: flex-start;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--border-strong); color: var(--accent); font-size: 0.76rem; font-weight: 700; margin-right: 8px; margin-top: 2px; flex-shrink: 0;">2</span>
+        <div><strong>Specifické stavy.</strong> Aplikace není určena pro těhotné a kojící ženy, diabetiky, lidi s diagnostikovanými poruchami příjmu potravy (PPP) nebo jiné závažné zdravotní obtíže.</div>
+      </div>
+      <div class="paywall-benefit" style="align-items: flex-start;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--border-strong); color: var(--accent); font-size: 0.76rem; font-weight: 700; margin-right: 8px; margin-top: 2px; flex-shrink: 0;">3</span>
+        <div><strong>Konzultace s odborníkem.</strong> Jakékoliv razantní změny ve stravě nebo tréninku bys měl/a konzultovat se svým lékařem nebo registrovaným nutričním terapeutem.</div>
+      </div>
+    </div>
+    <button class="btn-primary paywall-cta" id="btn-accept-disclaimer" style="width: 100%;">Rozumím a chci pokračovat</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">
   <div class="toast-icon" id="toast-icon"></div>
@@ -833,7 +961,7 @@
   </div>
 </template>
 
-<script type="module" src="js/main.js?v=10"></script>
+<script type="module" src="js/main.js?v=11"></script>
 <script>
 // Service Worker registration
 if ('serviceWorker' in navigator) {

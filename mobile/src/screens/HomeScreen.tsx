@@ -10,6 +10,8 @@ import { DateHeader } from '../components/DateHeader';
 import { useNavigation } from '@react-navigation/native';
 import { MacroRing } from '../components/MacroRing';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { Translate } from '../lib/i18n';
 import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoaching } from '../hooks/useDailyCoaching';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
@@ -36,6 +38,7 @@ export function HomeScreen() {
   } = useNutriFit();
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const [manual, setManual] = useState({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });
   const [weightInput, setWeightInput] = useState('');
   // Health snapshot for today (steps / sleep / RHR / latest weight from provider).
@@ -61,18 +64,18 @@ export function HomeScreen() {
 
   async function addManual() {
     if (!manual.foodName.trim()) {
-      Alert.alert('Chybí název', 'Napiš název jídla.');
+      Alert.alert(t('home.alertMissingName'), t('home.alertMissingNameMsg'));
       return;
     }
     await addFood(normalizeFoodEstimate({
       foodName: manual.foodName,
-      portionGuess: 'Ručně zadané',
+      portionGuess: t('home.manualPortion'),
       kcal: Number(manual.kcal),
       protein: Number(manual.protein),
       carbs: Number(manual.carbs),
       fat: Number(manual.fat),
       confidence: 'vysoká',
-      note: 'Ručně upravená hodnota uživatelem.',
+      note: t('home.manualNote'),
     }), 'manual');
     setManual({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });
   }
@@ -80,12 +83,12 @@ export function HomeScreen() {
   async function saveDnesniVahu() {
     const val = parseFloat(weightInput.replace(',', '.'));
     if (!val || val < 30 || val > 300) {
-      Alert.alert('Chyba', 'Zadej prosím platnou váhu mezi 30 a 300 kg.');
+      Alert.alert(t('common.error'), t('home.alertWeightInvalid'));
       return;
     }
     await logWeight(val, selectedDate);
     setWeightInput('');
-    Alert.alert('Úspěch', `Váha ${val} kg úspěšně uložena k datu ${formatDateLabel(selectedDate)}.`);
+    Alert.alert(t('home.alertSuccess'), t('home.alertWeightSaved', { w: val, date: formatDateLabel(selectedDate) }));
   }
 
   // Get last 7 calendar days leading to selectedDate
@@ -96,10 +99,9 @@ export function HomeScreen() {
       const d = new Date(baseDate);
       d.setDate(baseDate.getDate() - i);
       const dateKey = toDateKey(d);
-      
-      const daysOfWeek = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
-      const label = i === 0 ? 'Dnes' : daysOfWeek[d.getDay()];
-      
+
+      const label = i === 0 ? t('common.today') : t('home.weekdayShort', { dow: d.getDay() });
+
       list.push({
         label,
         dateKey,
@@ -112,7 +114,7 @@ export function HomeScreen() {
   return (
     <Screen>
       <DateHeader />
-      <H1>Dnes</H1>
+      <H1>{t('home.title')}</H1>
       <Subtitle>{primaryGoalLabel(profile.primaryGoal)} · {profile.diet} · BMI {macros.bmi}</Subtitle>
 
       {/* Morning briefing — synthesises today's session + readiness + load + macros
@@ -145,7 +147,7 @@ export function HomeScreen() {
       {/* Modern Circular Macro Visual Grid */}
       <FadeInView delay={100}>
         <Card>
-          <Label>Zbývá dnes</Label>
+          <Label>{t('home.remainingToday')}</Label>
           <View style={styles.ringContainer}>
             <MacroRing
               size={160}
@@ -155,18 +157,18 @@ export function HomeScreen() {
               backgroundColor={colors.border}
             >
               <Text style={[styles.ringValue, { color: colors.ink }]}>{left.kcal}</Text>
-              <Text style={[styles.ringLabel, { color: colors.muted }]}>kcal zbývá</Text>
+              <Text style={[styles.ringLabel, { color: colors.muted }]}>{t('home.kcalRemaining')}</Text>
             </MacroRing>
           </View>
           <Text style={[styles.cielText, { color: colors.muted }]}>
-            Denní cíl: {macros.kcal} kcal · Snědeno: {used.kcal} kcal
+            {t('home.dailyTarget', { target: macros.kcal, used: used.kcal })}
           </Text>
 
           <View style={[styles.linearContainer, { borderTopColor: colors.border }]}>
             {/* Protein */}
             <View style={styles.linearRow}>
               <View style={styles.linearTextRow}>
-                <Text style={[styles.linearLabel, { color: colors.ink }]}>🍗 Bílkoviny</Text>
+                <Text style={[styles.linearLabel, { color: colors.ink }]}>{t('home.protein')}</Text>
                 <Text style={[styles.linearValue, { color: colors.muted }]}>{used.protein} / {macros.protein} g</Text>
               </View>
               <View style={[styles.linearBarBg, { backgroundColor: colors.border }]}>
@@ -177,7 +179,7 @@ export function HomeScreen() {
             {/* Carbs */}
             <View style={styles.linearRow}>
               <View style={styles.linearTextRow}>
-                <Text style={[styles.linearLabel, { color: colors.ink }]}>🍚 Sacharidy</Text>
+                <Text style={[styles.linearLabel, { color: colors.ink }]}>{t('home.carbs')}</Text>
                 <Text style={[styles.linearValue, { color: colors.muted }]}>{used.carbs} / {macros.carbs} g</Text>
               </View>
               <View style={[styles.linearBarBg, { backgroundColor: colors.border }]}>
@@ -188,7 +190,7 @@ export function HomeScreen() {
             {/* Fat */}
             <View style={styles.linearRow}>
               <View style={styles.linearTextRow}>
-                <Text style={[styles.linearLabel, { color: colors.ink }]}>🥑 Tuky</Text>
+                <Text style={[styles.linearLabel, { color: colors.ink }]}>{t('home.fat')}</Text>
                 <Text style={[styles.linearValue, { color: colors.muted }]}>{used.fat} / {macros.fat} g</Text>
               </View>
               <View style={[styles.linearBarBg, { backgroundColor: colors.border }]}>
@@ -206,9 +208,9 @@ export function HomeScreen() {
           <Card>
             <View style={styles.readinessHeader}>
               <View style={[styles.readinessBadge, { backgroundColor: readinessColor(coaching.assessment.level, colors) }]}>
-                <Text style={styles.readinessBadgeText}>{readinessLabel(coaching.assessment.level)}</Text>
+                <Text style={styles.readinessBadgeText}>{readinessLabel(coaching.assessment.level, t)}</Text>
               </View>
-              <Text style={[styles.readinessTitle, { color: colors.ink }]}>Připravenost</Text>
+              <Text style={[styles.readinessTitle, { color: colors.ink }]}>{t('home.readiness')}</Text>
             </View>
             <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.assessment.recommendation}</Text>
             <View style={styles.readinessFactors}>
@@ -238,7 +240,7 @@ export function HomeScreen() {
                     },
                   ]}
                 >
-                  💤 Spánkový dluh {coaching.sleepDebt.totalDebtHours}h za 14d
+                  {t('home.sleepDebtBadge', { h: coaching.sleepDebt.totalDebtHours })}
                 </Text>
               )}
               {coaching.recoveryDebt && coaching.recoveryDebt.currentDebt >= 2 && (
@@ -251,13 +253,13 @@ export function HomeScreen() {
                     },
                   ]}
                 >
-                  🔋 Recovery debt {coaching.recoveryDebt.currentDebt} bodů
+                  {t('home.recoveryDebtBadge', { n: coaching.recoveryDebt.currentDebt })}
                 </Text>
               )}
             </View>
             {suggestedDowngrade?.adjusted && (
               <View style={[styles.readinessCta, { borderTopColor: colors.border }]}>
-                <Text style={[styles.readinessCtaLabel, { color: colors.faint }]}>Doporučená úprava plánu</Text>
+                <Text style={[styles.readinessCtaLabel, { color: colors.faint }]}>{t('readiness.planAdjust')}</Text>
                 <Text style={[styles.readinessCtaText, { color: colors.ink }]}>
                   {todaySession?.title} → {suggestedDowngrade.session.title} ({suggestedDowngrade.session.durationMinutes} min, {suggestedDowngrade.session.intensity})
                 </Text>
@@ -265,7 +267,7 @@ export function HomeScreen() {
                   variant="primary"
                   onPress={() => setTodaySession(suggestedDowngrade.session)}
                 >
-                  Upravit dnešní trénink
+                  {t('readiness.adjustToday')}
                 </Button>
               </View>
             )}
@@ -289,8 +291,8 @@ export function HomeScreen() {
                 <Text style={[styles.readinessTitle, { color: colors.ink }]}>{coaching.strain.label}</Text>
                 <Text style={[styles.small, { color: colors.muted }]}>
                   {coaching.strain.workoutCount > 0
-                    ? `${coaching.strain.workoutCount} trénink${coaching.strain.workoutCount === 1 ? '' : 'y'} · ${coaching.strain.trimp} TRIMP`
-                    : `Plánováno: ${coaching.strain.trimp} TRIMP`}
+                    ? t('home.strainWorkouts', { n: coaching.strain.workoutCount, trimp: coaching.strain.trimp })
+                    : t('home.strainPlanned', { trimp: coaching.strain.trimp })}
                 </Text>
               </View>
             </View>
@@ -306,29 +308,29 @@ export function HomeScreen() {
           <Card>
             <View style={styles.readinessHeader}>
               <View style={[styles.readinessBadge, { backgroundColor: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
-                <Text style={styles.readinessBadgeText}>{trainingLoadLabel(coaching.trainingLoad.status)}</Text>
+                <Text style={styles.readinessBadgeText}>{trainingLoadLabel(coaching.trainingLoad.status, t)}</Text>
               </View>
-              <Text style={[styles.readinessTitle, { color: colors.ink }]}>Tréninková zátěž</Text>
+              <Text style={[styles.readinessTitle, { color: colors.ink }]}>{t('home.trainingLoad')}</Text>
             </View>
             <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.trainingLoad.message}</Text>
             <Text style={[styles.small, { color: colors.muted }]}>{coaching.trainingLoad.recommendation}</Text>
             <View style={styles.loadStatsRow}>
               <View style={[styles.loadStat, { borderColor: colors.border }]}>
-                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>7 dní</Text>
-                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.acute} TRIMP/d</Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{coaching.trainingLoad.workoutCountAcute} tréninků</Text>
+                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load7d')}</Text>
+                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.acute} {t('home.loadPerDay')}</Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadWorkoutsCount', { n: coaching.trainingLoad.workoutCountAcute })}</Text>
               </View>
               <View style={[styles.loadStat, { borderColor: colors.border }]}>
-                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>28 dní</Text>
-                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.chronic} TRIMP/d</Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{coaching.trainingLoad.workoutCountChronic} tréninků</Text>
+                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load28d')}</Text>
+                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.chronic} {t('home.loadPerDay')}</Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadWorkoutsCount', { n: coaching.trainingLoad.workoutCountChronic })}</Text>
               </View>
               <View style={[styles.loadStat, { borderColor: colors.border }]}>
                 <Text style={[styles.loadStatLabel, { color: colors.faint }]}>ACWR</Text>
                 <Text style={[styles.loadStatValue, { color: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
                   {coaching.trainingLoad.acwr ?? '—'}
                 </Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>acute / chronic</Text>
+                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadAcuteChronic')}</Text>
               </View>
             </View>
           </Card>
@@ -339,24 +341,24 @@ export function HomeScreen() {
           In dev shows mock data; production will show Apple Health after EAS prebuild. */}
       <FadeInView delay={150}>
         <Card>
-          <Label>Aktivita dnes</Label>
+          <Label>{t('home.todayActivity')}</Label>
           {health.isLoading ? (
-            <Text style={[styles.healthEmpty, { color: colors.muted }]}>Načítám…</Text>
+            <Text style={[styles.healthEmpty, { color: colors.muted }]}>{t('common.loading')}</Text>
           ) : health.isEmpty ? (
             <View>
               <Text style={[styles.healthEmpty, { color: colors.muted }]}>
-                Zatím nemáme žádná data ze zdravotních zdrojů.
+                {t('home.noHealthData')}
               </Text>
               <Text style={[styles.healthEmptySub, { color: colors.faint }]}>
-                Apple Health se přidá v příští verzi. Zatím můžeš zapisovat ručně.
+                {t('home.appleHealthSoon')}
               </Text>
             </View>
           ) : (
             <View style={styles.healthRow}>
-              <HealthStat label="Kroky" value={health.activity?.steps?.toLocaleString('cs-CZ') ?? '—'} accent={colors.green} />
-              <HealthStat label="Aktivní kcal" value={health.activity?.activeEnergyKcal ? String(health.activity.activeEnergyKcal) : '—'} accent={colors.orange} />
-              <HealthStat label="Spánek" value={health.sleep?.totalMinutes ? `${Math.floor(health.sleep.totalMinutes / 60)}h ${health.sleep.totalMinutes % 60}m` : '—'} accent={colors.blue} />
-              <HealthStat label="Klidový tep" value={health.restingHeartRate?.bpm ? `${health.restingHeartRate.bpm} bpm` : '—'} accent={colors.red} />
+              <HealthStat label={t('home.steps')} value={health.activity?.steps?.toLocaleString('cs-CZ') ?? '—'} accent={colors.green} />
+              <HealthStat label={t('home.activeKcal')} value={health.activity?.activeEnergyKcal ? String(health.activity.activeEnergyKcal) : '—'} accent={colors.orange} />
+              <HealthStat label={t('home.sleep')} value={health.sleep?.totalMinutes ? `${Math.floor(health.sleep.totalMinutes / 60)}h ${health.sleep.totalMinutes % 60}m` : '—'} accent={colors.blue} />
+              <HealthStat label={t('home.restingHr')} value={health.restingHeartRate?.bpm ? `${health.restingHeartRate.bpm} bpm` : '—'} accent={colors.red} />
             </View>
           )}
         </Card>
@@ -365,22 +367,22 @@ export function HomeScreen() {
       {/* Sleek Weight Tracking Card */}
       <FadeInView delay={200}>
         <Card>
-          <Label>📈 Sledování váhy</Label>
+          <Label>{t('home.weightTracking')}</Label>
           <View style={styles.weightInputRow}>
             <View style={styles.weightField}>
               <Field
                 keyboardType="numeric"
                 value={weightInput}
                 onChangeText={setWeightInput}
-                placeholder="Zadej váhu v kg..."
+                placeholder={t('home.weightPlaceholder')}
               />
             </View>
             <Button style={styles.weightBtn} onPress={saveDnesniVahu}>
-              Uložit
+              {t('home.saveWeight')}
             </Button>
           </View>
-          
-          <Text style={[styles.trendTitle, { color: colors.ink }]}>Posledních 7 dní:</Text>
+
+          <Text style={[styles.trendTitle, { color: colors.ink }]}>{t('home.last7days')}</Text>
           <View style={styles.trendRow}>
             {getLast7DaysWeights().map((w, idx) => (
               <View
@@ -406,15 +408,15 @@ export function HomeScreen() {
       {baselineMacros && dailyAdjustment && (
         <FadeInView delay={300}>
           <Card>
-            <Label>Dnešní úprava podle tréninku</Label>
-            <Text style={[styles.adjustmentTitle, { color: colors.ink }]}>{todaySession?.title || 'Volný den'}</Text>
+            <Label>{t('home.adjustmentTitle')}</Label>
+            <Text style={[styles.adjustmentTitle, { color: colors.ink }]}>{todaySession?.title || t('home.restDay')}</Text>
             <Text style={[styles.adjustmentNote, { color: colors.muted }]}>{dailyAdjustment.note}</Text>
             <View style={styles.adjustmentGrid}>
-              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>Kalorie {formatDelta(dailyAdjustment.kcalDelta)} kcal</Text>
-              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>Sacharidy {formatDelta(dailyAdjustment.carbsDelta)} g</Text>
-              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>Tuky {formatDelta(dailyAdjustment.fatDelta)} g</Text>
+              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjCalories')} {formatDelta(dailyAdjustment.kcalDelta)} kcal</Text>
+              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjCarbs')} {formatDelta(dailyAdjustment.carbsDelta)} g</Text>
+              <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjFat')} {formatDelta(dailyAdjustment.fatDelta)} g</Text>
             </View>
-            <Text style={[styles.small, { color: colors.muted }]}>Základní doporučení {baselineMacros.kcal} kcal → dnes {macros.kcal} kcal</Text>
+            <Text style={[styles.small, { color: colors.muted }]}>{t('home.baselineRec', { base: baselineMacros.kcal, today: macros.kcal })}</Text>
             <View style={styles.rowWrap}>
               {todayOptions(selectedDate, profile.trainingGoal).map(option => (
                 <Text
@@ -439,37 +441,37 @@ export function HomeScreen() {
 
       <FadeInView delay={400}>
         <Card>
-          <Label>Rychlé ruční zapsání</Label>
-          <Field value={manual.foodName} onChangeText={foodName => setManual(v => ({ ...v, foodName }))} placeholder="Název jídla" />
+          <Label>{t('home.quickAdd')}</Label>
+          <Field value={manual.foodName} onChangeText={foodName => setManual(v => ({ ...v, foodName }))} placeholder={t('home.foodName')} />
           <View style={styles.row}>
             <Field keyboardType="number-pad" value={manual.kcal} onChangeText={kcal => setManual(v => ({ ...v, kcal }))} placeholder="kcal" />
-            <Field keyboardType="number-pad" value={manual.protein} onChangeText={protein => setManual(v => ({ ...v, protein }))} placeholder="B" />
+            <Field keyboardType="number-pad" value={manual.protein} onChangeText={protein => setManual(v => ({ ...v, protein }))} placeholder={t('home.macroProteinShort')} />
           </View>
           <View style={styles.row}>
-            <Field keyboardType="number-pad" value={manual.carbs} onChangeText={carbs => setManual(v => ({ ...v, carbs }))} placeholder="S" />
-            <Field keyboardType="number-pad" value={manual.fat} onChangeText={fat => setManual(v => ({ ...v, fat }))} placeholder="T" />
+            <Field keyboardType="number-pad" value={manual.carbs} onChangeText={carbs => setManual(v => ({ ...v, carbs }))} placeholder={t('home.macroCarbsShort')} />
+            <Field keyboardType="number-pad" value={manual.fat} onChangeText={fat => setManual(v => ({ ...v, fat }))} placeholder={t('home.macroFatShort')} />
           </View>
-          <Button onPress={addManual}>Přidat jídlo</Button>
+          <Button onPress={addManual}>{t('home.addFood')}</Button>
         </Card>
       </FadeInView>
 
       <FadeInView delay={500}>
         <Card>
           <View style={styles.headerRow}>
-            <Label>Zapsaná jídla</Label>
-            {foodLog.length > 0 && <Text style={styles.link} onPress={clearFood}>Vymazat den</Text>}
+            <Label>{t('home.loggedFood')}</Label>
+            {foodLog.length > 0 && <Text style={styles.link} onPress={clearFood}>{t('home.clearDay')}</Text>}
           </View>
           {foodLog.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🍽️</Text>
-              <Text style={[styles.emptyTitle, { color: colors.ink }]}>Dnes jsi ještě nic nezapsal/a</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>Nech si od AI vygenerovat ideální plán jídelníčku na míru, nebo si vyfoť hotové jídlo!</Text>
+              <Text style={[styles.emptyTitle, { color: colors.ink }]}>{t('home.emptyLogTitle')}</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>{t('home.emptyLogSubtitle')}</Text>
               <View style={styles.emptyActions}>
                 <Button style={styles.emptyBtn} variant="primary" onPress={() => navigation.navigate('Jídelníček')}>
-                  🗓️ Plán jídelníčku
+                  {t('home.emptyLogPlan')}
                 </Button>
                 <Button style={styles.emptyBtn} variant="secondary" onPress={() => navigation.navigate('Foto')}>
-                  📸 Vyfotit jídlo
+                  {t('home.emptyLogPhoto')}
                 </Button>
               </View>
             </View>
@@ -477,9 +479,9 @@ export function HomeScreen() {
             <View key={item.id} style={[styles.foodRow, { borderTopColor: colors.border }]}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.foodName, { color: colors.ink }]}>{item.foodName}</Text>
-                <Text style={[styles.small, { color: colors.muted }]}>{item.kcal} kcal · B {item.protein}g · S {item.carbs}g · T {item.fat}g</Text>
+                <Text style={[styles.small, { color: colors.muted }]}>{t('home.foodMacros', { kcal: item.kcal, p: item.protein, c: item.carbs, f: item.fat })}</Text>
               </View>
-              <Text style={styles.remove} onPress={() => removeFood(item.id)}>Smazat</Text>
+              <Text style={styles.remove} onPress={() => removeFood(item.id)}>{t('home.remove')}</Text>
             </View>
           ))}
         </Card>
@@ -499,20 +501,20 @@ function HealthStat({ label, value, accent }: { label: string; value: string; ac
   );
 }
 
-function readinessLabel(level: ReadinessLevel): string {
-  return level === 'green' ? 'Připraven' : level === 'yellow' ? 'Mírně' : 'Regeneruj';
+function readinessLabel(level: ReadinessLevel, t: Translate): string {
+  return level === 'green' ? t('readiness.ready') : level === 'yellow' ? t('readiness.mild') : t('readiness.regenerate');
 }
 
 function readinessColor(level: ReadinessLevel, palette: { green: string; orange: string; red: string }): string {
   return level === 'green' ? palette.green : level === 'yellow' ? palette.orange : palette.red;
 }
 
-function trainingLoadLabel(status: LoadStatus): string {
+function trainingLoadLabel(status: LoadStatus, t: Translate): string {
   switch (status) {
-    case 'optimal':      return 'Optimum';
-    case 'detraining':   return 'Klesá';
-    case 'overreaching': return 'Hodně';
-    case 'high_risk':    return 'Riziko';
+    case 'optimal':      return t('load.optimal');
+    case 'detraining':   return t('load.detraining');
+    case 'overreaching': return t('load.overreaching');
+    case 'high_risk':    return t('load.high_risk');
   }
 }
 
