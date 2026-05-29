@@ -213,6 +213,33 @@ export function HomeScreen() {
                     {f.message}
                   </Text>
                 ))}
+              {/* Sleep + recovery debt — surface only when meaningful */}
+              {coaching.sleepDebt && coaching.sleepDebt.totalDebtHours >= 2 && (
+                <Text
+                  style={[
+                    styles.readinessFactor,
+                    {
+                      color: coaching.sleepDebt.totalDebtHours >= 10 ? colors.red : colors.orange,
+                      borderColor: coaching.sleepDebt.totalDebtHours >= 10 ? colors.red : colors.orange,
+                    },
+                  ]}
+                >
+                  💤 Spánkový dluh {coaching.sleepDebt.totalDebtHours}h za 14d
+                </Text>
+              )}
+              {coaching.recoveryDebt && coaching.recoveryDebt.currentDebt >= 2 && (
+                <Text
+                  style={[
+                    styles.readinessFactor,
+                    {
+                      color: coaching.recoveryDebt.currentDebt >= 6 ? colors.red : colors.orange,
+                      borderColor: coaching.recoveryDebt.currentDebt >= 6 ? colors.red : colors.orange,
+                    },
+                  ]}
+                >
+                  🔋 Recovery debt {coaching.recoveryDebt.currentDebt} bodů
+                </Text>
+              )}
             </View>
             {suggestedDowngrade?.adjusted && (
               <View style={[styles.readinessCta, { borderTopColor: colors.border }]}>
