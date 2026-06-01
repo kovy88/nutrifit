@@ -183,6 +183,9 @@ describe('composeMorningBriefing — detail facts', () => {
   it('does not include missing-data factors', () => {
     const readiness = evaluateReadiness({}); // all missing → all 'green'+missing
     const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    expect(b.emoji).toBe('⚪️');
+    expect(b.headline.toLowerCase()).toMatch(/data chybí|missing/);
+    expect(b.recommendation.toLowerCase()).toMatch(/pocitu|by feel/);
     expect(b.detail).toBe('');
   });
 });

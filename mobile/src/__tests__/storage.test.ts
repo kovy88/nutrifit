@@ -9,9 +9,17 @@ import {
   saveSessionForDate,
   listStoredDates,
   runMigration,
+  loadCoachThreadsByDate,
+  loadDailyCoachHistory,
+  loadTrainingCompletionsByDate,
+  saveCoachThreadForDate,
+  saveDailyCoachRecommendationForDate,
+  saveTrainingCompletionForDate,
 } from '../services/storage';
 import { toDateKey } from '../utils/nutrition';
 import type { Meal, FoodLogItem } from '../types';
+import { generateDailyCoachRecommendation } from '../lib/coaching/dailyCoach';
+import { DEFAULT_PROFILE, calculateMacros } from '../utils/nutrition';
 
 vi.mock('@react-native-async-storage/async-storage', () => {
   const store: Record<string, string> = {};
@@ -86,6 +94,37 @@ describe('date-based storage and migration', () => {
 
     const dates = await listStoredDates();
     expect(dates).toEqual(['2026-05-28', '2026-05-29', '2026-05-30']);
+  });
+
+  it('stores training completions and coach thread/history by date', async () => {
+    await saveTrainingCompletionForDate('2026-05-30', {
+      date: '2026-05-30',
+      status: 'completed',
+      plannedSession: null,
+      source: 'manual',
+      createdAt: '2026-05-30T10:00:00.000Z',
+      updatedAt: '2026-05-30T10:00:00.000Z',
+    });
+
+    const macros = calculateMacros(DEFAULT_PROFILE);
+    const recommendation = generateDailyCoachRecommendation({
+      date: '2026-05-30',
+      profile: DEFAULT_PROFILE,
+      session: null,
+      recovery: {},
+      baselineMacros: macros,
+      todayMacros: macros,
+    });
+    const memory = { goalSummary: 'lose_weight + general_fitness', updatedAt: '2026-05-30T10:00:00.000Z' };
+    await saveDailyCoachRecommendationForDate('2026-05-30', recommendation, memory);
+    await saveCoachThreadForDate('2026-05-30', [
+      { id: '1', role: 'user', text: 'Why?', createdAt: '2026-05-30T10:00:00.000Z' },
+    ], memory);
+
+    expect((await loadTrainingCompletionsByDate())['2026-05-30'].status).toBe('completed');
+    expect((await loadDailyCoachHistory())['2026-05-30'].recommendation.date).toBe('2026-05-30');
+    expect((await loadCoachThreadsByDate())['2026-05-30'].messages).toHaveLength(1);
+    expect(await listStoredDates()).toContain('2026-05-30');
   });
 
   it('migrates legacy lastPlan, foodLog, and todaySession keys to todays date, then removes them', async () => {
