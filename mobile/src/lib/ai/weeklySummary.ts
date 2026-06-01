@@ -62,7 +62,7 @@ export type WeeklySummaryRequest = {
 
 export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySummaryRequest {
   const systemPrompt = [
-    'You are NutriPlan AI, a Czech sport-nutrition + recovery coach.',
+    'You are Trenr AI, a Czech sport-nutrition + recovery coach.',
     'You receive PRE-COMPUTED weekly metrics — DO NOT recompute, just INTERPRET.',
     'Return ONLY a valid JSON object — no markdown fences, no extra text.',
     'All user-facing text MUST be in Czech.',

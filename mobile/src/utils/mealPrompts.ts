@@ -23,7 +23,7 @@ export function buildMealPlanRequest(
 ) {
   const names = namesForMealCount(profile.mealCount);
   const systemPrompt = [
-    'You are NutriPlan AI, a Czech nutrition assistant.',
+    'You are Trenr AI, a Czech nutrition assistant.',
     'Return only valid JSON without markdown.',
     'All user-facing JSON string values must be in Czech.',
     'The app is not a medical device, so do not make diagnostic or treatment claims.',
@@ -88,7 +88,7 @@ export function buildAllergenRepairRequest(opts: {
   const { profile, session, current, forbidden, otherMeals = [] } = opts;
 
   const systemPrompt = [
-    'You are NutriPlan AI, a Czech nutrition assistant.',
+    'You are Trenr AI, a Czech nutrition assistant.',
     'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
     'All user-facing JSON string values must be in Czech.',
     'CRITICAL: The user has allergies/intolerances listed under FORBIDDEN. The meal MUST NOT contain any of these ingredients OR their derivatives (e.g. milk → cheese, butter, cream, casein, whey; gluten → wheat, rye, barley, spelt, semolina; nuts → almond butter, marzipan, pesto with pine nuts).',
@@ -148,7 +148,7 @@ export function buildSingleMealRequest(opts: {
   const { profile, session, current, otherMeals = [] } = opts;
 
   const systemPrompt = [
-    'You are NutriPlan AI, a Czech nutrition assistant.',
+    'You are Trenr AI, a Czech nutrition assistant.',
     'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
     'All user-facing JSON string values must be in Czech.',
     'The app is not a medical device, so do not make diagnostic or treatment claims.',

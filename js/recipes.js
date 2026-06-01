@@ -213,7 +213,7 @@ export async function swapMeal(index) {
   const diet     = sanitizeUserPrompt(document.getElementById('diet-style')?.value, { maxLength: 50 });
   const usedNames = appState.currentRecipes.filter((_, i) => i !== index).map(m => m.name).join(', ');
 
-  const systemPrompt = `You are NutriPlan AI, a Czech nutrition assistant. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech only.
+  const systemPrompt = `You are Trenr AI, a Czech nutrition assistant. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech only.
 Rules: kcal = protein×4 + carbs×4 + fat×9 (tolerance ±5 kcal). Use realistic ingredient quantities. Recipe steps must be practical and include temperatures and times.`;
 
   const levelDescSwap = appState.ingredientLevel === 'úsporný'

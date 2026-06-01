@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NutriPlan",
+    "name": "Trenr",
     "slug": "nutrifit",
     "scheme": "nutrifit",
     "version": "0.1.0",
@@ -15,10 +15,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "cz.nutrifit.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "NutriPlan používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot.",
-        "NSCameraUsageDescription": "NutriPlan může použít fotoaparát jen pro vyfocení jídla k orientačnímu odhadu nutričních hodnot.",
-        "NSHealthShareUsageDescription": "NutriPlan čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-        "NSHealthUpdateUsageDescription": "NutriPlan může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+        "NSPhotoLibraryUsageDescription": "Trenr používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot.",
+        "NSCameraUsageDescription": "Trenr může použít fotoaparát jen pro vyfocení jídla k orientačnímu odhadu nutričních hodnot.",
+        "NSHealthShareUsageDescription": "Trenr čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
+        "NSHealthUpdateUsageDescription": "Trenr může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
@@ -53,7 +53,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "NutriPlan používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot."
+          "photosPermission": "Trenr používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot."
         }
       ],
       "expo-status-bar",
@@ -77,15 +77,15 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "NutriPlan čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-          "NSHealthUpdateUsageDescription": "NutriPlan může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+          "NSHealthShareUsageDescription": "Trenr čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
+          "NSHealthUpdateUsageDescription": "Trenr může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
           "background": true
         }
       ]
     ],
     "extra": {
       "privacyUrl": "https://nutri-fit-omega.vercel.app/legal.html#privacy",
-      "supportUrl": "mailto:koval.macek@gmail.com?subject=NutriPlan%20podpora",
+      "supportUrl": "mailto:koval.macek@gmail.com?subject=Trenr%20podpora",
       "deletionUrl": "https://nutri-fit-omega.vercel.app/delete-account.html",
       "eas": {
         "projectId": "62f6c2fe-df52-45c5-b680-13c8ba2d703e"

@@ -1,6 +1,6 @@
-# NutriPlan
+# Trenr
 
-**NutriPlan je mobile-first AI kouč pro jídlo, trénink a regeneraci.** Každé ráno
+**Trenr je mobile-first AI kouč pro jídlo, trénink a regeneraci.** Každé ráno
 odpoví na jednu otázku: *co dnes jíst, jak trénovat a jestli přidat nebo ubrat podle
 regenerace.* Apple Health / HealthKit slouží jako datový základ (kroky, spánek, HRV,
 tréninky) — a ten je dostupný jen v nativní iOS vrstvě, ne v prohlížeči.
@@ -9,7 +9,7 @@ tréninky) — a ten je dostupný jen v nativní iOS vrstvě, ne v prohlížeči
 
 | Cesta | Role |
 |---|---|
-| **`mobile/`** | **Produkt** — React Native / Expo app (NutriPlan AI Coach). Single source of truth pro doménovou logiku (TypeScript). Viz [`mobile/README.md`](mobile/README.md). |
+| **`mobile/`** | **Produkt** — React Native / Expo app (Trenr AI Coach). Single source of truth pro doménovou logiku (TypeScript). Viz [`mobile/README.md`](mobile/README.md). |
 | **root web** (`index.html`, `js/`, `css/`) | **Landing / legal / waitlist.** Není to produkt — jen distribuce. |
 | **`api/`** | **Sdílený backend** (Vercel serverless) — AI proxy, Stripe, OAuth exchange/refresh, delete/export. Volá ho mobilní app. |
 | **`js/domain/`** | ⚠️ **FROZEN** legacy origin. Kanonická logika je v `mobile/src/{utils,lib}`. Viz [`js/domain/README.md`](js/domain/README.md). |

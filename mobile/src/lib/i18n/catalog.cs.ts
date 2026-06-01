@@ -191,7 +191,7 @@ export const cs = {
   'diet.vysokoproteínový': 'Vysokoproteinový',
 
   // ── Onboarding ────────────────────────────────────────────────────────────────
-  'onb.title': 'NutriPlan nastavíme za minutu.',
+  'onb.title': 'Trenr nastavíme za minutu.',
   'onb.subtitle': 'Mobilní verze počítá denní cíle, plánuje jídelníček a dovolí upravit AI odhady před uložením.',
   'onb.goalLoseWeight': 'Zhubnout',
   'onb.goalMaintainWeight': 'Udržet váhu',
@@ -215,7 +215,7 @@ export const cs = {
   'onb.dislikesPlaceholder': 'Alergie, omezení, co vůbec nejíš',
   'onb.explain': '✨ Po dokončení ti AI sestaví plnohodnotný denní plán jídelníčku na míru tvým preferencím a automaticky jej upraví podle tvého dnešního tréninku!',
   'onb.finish': 'Dokončit a vytvořit plán',
-  'onb.disclaimer': 'NutriPlan není zdravotnický prostředek. Nediagnostikuje, neléčí a nenahrazuje konzultaci s lékařem ani nutričním terapeutem.',
+  'onb.disclaimer': 'Trenr není zdravotnický prostředek. Nediagnostikuje, neléčí a nenahrazuje konzultaci s lékařem ani nutričním terapeutem.',
   'onb.validationTitle': 'Ještě drobnost',
   'onb.tgRun5k': 'Běh 5 km',
   'onb.tgRun10k': 'Běh 10 km',
@@ -292,7 +292,7 @@ export const cs = {
   'plan.disclaimer': 'Recepty a výživové hodnoty jsou vygenerovány AI. Skutečné hodnoty surovin se mohou lišit. Před konzumací si prosím ověř složení, zejména pokud máš alergie nebo zdravotní omezení.',
   'plan.shoppingList': 'Nákupní seznam',
   'plan.share': 'Sdílet',
-  'plan.shoppingShareHeader': 'Nákupní seznam NutriPlan',
+  'plan.shoppingShareHeader': 'Nákupní seznam Trenr',
   'plan.ingredients': 'Suroviny',
   'plan.steps': 'Postup',
   'plan.mealDetailMacros': ({ kcal, p, c, f, prep }: Record<string, string | number>) => `${kcal} kcal · B ${p}g · S ${c}g · T ${f}g · ${prep} min`,
@@ -349,7 +349,7 @@ export const cs = {
 
   // ── Settings ──────────────────────────────────────────────────────────────────
   'settings.title': 'Nastavení',
-  'settings.subtitle': 'Propoj zdroje zdravotních dat. NutriPlan sjednotí všechno do jednoho přehledu, automaticky deduplikuje tréninky a doporučí úpravy podle dat z nejlepšího zdroje.',
+  'settings.subtitle': 'Propoj zdroje zdravotních dat. Trenr sjednotí všechno do jednoho přehledu, automaticky deduplikuje tréninky a doporučí úpravy podle dat z nejlepšího zdroje.',
   'settings.language': '🌍 Jazyk',
   'settings.languageDesc': 'Vyber jazyk aplikace.',
   'settings.morningCoaching': '🔔 Ranní coaching',
@@ -428,7 +428,7 @@ export const cs = {
   'settings.androidInstrMsg': 'Reálné napojení vyžaduje EAS Build s nainstalovaným react-native-health-connect a Android 14+ (nebo Health Connect z Play Store).',
   'settings.exportTitle': 'Export dat',
   'settings.exportSignIn': 'Pro export svých dat ze serveru se nejdřív přihlas v profilu.',
-  'settings.exportShareTitle': 'NutriPlan export dat',
+  'settings.exportShareTitle': 'Trenr export dat',
   'settings.exportFailed': 'Export se nepodařil',
   'settings.deleteTitle': 'Smazat účet a data?',
   'settings.deleteMsgUser': 'Trvale smažeme tvůj účet a všechna data na serveru i v telefonu. Tuto akci nelze vrátit zpět.',

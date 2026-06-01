@@ -39,7 +39,7 @@ async function postJsonWithRetry<T>(path: string, body: unknown, retries = 1, de
     return await postJson<T>(path, body);
   } catch (err) {
     if (retries > 0) {
-      console.warn(`NutriPlan API: Request to ${path} failed. Retrying in ${delay}ms... Error:`, err);
+      console.warn(`Trenr API: Request to ${path} failed. Retrying in ${delay}ms... Error:`, err);
       await new Promise<void>(resolve => { setTimeout(() => resolve(), delay); });
       return await postJsonWithRetry<T>(path, body, retries - 1, delay * 2);
     }

@@ -495,7 +495,7 @@ async function analyzeFoodText() {
   setPhotoActionsVisible(false);
   setPhotoOutputMessage(out, 'AI počítá makra z popisu…');
 
-  const systemPrompt = `You are NutriPlan AI, a Czech nutrition assistant. From the user's meal description, return a JSON object with an estimated nutrition breakdown. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech.
+  const systemPrompt = `You are Trenr AI, a Czech nutrition assistant. From the user's meal description, return a JSON object with an estimated nutrition breakdown. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech.
 
 Estimation rules:
 - If the description contains a quantity, for example "300g", use it. Otherwise estimate an average adult portion.
@@ -2003,7 +2003,7 @@ function updateUsageBadge(info) {
     });
     sec.querySelector('[data-action="email"]')?.addEventListener('click', () => {
       const text = buildPlainTextMealPlan();
-      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
+      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z Trenr') + '&body=' + encodeURIComponent(text);
     });
     sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
       openMealPlanPrintView();
@@ -2013,7 +2013,7 @@ function updateUsageBadge(info) {
   function buildPlainTextMealPlan() {
     const recipes = appState.currentRecipes || [];
     if (!recipes.length) return '';
-    let text = 'Jídelníček z NutriPlan\n========================\n\n';
+    let text = 'Jídelníček z Trenr\n========================\n\n';
     recipes.forEach(m => {
       text += `${m.mealType}: ${m.name}\n`;
       text += `  ${m.kcal} kcal | B: ${m.protein}g | S: ${m.carbs}g | T: ${m.fat}g\n`;
@@ -2057,7 +2057,7 @@ function updateUsageBadge(info) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NutriPlan - jídelníček</title>
+  <title>Trenr - jídelníček</title>
   <style>
     @page { size:A4; margin:14mm; }
     * { box-sizing:border-box; }
@@ -2094,7 +2094,7 @@ function updateUsageBadge(info) {
 <body>
   <header>
     <div>
-      <h1>NutriPlan jídelníček</h1>
+      <h1>Trenr jídelníček</h1>
       <div class="muted">${escapeHtml(dateLabel)}</div>
     </div>
     <button class="no-print" onclick="window.print()" style="padding:9px 14px;border:1px solid #bbb;border-radius:8px;background:#fff;font:inherit;cursor:pointer;">Uložit jako PDF / tisk</button>
@@ -2128,7 +2128,7 @@ function updateUsageBadge(info) {
     </article>
   `).join('')}
   <footer>
-    <span>Vygenerováno v NutriPlan</span>
+    <span>Vygenerováno v Trenr</span>
     <span>nutri-fit-omega.vercel.app</span>
   </footer>
   <script>

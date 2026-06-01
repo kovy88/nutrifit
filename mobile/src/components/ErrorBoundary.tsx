@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Necháme v konzoli / crash reporteru (Sentry až přibude) pro diagnostiku.
-    console.error('NutriPlan crashed:', error, info.componentStack);
+    console.error('Trenr crashed:', error, info.componentStack);
   }
 
   reset = () => this.setState({ error: null });

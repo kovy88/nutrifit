@@ -91,7 +91,7 @@ export function calculateMacros(
 export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' | 'weight'>, goal: { kind: NutritionGoalKind }) {
   const bmi = profile.weight / ((profile.height / 100) ** 2);
   if (profile.age < 16) {
-    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'NutriPlan není určený pro děti a dospívající pod 16 let.' };
+    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'Trenr není určený pro děti a dospívající pod 16 let.' };
   }
   if (bmi < 16) {
     return { allowed: false, level: 'blocked' as const, bmi, code: 'bmi_under_16', message: 'Při BMI pod 16 automatický jídelníček nevygenerujeme. Doporučujeme odbornou konzultaci.' };

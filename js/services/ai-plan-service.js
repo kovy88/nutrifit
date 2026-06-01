@@ -20,7 +20,7 @@ import { validateMealPlanMacros } from '../domain/nutrition.js';
 // ── PROMPT BUILDER ──────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `# Role
-You are NutriPlan AI, a Czech nutrition and training coach. All user-facing
+You are Trenr AI, a Czech nutrition and training coach. All user-facing
 content MUST be in Czech (meal names, ingredients, steps, notes, session titles).
 
 # Core directives

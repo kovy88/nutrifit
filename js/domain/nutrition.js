@@ -53,7 +53,7 @@ export function assessProfileSafety(profile, goal) {
       level: 'blocked',
       bmi,
       code: 'age_under_16',
-      title: 'NutriPlan není určený pro děti a dospívající',
+      title: 'Trenr není určený pro děti a dospívající',
       message: 'U věku pod 16 let může být omezení kalorií rizikové. Jídelníček ti tady nevygenerujeme; pro bezpečný plán se obrať na lékaře nebo nutričního terapeuta.',
     };
   }
@@ -76,7 +76,7 @@ export function assessProfileSafety(profile, goal) {
       bmi,
       code: 'bmi_over_40',
       title: `Tvoje BMI je ${bmi.toFixed(1)} — potřebuje individuální péči`,
-      message: 'Při BMI nad 40 je bezpečnější postupovat s odborníkem, který zohlední zdravotní stav, léky a tempo změny. NutriPlan ti proto automatický plán nevygeneruje.',
+      message: 'Při BMI nad 40 je bezpečnější postupovat s odborníkem, který zohlední zdravotní stav, léky a tempo změny. Trenr ti proto automatický plán nevygeneruje.',
     };
   }
 

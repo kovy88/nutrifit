@@ -3,7 +3,7 @@
 //
 // ── DOMAIN TYPES (JSDoc)
 //
-// Centrální definice doménových typů NutriPlanu. Ostatní moduly importují
+// Centrální definice doménových typů Trenru. Ostatní moduly importují
 // pouze typy přes JSDoc; runtime nepoužívá žádné objekty z tohoto souboru.
 // Tím držíme jednu pravdu o tvaru dat napříč nutrition / training / health
 // vrstvami, aniž bychom přecházeli na TypeScript.

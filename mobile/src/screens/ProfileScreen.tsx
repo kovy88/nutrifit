@@ -193,7 +193,7 @@ export function ProfileScreen() {
 
       <Card>
         <Label>Podmínky a ochrana</Label>
-        <Text style={styles.copy}>NutriPlan není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
+        <Text style={styles.copy}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
         <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
         <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
       </Card>
@@ -292,7 +292,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
           <ScrollView contentContainerStyle={styles.modalContent}>
             <Text style={[styles.modalTitle, { color: colors.ink }]}>🎯 Týdenní check-in</Text>
             <Text style={[styles.small, { color: colors.muted }]}>
-              Zhodnoť svůj týden. NutriPlan porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
+              Zhodnoť svůj týden. Trenr porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
             </Text>
 
             <Label>Energie tento týden (1–5)</Label>

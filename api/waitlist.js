@@ -1,4 +1,4 @@
-// Vercel serverless — waitlist signup for the NutriPlan landing page.
+// Vercel serverless — waitlist signup for the Trenr landing page.
 // Inserts an email into the `waitlist` table via the service-role REST helper
 // (table has RLS on with no anon policies, so only this endpoint can write).
 

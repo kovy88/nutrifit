@@ -1,4 +1,4 @@
-# NutriPlan — architecture
+# Trenr — architecture
 
 Tento dokument popisuje cílovou architekturu po refaktoringu na adaptivní
 nutriční + tréninkový plánovač. Záměrně inkrementálně — současné UI a

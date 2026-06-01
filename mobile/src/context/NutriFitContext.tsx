@@ -426,7 +426,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     const accepted = await new Promise<boolean>(resolve => {
       Alert.alert(
         'Než použiješ AI',
-        'NutriPlan dává orientační doporučení, nenahrazuje lékařskou péči. Plány a fotky se kvůli AI zpracování posílají na server. Nepoužívej appku pro diagnózu ani léčbu.',
+        'Trenr dává orientační doporučení, nenahrazuje lékařskou péči. Plány a fotky se kvůli AI zpracování posílají na server. Nepoužívej appku pro diagnózu ani léčbu.',
         [
           { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Rozumím', onPress: () => resolve(true) },

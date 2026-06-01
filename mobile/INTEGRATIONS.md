@@ -1,6 +1,6 @@
 # Health Source Integrations — Setup Guide
 
-NutriPlan mobilní app umí číst data z více zdrojů zdravotních dat
+Trenr mobilní app umí číst data z více zdrojů zdravotních dat
 najednou. Architektura je hotová; níže najdeš návod, jak připojit
 jednotlivé zdroje v produkci.
 

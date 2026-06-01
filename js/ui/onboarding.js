@@ -226,7 +226,7 @@ function buildStepHTML(step) {
       </div>
       <div class="wizard-btn-row">
         <button class="wizard-btn-secondary" data-action="back">← Zpět</button>
-        <button class="wizard-btn-primary" data-action="complete">Spustit NutriPlan →</button>
+        <button class="wizard-btn-primary" data-action="complete">Spustit Trenr →</button>
       </div>
       ${skip}
     </div>`;

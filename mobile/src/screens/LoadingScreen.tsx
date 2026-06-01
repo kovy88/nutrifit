@@ -5,7 +5,7 @@ export function LoadingScreen() {
   return (
     <View style={styles.root}>
       <ActivityIndicator color={colors.green} />
-      <Text style={styles.text}>Načítám NutriPlan…</Text>
+      <Text style={styles.text}>Načítám Trenr…</Text>
     </View>
   );
 }

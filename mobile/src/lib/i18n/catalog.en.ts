@@ -184,7 +184,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'diet.vysokoproteínový': 'High-protein',
 
   // ── Onboarding ────────────────────────────────────────────────────────────────
-  'onb.title': "Let's set up NutriPlan in a minute.",
+  'onb.title': "Let's set up Trenr in a minute.",
   'onb.subtitle': 'The mobile version computes daily targets, plans meals, and lets you edit AI estimates before saving.',
   'onb.goalLoseWeight': 'Lose weight',
   'onb.goalMaintainWeight': 'Maintain weight',
@@ -208,7 +208,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'onb.dislikesPlaceholder': "Allergies, restrictions, what you don't eat",
   'onb.explain': '✨ Once done, AI builds a complete daily meal plan tailored to your preferences and automatically adjusts it to today\'s training!',
   'onb.finish': 'Finish and create plan',
-  'onb.disclaimer': 'NutriPlan is not a medical device. It does not diagnose, treat, or replace consultation with a doctor or nutrition therapist.',
+  'onb.disclaimer': 'Trenr is not a medical device. It does not diagnose, treat, or replace consultation with a doctor or nutrition therapist.',
   'onb.validationTitle': 'One more thing',
   'onb.tgRun5k': '5 km run',
   'onb.tgRun10k': '10 km run',
@@ -285,7 +285,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'plan.disclaimer': 'Recipes and nutrition values are AI-generated. Actual ingredient values may differ. Please verify composition before eating, especially if you have allergies or medical restrictions.',
   'plan.shoppingList': 'Shopping list',
   'plan.share': 'Share',
-  'plan.shoppingShareHeader': 'NutriPlan shopping list',
+  'plan.shoppingShareHeader': 'Trenr shopping list',
   'plan.ingredients': 'Ingredients',
   'plan.steps': 'Steps',
   'plan.mealDetailMacros': ({ kcal, p, c, f, prep }) => `${kcal} kcal · P ${p}g · C ${c}g · F ${f}g · ${prep} min`,
@@ -342,7 +342,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
 
   // ── Settings ──────────────────────────────────────────────────────────────────
   'settings.title': 'Settings',
-  'settings.subtitle': 'Connect your health data sources. NutriPlan merges everything into one view, automatically deduplicates workouts, and recommends adjustments from your best source.',
+  'settings.subtitle': 'Connect your health data sources. Trenr merges everything into one view, automatically deduplicates workouts, and recommends adjustments from your best source.',
   'settings.language': '🌍 Language',
   'settings.languageDesc': 'Choose the app language.',
   'settings.morningCoaching': '🔔 Morning coaching',
@@ -421,7 +421,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'settings.androidInstrMsg': 'Real integration requires an EAS Build with react-native-health-connect installed and Android 14+ (or Health Connect from the Play Store).',
   'settings.exportTitle': 'Export data',
   'settings.exportSignIn': 'To export your server data, sign in on your profile first.',
-  'settings.exportShareTitle': 'NutriPlan data export',
+  'settings.exportShareTitle': 'Trenr data export',
   'settings.exportFailed': 'Export failed',
   'settings.deleteTitle': 'Delete account & data?',
   'settings.deleteMsgUser': 'We will permanently delete your account and all data on the server and on the phone. This action cannot be undone.',

@@ -1,6 +1,6 @@
-# NutriPlan Mobile 📱
+# Trenr Mobile 📱
 
-Moderní, plně typovaná mobilní aplikace (Expo SDK 56, React Native 0.85, TypeScript, Vitest) postavená jako mobilní klient pro ekosystém **NutriPlan**.
+Moderní, plně typovaná mobilní aplikace (Expo SDK 56, React Native 0.85, TypeScript, Vitest) postavená jako mobilní klient pro ekosystém **Trenr**.
 
 Aplikace prošla kompletním **Brutálním Auditem** a refaktorem, který ji posunul od jednoduchého AI prompt wrapperu ke špičkovému, interaktivnímu produktu se zaměřením na sportovní výživu.
 

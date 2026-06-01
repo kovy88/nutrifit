@@ -62,7 +62,7 @@ export function openProfileModal() {
           btnEl.disabled = false;
           btnEl.dataset.action = 'manage';
         } else {
-          titleEl.textContent = 'NutriPlan Premium';
+          titleEl.textContent = 'Trenr Premium';
           descEl.textContent  = `Zbývá ${Math.max(0, info.limit - info.count)}/${info.limit} generací. Odemkni neomezené.`;
           btnEl.textContent   = 'Získat';
           btnEl.classList.remove('active-premium');
