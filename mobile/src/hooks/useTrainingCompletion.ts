@@ -1,8 +1,8 @@
 import type { TrainingCompletionRecord, TrainingCompletionStatus } from '../types';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 
 export function useTrainingCompletion(date?: string) {
-  const { selectedDate, trainingCompletions, currentTrainingCompletion, markTrainingCompletion } = useNutriFit();
+  const { selectedDate, trainingCompletions, currentTrainingCompletion, markTrainingCompletion } = useTrenr();
   const key = date ?? selectedDate;
   const completion = key === selectedDate ? currentTrainingCompletion : trainingCompletions[key] ?? null;
 

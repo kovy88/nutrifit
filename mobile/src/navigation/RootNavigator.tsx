@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CoachScreen } from '../screens/CoachScreen';
@@ -67,7 +67,7 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
-  const { profile } = useNutriFit();
+  const { profile } = useTrenr();
   const { t } = useLanguage();
 
   return (

@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import { createNotificationScheduler, type NotificationMode } from '../lib/notifications';
 import type { TrainingSession } from '../types';
@@ -46,7 +46,7 @@ function estimatedStartTime(session: TrainingSession, today: Date = new Date()):
 }
 
 export function usePostWorkoutReminder(mode: NotificationMode = 'auto'): PostWorkoutReminderState {
-  const { profile, currentSession: todaySession } = useNutriFit();
+  const { profile, currentSession: todaySession } = useTrenr();
   const [settings, setSettings] = useState<PostWorkoutReminderSettings>(DEFAULT_SETTINGS);
   const [isReady, setIsReady] = useState(false);
   const scheduler = createNotificationScheduler(mode);

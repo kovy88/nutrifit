@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import {
   loadCoachThreadsByDate,
   saveCoachThreadForDate,
@@ -11,7 +11,7 @@ function defaultMemory(goalSummary: string): CoachMemory {
 }
 
 export function useCoachThread(date: string, memory?: CoachMemory) {
-  const { profile } = useNutriFit();
+  const { profile } = useTrenr();
   const goalSummary = profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness';
   const fallbackMemory = useMemo(() => memory ?? defaultMemory(goalSummary), [goalSummary, memory]);
   const [thread, setThread] = useState<CoachThreadRecord | null>(null);

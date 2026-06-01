@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from 'react-n
 import { Button, Card, Field, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { analyzeFoodPhoto } from '../services/api';
 import { normalizeFoodEstimate, formatDateLabel } from '../utils/nutrition';
 import type { FoodEstimate } from '../types';
@@ -13,7 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export function PhotoScreen() {
-  const { addFood, ensureAiConsent, selectedDate } = useNutriFit();
+  const { addFood, ensureAiConsent, selectedDate } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors: themeColors } = useTheme();
   const { t } = useLanguage();

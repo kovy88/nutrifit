@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Share, StyleShe
 import { Button, Card, Field, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
 import type { Meal } from '../types';
@@ -52,7 +52,7 @@ export function PlanScreen() {
     addFood,
     ensureAiConsent,
     selectedDate,
-  } = useNutriFit();
+  } = useTrenr();
   const { t } = useLanguage();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();

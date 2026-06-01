@@ -2,7 +2,7 @@ import { Alert, Linking, StyleSheet, Text, View, Modal, ScrollView, Pressable } 
 import { Button, Card, Field, H1, Label, Pill } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
@@ -16,7 +16,7 @@ import { planSessionForDate } from '../lib/training';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 
 export function ProfileScreen() {
-  const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
+  const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
   const navigation = useNavigation<any>();
   const weeklySummary = useWeeklySummary();
   const syncStatus = useSyncStatus();
@@ -204,7 +204,7 @@ export function ProfileScreen() {
 }
 
 function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment, trainingCompletions } = useNutriFit();
+  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment, trainingCompletions } = useTrenr();
   const { colors } = useTheme();
 
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);

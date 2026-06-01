@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import type { DietStyle, ExperienceLevel, Gender, NutritionMode, PlanIntensity, PrimaryGoal, TrainingGoalKind, UserProfile } from '../types';
 import { DEFAULT_PROFILE, validateProfile, activityFactorForSessions } from '../utils/nutrition';
 import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '../services/storage';
@@ -11,7 +11,7 @@ import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../lib/i18n';
 
 export function OnboardingScreen() {
-  const { setProfile } = useNutriFit();
+  const { setProfile } = useTrenr();
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<UserProfile>(() => ({

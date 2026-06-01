@@ -74,7 +74,7 @@ Všechny testy v souborech `storage.test.ts` a `nutrition.test.ts` procházejí 
 ## 🗄️ Architektura Mobilní Části
 Aplikace je čistě oddělená do logických celků:
 *   `src/components/`: Režimové UI elementy (`MacroRing.tsx`, `DateHeader.tsx`, custom `UI.tsx` a `Screen.tsx`).
-*   `src/context/`: State management (`ThemeContext.tsx` pro OLED dark mode, `NutriFitContext.tsx` jako hlavní data store).
+*   `src/context/`: State management (`ThemeContext.tsx` pro OLED dark mode, `TrenrContext.tsx` jako hlavní data store).
 *   `src/screens/`: Obrazovky onboardingu, dashboardu, tréninků, AI jídelníčků, historie a profilu.
 *   `src/utils/`: Pure utility (`nutrition.ts` s Mifflin-St Jeor rovnicemi, `mealPrompts.ts`).
 *   `src/services/`: Supabase, storage a síťové rozhraní API.

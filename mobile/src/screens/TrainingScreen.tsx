@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, H1, Label, Subtitle, FadeInView } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { toDateKey, formatDateLabel } from '../utils/nutrition';
 import { planSessionForDate } from '../lib/training';
@@ -17,7 +17,7 @@ import { useState } from 'react';
 import type { WorkoutSummary } from '../lib/health';
 
 export function TrainingScreen() {
-  const { profile, selectedDate, setSelectedDate } = useNutriFit();
+  const { profile, selectedDate, setSelectedDate } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors: themeColors, fonts } = useTheme();
   const { t } = useLanguage();

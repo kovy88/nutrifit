@@ -3,7 +3,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Subtitle, FadeInView } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { normalizeFoodEstimate, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
 import type { TrainingSession, TrainingGoalKind } from '../types';
 import { DateHeader } from '../components/DateHeader';
@@ -36,7 +36,7 @@ export function HomeScreen() {
     selectedDate,
     weights,
     logWeight,
-  } = useNutriFit();
+  } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { t, locale } = useLanguage();

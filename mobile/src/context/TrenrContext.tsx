@@ -58,7 +58,7 @@ type AuthUser = {
   email?: string;
 };
 
-type NutriFitContextValue = {
+type TrenrContextValue = {
   isReady: boolean;
   profile: UserProfile | null;
   /** Profile-derived macros WITHOUT the selected day's training adjustment. */
@@ -105,9 +105,9 @@ type NutriFitContextValue = {
   signOut: () => Promise<void>;
 };
 
-const Context = createContext<NutriFitContextValue | null>(null);
+const Context = createContext<TrenrContextValue | null>(null);
 
-export function NutriFitProvider({ children }: PropsWithChildren) {
+export function TrenrProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   
@@ -499,9 +499,9 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   );
 }
 
-export function useNutriFit() {
+export function useTrenr() {
   const ctx = useContext(Context);
-  if (!ctx) throw new Error('useNutriFit must be used inside NutriFitProvider');
+  if (!ctx) throw new Error('useTrenr must be used inside TrenrProvider');
   return ctx;
 }
 

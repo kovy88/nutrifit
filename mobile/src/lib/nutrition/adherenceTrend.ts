@@ -1,7 +1,7 @@
 // ── MACRO ADHERENCE TREND
 //
 // Spočítá kolik % z plánovaných kalorií uživatel snědl každý den.
-// Vstup: plans + logs z NutriFitContext (oba indexed by DateKey).
+// Vstup: plans + logs z TrenrContext (oba indexed by DateKey).
 //
 // Algoritmus:
 //   - Pro každý den v rozsahu: sum kcal plan vs. sum kcal log

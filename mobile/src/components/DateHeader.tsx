@@ -2,12 +2,12 @@ import React from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { formatDateLabel, isToday, toDateKey } from '../utils/nutrition';
 
 export function DateHeader() {
-  const { selectedDate, setSelectedDate } = useNutriFit();
+  const { selectedDate, setSelectedDate } = useTrenr();
   const { t } = useLanguage();
 
   function adjustDate(days: number) {

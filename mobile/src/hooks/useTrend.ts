@@ -29,7 +29,7 @@ export type TrendState = {
  *
  * Pro `weight` provider nemá per-den endpoint (`getLatestBodyWeight` je
  * single-shot), takže weight trend se musí dostat jiným kanálem — buď
- * přes `weightsByDate` z NutriFitContext (manual entries), nebo později
+ * přes `weightsByDate` z TrenrContext (manual entries), nebo později
  * přes provider extension. Zatím necháváme volajícího aby data dodal.
  */
 export function useTrend(metric: TrendMetric, days = 14): TrendState {
@@ -133,7 +133,7 @@ function toDateKey(d: Date): string {
 }
 
 /**
- * Convert a `Record<DateKey, number>` (e.g. `weightsByDate` z NutriFitContext)
+ * Convert a `Record<DateKey, number>` (e.g. `weightsByDate` z TrenrContext)
  * na TrendPoint[] pro daný rozsah. Slouží jako most pro metriky, které
  * neprochází přes HealthDataProvider (váha, pocity z check-inu, atd.).
  */

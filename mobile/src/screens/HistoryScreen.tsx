@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Card, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
 import { formatDateLabel } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -38,7 +38,7 @@ function mergeWeightTrend(primary: TrendPoint[], fallback: TrendPoint[]): TrendP
 }
 
 export function HistoryScreen() {
-  const { setSelectedDate, weights, baselineMacros, profile } = useNutriFit();
+  const { setSelectedDate, weights, baselineMacros, profile } = useTrenr();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { colors: themeColors } = useTheme();

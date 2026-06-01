@@ -4,7 +4,7 @@ import { Button, Card, Field, H1, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
@@ -21,7 +21,7 @@ function uid(): string {
 export function CoachScreen() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
-  const { profile, selectedDate, ensureAiConsent } = useNutriFit();
+  const { profile, selectedDate, ensureAiConsent } = useTrenr();
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
   const threadMemory = useMemo(() => ({
     goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',

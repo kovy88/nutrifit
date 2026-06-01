@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useDailyCoaching } from './useDailyCoaching';
 import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
@@ -58,7 +58,7 @@ export type MorningBriefingScheduleState = {
  *             Předej 'expo' explicitně až po `expo install expo-notifications`.
  */
 export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): MorningBriefingScheduleState {
-  const { profile, currentMacros: macros, baselineMacros, currentSession: todaySession } = useNutriFit();
+  const { profile, currentMacros: macros, baselineMacros, currentSession: todaySession } = useTrenr();
   const { locale } = useLanguage();
   const coaching = useDailyCoaching(new Date());
   const [settings, setSettings] = useState<MorningBriefingSettings>(DEFAULT_SETTINGS);

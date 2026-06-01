@@ -5,7 +5,7 @@ import { computePersonalBaselines, type PersonalBaselines } from '../lib/coachin
 import { computeTrainingLoad, type TrainingLoadAssessment } from '../lib/coaching/trainingLoad';
 import { computeDailyStrain, type StrainAssessment } from '../lib/coaching/strainScore';
 import { computeSleepDebt, computeRecoveryDebt, type SleepDebtSummary, type RecoveryDebtSummary } from '../lib/coaching/debtTracker';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 
 export type DailyCoachingState = {
@@ -36,7 +36,7 @@ export type DailyCoachingState = {
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
   const { locale } = useLanguage();
-  const { currentSession: todaySession } = useNutriFit();
+  const { currentSession: todaySession } = useTrenr();
   const [state, setState] = useState<DailyCoachingState>({
     assessment: null,
     baselines: null,

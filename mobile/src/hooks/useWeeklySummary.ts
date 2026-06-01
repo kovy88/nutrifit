@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useHealthDataProvider } from './useHealthDataProvider';
 import { computeDailyStrain } from '../lib/coaching/strainScore';
 import { computeTrainingLoad } from '../lib/coaching/trainingLoad';
@@ -49,7 +49,7 @@ function toDateKey(d: Date): string {
 }
 
 export function useWeeklySummary(): WeeklySummaryState {
-  const { profile, checkIns, ensureAiConsent, baselineMacros } = useNutriFit();
+  const { profile, checkIns, ensureAiConsent, baselineMacros } = useTrenr();
   const provider = useHealthDataProvider();
   const [state, setState] = useState<WeeklySummaryState>({
     summary: null,

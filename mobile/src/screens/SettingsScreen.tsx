@@ -21,7 +21,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { deleteAccount, exportAccountData } from '../services/api';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
@@ -69,7 +69,7 @@ export function SettingsScreen() {
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
-  const { user, purgeAllUserData, signOut } = useNutriFit();
+  const { user, purgeAllUserData, signOut } = useTrenr();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 

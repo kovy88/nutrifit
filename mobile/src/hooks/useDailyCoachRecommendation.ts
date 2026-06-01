@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useDailyCoaching, type DailyCoachingState } from './useDailyCoaching';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { generateDailyCoachRecommendation } from '../lib/coaching/dailyCoach';
 import { toDateKey } from '../utils/nutrition';
@@ -22,7 +22,7 @@ export type UseDailyCoachRecommendation = {
  */
 export function useDailyCoachRecommendation(date: Date): UseDailyCoachRecommendation {
   const coaching = useDailyCoaching(date);
-  const { profile, currentSession, baselineMacros, currentMacros, checkIns, baselineKcalDelta } = useNutriFit();
+  const { profile, currentSession, baselineMacros, currentMacros, checkIns, baselineKcalDelta } = useTrenr();
   const { locale } = useLanguage();
   const dKey = toDateKey(date);
 

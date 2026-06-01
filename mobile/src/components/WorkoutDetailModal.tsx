@@ -6,7 +6,7 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from './UI';
 import { useTheme } from '../context/ThemeContext';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
@@ -41,7 +41,7 @@ export type WorkoutDetailModalProps = {
 
 export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps) {
   const { colors } = useTheme();
-  const { profile } = useNutriFit();
+  const { profile } = useTrenr();
   const { t, locale } = useLanguage();
   if (!workout) return null;
 
