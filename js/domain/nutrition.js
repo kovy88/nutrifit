@@ -1,3 +1,6 @@
+// ⚠️ FROZEN — needituj. Kanonická logika: mobile/src/utils/nutrition.ts (TypeScript).
+//    Mobilní app je single source of truth; tohle je legacy origin webu. Viz js/domain/README.md.
+//
 // ── DETERMINISTIC NUTRITION CORE
 //
 // Veškeré numerické výpočty energetického příjmu a maker. Žádné DOM přístupy,

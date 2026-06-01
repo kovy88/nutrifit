@@ -1,75 +1,60 @@
 # NutriPlan
 
-NutriPlan je interaktivní webová aplikace pro výpočet denních maker, generování jídelníčku na míru a zápis reálného jídla z fotky. Uživatel zadá základní údaje, aplikace spočítá denní rozpočet maker, AI navrhne recepty a multimodální analýza fotky umí přičíst snědené jídlo do dnešního příjmu.
+**NutriPlan je mobile-first AI kouč pro jídlo, trénink a regeneraci.** Každé ráno
+odpoví na jednu otázku: *co dnes jíst, jak trénovat a jestli přidat nebo ubrat podle
+regenerace.* Apple Health / HealthKit slouží jako datový základ (kroky, spánek, HRV,
+tréninky) — a ten je dostupný jen v nativní iOS vrstvě, ne v prohlížeči.
 
-## Splnění zadání
+## Struktura repa
 
-- Vlastní uživatelské rozhraní: responzivní dashboard se dvěma hlavními workflow: **Naplánovat den** a **Zapsat jídlo fotkou**.
-- Strukturovaný výstup / function calling princip: Gemini vrací validní JSON pro jídelníčky, výměnu jídel i odhad maker z fotky, který se dá bezpečně parsovat a normalizovat.
-- Více LLM volání / kontext: aplikace používá odlišné role a prompty pro vygenerování celého jídelníčku, výměnu konkrétního jídla a analýzu fotky.
-- Další datový zdroj a paměť: profil, historie jídelníčků, generační limity a premium stav jsou ukládané v Supabase; denní příjem z fotek se ukládá lokálně pro aktuální den.
-- Multimodalita: uživatel nahraje fotku jídla, Gemini Vision odhadne porci, kalorie a makra a uživatel výsledek potvrdí do denního rozpočtu.
+| Cesta | Role |
+|---|---|
+| **`mobile/`** | **Produkt** — React Native / Expo app (NutriPlan AI Coach). Single source of truth pro doménovou logiku (TypeScript). Viz [`mobile/README.md`](mobile/README.md). |
+| **root web** (`index.html`, `js/`, `css/`) | **Landing / legal / waitlist.** Není to produkt — jen distribuce. |
+| **`api/`** | **Sdílený backend** (Vercel serverless) — AI proxy, Stripe, OAuth exchange/refresh, delete/export. Volá ho mobilní app. |
+| **`js/domain/`** | ⚠️ **FROZEN** legacy origin. Kanonická logika je v `mobile/src/{utils,lib}`. Viz [`js/domain/README.md`](js/domain/README.md). |
+| **`supabase/migrations/`** | DB schema (sdílené). |
 
-## Demo průchod
+> **Rozhodnutí (mobile-first, inkrementálně):** mobilní app je produkt, web je landing
+> nad sdíleným `api/` backendem. Monorepo (`packages/core`) je **odložené** — vytáhne se
+> z mobilu, až bude druhý reálný konzument (web demo / serverový výpočet). Web se zatím
+> **nepřepisuje do Reactu** a **nepředstírá Apple Health v prohlížeči**.
 
-1. Otevři aplikaci a bez přihlášení vyplň věk, výšku a váhu.
-2. Klikni na **Spočítat makra**.
-3. Doplň preference jídla, styl stravování a počet jídel.
-4. V dashboardu zkontroluj sekci **Dnešní příjem** se zbývajícími kaloriemi a makry.
-5. V části **Naplánovat den** doplň preference a klikni na **Vygenerovat jídelníček**.
-6. Klikni na recept pro detail, případně použij **Vyměnit jídlo**.
-7. V části **Zapsat jídlo fotkou** nahraj obrázek, spusť analýzu a klikni na **Přidat do dne**. Denní zůstatek maker se okamžitě přepočítá.
+## Mobilní app (produkt)
 
-## Poznámky k lokálnímu testování
+```bash
+cd mobile
+npm install
+./node_modules/.bin/expo start     # 'i' = iOS sim, 'a' = Android, nebo QR v Expo Go
+```
+Nativní HealthKit / notifikace vyžadují **EAS dev build** (v Expo Go jsou stubnuté; v dev
+módu běží mock health data). Testy + typecheck:
+```bash
+cd mobile
+./node_modules/.bin/tsc --noEmit -p tsconfig.json
+./node_modules/.bin/vitest run
+```
 
-- Lokálně přes statický server funguje UI, výpočet maker, preview uploadu a klientský denní log.
-- AI endpointy `/api/generate` a `/api/analyze-food-photo` jsou Vercel serverless funkce a pro plné otestování vyžadují Vercel/dev prostředí s `GEMINI_API_KEY`.
-- Google přihlášení může na `localhost` hlásit chybu originu, pokud localhost není přidaný v Google OAuth konfiguraci. Produkční doména tím není dotčená.
+## Web (landing + backend)
 
-## Technologie
+- Frontend: HTML / CSS / vanilla JS — **landing, legal, waitlist**. Nasazení na Vercel.
+- `api/` — Gemini proxy (`/api/generate`, klíč jen na serveru), `analyze-food-photo`,
+  Stripe, OAuth (garmin/oura/strava/whoop) exchange/refresh, `delete-account`/`export-data`.
+- Auth/DB: Supabase. Platby: Stripe.
 
-- Frontend: HTML, CSS, vanilla JavaScript moduly
-- AI: Gemini přes Vercel serverless proxy
-- Multimodalita: Gemini Vision přes `/api/analyze-food-photo`
-- Databáze a autentizace: Supabase
-- Platby / premium: Stripe
-- Deployment: Vercel
+## Bezpečnost a privacy
 
-## Architektura (adaptivní v2)
-
-Aplikace se posouvá od kalkulačky maker k adaptivnímu nutričnímu a
-tréninkovému plánovači. Detail najdeš v [ARCHITECTURE.md](ARCHITECTURE.md).
-
-- `js/domain/` — deterministické jádro (BMR/TDEE/makra, denní a týdenní
-  úpravy, generátor tréninkového plánu pro 5k–maraton, sílu, kondici).
-  Žádný DOM, žádné side-efekty.
-- `js/services/` — orchestrační vrstva: `NutritionPlanService`,
-  `TrainingPlanService`, `AIPlanService` (prompt builder + validátor),
-  `HealthDataProvider` (Mock / Manual / Apple Health placeholder).
-- `js/calculator.js` a další UI moduly delegují matematiku na doménu.
-
-### Bezpečnost a privacy
-
-- App není zdravotnická rada. Cíle a recepty jsou obecné vodítko.
-- Hubnutí je tvrdě limitované: max 1 % tělesné hmotnosti / týden,
-  minimum 1500 kcal (M) / 1200 kcal (Ž).
-- Tréninkový objem roste max o 10 % / týden, deload každý 4. týden.
-- Při nízkém spánku či poklesu HRV se kvalitní session vymění za easy běh.
-
-### Apple Health
-
-Web build NEPŘEDSTÍRÁ HealthKit data. `AppleHealthProvider` je placeholder
-s `TODO(ios)` značkami a deleguje na MockHealthDataProvider. Reálné napojení
-přijde s iOS buildem (Expo shell v `mobile/` + react-native-health nebo
-nativní HealthKit bridge). Plánované typy: `stepCount`, `activeEnergyBurned`,
-`basalEnergyBurned`, `distanceWalkingRunning`, `heartRate`,
-`restingHeartRate`, `heartRateVariabilitySDNN`, `bodyMass` a `HKWorkoutType`.
+- Není zdravotnická rada; žádná diagnóza ani léčba.
+- Hubnutí limitované: max ~1 % hmotnosti / týden, floor 1500 kcal (M) / 1200 kcal (Ž).
+- Tréninkový objem roste max 10 % / týden, deload každý 4. týden; při nízkém spánku /
+  poklesu HRV se kvalitní session vymění za easy.
+- **Apple Health jen na mobilu** (EAS build) — web HealthKit data nepředstírá.
 
 ## Testy
 
 ```bash
-npm test
+node tests/run.js     # frozen js/domain (zero-dep runner)
+cd mobile && ./node_modules/.bin/vitest run   # produkt (mobile)
 ```
 
-Spouští `tests/run.js` (zero-dep ES module runner) nad všemi `tests/*.test.js`.
-Aktuálně 47 testů pro nutrition, training, health-provider a AI validátor.
+Detail historie a domén v [ARCHITECTURE.md](ARCHITECTURE.md).
