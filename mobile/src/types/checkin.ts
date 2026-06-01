@@ -23,6 +23,12 @@ export type WeeklyCheckIn = {
   hungerLevel?: SubjectiveLevel;
   /** Adherence k plánovanému jídelníčku 0..1. */
   adherence: number;
+  /** Kolik plánovaných tréninků uživatel dokončil v daném týdnu. */
+  completedSessions?: number;
+  /** Kolik tréninků bylo v týdnu naplánováno. */
+  plannedSessions?: number;
+  /** Subjektivní pocit ze spánku/regenerace 1..5. */
+  sleepFeel?: SubjectiveLevel;
   /** Volitelná poznámka, např. „dovolená, jedl jsem hodně venku“. */
   notes?: string;
   /** Kdy byl check-in uložen. */

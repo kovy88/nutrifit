@@ -39,12 +39,17 @@ import type {
 /** Singleton init guard — HealthKit must be initialized once before queries. */
 let initPromise: Promise<any | null> | null = null;
 
+function isUnitTestRuntime(): boolean {
+  return Boolean((globalThis as any).__NUTRIFIT_TEST__);
+}
+
 async function loadHealthKit(): Promise<any | null> {
   if (Platform.OS !== 'ios') return null;
+  if (isUnitTestRuntime()) return null;
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
-      // @ts-expect-error — package nemusí být nainstalovaný v node_modules
+      // @ts-ignore — package nemusí být nainstalovaný v node_modules (optional native dep)
       const mod = await import('@kingstinct/react-native-healthkit');
       if (mod?.default) return mod.default;
       return mod;

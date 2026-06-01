@@ -65,6 +65,7 @@ function pickEmoji(session: TrainingSession | null, readiness: ReadinessAssessme
   // Rest day má svůj vlastní vizuál — readiness color se nehodí.
   if (!session || session.kind === 'rest') return '⚪️';
   if (!readiness) return '🟢';
+  if (readiness.dataStatus === 'missing') return '⚪️';
   switch (readiness.level) {
     case 'green':  return '🟢';
     case 'yellow': return '🟡';
@@ -77,6 +78,9 @@ function buildHeadline(session: TrainingSession | null, readiness: ReadinessAsse
     return L(loc, 'Volný den. Méně sacharidů, víc tuků.', 'Rest day. Fewer carbs, more fat.');
   }
   const sessionLabel = shortSessionName(session, loc);
+  if (readiness?.dataStatus === 'missing') {
+    return L(loc, `${sessionLabel}. Recovery data chybí.`, `${sessionLabel}. Recovery data missing.`);
+  }
   if (!readiness || readiness.level === 'green') {
     return L(loc, `${sessionLabel}. Můžeš jet podle plánu.`, `${sessionLabel}. You can go by plan.`);
   }
@@ -152,6 +156,11 @@ function buildRecommendation(
     }
     return L(loc, 'Tento týden výrazně víc než průměr. Sleduj spánek a dej si zítra spíš lehčí jednotku.',
                   'Well above average this week. Watch your sleep and keep tomorrow lighter.');
+  }
+
+  if (readiness?.dataStatus === 'missing') {
+    return L(loc, 'Recovery data dnes chybí. Drž plán podle pocitu a nepřidávej intenzitu.',
+                  'Recovery data is missing today. Follow the plan by feel and do not add intensity.');
   }
 
   // Macro hint pokud máme baseline porovnání

@@ -70,7 +70,7 @@ export function PhotoScreen() {
     setImage(null);
     setEstimate(null);
     Alert.alert(t('photo.savedTitle'), t('photo.savedMsg', { date: formatDateLabel(selectedDate) }));
-    navigation.navigate('Dnes');
+    navigation.navigate('Main', { screen: 'Dnes' });
   }
 
   return (

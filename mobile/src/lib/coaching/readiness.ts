@@ -15,6 +15,7 @@
 // stávající testy bez locale zůstávají zelené.
 
 import type { Locale } from '../i18n';
+import type { ConfidenceLevel, ReadinessBand, ReadinessScore, RecommendedIntensity, RecoveryInputs } from '../../types/coach';
 
 export type ReadinessLevel = 'green' | 'yellow' | 'red';
 
@@ -43,6 +44,9 @@ export type ReadinessAssessment = {
   factors: ReadinessFactor[];
   recommendation: string;
   trainingAdjustment: 'reduce_to_easy' | 'reduce_to_moderate' | null;
+  /** How complete the objective recovery signals are. Missing data is not the same as green readiness. */
+  confidence: ConfidenceLevel;
+  dataStatus: 'missing' | 'partial' | 'complete';
 };
 
 export type ReadinessInput = {
@@ -121,8 +125,8 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
     const avg = Math.round(baseline.hrvMeanMs);
     if (ratio < HRV_RATIO_RED) {
       factors.push({ key: 'hrv_low', severity: 'red',
-        message: L(loc, `HRV ${v} ms — ${pct} % průměru (${avg} ms). Vysoký stres nebo nemoc.`,
-                        `HRV ${v} ms — ${pct}% of average (${avg} ms). High stress or illness.`) });
+        message: L(loc, `HRV ${v} ms — ${pct} % tvého průměru (${avg} ms). Tělo je výrazně pod regenerací.`,
+                        `HRV ${v} ms — ${pct}% of your average (${avg} ms). Your body is well under-recovered.`) });
     } else if (ratio < HRV_RATIO_OK) {
       factors.push({ key: 'hrv_moderate', severity: 'yellow',
         message: L(loc, `HRV mírně snížené (${v} ms vs. ${avg} ms průměr).`, `HRV slightly down (${v} ms vs. ${avg} ms average).`) });
@@ -132,7 +136,7 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   } else {
     const v = Math.round(input.todayHrvMs);
     if (input.todayHrvMs < HRV_MIN_BORDERLINE) {
-      factors.push({ key: 'hrv_low', severity: 'red', message: L(loc, `HRV velmi nízké (${v} ms) — možná stres nebo nemoc.`, `HRV very low (${v} ms) — possible stress or illness.`) });
+      factors.push({ key: 'hrv_low', severity: 'red', message: L(loc, `HRV velmi nízké (${v} ms) — zvaž únavu nebo stres.`, `HRV very low (${v} ms) — consider fatigue or stress.`) });
     } else if (input.todayHrvMs < HRV_MIN_OK) {
       factors.push({ key: 'hrv_moderate', severity: 'yellow', message: L(loc, `HRV mírně snížené (${v} ms).`, `HRV slightly down (${v} ms).`) });
     } else {
@@ -149,8 +153,8 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
     const avg = Math.round(baseline.rhrMeanBpm);
     if (ratio > RHR_RATIO_RED) {
       factors.push({ key: 'rhr_high', severity: 'red',
-        message: L(loc, `Klidový tep ${input.todayRhrBpm} bpm — ${pct} % průměru (${avg} bpm). Možná nemoc.`,
-                        `Resting HR ${input.todayRhrBpm} bpm — ${pct}% of average (${avg} bpm). Possible illness.`) });
+        message: L(loc, `Klidový tep ${input.todayRhrBpm} bpm — ${pct} % tvého průměru (${avg} bpm). Výrazně zvýšený, zvaž víc odpočinku.`,
+                        `Resting HR ${input.todayRhrBpm} bpm — ${pct}% of your average (${avg} bpm). Notably elevated, consider more rest.`) });
     } else if (ratio > RHR_RATIO_OK) {
       factors.push({ key: 'rhr_elevated', severity: 'yellow',
         message: L(loc, `Klidový tep zvýšený (${input.todayRhrBpm} bpm vs. ${avg} bpm průměr).`, `Resting HR elevated (${input.todayRhrBpm} bpm vs. ${avg} bpm average).`) });
@@ -159,7 +163,7 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
     }
   } else {
     if (input.todayRhrBpm > RHR_MAX_BORDERLINE) {
-      factors.push({ key: 'rhr_high', severity: 'red', message: L(loc, `Klidový tep vysoký (${input.todayRhrBpm} bpm) — možná nemoc.`, `Resting HR high (${input.todayRhrBpm} bpm) — possible illness.`) });
+      factors.push({ key: 'rhr_high', severity: 'red', message: L(loc, `Klidový tep vysoký (${input.todayRhrBpm} bpm) — zvaž víc odpočinku.`, `Resting HR high (${input.todayRhrBpm} bpm) — consider more rest.`) });
     } else if (input.todayRhrBpm > RHR_MAX_OK) {
       factors.push({ key: 'rhr_elevated', severity: 'yellow', message: L(loc, `Klidový tep zvýšený (${input.todayRhrBpm} bpm).`, `Resting HR elevated (${input.todayRhrBpm} bpm).`) });
     } else {
@@ -171,29 +175,37 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const reds = factors.filter(f => f.severity === 'red').length;
   const yellows = factors.filter(f => f.severity === 'yellow').length;
   const dataCount = factors.filter(f => !f.key.endsWith('_missing')).length;
+  const confidence = confidenceFromDataCount(dataCount);
+  const dataStatus = dataCount === 0 ? 'missing' : dataCount >= 3 ? 'complete' : 'partial';
 
   if (reds > 0) {
-    return { level: 'red', factors, trainingAdjustment: 'reduce_to_easy',
+    return { level: 'red', factors, confidence, dataStatus, trainingAdjustment: 'reduce_to_easy',
       recommendation: L(loc, 'Doporučujeme dnes regeneraci. Pokud trénuješ, drž jen lehkou aktivitu a přidej spánek.',
                              'Recovery recommended today. If you train, keep it light and add sleep.') };
   }
   if (yellows >= 2) {
-    return { level: 'red', factors, trainingAdjustment: 'reduce_to_easy',
+    return { level: 'red', factors, confidence, dataStatus, trainingAdjustment: 'reduce_to_easy',
       recommendation: L(loc, 'Více faktorů pod normou. Zkrať trénink nebo sniž intenzitu.',
                              'Multiple factors below normal. Shorten the workout or lower intensity.') };
   }
   if (yellows === 1) {
-    return { level: 'yellow', factors, trainingAdjustment: 'reduce_to_moderate',
+    return { level: 'yellow', factors, confidence, dataStatus, trainingAdjustment: 'reduce_to_moderate',
       recommendation: L(loc, 'Mírně snížená připravenost. Naplánovaný trénink zvládneš, ale poslouchej tělo.',
                              'Slightly reduced readiness. You can do the planned workout, but listen to your body.') };
   }
   if (dataCount === 0) {
-    return { level: 'green', factors, trainingAdjustment: null,
-      recommendation: L(loc, 'Nemáme dnes data o spánku ani HRV. Trénuj podle plánu.',
-                             'No sleep or HRV data today. Train as planned.') };
+    return { level: 'green', factors, confidence, dataStatus, trainingAdjustment: null,
+      recommendation: L(loc, 'Nemáme dnes data o spánku, HRV ani klidovém tepu. Ber readiness jako orientační a řiď se pocitem.',
+                             'No sleep, HRV or resting-HR data today. Treat readiness as guidance and go by feel.') };
   }
-  return { level: 'green', factors, trainingAdjustment: null,
+  return { level: 'green', factors, confidence, dataStatus, trainingAdjustment: null,
     recommendation: L(loc, 'Připraven na trénink. Můžeš jet podle plánu.', 'Ready to train. Go by your plan.') };
+}
+
+function confidenceFromDataCount(dataCount: number): ConfidenceLevel {
+  if (dataCount >= 3) return 'high';
+  if (dataCount >= 2) return 'medium';
+  return 'low';
 }
 
 function formatHours(minutes: number, locale: Locale): string {
@@ -201,4 +213,134 @@ function formatHours(minutes: number, locale: Locale): string {
   const m = minutes % 60;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+// ── NUMERIC READINESS SCORE (0–100) ─────────────────────────────────────────
+//
+// Koučovací skóre, NE medicínské. Skládá sleep/HRV/RHR sub-skóre (každé 0–100,
+// vyšší = lepší), zváží je přes DOSTUPNÉ vstupy a aplikuje modifikátory (ACWR,
+// spánkový/recovery dluh, subjektivní energie). Degraduje gracefully — když
+// nejsou objektivní data, vrátí konzervativní střed (55) s confidence 'low'.
+// Nikdy nethrowuje. Existující `evaluateReadiness` (green/yellow/red) zůstává
+// beze změny; tohle je samostatný číselný pohled pro Today dashboard.
+
+const SCORE_WEIGHTS = { sleep: 0.4, hrv: 0.3, rhr: 0.3 };
+
+export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): ReadinessScore {
+  const loc = locale;
+  const baseline = input.baseline ?? {};
+  const drivers: string[] = [];
+  const parts: Array<{ w: number; v: number }> = [];
+
+  if (input.todaySleepMinutes != null) {
+    const s = sleepSubScore(input.todaySleepMinutes, baseline.sleepMeanMinutes);
+    parts.push({ w: SCORE_WEIGHTS.sleep, v: s });
+    if (s < 50) drivers.push(L(loc, `Málo spánku (${formatHours(input.todaySleepMinutes, loc)})`, `Low sleep (${formatHours(input.todaySleepMinutes, loc)})`));
+  }
+  if (input.todayHrvMs != null) {
+    const s = hrvSubScore(input.todayHrvMs, baseline.hrvMeanMs);
+    parts.push({ w: SCORE_WEIGHTS.hrv, v: s });
+    if (s < 50) drivers.push(L(loc, `Snížené HRV (${Math.round(input.todayHrvMs)} ms)`, `Low HRV (${Math.round(input.todayHrvMs)} ms)`));
+  }
+  if (input.todayRhrBpm != null) {
+    const s = rhrSubScore(input.todayRhrBpm, baseline.rhrMeanBpm);
+    parts.push({ w: SCORE_WEIGHTS.rhr, v: s });
+    if (s < 50) drivers.push(L(loc, `Zvýšený klidový tep (${input.todayRhrBpm} bpm)`, `Elevated resting HR (${input.todayRhrBpm} bpm)`));
+  }
+
+  const objectiveCount = parts.length;
+  let score: number;
+  if (objectiveCount > 0) {
+    const totalW = parts.reduce((acc, p) => acc + p.w, 0);
+    score = parts.reduce((acc, p) => acc + p.v * p.w, 0) / totalW;
+  } else {
+    score = 55; // neutral-conservative default when we have no wearable data
+    drivers.push(L(loc, 'Chybí data spánku, HRV a klidového tepu', 'Missing sleep, HRV and resting-HR data'));
+  }
+
+  // ── Modifiers ──────────────────────────────────────────────────────────────
+  if (input.acwr != null) {
+    if (input.acwr > 1.5) { score -= 12; drivers.push(L(loc, `Vysoká zátěž (ACWR ${input.acwr.toFixed(2)})`, `High load (ACWR ${input.acwr.toFixed(2)})`)); }
+    else if (input.acwr > 1.3) { score -= 6; }
+  }
+  if (input.sleepDebtHours != null) {
+    if (input.sleepDebtHours >= 10) { score -= 10; drivers.push(L(loc, `Spánkový dluh ${Math.round(input.sleepDebtHours)} h`, `Sleep debt ${Math.round(input.sleepDebtHours)} h`)); }
+    else if (input.sleepDebtHours >= 5) { score -= 5; }
+  }
+  if (input.recoveryDebt != null) {
+    if (input.recoveryDebt >= 6) { score -= 8; }
+    else if (input.recoveryDebt >= 3) { score -= 4; }
+  }
+  if (input.subjectiveEnergy != null) {
+    const e = input.subjectiveEnergy;
+    score += e === 1 ? -10 : e === 2 ? -5 : e === 4 ? 3 : e === 5 ? 6 : 0;
+    if (e <= 2) drivers.push(L(loc, 'Nízká subjektivní energie', 'Low subjective energy'));
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  const band: ReadinessBand = score >= 67 ? 'high' : score >= 40 ? 'medium' : 'low';
+  const recommendedIntensity: RecommendedIntensity =
+    score >= 70 ? 'hard' : score >= 55 ? 'moderate' : score >= 35 ? 'easy' : 'rest';
+  const confidence: ReadinessScore['confidence'] =
+    objectiveCount >= 3 ? 'high' : objectiveCount >= 2 ? 'medium' : 'low';
+
+  if (objectiveCount > 0 && objectiveCount < 3) {
+    drivers.push(L(loc, `Nízká jistota: ${objectiveCount}/3 recovery signálů`, `Low confidence: ${objectiveCount}/3 recovery signals`));
+  }
+
+  if (drivers.length === 0) {
+    drivers.push(score >= 67
+      ? L(loc, 'Dobrá připravenost', 'Good readiness')
+      : L(loc, 'Průměrná připravenost', 'Average readiness'));
+  }
+
+  return { score, band, recommendedIntensity, drivers, confidence };
+}
+
+/** Sleep sub-score 0–100 (higher = better). Ratio-based when baseline known. */
+function sleepSubScore(minutes: number, baselineMean?: number | null): number {
+  if (baselineMean && baselineMean > 0) {
+    const r = minutes / baselineMean;
+    if (r >= 1.0) return 92;
+    if (r >= 0.9) return 78;
+    if (r >= 0.8) return 60;
+    if (r >= 0.7) return 45;
+    return 28;
+  }
+  if (minutes >= 480) return 92;
+  if (minutes >= 420) return 80;
+  if (minutes >= 360) return 55;
+  if (minutes >= 300) return 38;
+  return 25;
+}
+
+/** HRV sub-score 0–100 (higher = better). */
+function hrvSubScore(ms: number, baselineMean?: number | null): number {
+  if (baselineMean && baselineMean > 0) {
+    const r = ms / baselineMean;
+    if (r >= 1.0) return 92;
+    if (r >= 0.85) return 75;
+    if (r >= 0.7) return 50;
+    return 28;
+  }
+  if (ms >= 50) return 85;
+  if (ms >= 35) return 65;
+  if (ms >= 25) return 45;
+  return 25;
+}
+
+/** Resting-HR sub-score 0–100 (LOWER bpm = better). */
+function rhrSubScore(bpm: number, baselineMean?: number | null): number {
+  if (baselineMean && baselineMean > 0) {
+    const r = bpm / baselineMean;
+    if (r <= 1.0) return 90;
+    if (r <= 1.1) return 70;
+    if (r <= 1.2) return 45;
+    return 25;
+  }
+  if (bpm <= 60) return 90;
+  if (bpm <= 75) return 70;
+  if (bpm <= 85) return 45;
+  return 25;
 }

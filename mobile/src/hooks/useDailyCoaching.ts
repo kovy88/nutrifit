@@ -20,6 +20,8 @@ export type DailyCoachingState = {
   sleepDebt: SleepDebtSummary | null;
   /** Cumulative recovery debt (14d). */
   recoveryDebt: RecoveryDebtSummary | null;
+  /** Raw today's signals — feeds the daily coach recommendation. */
+  today: { sleepMinutes: number | null; rhrBpm: number | null; hrvMs: number | null };
   isLoading: boolean;
 };
 
@@ -42,6 +44,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
     strain: null,
     sleepDebt: null,
     recoveryDebt: null,
+    today: { sleepMinutes: null, rhrBpm: null, hrvMs: null },
     isLoading: true,
   });
 
@@ -132,7 +135,16 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
       }
       const recoveryDebt = computeRecoveryDebt({ readinessLevels, days: 14 });
 
-      setState({ assessment, baselines, trainingLoad, strain, sleepDebt, recoveryDebt, isLoading: false });
+      setState({
+        assessment,
+        baselines,
+        trainingLoad,
+        strain,
+        sleepDebt,
+        recoveryDebt,
+        today: { sleepMinutes: sleep?.totalMinutes ?? null, rhrBpm: rhr?.bpm ?? null, hrvMs: hrv?.ms ?? null },
+        isLoading: false,
+      });
     }
     void load();
     return () => {

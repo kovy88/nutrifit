@@ -7,6 +7,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { LoadingScreen } from './src/screens/LoadingScreen';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { LanguageProvider } from './src/context/LanguageContext';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 function AppShell() {
   const { isReady } = useNutriFit();
@@ -24,13 +25,15 @@ function AppShell() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <NutriFitProvider>
-          <AppShell />
-        </NutriFitProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <NutriFitProvider>
+            <AppShell />
+          </NutriFitProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -36,6 +36,8 @@ export const DEFAULT_PROFILE: UserProfile = {
   dislikes: '',
   diet: 'standardní',
   mealCount: 5,
+  nutritionMode: 'balanced',
+  planIntensity: 'moderate',
 };
 
 /** Human-readable Czech label for a primary goal, used for UI display. */
@@ -62,7 +64,7 @@ export type CalculateMacrosOptions = {
 };
 
 export function calculateMacros(
-  profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor'>,
+  profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor' | 'nutritionMode' | 'planIntensity'>,
   options: CalculateMacrosOptions = {},
 ): Macros {
   const bmr = calcBMR(profile);
@@ -76,8 +78,9 @@ export function calculateMacros(
   const targetWithDelta = calcCalorieTarget(profile, goal, tdee) + (options.baselineKcalDelta ?? 0);
   const floor = profile.gender === 'muz' ? 1500 : 1200;
   const kcal = Math.max(targetWithDelta, floor);
-  const protein = Math.round(profile.weight * proteinPerKg(goal));
-  const fat = Math.round(Math.max((kcal * 0.27) / 9, profile.weight * 0.6));
+  const protein = Math.round(profile.weight * proteinPerKg(goal, profile.nutritionMode));
+  const fatPct = profile.nutritionMode === 'endurance_fueling' ? 0.23 : profile.nutritionMode === 'high_protein' ? 0.25 : 0.27;
+  const fat = Math.round(Math.max((kcal * fatPct) / 9, profile.weight * 0.6));
   const carbs = Math.max(Math.round((kcal - protein * 4 - fat * 9) / 4), 0);
   const fiber = Math.round((kcal / 1000) * 14);
   const waterMl = calcWaterMl(profile.weight, profile.activityFactor);
@@ -88,7 +91,7 @@ export function calculateMacros(
 export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' | 'weight'>, goal: { kind: NutritionGoalKind }) {
   const bmi = profile.weight / ((profile.height / 100) ** 2);
   if (profile.age < 16) {
-    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'NutriFit není určený pro děti a dospívající pod 16 let.' };
+    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'NutriPlan není určený pro děti a dospívající pod 16 let.' };
   }
   if (bmi < 16) {
     return { allowed: false, level: 'blocked' as const, bmi, code: 'bmi_under_16', message: 'Při BMI pod 16 automatický jídelníček nevygenerujeme. Doporučujeme odbornou konzultaci.' };
@@ -140,6 +143,12 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
   };
 }
 
+/**
+ * @deprecated Static day-of-week planner. The app now uses the progressive,
+ * safety-aware planner in `lib/training` (`planSessionForDate`). Kept only so
+ * the legacy unit tests in `__tests__/nutrition.test.ts` keep passing during
+ * the transition; remove once those are migrated.
+ */
 export function buildTrainingSessionForDate(profile: Pick<UserProfile, 'trainingGoal' | 'sessionsPerWeek'>, date = new Date()): TrainingSession {
   const dateISO = toDateKey(date);
   const day = date.getDay() || 7;
@@ -374,23 +383,29 @@ function calcBMR(profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'weigh
   return profile.gender === 'muz' ? base + 5 : base - 161;
 }
 
-function calcCalorieTarget(profile: Pick<UserProfile, 'gender' | 'weight'>, goal: NutritionGoalKind, tdee: number) {
+function calcCalorieTarget(profile: Pick<UserProfile, 'gender' | 'weight' | 'planIntensity'>, goal: NutritionGoalKind, tdee: number) {
+  const intensity = profile.planIntensity ?? 'moderate';
+  const maxDeficitPct = intensity === 'easy' ? 0.15 : intensity === 'moderate' ? 0.2 : SAFETY.MAX_DEFICIT_PCT;
   let kcal = tdee;
   if (goal === 'fat_loss') {
     const safeWeeklyKg = profile.weight * SAFETY.MAX_WEEKLY_LOSS_KG_PER_KG;
-    const dailyDeficit = Math.round((safeWeeklyKg * 0.7 * 7700) / 7);
-    kcal = Math.max(tdee - dailyDeficit, Math.round(tdee * (1 - SAFETY.MAX_DEFICIT_PCT)));
+    const intensityMultiplier = intensity === 'easy' ? 0.45 : intensity === 'moderate' ? 0.6 : 0.7;
+    const dailyDeficit = Math.round((safeWeeklyKg * intensityMultiplier * 7700) / 7);
+    kcal = Math.max(tdee - dailyDeficit, Math.round(tdee * (1 - maxDeficitPct)));
   } else if (goal === 'muscle_gain') {
-    kcal = Math.round(tdee * 1.12);
+    kcal = Math.round(tdee * (intensity === 'easy' ? 1.06 : intensity === 'moderate' ? 1.1 : 1.12));
   } else if (goal === 'endurance') {
-    kcal = Math.round(tdee * 1.05);
+    kcal = Math.round(tdee * (intensity === 'easy' ? 1.03 : intensity === 'moderate' ? 1.05 : 1.08));
   }
   const floor = profile.gender === 'muz' ? SAFETY.MIN_KCAL_MALE : SAFETY.MIN_KCAL_FEMALE;
   return Math.max(kcal, floor);
 }
 
-function proteinPerKg(goal: NutritionGoalKind) {
-  return ({ fat_loss: 2.2, muscle_gain: 2.0, maintenance: 1.6, endurance: 1.6, general_fitness: 1.4 }[goal]);
+function proteinPerKg(goal: NutritionGoalKind, mode: UserProfile['nutritionMode'] = 'balanced') {
+  const base = ({ fat_loss: 2.2, muscle_gain: 2.0, maintenance: 1.6, endurance: 1.6, general_fitness: 1.4 }[goal]);
+  if (mode === 'high_protein') return Math.min(base + 0.25, 2.4);
+  if (mode === 'endurance_fueling' && goal === 'endurance') return 1.7;
+  return base;
 }
 
 function calcWaterMl(weight: number, activityFactor: number) {
@@ -471,4 +486,3 @@ export function formatDateLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-');
   return `${parseInt(day, 10)}. ${parseInt(month, 10)}. ${year}`;
 }
-

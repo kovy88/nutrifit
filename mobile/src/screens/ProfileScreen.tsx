@@ -12,11 +12,14 @@ import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { planSessionForDate } from '../lib/training';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useNutriFit();
   const navigation = useNavigation<any>();
   const weeklySummary = useWeeklySummary();
+  const syncStatus = useSyncStatus();
   const { t } = useLanguage();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -162,6 +165,12 @@ export function ProfileScreen() {
 
       <Card>
         <Label>{t('profile.account')}</Label>
+        <Text style={styles.copy}>
+          Sync: {syncStatus.status}
+          {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
+          {syncStatus.lastSyncedAt ? ` · ${new Date(syncStatus.lastSyncedAt).toLocaleString()}` : ''}
+        </Text>
+        {syncStatus.error && <Text style={{ color: colors.red, fontSize: 12 }}>{syncStatus.error}</Text>}
         {user ? (
           <>
             <Text style={styles.user}>{user.email}</Text>
@@ -184,7 +193,7 @@ export function ProfileScreen() {
 
       <Card>
         <Label>Podmínky a ochrana</Label>
-        <Text style={styles.copy}>NutriFit není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
+        <Text style={styles.copy}>NutriPlan není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
         <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
         <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
       </Card>
@@ -195,7 +204,7 @@ export function ProfileScreen() {
 }
 
 function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment } = useNutriFit();
+  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment, trainingCompletions } = useNutriFit();
   const { colors } = useTheme();
 
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -221,6 +230,19 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
     const monday = new Date(d);
     monday.setDate(d.getDate() - (dayOfWeek - 1));
     const weekStartISO = toDateKey(monday);
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      return day;
+    });
+    const plannedSessions = weekDays
+      .map(day => planSessionForDate(profile, day))
+      .filter(session => session.kind !== 'rest' && session.durationMinutes > 0)
+      .length;
+    const completedSessions = weekDays
+      .map(day => trainingCompletions[toDateKey(day)])
+      .filter(completion => completion?.status === 'completed')
+      .length;
 
     setSubmitting(true);
     try {
@@ -230,6 +252,8 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
         energyLevel,
         hungerLevel,
         adherence: adherencePct / 100,
+        completedSessions,
+        plannedSessions,
         createdAt: new Date().toISOString(),
       });
       // Also persist the new weight on profile so calculateMacros picks it up immediately
@@ -268,7 +292,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
           <ScrollView contentContainerStyle={styles.modalContent}>
             <Text style={[styles.modalTitle, { color: colors.ink }]}>🎯 Týdenní check-in</Text>
             <Text style={[styles.small, { color: colors.muted }]}>
-              Zhodnoť svůj týden. NutriFit porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
+              Zhodnoť svůj týden. NutriPlan porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
             </Text>
 
             <Label>Energie tento týden (1–5)</Label>
@@ -352,6 +376,8 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
 
 const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
   { value: 'general_fitness', label: 'Kondice' },
+  { value: 'walking_more', label: 'Chůze' },
+  { value: 'couch_to_5k', label: 'Couch→5k' },
   { value: 'run_5k', label: '5 km' },
   { value: 'run_10k', label: '10 km' },
   { value: 'half_marathon', label: 'Půlmaraton' },

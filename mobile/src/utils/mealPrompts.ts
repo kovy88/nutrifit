@@ -13,10 +13,17 @@ export function namesForMealCount(count: number) {
   return mealNames[count] || mealNames[5];
 }
 
-export function buildMealPlanRequest(profile: UserProfile, macros: Macros, session?: TrainingSession | null) {
+export function buildMealPlanRequest(
+  profile: UserProfile,
+  macros: Macros,
+  session?: TrainingSession | null,
+  /** When a previous attempt failed validation, the errors are fed back so the
+   *  model can self-correct on a single retry before we surface a hard error. */
+  repairErrors?: string[],
+) {
   const names = namesForMealCount(profile.mealCount);
   const systemPrompt = [
-    'You are NutriFit AI, a Czech nutrition assistant.',
+    'You are NutriPlan AI, a Czech nutrition assistant.',
     'Return only valid JSON without markdown.',
     'All user-facing JSON string values must be in Czech.',
     'The app is not a medical device, so do not make diagnostic or treatment claims.',
@@ -36,15 +43,32 @@ Jídelníček tréninku rozumně přizpůsob: jídlo bezprostředně před nebo 
 DAILY TARGETS: ${macros.kcal} kcal | Protein ${macros.protein} g | Carbs ${macros.carbs} g | Fat ${macros.fat} g
 PERSON: ${profile.gender === 'muz' ? 'Male' : 'Female'}, ${profile.age} years old, ${profile.weight} kg, goal ${primaryGoalLabel(profile.primaryGoal)}
 DIET: ${profile.diet}
+NUTRITION MODE: ${nutritionModeInstruction(profile.nutritionMode)}
+PLAN INTENSITY: ${profile.planIntensity ?? 'moderate'} (stay safe; never suggest extreme restriction or aggressive training jumps)
 TRAINING DAY CONTEXT: ${trainingContext}
 LIKED FOODS: ${profile.likes || 'no preference'}
 RESTRICTIONS/ALLERGIES: ${profile.dislikes || 'no restrictions'}
 MEALS: ${names.join(', ')}
-
+${repairErrors && repairErrors.length ? `\nPREVIOUS ATTEMPT FAILED VALIDATION — fix exactly these issues and keep daily totals on target:\n- ${repairErrors.slice(0, 4).join('\n- ')}\n` : ''}
 Return JSON:
 {"meals":[{"mealType":"Snídaně","name":"Název","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["150g suroviny"],"steps":["Krok."]}]}`;
 
   return { systemPrompt, prompt, maxTokens: 3500, mealNames: names };
+}
+
+function nutritionModeInstruction(mode: UserProfile['nutritionMode'] = 'balanced'): string {
+  switch (mode) {
+    case 'high_protein':
+      return 'high_protein — prioritize lean protein in every meal while keeping the deterministic macro targets';
+    case 'budget_friendly':
+      return 'budget_friendly — use affordable Czech-store staples, legumes, eggs, dairy, frozen vegetables, rice/potatoes/oats';
+    case 'simple_meal_prep':
+      return 'simple_meal_prep — repeat ingredients intelligently, prefer batch-cookable meals and short prep';
+    case 'endurance_fueling':
+      return 'endurance_fueling — place easy-to-digest carbs around training and keep fats lower before hard sessions';
+    default:
+      return 'balanced — varied, practical meals with no extreme diet framing';
+  }
 }
 
 // ── ALLERGEN REPAIR REQUEST ──────────────────────────────────────────────────
@@ -64,7 +88,7 @@ export function buildAllergenRepairRequest(opts: {
   const { profile, session, current, forbidden, otherMeals = [] } = opts;
 
   const systemPrompt = [
-    'You are NutriFit AI, a Czech nutrition assistant.',
+    'You are NutriPlan AI, a Czech nutrition assistant.',
     'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
     'All user-facing JSON string values must be in Czech.',
     'CRITICAL: The user has allergies/intolerances listed under FORBIDDEN. The meal MUST NOT contain any of these ingredients OR their derivatives (e.g. milk → cheese, butter, cream, casein, whey; gluten → wheat, rye, barley, spelt, semolina; nuts → almond butter, marzipan, pesto with pine nuts).',
@@ -124,7 +148,7 @@ export function buildSingleMealRequest(opts: {
   const { profile, session, current, otherMeals = [] } = opts;
 
   const systemPrompt = [
-    'You are NutriFit AI, a Czech nutrition assistant.',
+    'You are NutriPlan AI, a Czech nutrition assistant.',
     'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
     'All user-facing JSON string values must be in Czech.',
     'The app is not a medical device, so do not make diagnostic or treatment claims.',
@@ -160,5 +184,4 @@ Return JSON:
 
   return { systemPrompt, prompt, maxTokens: 900, mealType: current.mealType };
 }
-
 

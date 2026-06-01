@@ -17,9 +17,14 @@ import { AsyncStorageTokenStore, type OAuthService, type OAuthToken, type OAuthT
 const SECURE_PREFIX = 'nutrifit_oauth_'; // SecureStore key chars limit
 const ALL_SERVICES: OAuthService[] = ['strava', 'whoop', 'garmin', 'polar', 'oura', 'fitbit'];
 
+function isUnitTestRuntime(): boolean {
+  return Boolean((globalThis as any).__NUTRIFIT_TEST__);
+}
+
 async function loadModule(): Promise<any | null> {
+  if (isUnitTestRuntime()) return null;
   try {
-    // @ts-expect-error — expo-secure-store nemusí být v node_modules
+    // @ts-ignore — expo-secure-store nemusí být v node_modules (optional native dep)
     const mod = await import('expo-secure-store');
     return mod;
   } catch {

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NutriFit",
+    "name": "NutriPlan",
     "slug": "nutrifit",
     "scheme": "nutrifit",
     "version": "0.1.0",
@@ -15,10 +15,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "cz.nutrifit.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "NutriFit používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot.",
-        "NSCameraUsageDescription": "NutriFit může použít fotoaparát jen pro vyfocení jídla k orientačnímu odhadu nutričních hodnot.",
-        "NSHealthShareUsageDescription": "NutriFit čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-        "NSHealthUpdateUsageDescription": "NutriFit může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě."
+        "NSPhotoLibraryUsageDescription": "NutriPlan používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot.",
+        "NSCameraUsageDescription": "NutriPlan může použít fotoaparát jen pro vyfocení jídla k orientačnímu odhadu nutričních hodnot.",
+        "NSHealthShareUsageDescription": "NutriPlan čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
+        "NSHealthUpdateUsageDescription": "NutriPlan může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -35,7 +36,7 @@
         "backgroundColor": "#f7f7f4"
       },
       "permissions": [
-        "READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_IMAGES",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_TOTAL_CALORIES_BURNED",
@@ -52,7 +53,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "NutriFit používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot."
+          "photosPermission": "NutriPlan používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot."
         }
       ],
       "expo-status-bar",
@@ -76,16 +77,25 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "NutriFit čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-          "NSHealthUpdateUsageDescription": "NutriFit může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+          "NSHealthShareUsageDescription": "NutriPlan čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
+          "NSHealthUpdateUsageDescription": "NutriPlan může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
           "background": true
         }
       ]
     ],
     "extra": {
       "privacyUrl": "https://nutri-fit-omega.vercel.app/legal.html#privacy",
-      "supportUrl": "mailto:koval.macek@gmail.com?subject=NutriFit%20podpora",
-      "deletionUrl": "https://nutri-fit-omega.vercel.app/delete-account.html"
+      "supportUrl": "mailto:koval.macek@gmail.com?subject=NutriPlan%20podpora",
+      "deletionUrl": "https://nutri-fit-omega.vercel.app/delete-account.html",
+      "eas": {
+        "projectId": "62f6c2fe-df52-45c5-b680-13c8ba2d703e"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/62f6c2fe-df52-45c5-b680-13c8ba2d703e"
     }
   }
 }

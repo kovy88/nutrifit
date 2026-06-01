@@ -8,7 +8,10 @@ import type {
   DailyPlanRecord,
   DailyFoodLogRecord,
   DailySessionRecord,
+  TrainingCompletionRecord,
+  TrainingCompletionRecordMap,
 } from '../types';
+import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
 import { NoopNotificationScheduler } from '../lib/notifications';
@@ -27,6 +30,9 @@ const keys = {
   sessionsByDate: 'nutrifit.sessionsByDate.v1',
   weightsByDate: 'nutrifit.weightsByDate.v1',
   checkIns: 'nutrifit.checkIns.v1',
+  trainingCompletionsByDate: 'nutrifit.trainingCompletionsByDate.v1',
+  dailyCoachHistory: 'nutrifit.dailyCoachHistory.v1',
+  coachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
   /** Rozpracovaný onboarding (step + draft profile + last-touched). */
@@ -80,11 +86,14 @@ async function pruneDateBoundedStores(): Promise<void> {
     return next;
   };
 
-  const [plans, logs, sessions, weights] = await Promise.all([
+  const [plans, logs, sessions, weights, completions, coachHistory, coachThreads] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
     loadSessionsByDate(),
     loadWeights(),
+    loadTrainingCompletionsByDate(),
+    loadDailyCoachHistory(),
+    loadCoachThreadsByDate(),
   ]);
 
   await Promise.all([
@@ -92,6 +101,9 @@ async function pruneDateBoundedStores(): Promise<void> {
     AsyncStorage.setItem(keys.foodLogsByDate, JSON.stringify(filter(logs))),
     AsyncStorage.setItem(keys.sessionsByDate, JSON.stringify(filter(sessions))),
     AsyncStorage.setItem(keys.weightsByDate, JSON.stringify(filter(weights))),
+    AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(filter(completions))),
+    AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(filter(coachHistory))),
+    AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(filter(coachThreads))),
   ]);
 }
 
@@ -163,12 +175,95 @@ export async function saveSessionForDate(date: DateKey, session: TrainingSession
   await AsyncStorage.setItem(keys.sessionsByDate, JSON.stringify(all));
 }
 
+export async function loadTrainingCompletionsByDate(): Promise<TrainingCompletionRecordMap> {
+  const data = await readJson<TrainingCompletionRecordMap>(keys.trainingCompletionsByDate);
+  return data || {};
+}
+
+export async function saveTrainingCompletionForDate(date: DateKey, record: TrainingCompletionRecord): Promise<void> {
+  const all = await loadTrainingCompletionsByDate();
+  all[date] = record;
+  await AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(all));
+}
+
+export async function saveTrainingCompletionsByDate(records: TrainingCompletionRecordMap): Promise<void> {
+  await AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(records));
+}
+
+export async function loadDailyCoachHistory(): Promise<DailyCoachHistoryMap> {
+  const data = await readJson<DailyCoachHistoryMap>(keys.dailyCoachHistory);
+  return data || {};
+}
+
+export async function saveDailyCoachRecommendationForDate(
+  date: DateKey,
+  recommendation: DailyCoachRecommendation,
+  memory: CoachMemory,
+): Promise<void> {
+  const all = await loadDailyCoachHistory();
+  const now = new Date().toISOString();
+  const existing = all[date];
+  all[date] = {
+    date,
+    recommendation,
+    memory,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(all));
+}
+
+export async function saveDailyCoachHistory(history: DailyCoachHistoryMap): Promise<void> {
+  await AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(history));
+}
+
+export async function loadCoachThreadsByDate(): Promise<CoachThreadRecordMap> {
+  const data = await readJson<CoachThreadRecordMap>(keys.coachThreadsByDate);
+  return data || {};
+}
+
+export async function saveCoachThreadForDate(
+  date: DateKey,
+  messages: CoachMessage[],
+  memory: CoachMemory,
+): Promise<CoachThreadRecord> {
+  const all = await loadCoachThreadsByDate();
+  const now = new Date().toISOString();
+  const existing = all[date];
+  const bounded = messages.slice(-40);
+  const next: CoachThreadRecord = {
+    date,
+    messages: bounded,
+    memory,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  all[date] = next;
+  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(all));
+  return next;
+}
+
+export async function saveCoachThreadsByDate(threads: CoachThreadRecordMap): Promise<void> {
+  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(threads));
+}
+
 export async function listStoredDates(): Promise<DateKey[]> {
   const [plans, logs] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
   ]);
-  const dates = new Set([...Object.keys(plans), ...Object.keys(logs)]);
+  const [completions, coachHistory, coachThreads] = await Promise.all([
+    loadTrainingCompletionsByDate(),
+    loadDailyCoachHistory(),
+    loadCoachThreadsByDate(),
+  ]);
+  const dates = new Set([
+    ...Object.keys(plans),
+    ...Object.keys(logs),
+    ...Object.keys(completions),
+    ...Object.keys(coachHistory),
+    ...Object.keys(coachThreads),
+  ]);
   return Array.from(dates).sort();
 }
 

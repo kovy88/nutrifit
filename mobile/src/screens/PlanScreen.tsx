@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { useNutriFit } from '../context/NutriFitContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
 import type { Meal } from '../types';
 import { DateHeader } from '../components/DateHeader';
 import { useLanguage } from '../context/LanguageContext';
+import { useNavigation } from '@react-navigation/native';
 
 function PlanLoadingIndicator() {
   const { t } = useLanguage();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [msgIdx, setMsgIdx] = useState(0);
   const messages = [
     t('plan.loading0'),
@@ -51,6 +54,8 @@ export function PlanScreen() {
     selectedDate,
   } = useNutriFit();
   const { t } = useLanguage();
+  const { colors } = useTheme();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
@@ -80,6 +85,7 @@ export function PlanScreen() {
   const activeProfile = profile;
   const activeMacros = todayMacros;
   const shoppingGroups = buildShoppingList(meals);
+  const styles = makeStyles(colors);
 
   async function generate() {
     const consent = await ensureAiConsent();
@@ -178,6 +184,11 @@ export function PlanScreen() {
       <H1>{t('plan.title')}</H1>
       <Subtitle>{t('plan.subtitle', { date: formatDateLabel(selectedDate), goal: todaySession?.title || t('plan.restDayGoal') })}</Subtitle>
 
+      <View style={styles.navRow}>
+        <Button variant="secondary" style={styles.navBtn} onPress={() => navigation.navigate('Trénink')}>{t('plan.openTraining')}</Button>
+        <Button variant="secondary" style={styles.navBtn} onPress={() => navigation.navigate('Foto')}>{t('plan.openPhoto')}</Button>
+      </View>
+
       <Card>
         <Label>{t('plan.prefsTitle')}</Label>
         <Field value={likes} onChangeText={setLikes} placeholder={t('plan.likesPlaceholder')} multiline />
@@ -256,6 +267,8 @@ export function PlanScreen() {
 
 function MealDetailModal({ meal, onClose }: { meal: Meal | null; onClose: () => void }) {
   const { t } = useLanguage();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <Modal visible={Boolean(meal)} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
@@ -283,8 +296,12 @@ function MealDetailModal({ meal, onClose }: { meal: Meal | null; onClose: () => 
   );
 }
 
-const styles = StyleSheet.create({
+type ThemeColors = ReturnType<typeof useTheme>['colors'];
+
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
+  navRow: { flexDirection: 'row', gap: 10 },
+  navBtn: { flex: 1 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   small: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   empty: { color: colors.faint },
@@ -292,20 +309,20 @@ const styles = StyleSheet.create({
   mealType: { color: colors.green, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.8 },
   mealName: { color: colors.ink, fontWeight: '900', fontSize: 17 },
   macroRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  macroPill: { color: colors.ink, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontWeight: '800', fontSize: 12, backgroundColor: '#fbfbf8' },
+  macroPill: { color: colors.ink, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontWeight: '800', fontSize: 12, backgroundColor: colors.isDark ? '#151d1a' : '#fbfbf8' },
   ingredients: { color: colors.muted, lineHeight: 20 },
   link: { color: colors.green, fontWeight: '900' },
   shoppingGroup: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, gap: 4 },
   shoppingTitle: { color: colors.ink, fontWeight: '900' },
   shoppingItem: { color: colors.muted, lineHeight: 20 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25, 33, 29, 0.38)' },
+  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
   modalSheet: { maxHeight: '82%', backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
   modalContent: { gap: 12, paddingBottom: 6 },
   modalTitle: { color: colors.ink, fontSize: 22, fontWeight: '900' },
   detailLine: { color: colors.muted, fontSize: 15, lineHeight: 22 },
   planDisclaimer: { color: colors.faint, fontSize: 12, lineHeight: 18, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, fontStyle: 'italic' },
-  loadingCard: { alignItems: 'center', paddingVertical: 30, gap: 14, backgroundColor: '#f4fbf7', borderColor: '#dcf2e6', borderWidth: 1, marginVertical: 10 },
+  loadingCard: { alignItems: 'center', paddingVertical: 30, gap: 14, backgroundColor: colors.isDark ? '#151d1a' : '#f4fbf7', borderColor: colors.isDark ? colors.border : '#dcf2e6', borderWidth: 1, marginVertical: 10 },
   loadingText: { color: colors.green, fontSize: 16, fontWeight: '900', textAlign: 'center', marginTop: 10 },
   loadingSub: { color: colors.muted, fontSize: 13, textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
 });

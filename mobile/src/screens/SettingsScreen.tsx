@@ -33,6 +33,7 @@ import { useGarminConnect } from '../hooks/useGarminConnect';
 import { useOuraConnect } from '../hooks/useOuraConnect';
 import { useLanguage } from '../context/LanguageContext';
 import { SUPPORTED_LOCALES, LOCALE_LABELS } from '../lib/i18n';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import type { OAuthService } from '../lib/health';
 
 // Mirror of app.json `extra`. Kept here as plain constants so the screen has
@@ -43,48 +44,18 @@ const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
 type OAuthSourceMeta = {
   service: OAuthService;
   label: string;
-  description: string;
+  descKey: TranslationKey;
   /** Hint na to, jaké datové kategorie zdroj poskytuje. */
-  provides: string;
+  providesKey: TranslationKey;
 };
 
 const OAUTH_SOURCES: OAuthSourceMeta[] = [
-  {
-    service: 'strava',
-    label: 'Strava',
-    description: 'Tréninky (běh, kolo, plavání, …) s GPS a HR.',
-    provides: 'tréninky',
-  },
-  {
-    service: 'whoop',
-    label: 'Whoop',
-    description: 'Spánek, HRV, klidový tep a recovery. Vyžaduje aktivní Whoop subscription.',
-    provides: 'spánek · HRV · RHR',
-  },
-  {
-    service: 'garmin',
-    label: 'Garmin Connect',
-    description: 'Tréninky + denní aktivita + spánek + HR. Vyžaduje schválení Garmin partner programem.',
-    provides: 'kroky · tréninky · spánek',
-  },
-  {
-    service: 'polar',
-    label: 'Polar Flow',
-    description: 'Tréninky a HR z Polar hodinek.',
-    provides: 'tréninky · HR',
-  },
-  {
-    service: 'oura',
-    label: 'Oura Ring',
-    description: 'Spánek, HRV, recovery, teplota.',
-    provides: 'spánek · HRV · RHR',
-  },
-  {
-    service: 'fitbit',
-    label: 'Fitbit',
-    description: 'Kroky, spánek, HR z Fitbit hodinek.',
-    provides: 'kroky · spánek · HR',
-  },
+  { service: 'strava', label: 'Strava', descKey: 'settings.srcStravaDesc', providesKey: 'settings.srcStravaProvides' },
+  { service: 'whoop', label: 'Whoop', descKey: 'settings.srcWhoopDesc', providesKey: 'settings.srcWhoopProvides' },
+  { service: 'garmin', label: 'Garmin Connect', descKey: 'settings.srcGarminDesc', providesKey: 'settings.srcGarminProvides' },
+  { service: 'polar', label: 'Polar Flow', descKey: 'settings.srcPolarDesc', providesKey: 'settings.srcPolarProvides' },
+  { service: 'oura', label: 'Oura Ring', descKey: 'settings.srcOuraDesc', providesKey: 'settings.srcOuraProvides' },
+  { service: 'fitbit', label: 'Fitbit', descKey: 'settings.srcFitbitDesc', providesKey: 'settings.srcFitbitProvides' },
 ];
 
 export function SettingsScreen() {
@@ -110,10 +81,7 @@ export function SettingsScreen() {
   function handleConnect(service: OAuthService) {
     if (service === 'strava') {
       if (strava.status === 'unavailable') {
-        Alert.alert(
-          'Strava není nakonfigurovaná',
-          'Aplikace nezná Strava client ID. Doplň `EXPO_PUBLIC_STRAVA_CLIENT_ID` do `.env` a po rebuildovi to půjde.',
-        );
+        Alert.alert(t('settings.stravaNotConfTitle'), t('settings.stravaNotConfMsg'));
         return;
       }
       void strava.connect();
@@ -121,10 +89,7 @@ export function SettingsScreen() {
     }
     if (service === 'whoop') {
       if (whoop.status === 'unavailable') {
-        Alert.alert(
-          'Whoop není nakonfigurovaný',
-          'Aplikace nezná Whoop client ID. Doplň `EXPO_PUBLIC_WHOOP_CLIENT_ID` do `.env` (a nastav `WHOOP_CLIENT_SECRET` na Vercelu) a po rebuildovi to půjde.',
-        );
+        Alert.alert(t('settings.whoopNotConfTitle'), t('settings.whoopNotConfMsg'));
         return;
       }
       void whoop.connect();
@@ -132,10 +97,7 @@ export function SettingsScreen() {
     }
     if (service === 'garmin') {
       if (garmin.status === 'unavailable') {
-        Alert.alert(
-          'Garmin Connect není nakonfigurovaný',
-          'Aplikace nezná Garmin client ID. Doplň `EXPO_PUBLIC_GARMIN_CLIENT_ID` do `.env` (a `GARMIN_CLIENT_SECRET` na Vercelu). Pozn: Garmin developer access vyžaduje review (~2 týdny).',
-        );
+        Alert.alert(t('settings.garminNotConfTitle'), t('settings.garminNotConfMsg'));
         return;
       }
       void garmin.connect();
@@ -143,28 +105,20 @@ export function SettingsScreen() {
     }
     if (service === 'oura') {
       if (oura.status === 'unavailable') {
-        Alert.alert(
-          'Oura není nakonfigurovaná',
-          'Aplikace nezná Oura client ID. Registrace na https://cloud.ouraring.com/oauth/applications, pak doplň `EXPO_PUBLIC_OURA_CLIENT_ID` do `.env` + `OURA_CLIENT_SECRET` na Vercelu.',
-        );
+        Alert.alert(t('settings.ouraNotConfTitle'), t('settings.ouraNotConfMsg'));
         return;
       }
       void oura.connect();
       return;
     }
     // TODO(oauth): Polar, Fitbit — stejný pattern.
-    Alert.alert(
-      `Připojit ${service}`,
-      'OAuth flow pro tuhle službu se chystá. Strava, Whoop, Garmin a Oura jsou hotové, zbytek následuje stejným patternem.',
-    );
+    Alert.alert(t('settings.connectGenericTitle', { service }), t('settings.connectGenericMsg'));
   }
 
   function handleConnectNative() {
     Alert.alert(
-      native.platform === 'ios' ? 'Apple Health' : 'Health Connect',
-      native.platform === 'ios'
-        ? 'Reálné napojení vyžaduje EAS Build s nainstalovaným @kingstinct/react-native-healthkit a HealthKit entitlement v app.json.'
-        : 'Reálné napojení vyžaduje EAS Build s nainstalovaným react-native-health-connect a Android 14+ (nebo Health Connect z Play Store).',
+      native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
+      native.platform === 'ios' ? t('settings.iosInstrMsg') : t('settings.androidInstrMsg'),
     );
   }
 
@@ -173,7 +127,7 @@ export function SettingsScreen() {
    *  because the endpoint is auth-gated (api/export-data). */
   async function handleExport() {
     if (!user) {
-      Alert.alert('Export dat', 'Pro export svých dat ze serveru se nejdřív přihlas v profilu.');
+      Alert.alert(t('settings.exportTitle'), t('settings.exportSignIn'));
       return;
     }
     setExporting(true);
@@ -182,9 +136,9 @@ export function SettingsScreen() {
       const json = JSON.stringify(data, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}nutrifit-export-${new Date().toISOString().slice(0, 10)}.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
-      await Share.share({ url: fileUri, title: 'NutriFit export dat' });
+      await Share.share({ url: fileUri, title: t('settings.exportShareTitle') });
     } catch (err) {
-      Alert.alert('Export se nepodařil', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+      Alert.alert(t('settings.exportFailed'), err instanceof Error ? err.message : t('common.tryAgain'));
     } finally {
       setExporting(false);
     }
@@ -195,14 +149,12 @@ export function SettingsScreen() {
    *  purge, profile becomes null and RootNavigator returns to onboarding. */
   function handleDeleteAccount() {
     Alert.alert(
-      'Smazat účet a data?',
-      user
-        ? 'Trvale smažeme tvůj účet a všechna data na serveru i v telefonu. Tuto akci nelze vrátit zpět.'
-        : 'Smažeme všechna data v telefonu (profil, plány, záznamy, váhu, tokeny). Tuto akci nelze vrátit zpět.',
+      t('settings.deleteTitle'),
+      user ? t('settings.deleteMsgUser') : t('settings.deleteMsgLocal'),
       [
-        { text: 'Zrušit', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Smazat',
+          text: t('settings.deleteConfirm'),
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
@@ -211,7 +163,7 @@ export function SettingsScreen() {
               await purgeAllUserData();
               if (user) await signOut();
             } catch (err) {
-              Alert.alert('Smazání se nepodařilo', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+              Alert.alert(t('settings.deleteFailed'), err instanceof Error ? err.message : t('common.tryAgain'));
             } finally {
               setDeleting(false);
             }
@@ -223,7 +175,7 @@ export function SettingsScreen() {
 
   function openUrl(url: string) {
     Linking.openURL(url).catch(() =>
-      Alert.alert('Nepodařilo se otevřít odkaz', url),
+      Alert.alert(t('settings.openLinkFailed'), url),
     );
   }
 
@@ -250,9 +202,9 @@ export function SettingsScreen() {
         <Card>
           <Label>{t('settings.morningCoaching')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            Pošleme ti každé ráno push s readiness + dnešním tréninkem + úpravou jídelníčku.{'\n\n'}
+            {t('settings.morningBody')}{'\n\n'}
             <Text style={{ fontStyle: 'italic', color: colors.faint }}>
-              Reálné notifikace fungují až po `npx expo install expo-notifications` + EAS Build. Zatím se nastavení pamatuje a tělo zprávy je vidět v Pokrok obrazovce.
+              {t('settings.morningNote')}
             </Text>
           </Text>
           <View style={styles.briefingRow}>
@@ -260,7 +212,7 @@ export function SettingsScreen() {
               active={briefing.settings.enabled}
               onPress={() => briefing.update({ enabled: !briefing.settings.enabled })}
             >
-              {briefing.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+              {briefing.settings.enabled ? t('settings.on') : t('settings.off')}
             </Pill>
             <Text style={[styles.briefingTime, { color: colors.ink }]}>
               {String(briefing.settings.hour).padStart(2, '0')}:{String(briefing.settings.minute).padStart(2, '0')}
@@ -268,7 +220,7 @@ export function SettingsScreen() {
           </View>
           {briefing.settings.enabled && (
             <>
-              <Label>Čas notifikace</Label>
+              <Label>{t('settings.notifTime')}</Label>
               <View style={styles.timeRow}>
                 {[6, 7, 8, 9, 10].map(h => (
                   <Pill
@@ -282,12 +234,12 @@ export function SettingsScreen() {
               </View>
               {briefing.permission !== 'granted' && briefing.permission !== 'unavailable' && (
                 <Button variant="secondary" onPress={briefing.requestPermission}>
-                  Povolit notifikace v systému
+                  {t('settings.allowNotif')}
                 </Button>
               )}
               {briefing.permission === 'unavailable' && (
                 <Text style={[styles.note, { color: colors.faint }]}>
-                  💡 Expo Go bez balíčku `expo-notifications` neumí native notifikace. Nastavení se uloží a aktivuje po doinstalování.
+                  {t('settings.expoGoNote')}
                 </Text>
               )}
             </>
@@ -296,24 +248,24 @@ export function SettingsScreen() {
 
         {/* ── Pre-workout fueling reminder ───────────────────────────────── */}
         <Card>
-          <Label>🍌 Pre-workout fueling reminder</Label>
+          <Label>{t('settings.preTitle')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            X minut před plánovaným tréninkem dostaneš push s přesnými dávkami sacharidů + bílkovin podle workout intensity a tvé váhy.
+            {t('settings.preBody')}
           </Text>
           <View style={styles.briefingRow}>
             <Pill
               active={preWorkout.settings.enabled}
               onPress={() => preWorkout.update({ enabled: !preWorkout.settings.enabled })}
             >
-              {preWorkout.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+              {preWorkout.settings.enabled ? t('settings.on') : t('settings.off')}
             </Pill>
             <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
-              {preWorkout.settings.minutesBefore} min předem
+              {t('settings.minBefore', { m: preWorkout.settings.minutesBefore })}
             </Text>
           </View>
           {preWorkout.settings.enabled && (
             <>
-              <Label>Kdy upozornit</Label>
+              <Label>{t('settings.whenNotify')}</Label>
               <View style={styles.timeRow}>
                 {[30, 60, 90, 120].map(m => (
                   <Pill
@@ -326,7 +278,7 @@ export function SettingsScreen() {
                 ))}
               </View>
               <Text style={[styles.note, { color: colors.faint }]}>
-                💡 Reminder se neplánuje pro rest day. Tréninkový čas se odhaduje (ranní pro běh, večerní pro silovku).
+                {t('settings.preNote')}
               </Text>
             </>
           )}
@@ -334,24 +286,24 @@ export function SettingsScreen() {
 
         {/* ── Post-workout refuel reminder ───────────────────────────────── */}
         <Card>
-          <Label>🔋 Post-workout refuel reminder</Label>
+          <Label>{t('settings.postTitle')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            X minut po skončení tréninku ti připomeneme anabolic window — protein + sacharidy pro regeneraci.
+            {t('settings.postBody')}
           </Text>
           <View style={styles.briefingRow}>
             <Pill
               active={postWorkout.settings.enabled}
               onPress={() => postWorkout.update({ enabled: !postWorkout.settings.enabled })}
             >
-              {postWorkout.settings.enabled ? '✓ Zapnuto' : 'Vypnuto'}
+              {postWorkout.settings.enabled ? t('settings.on') : t('settings.off')}
             </Pill>
             <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
-              {postWorkout.settings.minutesAfter} min po
+              {t('settings.minAfter', { m: postWorkout.settings.minutesAfter })}
             </Text>
           </View>
           {postWorkout.settings.enabled && (
             <>
-              <Label>Kdy upozornit</Label>
+              <Label>{t('settings.whenNotify')}</Label>
               <View style={styles.timeRow}>
                 {[0, 5, 15, 30].map(m => (
                   <Pill
@@ -359,12 +311,12 @@ export function SettingsScreen() {
                     active={postWorkout.settings.minutesAfter === m}
                     onPress={() => postWorkout.update({ minutesAfter: m })}
                   >
-                    {m === 0 ? 'Hned po' : `+${m} min`}
+                    {m === 0 ? t('settings.rightAfter') : t('settings.plusMin', { m })}
                   </Pill>
                 ))}
               </View>
               <Text style={[styles.note, { color: colors.faint }]}>
-                💡 Pro hypertrofii doporučujeme do 30 min — "anabolic window" pro maximální resyntézu svalového proteinu.
+                {t('settings.postNote')}
               </Text>
             </>
           )}
@@ -374,38 +326,37 @@ export function SettingsScreen() {
         <Card>
           <Label>
             {native.platform === 'ios'
-              ? '🍎 Apple Health'
+              ? t('settings.nativeIos')
               : native.platform === 'android'
-                ? '🤖 Health Connect (Android)'
-                : '⚪ Nativní zdroj'}
+                ? t('settings.nativeAndroid')
+                : t('settings.nativeGeneric')}
           </Label>
           <Text style={[styles.body, { color: colors.muted }]}>
             {native.platform === 'unsupported'
-              ? 'Tato platforma nemá unifikované health API. Použij OAuth zdroje nebo manuální zápis.'
+              ? t('settings.nativeUnsupported')
               : native.available
-                ? `Stav: ${formatPermission(native.permission)}. Načítá kroky, spánek, RHR, HRV a tréninky.`
+                ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
                 : native.platform === 'ios'
-                  ? 'Zatím nedostupné v této verzi — bude aktivní po EAS Build s HealthKit pluginem.'
-                  : 'Zatím nedostupné — bude aktivní po EAS Build s Health Connect pluginem.'}
+                  ? t('settings.nativeIosSoon')
+                  : t('settings.nativeAndroidSoon')}
           </Text>
           {native.platform !== 'unsupported' && (
             <Text style={[styles.note, { color: colors.faint }]}>
-              💡 Tip: Pokud nosíš Zepp / Mi Band / Amazfit / Garmin / Suunto, zapni v jejich appce sync do{' '}
-              {native.platform === 'ios' ? 'Apple Health' : 'Health Connect'} — pak dorazí data automaticky sem.
+              {t('settings.nativeTip', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
             </Text>
           )}
           {native.platform !== 'unsupported' && (
             <Button variant="secondary" onPress={handleConnectNative}>
-              Detail / instrukce
+              {t('settings.detailInstructions')}
             </Button>
           )}
         </Card>
 
         {/* ── OAuth sources ──────────────────────────────────────────────── */}
         <Card>
-          <Label>Online služby (OAuth)</Label>
+          <Label>{t('settings.oauthTitle')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            Propojení skrz oficiální API. Token zůstává jen na tvém telefonu a my ho můžeme kdykoliv smazat.
+            {t('settings.oauthBody')}
           </Text>
 
           {OAUTH_SOURCES.map(src => {
@@ -421,37 +372,37 @@ export function SettingsScreen() {
                       </Text>
                     )}
                   </View>
-                  <Text style={[styles.sourceDesc, { color: colors.muted }]}>{src.description}</Text>
-                  <Text style={[styles.sourceProvides, { color: colors.faint }]}>Poskytuje: {src.provides}</Text>
+                  <Text style={[styles.sourceDesc, { color: colors.muted }]}>{t(src.descKey)}</Text>
+                  <Text style={[styles.sourceProvides, { color: colors.faint }]}>{t('settings.provides', { x: t(src.providesKey) })}</Text>
                   {src.service === 'strava' && strava.status === 'error' && strava.error && (
                     <Text style={[styles.sourceError, { color: colors.red }]}>
-                      Chyba: {strava.error}
+                      {t('settings.errorPrefix', { e: strava.error })}
                     </Text>
                   )}
                   {src.service === 'strava' && strava.athleteName && connected && (
                     <Text style={[styles.sourceProvides, { color: colors.green }]}>
-                      Atlet: {strava.athleteName}
+                      {t('settings.athlete', { name: strava.athleteName })}
                     </Text>
                   )}
                   {src.service === 'whoop' && whoop.status === 'error' && whoop.error && (
                     <Text style={[styles.sourceError, { color: colors.red }]}>
-                      Chyba: {whoop.error}
+                      {t('settings.errorPrefix', { e: whoop.error })}
                     </Text>
                   )}
                   {src.service === 'garmin' && garmin.status === 'error' && garmin.error && (
                     <Text style={[styles.sourceError, { color: colors.red }]}>
-                      Chyba: {garmin.error}
+                      {t('settings.errorPrefix', { e: garmin.error })}
                     </Text>
                   )}
                   {src.service === 'oura' && oura.status === 'error' && oura.error && (
                     <Text style={[styles.sourceError, { color: colors.red }]}>
-                      Chyba: {oura.error}
+                      {t('settings.errorPrefix', { e: oura.error })}
                     </Text>
                   )}
                 </View>
                 <View style={styles.sourceButtons}>
                   {connected ? (
-                    <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect)}>
+                    <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect, t)}>
                       {t('settings.disconnect')}
                     </Button>
                   ) : (
@@ -480,69 +431,67 @@ export function SettingsScreen() {
 
         {/* ── Closed ecosystems (no public API) ──────────────────────────── */}
         <Card>
-          <Label>Bez vlastního API</Label>
+          <Label>{t('settings.noApiTitle')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            Některé ekosystémy (Zepp / Mi Fit / Amazfit, Suunto, Withings na starší modely) nemají veřejné API.{'\n\n'}
-            Funkční cesta: v jejich vlastní appce zapni sync do{' '}
-            {native.platform === 'ios' ? 'Apple Health' : 'Health Connect'} — data potom dorazí sem přes nativní zdroj.
+            {t('settings.noApiBody', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
           </Text>
         </Card>
 
         {/* ── Privacy & data (GDPR: export + erase + policy) ─────────────── */}
         <Card>
-          <Label>🔒 Soukromí a data</Label>
+          <Label>{t('settings.privacyTitle')}</Label>
           <Text style={[styles.body, { color: colors.muted }]}>
-            Máš plnou kontrolu nad svými daty. Můžeš si je kdykoliv vyexportovat nebo trvale smazat účet.
+            {t('settings.privacyBody')}
           </Text>
 
           <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>
-            Zásady ochrany osobních údajů
+            {t('settings.privacyPolicy')}
           </Button>
           <View style={styles.privacySpacer} />
           <Button variant="secondary" onPress={() => openUrl(TERMS_URL)}>
-            Podmínky použití
+            {t('settings.terms')}
           </Button>
           <View style={styles.privacySpacer} />
           <Button variant="secondary" disabled={exporting} onPress={handleExport}>
-            {exporting ? 'Exportuji…' : 'Exportovat moje data (JSON)'}
+            {exporting ? t('settings.exporting') : t('settings.exportData')}
           </Button>
           <View style={styles.privacySpacer} />
           <Button variant="danger" disabled={deleting} onPress={handleDeleteAccount}>
-            {deleting ? 'Mažu…' : user ? 'Smazat účet a data' : 'Smazat data z telefonu'}
+            {deleting ? t('settings.deleting') : user ? t('settings.deleteAccountBtn') : t('settings.deleteLocalBtn')}
           </Button>
           {!user && (
             <Text style={[styles.note, { color: colors.faint }]}>
-              💡 Nejsi přihlášen — smaže se jen lokální kopie dat na tomto telefonu.
+              {t('settings.notSignedInNote')}
             </Text>
           )}
         </Card>
 
         {isLoading && (
-          <Text style={[styles.loading, { color: colors.faint }]}>Načítám stav zdrojů…</Text>
+          <Text style={[styles.loading, { color: colors.faint }]}>{t('settings.loadingSources')}</Text>
         )}
       </ScrollView>
     </Screen>
   );
 }
 
-function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) => Promise<void>) {
+function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) => Promise<void>, t: Translate) {
   Alert.alert(
-    `Odpojit ${src.label}?`,
-    'Token bude smazán z telefonu. Data, která jsme z této služby v minulosti načetli, nebudou ovlivněna.',
+    t('settings.disconnectTitle', { label: src.label }),
+    t('settings.disconnectMsg'),
     [
-      { text: 'Zrušit', style: 'cancel' },
-      { text: 'Odpojit', style: 'destructive', onPress: () => disconnect(src.service) },
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.disconnect'), style: 'destructive', onPress: () => disconnect(src.service) },
     ],
   );
 }
 
-function formatPermission(p: string): string {
+function formatPermission(p: string, t: Translate): string {
   switch (p) {
-    case 'granted':  return 'aktivní';
-    case 'partial':  return 'částečně povoleno';
-    case 'denied':   return 'odmítnuto';
-    case 'not_determined': return 'čeká na povolení';
-    case 'unavailable': return 'nedostupné';
+    case 'granted':  return t('settings.permGranted');
+    case 'partial':  return t('settings.permPartial');
+    case 'denied':   return t('settings.permDenied');
+    case 'not_determined': return t('settings.permNotDetermined');
+    case 'unavailable': return t('settings.permUnavailable');
     default: return p;
   }
 }

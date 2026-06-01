@@ -1,10 +1,12 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, H1, Label, Subtitle, FadeInView } from '../components/UI';
+import { Button, Card, H1, Label, Subtitle, FadeInView } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { colors } from '../constants/theme';
 import { useNutriFit } from '../context/NutriFitContext';
-import { buildTrainingSessionForDate, toDateKey, formatDateLabel } from '../utils/nutrition';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
+import { toDateKey, formatDateLabel } from '../utils/nutrition';
+import { planSessionForDate } from '../lib/training';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -20,6 +22,7 @@ export function TrainingScreen() {
   const { colors: themeColors, fonts } = useTheme();
   const { t } = useLanguage();
   const recent = useRecentWorkouts(14);
+  const { completion, mark } = useTrainingCompletion();
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSummary | null>(null);
 
   if (!profile) return null;
@@ -39,7 +42,7 @@ export function TrainingScreen() {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       const dateKey = toDateKey(d);
-      const session = buildTrainingSessionForDate(profile, d);
+      const session = planSessionForDate(profile, d, { recentWorkouts: recent.workouts });
       
       const dayLabel = t('training.weekdayFull', { dow: d.getDay() });
 
@@ -57,7 +60,7 @@ export function TrainingScreen() {
 
   function handleSelectDay(dateKey: string) {
     setSelectedDate(dateKey);
-    navigation.navigate('Dnes');
+    navigation.navigate('Main', { screen: 'Dnes' });
   }
 
   const weekList = getWeekSessions();
@@ -66,6 +69,21 @@ export function TrainingScreen() {
     <Screen>
       <H1>{t('training.title')}</H1>
       <Subtitle>{t('training.subtitle', { goal: profile.trainingGoal.toUpperCase().replace('_', ' ') })}</Subtitle>
+
+      <Card>
+        <Label>{t('training.selectedStatus')}</Label>
+        <Text style={{ color: completion?.status === 'completed' ? themeColors.green : themeColors.muted, fontWeight: '800' }}>
+          {completion?.status === 'completed' ? t('today.completed') : t('training.notMarked')}
+        </Text>
+        <View style={styles.completionActions}>
+          <Button disabled={completion?.status === 'completed'} onPress={() => mark('completed')}>
+            {completion?.status === 'completed' ? t('today.completed') : t('today.markDone')}
+          </Button>
+          <Button variant="secondary" onPress={() => mark('skipped')}>
+            {t('training.markSkipped')}
+          </Button>
+        </View>
+      </Card>
 
       <View style={styles.daysList}>
         {weekList.map((item, idx) => {
@@ -178,6 +196,7 @@ const styles = StyleSheet.create({
   workoutsList: { gap: 10 },
   pressableCard: { width: '100%' },
   dayCard: { padding: 14, gap: 10 },
+  completionActions: { gap: 8 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dayLabel: { fontSize: 16 },
   badges: { flexDirection: 'row', gap: 6 },

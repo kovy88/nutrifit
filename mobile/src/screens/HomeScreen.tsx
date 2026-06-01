@@ -13,7 +13,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import { useDailyHealth } from '../hooks/useDailyHealth';
-import { useDailyCoaching } from '../hooks/useDailyCoaching';
+import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import type { ReadinessLevel } from '../lib/coaching/readiness';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
 import type { LoadStatus } from '../lib/coaching/trainingLoad';
@@ -39,14 +40,16 @@ export function HomeScreen() {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
+  const { completion, mark: markTraining } = useTrainingCompletion();
   const [manual, setManual] = useState({ foodName: '', kcal: '', protein: '', carbs: '', fat: '' });
   const [weightInput, setWeightInput] = useState('');
   // Health snapshot for today (steps / sleep / RHR / latest weight from provider).
   // In dev returns deterministic mock; in production returns Manual data (empty
   // until user enters values, or until AppleHealthProvider lands).
   const health = useDailyHealth(new Date(selectedDate));
-  // Readiness assessment (green / yellow / red) from sleep + HRV + RHR.
-  const coaching = useDailyCoaching(new Date(selectedDate));
+  // Daily coach recommendation (readiness score 0–100 + coach note + focus) and the
+  // underlying coaching state (assessment / strain / load / debts) in one fetch.
+  const { recommendation: rec, coaching } = useDailyCoachRecommendation(new Date(selectedDate));
   // If readiness suggests a reduction, compute what the downgraded session would look like
   // (we don't apply it automatically — user taps "Snížit intenzitu" CTA on the readiness card).
   const suggestedDowngrade = todaySession ? applyReadinessToSession(todaySession, coaching.assessment) : null;
@@ -91,6 +94,11 @@ export function HomeScreen() {
     Alert.alert(t('home.alertSuccess'), t('home.alertWeightSaved', { w: val, date: formatDateLabel(selectedDate) }));
   }
 
+  async function markTodayDone() {
+    await markTraining('completed');
+    Alert.alert(t('today.completedTitle'), t('today.completedMsg'));
+  }
+
   // Get last 7 calendar days leading to selectedDate
   function getLast7DaysWeights() {
     const list = [];
@@ -117,33 +125,53 @@ export function HomeScreen() {
       <H1>{t('home.title')}</H1>
       <Subtitle>{t(`goal.${profile.primaryGoal}` as TranslationKey)} · {t(`diet.${profile.diet}` as TranslationKey)} · BMI {macros.bmi}</Subtitle>
 
-      {/* Morning briefing — synthesises today's session + readiness + load + macros
-          into a single human sentence. Same content will feed the morning push
-          notification once expo-notifications lands. */}
-      {(() => {
-        const briefing = composeMorningBriefing({
-          session: todaySession,
-          readiness: coaching.assessment,
-          trainingLoad: coaching.trainingLoad,
-          macros,
-          baselineMacros,
-          locale,
-        });
-        return (
-          <FadeInView delay={60}>
-            <Card style={[styles.briefingCard, { borderColor: colors.green }]}>
-              <View style={styles.briefingHeader}>
-                <Text style={styles.briefingEmoji}>{briefing.emoji}</Text>
-                <Text style={[styles.briefingHeadline, { color: colors.ink }]}>{briefing.headline}</Text>
+      {/* Daily coach hero — the single "what should I do today?" answer:
+          readiness score (0–100) + focus + coach note + what-not-to-do + actions. */}
+      {rec && (
+        <FadeInView delay={60}>
+          <Card style={[styles.heroCard, { borderColor: bandColor(rec.readiness.band, colors) }]}>
+            <View style={styles.heroTop}>
+              <MacroRing
+                size={96}
+                strokeWidth={9}
+                progress={rec.readiness.score / 100}
+                color={bandColor(rec.readiness.band, colors)}
+                backgroundColor={colors.border}
+              >
+                <Text style={[styles.heroScore, { color: colors.ink }]}>{rec.readiness.score}</Text>
+                <Text style={[styles.heroScoreLabel, { color: colors.muted }]}>{bandLabel(rec.readiness.band, t)}</Text>
+              </MacroRing>
+              <View style={styles.heroHeadlineWrap}>
+                <Text style={styles.heroEmoji}>{rec.emoji}</Text>
+                <Text style={[styles.heroHeadline, { color: colors.ink }]}>{rec.headline}</Text>
+                <Text style={[styles.heroFocus, { color: colors.green }]}>{t('today.focus')}: {rec.training.focus}</Text>
               </View>
-              {briefing.detail.length > 0 && (
-                <Text style={[styles.briefingDetail, { color: colors.muted }]}>{briefing.detail}</Text>
+            </View>
+            <Text style={[styles.heroNote, { color: colors.muted }]}>{rec.coachNote}</Text>
+            {rec.training.whatNotToDo && (
+              <Text style={[styles.heroNotToDo, { color: colors.orange }]}>⚠ {rec.training.whatNotToDo}</Text>
+            )}
+            {rec.warnings.map((w, i) => (
+              <Text key={`hw-${i}`} style={[styles.heroWarning, { color: colors.red }]}>• {w}</Text>
+            ))}
+            <View style={styles.heroActions}>
+              <Button variant="secondary" style={styles.heroActionBtn} onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
+              {rec.suggestedActions.includes('mark_done') && (
+                <Button
+                  variant={completion?.status === 'completed' ? 'secondary' : 'primary'}
+                  style={styles.heroActionBtn}
+                  onPress={markTodayDone}
+                  disabled={completion?.status === 'completed'}
+                >
+                  {completion?.status === 'completed' ? t('today.completed') : t('today.markDone')}
+                </Button>
               )}
-              <Text style={[styles.briefingRec, { color: colors.green }]}>→ {briefing.recommendation}</Text>
-            </Card>
-          </FadeInView>
-        );
-      })()}
+              <Button variant="secondary" style={styles.heroActionBtn} onPress={() => navigation.navigate('Coach')}>{t('today.askCoach')}</Button>
+            </View>
+            <Text style={[styles.heroReadinessNote, { color: colors.faint }]}>{t('today.readinessNote')}</Text>
+          </Card>
+        </FadeInView>
+      )}
 
       {/* Modern Circular Macro Visual Grid */}
       <FadeInView delay={100}>
@@ -208,15 +236,15 @@ export function HomeScreen() {
         <FadeInView delay={120}>
           <Card>
             <View style={styles.readinessHeader}>
-              <View style={[styles.readinessBadge, { backgroundColor: readinessColor(coaching.assessment.level, colors) }]}>
-                <Text style={styles.readinessBadgeText}>{readinessLabel(coaching.assessment.level, t)}</Text>
+              <View style={[styles.readinessBadge, { backgroundColor: readinessColor(coaching.assessment.level, colors, coaching.assessment.dataStatus) }]}>
+                <Text style={styles.readinessBadgeText}>{readinessLabel(coaching.assessment.level, t, coaching.assessment.dataStatus)}</Text>
               </View>
               <Text style={[styles.readinessTitle, { color: colors.ink }]}>{t('home.readiness')}</Text>
             </View>
             <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.assessment.recommendation}</Text>
             <View style={styles.readinessFactors}>
               {coaching.assessment.factors
-                .filter(f => !f.key.endsWith('_missing'))
+                .filter(f => !f.key.endsWith('_missing') || coaching.assessment?.dataStatus === 'missing')
                 .map(f => (
                   <Text
                     key={f.key}
@@ -272,71 +300,14 @@ export function HomeScreen() {
                 </Button>
               </View>
             )}
+            <Text style={[styles.heroReadinessNote, { color: colors.faint }]}>{t('readiness.disclaimer')}</Text>
           </Card>
         </FadeInView>
       )}
 
-      {/* Whoop-style daily strain score 0–21. Pokud dnes není trénink ani plán,
-          karta se skryje (neukazovat nulu zbytečně). */}
-      {coaching.strain && (coaching.strain.workoutCount > 0 || coaching.strain.score > 0) && (
-        <FadeInView delay={130}>
-          <Card>
-            <View style={styles.readinessHeader}>
-              <View style={[styles.strainScoreCircle, { borderColor: strainColor(coaching.strain.band, colors) }]}>
-                <Text style={[styles.strainScoreValue, { color: strainColor(coaching.strain.band, colors) }]}>
-                  {coaching.strain.score}
-                </Text>
-                <Text style={[styles.strainScoreMax, { color: colors.faint }]}>/ 21</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.readinessTitle, { color: colors.ink }]}>{coaching.strain.label}</Text>
-                <Text style={[styles.small, { color: colors.muted }]}>
-                  {coaching.strain.workoutCount > 0
-                    ? t('home.strainWorkouts', { n: coaching.strain.workoutCount, trimp: coaching.strain.trimp })
-                    : t('home.strainPlanned', { trimp: coaching.strain.trimp })}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.strain.recommendation}</Text>
-          </Card>
-        </FadeInView>
-      )}
-
-      {/* Training load (ACWR) — 7-day vs 28-day workout volume.
-          Skryje se, pokud uživatel nemá za 28 dní žádný trénink. */}
-      {coaching.trainingLoad && coaching.trainingLoad.workoutCountChronic > 0 && (
-        <FadeInView delay={140}>
-          <Card>
-            <View style={styles.readinessHeader}>
-              <View style={[styles.readinessBadge, { backgroundColor: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
-                <Text style={styles.readinessBadgeText}>{trainingLoadLabel(coaching.trainingLoad.status, t)}</Text>
-              </View>
-              <Text style={[styles.readinessTitle, { color: colors.ink }]}>{t('home.trainingLoad')}</Text>
-            </View>
-            <Text style={[styles.readinessRec, { color: colors.ink }]}>{coaching.trainingLoad.message}</Text>
-            <Text style={[styles.small, { color: colors.muted }]}>{coaching.trainingLoad.recommendation}</Text>
-            <View style={styles.loadStatsRow}>
-              <View style={[styles.loadStat, { borderColor: colors.border }]}>
-                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load7d')}</Text>
-                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.acute} {t('home.loadPerDay')}</Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadWorkoutsCount', { n: coaching.trainingLoad.workoutCountAcute })}</Text>
-              </View>
-              <View style={[styles.loadStat, { borderColor: colors.border }]}>
-                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load28d')}</Text>
-                <Text style={[styles.loadStatValue, { color: colors.ink }]}>{coaching.trainingLoad.chronic} {t('home.loadPerDay')}</Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadWorkoutsCount', { n: coaching.trainingLoad.workoutCountChronic })}</Text>
-              </View>
-              <View style={[styles.loadStat, { borderColor: colors.border }]}>
-                <Text style={[styles.loadStatLabel, { color: colors.faint }]}>ACWR</Text>
-                <Text style={[styles.loadStatValue, { color: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
-                  {coaching.trainingLoad.acwr ?? '—'}
-                </Text>
-                <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadAcuteChronic')}</Text>
-              </View>
-            </View>
-          </Card>
-        </FadeInView>
-      )}
+      {/* Strain (0–21) a training load (ACWR) se přesunuly na záložku Pokrok,
+          aby Today drželo „jeden hero + pár karet". Hero coach note je dál
+          zohledňuje přes composeMorningBriefing. */}
 
       {/* Health snapshot from HealthDataProvider (steps / sleep / RHR).
           In dev shows mock data; production will show Apple Health after EAS prebuild. */}
@@ -365,52 +336,16 @@ export function HomeScreen() {
         </Card>
       </FadeInView>
 
-      {/* Sleek Weight Tracking Card */}
-      <FadeInView delay={200}>
-        <Card>
-          <Label>{t('home.weightTracking')}</Label>
-          <View style={styles.weightInputRow}>
-            <View style={styles.weightField}>
-              <Field
-                keyboardType="numeric"
-                value={weightInput}
-                onChangeText={setWeightInput}
-                placeholder={t('home.weightPlaceholder')}
-              />
-            </View>
-            <Button style={styles.weightBtn} onPress={saveDnesniVahu}>
-              {t('home.saveWeight')}
-            </Button>
-          </View>
-
-          <Text style={[styles.trendTitle, { color: colors.ink }]}>{t('home.last7days')}</Text>
-          <View style={styles.trendRow}>
-            {getLast7DaysWeights().map((w, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.trendItem,
-                  {
-                    backgroundColor: colors.isDark ? '#151d1a' : '#fbfbf8',
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.trendItemDate, { color: colors.faint }]}>{w.label}</Text>
-                <Text style={[styles.trendItemVal, { color: colors.ink }]}>
-                  {w.value ? `${w.value}` : '—'}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </Card>
-      </FadeInView>
-
       {baselineMacros && dailyAdjustment && (
-        <FadeInView delay={300}>
+        <FadeInView delay={200}>
           <Card>
             <Label>{t('home.adjustmentTitle')}</Label>
             <Text style={[styles.adjustmentTitle, { color: colors.ink }]}>{todaySession?.title || t('home.restDay')}</Text>
+            {completion && (
+              <Text style={[styles.small, { color: completion.status === 'completed' ? colors.green : colors.orange }]}>
+                {completion.status === 'completed' ? t('today.completed') : t('today.notCompleted')}
+              </Text>
+            )}
             <Text style={[styles.adjustmentNote, { color: colors.muted }]}>{dailyAdjustment.note}</Text>
             <View style={styles.adjustmentGrid}>
               <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjCalories')} {formatDelta(dailyAdjustment.kcalDelta)} kcal</Text>
@@ -439,54 +374,6 @@ export function HomeScreen() {
           </Card>
         </FadeInView>
       )}
-
-      <FadeInView delay={400}>
-        <Card>
-          <Label>{t('home.quickAdd')}</Label>
-          <Field value={manual.foodName} onChangeText={foodName => setManual(v => ({ ...v, foodName }))} placeholder={t('home.foodName')} />
-          <View style={styles.row}>
-            <Field keyboardType="number-pad" value={manual.kcal} onChangeText={kcal => setManual(v => ({ ...v, kcal }))} placeholder="kcal" />
-            <Field keyboardType="number-pad" value={manual.protein} onChangeText={protein => setManual(v => ({ ...v, protein }))} placeholder={t('home.macroProteinShort')} />
-          </View>
-          <View style={styles.row}>
-            <Field keyboardType="number-pad" value={manual.carbs} onChangeText={carbs => setManual(v => ({ ...v, carbs }))} placeholder={t('home.macroCarbsShort')} />
-            <Field keyboardType="number-pad" value={manual.fat} onChangeText={fat => setManual(v => ({ ...v, fat }))} placeholder={t('home.macroFatShort')} />
-          </View>
-          <Button onPress={addManual}>{t('home.addFood')}</Button>
-        </Card>
-      </FadeInView>
-
-      <FadeInView delay={500}>
-        <Card>
-          <View style={styles.headerRow}>
-            <Label>{t('home.loggedFood')}</Label>
-            {foodLog.length > 0 && <Text style={styles.link} onPress={clearFood}>{t('home.clearDay')}</Text>}
-          </View>
-          {foodLog.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🍽️</Text>
-              <Text style={[styles.emptyTitle, { color: colors.ink }]}>{t('home.emptyLogTitle')}</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>{t('home.emptyLogSubtitle')}</Text>
-              <View style={styles.emptyActions}>
-                <Button style={styles.emptyBtn} variant="primary" onPress={() => navigation.navigate('Jídelníček')}>
-                  {t('home.emptyLogPlan')}
-                </Button>
-                <Button style={styles.emptyBtn} variant="secondary" onPress={() => navigation.navigate('Foto')}>
-                  {t('home.emptyLogPhoto')}
-                </Button>
-              </View>
-            </View>
-          ) : foodLog.map(item => (
-            <View key={item.id} style={[styles.foodRow, { borderTopColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.foodName, { color: colors.ink }]}>{item.foodName}</Text>
-                <Text style={[styles.small, { color: colors.muted }]}>{t('home.foodMacros', { kcal: item.kcal, p: item.protein, c: item.carbs, f: item.fat })}</Text>
-              </View>
-              <Text style={styles.remove} onPress={() => removeFood(item.id)}>{t('home.remove')}</Text>
-            </View>
-          ))}
-        </Card>
-      </FadeInView>
     </Screen>
   );
 }
@@ -502,12 +389,26 @@ function HealthStat({ label, value, accent }: { label: string; value: string; ac
   );
 }
 
-function readinessLabel(level: ReadinessLevel, t: Translate): string {
+function readinessLabel(level: ReadinessLevel, t: Translate, dataStatus?: 'missing' | 'partial' | 'complete'): string {
+  if (dataStatus === 'missing') return t('readiness.noData');
   return level === 'green' ? t('readiness.ready') : level === 'yellow' ? t('readiness.mild') : t('readiness.regenerate');
 }
 
-function readinessColor(level: ReadinessLevel, palette: { green: string; orange: string; red: string }): string {
+function readinessColor(
+  level: ReadinessLevel,
+  palette: { green: string; orange: string; red: string },
+  dataStatus?: 'missing' | 'partial' | 'complete',
+): string {
+  if (dataStatus === 'missing') return palette.orange;
   return level === 'green' ? palette.green : level === 'yellow' ? palette.orange : palette.red;
+}
+
+function bandColor(band: 'low' | 'medium' | 'high', palette: { green: string; orange: string; red: string }): string {
+  return band === 'high' ? palette.green : band === 'medium' ? palette.orange : palette.red;
+}
+
+function bandLabel(band: 'low' | 'medium' | 'high', t: Translate): string {
+  return band === 'high' ? t('readiness.high') : band === 'medium' ? t('readiness.medium') : t('readiness.low');
 }
 
 function trainingLoadLabel(status: LoadStatus, t: Translate): string {
@@ -642,6 +543,20 @@ const styles = StyleSheet.create({
   loadStatLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
   loadStatValue: { fontSize: 15, fontWeight: '900' },
   loadStatSub: { fontSize: 10, lineHeight: 14, marginTop: 2 },
+  heroCard: { borderWidth: 2, gap: 10 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroHeadlineWrap: { flex: 1, gap: 2 },
+  heroEmoji: { fontSize: 22 },
+  heroHeadline: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
+  heroFocus: { fontSize: 13, fontWeight: '800', marginTop: 2 },
+  heroNote: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  heroNotToDo: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  heroWarning: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  heroActionBtn: { flex: 1 },
+  heroScore: { fontSize: 28, fontWeight: '900', lineHeight: 30 },
+  heroScoreLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
+  heroReadinessNote: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
   briefingCard: { borderWidth: 2, gap: 8 },
   briefingHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   briefingEmoji: { fontSize: 28 },

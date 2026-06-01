@@ -27,8 +27,9 @@ function mapStatus(status?: string): NotificationPermission {
 
 /** Helper: dynamický import s try/catch — vrátí null pokud package chybí. */
 async function loadModule(): Promise<any> {
+  if ((globalThis as any).__NUTRIFIT_TEST__) return null;
   try {
-    // @ts-expect-error — expo-notifications nemusí být v node_modules
+    // @ts-ignore — expo-notifications nemusí být v node_modules (optional native dep)
     return await import('expo-notifications');
   } catch {
     return null;
