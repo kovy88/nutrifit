@@ -9,6 +9,7 @@ import type { SleepSummary, WorkoutSummary } from '../../types/health';
 import { generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
 
 export * from './plan';
+export * from './feasibility';
 
 /** Kontext z health providera, který planner volitelně využije. */
 export type PlanContext = {

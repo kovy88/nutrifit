@@ -276,6 +276,11 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): Re
     score += e === 1 ? -10 : e === 2 ? -5 : e === 4 ? 3 : e === 5 ? 6 : 0;
     if (e <= 2) drivers.push(L(loc, 'Nízká subjektivní energie', 'Low subjective energy'));
   }
+  if (input.subjectiveSoreness != null) {
+    const s = input.subjectiveSoreness;
+    score += s === 5 ? -10 : s === 4 ? -6 : s === 3 ? -2 : s === 1 ? 2 : 0;
+    if (s >= 4) drivers.push(L(loc, 'Vysoká bolest nebo svalovka', 'High soreness or pain'));
+  }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 

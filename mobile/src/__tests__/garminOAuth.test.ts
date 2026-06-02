@@ -95,7 +95,6 @@ describe('GarminOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new GarminOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 
@@ -175,7 +174,6 @@ describe('GarminOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new GarminOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 

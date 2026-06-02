@@ -79,7 +79,15 @@ describe('sync helpers', () => {
       },
       sessionsByDate: {},
       weightsByDate: { '2026-05-30': 80 },
-      checkIns: [],
+      checkIns: [{
+        weekStartISO: '2026-05-25',
+        weightKg: 80,
+        adherence: 0.8,
+        energyLevel: 3,
+        hungerLevel: 2,
+        sorenessLevel: 4,
+        createdAt: '2026-05-30T10:00:00.000Z',
+      }],
       trainingCompletionsByDate: {
         '2026-05-30': {
           date: '2026-05-30',
@@ -96,6 +104,7 @@ describe('sync helpers', () => {
     expect(rows.dailyMealPlans[0].total_kcal).toBe(300);
     expect(rows.dailyFoodLogs[0].client_id).toBe('food-1');
     expect(rows.weightEntries[0].weight_kg).toBe(80);
+    expect(rows.weeklyCheckins[0].soreness_level).toBe(4);
     expect(rows.trainingCompletions[0].status).toBe('completed');
   });
 });

@@ -360,6 +360,11 @@ export function HomeScreen() {
               </Text>
             )}
             <Text style={[styles.adjustmentNote, { color: colors.muted }]}>{dailyAdjustment.note}</Text>
+            {todaySession?.kind === 'long_run' && dailyAdjustment.carbsDelta > 0 && (
+              <Text style={[styles.fuelingNote, { color: colors.green, borderColor: colors.border }]}>
+                {t('home.longRunFueling', { carbs: Math.round(dailyAdjustment.carbsDelta) })}
+              </Text>
+            )}
             <View style={styles.adjustmentGrid}>
               <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjCalories')} {formatDelta(dailyAdjustment.kcalDelta)} kcal</Text>
               <Text style={[styles.badge, { color: colors.green, borderColor: colors.border }]}>{t('home.adjCarbs')} {formatDelta(dailyAdjustment.carbsDelta)} g</Text>
@@ -512,6 +517,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   adjustmentTitle: { fontSize: 18, fontWeight: '900' },
   adjustmentNote: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
+  fuelingNote: { fontSize: 13, lineHeight: 18, fontWeight: '900', borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8 },
   adjustmentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
   badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, fontWeight: '800', fontSize: 12 },
   trainingChip: { minHeight: 38, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, fontWeight: '800', overflow: 'hidden' },

@@ -4,7 +4,7 @@ import type { Meal, UserProfile, TrainingSession } from '../types';
 
 const profile: UserProfile = {
   gender: 'muz',
-  primaryGoal: 'lose_weight',
+  primaryGoal: 'lose_fat',
   trainingGoal: 'run_10k',
   sessionsPerWeek: 3,
   experience: 'intermediate',

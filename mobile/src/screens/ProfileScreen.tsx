@@ -88,8 +88,8 @@ export function ProfileScreen() {
         </View>
         <Label>{t('profile.mainGoal')}</Label>
         <View style={styles.rowWrap}>
-          {(['lose_weight', 'maintain_weight', 'gain_muscle', 'run_race'] as PrimaryGoal[]).map(goal => (
-            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{t(('goal.' + goal) as 'goal.lose_weight')}</Pill>
+          {(['lose_fat', 'maintain_weight', 'gain_muscle', 'improve_fitness', 'improve_running', 'improve_recovery', 'build_consistency'] as PrimaryGoal[]).map(goal => (
+            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{t(('goal.' + goal) as 'goal.lose_fat')}</Pill>
           ))}
         </View>
         <Label>{t('profile.trainingGoal')}</Label>
@@ -218,6 +218,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
 
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [hungerLevel, setHungerLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [sorenessLevel, setSorenessLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
   const [adherencePct, setAdherencePct] = useState<number>(80);
   const [currentWeight, setCurrentWeight] = useState(profile ? String(profile.weight) : '');
   const [pending, setPending] = useState<PlanAdjustment | null>(null);
@@ -260,6 +261,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
         weightKg: nextWeight,
         energyLevel,
         hungerLevel,
+        sorenessLevel,
         adherence: adherencePct / 100,
         completedSessions,
         plannedSessions,
@@ -317,6 +319,15 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
             <View style={styles.row}>
               {([1, 2, 3, 4, 5] as const).map(n => (
                 <Pill key={`h-${n}`} active={hungerLevel === n} onPress={() => setHungerLevel(n)}>
+                  {String(n)}
+                </Pill>
+              ))}
+            </View>
+
+            <Label>Bolest / svalovka (1 = žádná, 5 = výrazná)</Label>
+            <View style={styles.row}>
+              {([1, 2, 3, 4, 5] as const).map(n => (
+                <Pill key={`s-${n}`} active={sorenessLevel === n} onPress={() => setSorenessLevel(n)}>
                   {String(n)}
                 </Pill>
               ))}

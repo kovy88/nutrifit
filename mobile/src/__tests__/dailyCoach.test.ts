@@ -12,7 +12,7 @@ function session(kind: TrainingSession['kind'], intensity: TrainingSession['inte
 
 const baseInput = (over: Partial<DailyCoachInput> = {}): DailyCoachInput => ({
   date: '2026-05-30',
-  profile: { primaryGoal: 'lose_weight', experience: 'intermediate' },
+  profile: { primaryGoal: 'lose_fat', experience: 'intermediate' },
   session: session('easy_run', 'easy', 40),
   recovery: { todaySleepMinutes: 460, todayHrvMs: 55, todayRhrBpm: 52, baseline: { sleepMeanMinutes: 455, hrvMeanMs: 54, rhrMeanBpm: 53 } },
   baselineMacros: makeMacros(2200),
@@ -68,11 +68,27 @@ describe('generateDailyCoachRecommendation', () => {
 
   it('cautions a beginner planning a hard session on a non-high day', () => {
     const rec = generateDailyCoachRecommendation(baseInput({
-      profile: { primaryGoal: 'get_fit', experience: 'beginner' },
+      profile: { primaryGoal: 'improve_fitness', experience: 'beginner' },
       session: session('intervals', 'hard'),
       recovery: { todaySleepMinutes: 380 }, // borderline → not high
     }));
     expect(rec.warnings.some(w => /beginner|začátečník/i.test(w))).toBe(true);
+  });
+
+  it('surfaces high training-load statuses as Today warnings', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({
+      trainingLoad: {
+        acute: 80,
+        chronic: 50,
+        acwr: 1.6,
+        status: 'high_risk',
+        message: 'Very fast load increase.',
+        recommendation: 'Cut volume ~30% this week.',
+        workoutCountAcute: 5,
+        workoutCountChronic: 16,
+      },
+    }));
+    expect(rec.warnings).toContain('Cut volume ~30% this week.');
   });
 
   it('handles a rest day (null session) without mark_done and never throws', () => {
@@ -97,7 +113,7 @@ describe('generateDailyCoachRecommendation', () => {
 
 describe('coachScope gating', () => {
   it('training-only omits nutrition and never offers swap_meal', () => {
-    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'run_race', experience: 'intermediate', coachScope: 'training' } }));
+    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'improve_running', experience: 'intermediate', coachScope: 'training' } }));
     expect(rec.scope).toBe('training');
     expect(rec.training).toBeTruthy();
     expect(rec.nutrition).toBeUndefined();
@@ -105,7 +121,7 @@ describe('coachScope gating', () => {
   });
 
   it('nutrition-only omits training and never offers mark_done', () => {
-    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'lose_weight', experience: 'intermediate', coachScope: 'nutrition' } }));
+    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'lose_fat', experience: 'intermediate', coachScope: 'nutrition' } }));
     expect(rec.scope).toBe('nutrition');
     expect(rec.nutrition).toBeTruthy();
     expect(rec.training).toBeUndefined();

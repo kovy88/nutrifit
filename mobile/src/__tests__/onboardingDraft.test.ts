@@ -25,14 +25,27 @@ describe('onboarding draft storage', () => {
     const now = new Date('2026-05-28T10:00:00Z').toISOString();
     await saveOnboardingDraft({
       step: 2,
-      draft: { ...DEFAULT_PROFILE, age: 31, height: 180, weight: 78, primaryGoal: 'run_race' },
+      draft: { ...DEFAULT_PROFILE, age: 31, height: 180, weight: 78, primaryGoal: 'improve_running' },
       updatedAt: now,
     });
     const got = await loadOnboardingDraft();
     expect(got?.step).toBe(2);
     expect(got?.draft.age).toBe(31);
-    expect(got?.draft.primaryGoal).toBe('run_race');
+    expect(got?.draft.primaryGoal).toBe('improve_running');
     expect(got?.updatedAt).toBe(now);
+  });
+
+  it('migrates legacy primary goal names when loading a draft', async () => {
+    const now = new Date('2026-05-28T10:00:00Z').toISOString();
+    await AsyncStorage.setItem('nutrifit.onboardingDraft.v1', JSON.stringify({
+      step: 2,
+      draft: { ...DEFAULT_PROFILE, primaryGoal: 'run_race', trainingGoal: 'half_marathon' },
+      updatedAt: now,
+    }));
+
+    const got = await loadOnboardingDraft();
+    expect(got?.draft.primaryGoal).toBe('improve_running');
+    expect(got?.draft.trainingGoal).toBe('half_marathon');
   });
 
   it('overwrites on re-save (last write wins)', async () => {

@@ -51,16 +51,21 @@ export async function generateMealPlan(profile: UserProfile, macros: Macros, ses
   // First attempt. If the result fails validation, we re-prompt ONCE with the
   // concrete errors fed back (self-correction) before surfacing a hard error —
   // a single bad generation no longer breaks the core flow.
-  let meals = await requestAndNormalizeMealPlan(profile, macros, session);
-  let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
-  if (!validation.valid) {
-    meals = await requestAndNormalizeMealPlan(profile, macros, session, validation.errors);
-    validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
+  try {
+    let meals = await requestAndNormalizeMealPlan(profile, macros, session);
+    let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
+    if (!validation.valid) {
+      meals = await requestAndNormalizeMealPlan(profile, macros, session, validation.errors);
+      validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
+    }
+    if (validation.valid) {
+      return await repairAllergenViolations(meals, profile, session);
+    }
+    console.warn('Trenr API: falling back to deterministic meal plan after invalid AI output:', validation.errors);
+  } catch (err) {
+    console.warn('Trenr API: falling back to deterministic meal plan after AI failure:', err);
   }
-  if (!validation.valid) {
-    throw new Error(`AI vrátila neúplný jídelníček. ${validation.errors.slice(0, 2).join(' ')}`);
-  }
-  return await repairAllergenViolations(meals, profile, session);
+  return buildFallbackMealPlan(profile, macros);
 }
 
 /** One round-trip: build request (optionally with repair feedback), call the
@@ -125,6 +130,57 @@ async function repairAllergenViolations(
     );
   }
   return repaired;
+}
+
+function buildFallbackMealPlan(profile: UserProfile, macros: Macros): Meal[] {
+  const names = namesForMealCount(profile.mealCount);
+  const weights = mealWeights(names.length);
+  const protein = splitMacro(macros.protein, weights);
+  const carbs = splitMacro(macros.carbs, weights);
+  const fat = splitMacro(macros.fat, weights);
+  const fiber = splitMacro(macros.fiber, weights);
+
+  return names.map((mealType, index) => {
+    const kcal = protein[index] * 4 + carbs[index] * 4 + fat[index] * 9;
+    return {
+      mealType,
+      name: `${mealType} - jednoduchý záložní talíř`,
+      kcal,
+      protein: protein[index],
+      carbs: carbs[index],
+      fat: fat[index],
+      fiber: fiber[index],
+      prepTime: 15,
+      difficulty: 'Jednoduchá',
+      ingredients: [
+        `${protein[index]} g bílkovin z tolerovaného zdroje`,
+        `${carbs[index]} g sacharidů z běžné přílohy`,
+        `${fat[index]} g tuků z tolerovaného zdroje`,
+      ],
+      steps: [
+        'Zvol suroviny, které máš ověřené a snášíš.',
+        'Slož porci podle uvedených makro cílů a uprav gramáž v aplikaci podle reality.',
+      ],
+    };
+  });
+}
+
+function mealWeights(count: number): number[] {
+  if (count === 2) return [0.45, 0.55];
+  if (count === 3) return [0.3, 0.4, 0.3];
+  if (count === 4) return [0.25, 0.35, 0.15, 0.25];
+  if (count === 6) return [0.2, 0.12, 0.28, 0.12, 0.2, 0.08];
+  return [0.22, 0.12, 0.32, 0.12, 0.22];
+}
+
+function splitMacro(total: number, weights: number[]): number[] {
+  let used = 0;
+  return weights.map((weight, index) => {
+    if (index === weights.length - 1) return Math.max(total - used, 0);
+    const value = Math.max(Math.round(total * weight), 0);
+    used += value;
+    return value;
+  });
 }
 
 /**

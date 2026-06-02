@@ -220,6 +220,12 @@ export function validateCoachRecommendationSafety(
     warnings.push(L(loc, 'Začátečník: tvrdou jednotku zařaď jen při dobré připravenosti.', 'Beginner: do hard sessions only when readiness is good.'));
   }
 
+  // 4) Training load already computed elsewhere; surface high-risk statuses in
+  // the main Today warning list so the user sees the guardrail before training.
+  if (input.trainingLoad?.status === 'overreaching' || input.trainingLoad?.status === 'high_risk') {
+    warnings.push(input.trainingLoad.recommendation || input.trainingLoad.message);
+  }
+
   rec.warnings = warnings;
   return rec;
 }

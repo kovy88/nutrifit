@@ -106,6 +106,7 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
   if (input.latestCheckIn) {
     if (input.latestCheckIn.energyLevel != null) lines.push(`Subjektivní energie (1–5): ${input.latestCheckIn.energyLevel}`);
     if (input.latestCheckIn.hungerLevel != null) lines.push(`Subjektivní hlad (1–5): ${input.latestCheckIn.hungerLevel}`);
+    if (input.latestCheckIn.sorenessLevel != null) lines.push(`Subjektivní bolest/svalovka (1–5): ${input.latestCheckIn.sorenessLevel}`);
     if (input.latestCheckIn.notes) lines.push(`Uživatelská poznámka: "${input.latestCheckIn.notes}"`);
   }
   if (input.energyBalanceKcal != null) {

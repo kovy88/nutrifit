@@ -42,7 +42,7 @@ const keys = {
 };
 
 /** Bump when a NEW one-time migration step is added to runMigration(). */
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 /** Storage retention: drop date-bound entries older than this many days. */
 const RETENTION_DAYS = 90;
@@ -275,6 +275,7 @@ export async function runMigration(): Promise<void> {
   const stored = await readJson<{ version?: number }>(keys.schemaVersion);
   if (!stored || (stored.version ?? 0) < CURRENT_SCHEMA_VERSION) {
     await migrateLegacyKeys();
+    await migrateStoredProfileTaxonomy();
     await AsyncStorage.setItem(
       keys.schemaVersion,
       JSON.stringify({ version: CURRENT_SCHEMA_VERSION, migratedAt: new Date().toISOString() }),
@@ -285,6 +286,21 @@ export async function runMigration(): Promise<void> {
   // This is NOT a one-time migration — it runs every startup so AsyncStorage
   // size stays linear in the retention window, not lifetime.
   await pruneDateBoundedStores();
+}
+
+async function migrateStoredProfileTaxonomy(): Promise<void> {
+  const currentRaw = await readJson<Partial<UserProfile> & { primaryGoal?: string; goal?: string }>(keys.profile);
+  const current = migrateProfile(currentRaw);
+  if (current) {
+    await saveProfile(current);
+  }
+
+  const legacyRaw = await readJson<Partial<UserProfile> & { primaryGoal?: string; goal?: string }>(keys.legacyProfile);
+  const legacy = migrateProfile(legacyRaw);
+  if (!current && legacy) {
+    await saveProfile(legacy);
+    await AsyncStorage.removeItem(keys.legacyProfile);
+  }
 }
 
 /** One-time migration from the v1 single-record keys to date-keyed maps. */
@@ -360,7 +376,11 @@ export type OnboardingDraft = {
 };
 
 export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
-  return readJson<OnboardingDraft>(keys.onboardingDraft);
+  const raw = await readJson<OnboardingDraft & { draft?: Partial<UserProfile> & { primaryGoal?: string; goal?: string } }>(keys.onboardingDraft);
+  if (!raw?.draft) return null;
+  const draft = migrateProfile(raw.draft);
+  if (!draft) return null;
+  return { ...raw, draft };
 }
 
 export async function saveOnboardingDraft(value: OnboardingDraft): Promise<void> {

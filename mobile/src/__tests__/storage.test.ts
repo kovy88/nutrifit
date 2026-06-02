@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loadPlansByDate,
+  loadProfile,
   savePlanForDate,
   loadFoodLogsByDate,
   saveFoodLogForDate,
@@ -115,7 +116,7 @@ describe('date-based storage and migration', () => {
       baselineMacros: macros,
       todayMacros: macros,
     });
-    const memory = { goalSummary: 'lose_weight + general_fitness', updatedAt: '2026-05-30T10:00:00.000Z' };
+    const memory = { goalSummary: 'lose_fat + general_fitness', updatedAt: '2026-05-30T10:00:00.000Z' };
     await saveDailyCoachRecommendationForDate('2026-05-30', recommendation, memory);
     await saveCoachThreadForDate('2026-05-30', [
       { id: '1', role: 'user', text: 'Why?', createdAt: '2026-05-30T10:00:00.000Z' },
@@ -125,6 +126,20 @@ describe('date-based storage and migration', () => {
     expect((await loadDailyCoachHistory())['2026-05-30'].recommendation.date).toBe('2026-05-30');
     expect((await loadCoachThreadsByDate())['2026-05-30'].messages).toHaveLength(1);
     expect(await listStoredDates()).toContain('2026-05-30');
+  });
+
+  it('migrates legacy primary goal names to the new taxonomy', async () => {
+    await AsyncStorage.setItem('nutrifit.profile.v2', JSON.stringify({
+      ...DEFAULT_PROFILE,
+      primaryGoal: 'run_race',
+      trainingGoal: 'half_marathon',
+    }));
+
+    await runMigration();
+
+    const profile = await loadProfile();
+    expect(profile?.primaryGoal).toBe('improve_running');
+    expect(profile?.trainingGoal).toBe('half_marathon');
   });
 
   it('migrates legacy lastPlan, foodLog, and todaySession keys to todays date, then removes them', async () => {

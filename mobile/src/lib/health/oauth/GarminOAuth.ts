@@ -155,10 +155,9 @@ function generateRandom(bytes: number): string {
  *  na js-only SHA256 (níže). */
 export async function sha256Base64Url(input: string): Promise<string> {
   try {
-    // @ts-expect-error — expo-crypto je optional dep
     const mod = await import('expo-crypto');
     if (mod?.digestStringAsync) {
-      const hash = await mod.digestStringAsync('SHA-256', input, { encoding: 'base64' });
+      const hash = await mod.digestStringAsync(mod.CryptoDigestAlgorithm.SHA256, input, { encoding: mod.CryptoEncoding.BASE64 });
       // expo-crypto returns base64 — convert to base64url
       return hash.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }

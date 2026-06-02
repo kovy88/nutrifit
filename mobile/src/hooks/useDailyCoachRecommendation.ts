@@ -44,6 +44,7 @@ export function useDailyCoachRecommendation(date: Date): UseDailyCoachRecommenda
       sleepDebtHours: coaching.sleepDebt?.totalDebtHours ?? null,
       recoveryDebt: coaching.recoveryDebt?.currentDebt ?? null,
       subjectiveEnergy: latest?.energyLevel ?? null,
+      subjectiveSoreness: latest?.sorenessLevel ?? null,
     };
     return generateDailyCoachRecommendation({
       date: dKey,

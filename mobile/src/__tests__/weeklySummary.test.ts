@@ -93,11 +93,13 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
         adherence: 0.9,
         energyLevel: 4,
         hungerLevel: 2,
+        sorenessLevel: 4,
         notes: 'Týden v Itálii, hodně chození',
         createdAt: '2026-05-26T20:00:00Z',
       },
     });
     expect(r.prompt).toContain('Týden v Itálii');
+    expect(r.prompt).toContain('Subjektivní bolest/svalovka');
     expect(r.prompt).toContain('"Týden v Itálii, hodně chození"');
   });
 

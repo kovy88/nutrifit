@@ -13,7 +13,7 @@ import type { Locale } from '../i18n';
 
 export type CoachChatContext = {
   recommendation: DailyCoachRecommendation | null;
-  /** Stručné shrnutí cíle, např. "lose_weight + run_10k". */
+  /** Stručné shrnutí cíle, např. "lose_fat + run_10k". */
   goalSummary: string;
   /** Týdenní váhový trend (kg/týden), pokud známe. */
   recentWeightTrendKgPerWeek?: number | null;

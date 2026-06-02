@@ -10,7 +10,6 @@ describe('OuraOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new OuraOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 
@@ -79,7 +78,6 @@ describe('OuraOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new OuraOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 

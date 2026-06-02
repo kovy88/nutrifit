@@ -46,6 +46,14 @@ describe('scoreReadiness', () => {
     expect(tired.score).toBeLessThan(neutral.score);
   });
 
+  it('high subjective soreness pulls the score down', () => {
+    const base: RecoveryInputs = { todaySleepMinutes: 450 };
+    const fresh = scoreReadiness({ ...base, subjectiveSoreness: 1 });
+    const sore = scoreReadiness({ ...base, subjectiveSoreness: 5 });
+    expect(sore.score).toBeLessThan(fresh.score);
+    expect(sore.drivers.some(d => /svalovka|soreness|pain/i.test(d))).toBe(true);
+  });
+
   it('high ACWR (overload) reduces the score and is surfaced as a driver', () => {
     const base: RecoveryInputs = { todaySleepMinutes: 450, todayHrvMs: 50, todayRhrBpm: 55 };
     const calm = scoreReadiness({ ...base, acwr: 1.0 });
@@ -65,7 +73,7 @@ describe('scoreReadiness', () => {
   it('always clamps the score to 0–100', () => {
     const worst = scoreReadiness({
       todaySleepMinutes: 120, todayHrvMs: 5, todayRhrBpm: 110,
-      acwr: 2.5, sleepDebtHours: 20, recoveryDebt: 10, subjectiveEnergy: 1,
+      acwr: 2.5, sleepDebtHours: 20, recoveryDebt: 10, subjectiveEnergy: 1, subjectiveSoreness: 5,
     });
     expect(worst.score).toBeGreaterThanOrEqual(0);
     expect(worst.score).toBeLessThanOrEqual(100);

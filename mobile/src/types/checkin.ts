@@ -2,7 +2,7 @@
 //
 // Týdenní reflexe od uživatele. Tři kanály:
 //   1. objektivní     → weightKg (váha)
-//   2. subjektivní    → energyLevel, hungerLevel (1–5)
+//   2. subjektivní    → energyLevel, hungerLevel, sorenessLevel (1–5)
 //   3. provozní       → adherencePct (kolik % naplánovaných jídel snědl)
 //
 // Z N posledních check-inů odvodíme `PlanAdjustment` — co změnit pro
@@ -21,6 +21,8 @@ export type WeeklyCheckIn = {
   energyLevel?: SubjectiveLevel;
   /** 1 = ne hladový, 5 = neustále hladový. */
   hungerLevel?: SubjectiveLevel;
+  /** 1 = bez bolesti/svalovky, 5 = výrazná bolest/svalovka. */
+  sorenessLevel?: SubjectiveLevel;
   /** Adherence k plánovanému jídelníčku 0..1. */
   adherence: number;
   /** Kolik plánovaných tréninků uživatel dokončil v daném týdnu. */

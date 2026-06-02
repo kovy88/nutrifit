@@ -10,7 +10,6 @@ describe('WhoopOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new WhoopOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global for the test
     globalThis.fetch = fetchMock;
   });
 
@@ -98,7 +97,6 @@ describe('WhoopOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new WhoopOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 

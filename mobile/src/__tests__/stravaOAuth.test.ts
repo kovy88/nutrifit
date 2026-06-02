@@ -37,7 +37,6 @@ describe('StravaOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new StravaOAuth({ clientId: '12345' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global for the test
     globalThis.fetch = fetchMock;
   });
 
@@ -129,7 +128,6 @@ describe('StravaOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new StravaOAuth({ clientId: '12345' }, store);
     fetchMock = vi.fn();
-    // @ts-expect-error — override global
     globalThis.fetch = fetchMock;
   });
 

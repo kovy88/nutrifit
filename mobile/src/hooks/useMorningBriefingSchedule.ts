@@ -19,9 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTrenr } from '../context/TrenrContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useDailyCoaching } from './useDailyCoaching';
-import { composeMorningBriefing } from '../lib/coaching/composeMorningBriefing';
+import { useDailyCoachRecommendation } from './useDailyCoachRecommendation';
 import {
   createNotificationScheduler,
   type NotificationMode,
@@ -58,9 +56,8 @@ export type MorningBriefingScheduleState = {
  *             Předej 'expo' explicitně až po `expo install expo-notifications`.
  */
 export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): MorningBriefingScheduleState {
-  const { profile, currentMacros: macros, baselineMacros, currentSession: todaySession } = useTrenr();
-  const { locale } = useLanguage();
-  const coaching = useDailyCoaching(new Date());
+  const { profile, currentSession: todaySession } = useTrenr();
+  const { recommendation, coaching } = useDailyCoachRecommendation(new Date());
   const [settings, setSettings] = useState<MorningBriefingSettings>(DEFAULT_SETTINGS);
   const [permission, setPermission] = useState<NotificationPermission>('undetermined');
   const [isReady, setIsReady] = useState(false);
@@ -100,18 +97,9 @@ export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): Mor
       void scheduler.cancel(NOTIFICATION_ID);
       return;
     }
-    if (!profile || !macros || !coaching.assessment) return;
-    const briefing = composeMorningBriefing({
-      session: todaySession,
-      readiness: coaching.assessment,
-      trainingLoad: coaching.trainingLoad,
-      macros,
-      baselineMacros,
-      locale,
-    });
-    const body = briefing.detail
-      ? `${briefing.headline}\n${briefing.detail}\n→ ${briefing.recommendation}`
-      : `${briefing.headline}\n→ ${briefing.recommendation}`;
+    if (!profile || !recommendation) return;
+    const warnings = recommendation.warnings.length ? `\n${recommendation.warnings.slice(0, 2).join('\n')}` : '';
+    const body = `${recommendation.headline}\n→ ${recommendation.coachNote}${warnings}`;
     void scheduler.scheduleDaily({
       id: NOTIFICATION_ID,
       title: 'Trenr',
@@ -126,11 +114,12 @@ export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): Mor
     settings.hour,
     settings.minute,
     profile?.weight,
-    macros?.kcal,
+    recommendation?.headline,
+    recommendation?.coachNote,
+    recommendation?.warnings.join('|'),
     coaching.assessment?.level,
     coaching.trainingLoad?.status,
     todaySession?.kind,
-    locale,
   ]);
 
   const update = useCallback(async (next: Partial<MorningBriefingSettings>) => {

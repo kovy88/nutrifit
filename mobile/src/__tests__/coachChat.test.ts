@@ -14,7 +14,7 @@ const rec: DailyCoachRecommendation = {
   suggestedActions: ['swap_meal', 'ask_coach'],
 };
 
-const context: CoachChatContext = { recommendation: rec, goalSummary: 'lose_weight + run_10k', recentWeightTrendKgPerWeek: -0.3 };
+const context: CoachChatContext = { recommendation: rec, goalSummary: 'lose_fat + run_10k', recentWeightTrendKgPerWeek: -0.3 };
 
 describe('buildCoachChatRequest', () => {
   it('instructs the model to not invent numbers and to return JSON', () => {
@@ -28,7 +28,7 @@ describe('buildCoachChatRequest', () => {
     const r = buildCoachChatRequest({ context, history: [], question: 'Co k obědu?', locale: 'cs' });
     expect(r.prompt).toContain('Readiness: 58/100');
     expect(r.prompt).toContain('2300 kcal');
-    expect(r.prompt).toContain('lose_weight + run_10k');
+    expect(r.prompt).toContain('lose_fat + run_10k');
     expect(r.prompt).toContain('Co k obědu?');
   });
 
@@ -47,8 +47,8 @@ describe('buildCoachChatRequest', () => {
   });
 
   it('handles a null recommendation without throwing', () => {
-    const r = buildCoachChatRequest({ context: { recommendation: null, goalSummary: 'get_fit' }, history: [], question: 'ahoj', locale: 'cs' });
-    expect(r.prompt).toContain('Goal: get_fit');
+    const r = buildCoachChatRequest({ context: { recommendation: null, goalSummary: 'improve_fitness' }, history: [], question: 'ahoj', locale: 'cs' });
+    expect(r.prompt).toContain('Goal: improve_fitness');
     expect(r.prompt).toContain('ahoj');
   });
 });

@@ -2,12 +2,14 @@ export type Gender = 'muz' | 'zena';
 /** @deprecated only used for storage migration from v1 profiles */
 export type Goal = 'hubnutí' | 'udržení' | 'nabírání';
 export type DietStyle = 'standardní' | 'vegetariánský' | 'veganský' | 'bezlepkový' | 'nízkosacharidový' | 'vysokoproteínový';
-export type PrimaryGoal = 'lose_weight' | 'maintain_weight' | 'gain_muscle' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
+export type PrimaryGoal = 'lose_fat' | 'maintain_weight' | 'gain_muscle' | 'improve_fitness' | 'improve_running' | 'improve_recovery' | 'build_consistency';
+/** @deprecated only used for storage migration from pre-taxonomy profiles */
+export type LegacyPrimaryGoal = 'lose_weight' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
 export type TrainingGoalKind = 'general_fitness' | 'walking_more' | 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'sports_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 export type NutritionGoalKind = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';
 /** Styl makro rozložení / preferencí jídelníčku. Ovládá macro split + AI prompt. */
-export type NutritionMode = 'balanced' | 'high_protein' | 'budget_friendly' | 'simple_meal_prep' | 'endurance_fueling';
+export type NutritionMode = 'balanced' | 'high_protein' | 'budget_friendly' | 'simple_meal_prep' | 'endurance_fueling' | 'fat_loss_friendly' | 'muscle_gain_friendly';
 /** Jak agresivní má být plán. Clampuje kalorický deficit i tréninkovou progresi. */
 export type PlanIntensity = 'easy' | 'moderate' | 'ambitious_but_safe';
 /** Na co uživatel kouče používá. 'both' = trénink i jídelníček, 'training' = jen
@@ -41,6 +43,16 @@ export type UserProfile = {
   /** Aktuální týdenní běžecký objem (km) z onboardingu. Pohání bezpečný start
    *  progresivního planneru místo konzervativního beginner defaultu. */
   currentWeeklyKm?: number;
+  /** Volitelné běžecké vstupy pro závodní feasibility gate. */
+  raceDateISO?: string;
+  targetTimeSeconds?: number;
+  longestRecentRunKm?: number;
+  runsPerWeek?: number;
+  currentPaceSecPerKm?: number;
+  injuryFlag?: boolean;
+  availableTrainingDays?: number;
+  preferredRestDays?: number[];
+  runWalkPreferred?: boolean;
 };
 
 /** Scope helpers — undefined coachScope (legacy profiles) resolves to 'both'. */

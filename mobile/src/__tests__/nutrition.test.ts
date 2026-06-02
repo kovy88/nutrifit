@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal } from '../utils/nutrition';
+import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, primaryGoalToNutritionKind, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal } from '../utils/nutrition';
 import { DEFAULT_PROFILE } from '../utils/nutrition';
 import { normalizeConsent } from '../services/storage';
 import type { Meal } from '../types';
@@ -59,7 +59,7 @@ describe('nutrition utilities', () => {
   });
 
   it('adjusts rest and long-run days', () => {
-    const baseline = calculateMacros({ ...DEFAULT_PROFILE, primaryGoal: 'run_race', trainingGoal: 'run_10k' } as any);
+    const baseline = calculateMacros({ ...DEFAULT_PROFILE, primaryGoal: 'improve_running', trainingGoal: 'run_10k' } as any);
     const rest = adjustForDay(baseline, { date: '2026-05-27', kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' }, DEFAULT_PROFILE);
     expect(rest.macros.kcal).toBe(baseline.kcal);
     expect(rest.macros.carbs).toBeLessThan(baseline.carbs);
@@ -71,15 +71,32 @@ describe('nutrition utilities', () => {
 
   it('builds a default training session from profile goal', () => {
     const saturday = new Date('2026-05-30T12:00:00');
-    const session = buildTrainingSessionForDate({ ...DEFAULT_PROFILE, primaryGoal: 'run_race', trainingGoal: 'run_10k', sessionsPerWeek: 4 } as any, saturday);
+    const session = buildTrainingSessionForDate({ ...DEFAULT_PROFILE, primaryGoal: 'improve_running', trainingGoal: 'run_10k', sessionsPerWeek: 4 } as any, saturday);
     expect(session.kind).toBe('long_run');
   });
 
   it('migrates v1 profile defaults to v2 mobile profile', () => {
     const migrated = migrateProfile({ goal: 'hubnutí', age: 36, height: 181, weight: 88, activityFactor: 1.55 });
-    expect(migrated?.primaryGoal).toBe('lose_weight');
+    expect(migrated?.primaryGoal).toBe('lose_fat');
     expect(migrated?.trainingGoal).toBe('general_fitness');
     expect(migrated?.sessionsPerWeek).toBe(4);
+  });
+
+  it('maps new primary goals to deterministic nutrition kinds', () => {
+    expect(primaryGoalToNutritionKind('lose_fat')).toBe('fat_loss');
+    expect(primaryGoalToNutritionKind('improve_running')).toBe('endurance');
+    expect(primaryGoalToNutritionKind('improve_fitness')).toBe('general_fitness');
+    expect(primaryGoalToNutritionKind('improve_recovery')).toBe('maintenance');
+    expect(primaryGoalToNutritionKind('build_consistency')).toBe('maintenance');
+    expect(primaryGoalToNutritionKind('lose_weight')).toBe('fat_loss');
+  });
+
+  it('supports fat-loss and muscle-gain friendly nutrition modes', () => {
+    const fatLoss = calculateMacros({ ...DEFAULT_PROFILE, nutritionMode: 'fat_loss_friendly' });
+    const muscleGain = calculateMacros({ ...DEFAULT_PROFILE, primaryGoal: 'gain_muscle', nutritionMode: 'muscle_gain_friendly' });
+    expect(fatLoss.protein).toBeGreaterThanOrEqual(calculateMacros(DEFAULT_PROFILE).protein);
+    expect(muscleGain.goal).toBe('muscle_gain');
+    expect(muscleGain.kcal).toBeGreaterThan(calculateMacros(DEFAULT_PROFILE).kcal);
   });
 
   it('validates complete meal plans', () => {

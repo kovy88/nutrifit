@@ -45,6 +45,7 @@ export function PlanScreen() {
     profile,
     currentMacros: todayMacros,
     currentSession: todaySession,
+    dailyAdjustment,
     currentMeals: meals,
     currentFoodLog: foodLog,
     setMeals,
@@ -189,6 +190,18 @@ export function PlanScreen() {
         <Button variant="secondary" style={styles.navBtn} onPress={() => navigation.navigate('Foto')}>{t('plan.openPhoto')}</Button>
       </View>
 
+      {todaySession?.kind === 'long_run' && dailyAdjustment && dailyAdjustment.carbsDelta > 0 && (
+        <Card>
+          <Label>{t('plan.fuelingTitle')}</Label>
+          <Text style={styles.fuelingNote}>
+            {t('plan.longRunFueling', {
+              carbs: Math.round(dailyAdjustment.carbsDelta),
+              kcal: Math.round(dailyAdjustment.kcalDelta),
+            })}
+          </Text>
+        </Card>
+      )}
+
       <Card>
         <Label>{t('plan.prefsTitle')}</Label>
         <Field value={likes} onChangeText={setLikes} placeholder={t('plan.likesPlaceholder')} multiline />
@@ -312,6 +325,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   macroPill: { color: colors.ink, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontWeight: '800', fontSize: 12, backgroundColor: colors.isDark ? '#151d1a' : '#fbfbf8' },
   ingredients: { color: colors.muted, lineHeight: 20 },
   link: { color: colors.green, fontWeight: '900' },
+  fuelingNote: { color: colors.green, fontSize: 14, lineHeight: 20, fontWeight: '900' },
   shoppingGroup: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, gap: 4 },
   shoppingTitle: { color: colors.ink, fontWeight: '900' },
   shoppingItem: { color: colors.muted, lineHeight: 20 },

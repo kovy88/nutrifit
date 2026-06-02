@@ -59,7 +59,7 @@ describe('createTranslator', () => {
     // Simulate by casting; both catalogs have parity, so this asserts the path exists.
     const t = createTranslator('en');
     // A real key still works
-    expect(t('goal.lose_weight')).toBe('Weight loss');
+    expect(t('goal.lose_fat')).toBe('Fat loss');
   });
 });
 

@@ -48,6 +48,8 @@ export type RecoveryInputs = {
   recoveryDebt?: number | null;
   /** Subjektivní energie z posledního check-inu (1–5). */
   subjectiveEnergy?: SubjectiveLevel | null;
+  /** Subjektivní bolest/svalovka z posledního check-inu (1–5). */
+  subjectiveSoreness?: SubjectiveLevel | null;
 };
 
 /** Akce, které kouč nabízí jako quick-action na Today obrazovce. */
@@ -100,7 +102,7 @@ export type CoachMessage = {
 /** Malá, odvozená paměť pro coach chat. ŽÁDNÁ raw health data — jen pár faktů,
  *  aby AI mělo kontext bez posílání celé historie. */
 export type CoachMemory = {
-  /** Stručné shrnutí cíle, např. "lose_weight + run_10k". */
+  /** Stručné shrnutí cíle, např. "lose_fat + run_10k". */
   goalSummary: string;
   /** Týdenní váhový trend v kg/týden (z weekly adjustment / trendu). */
   recentWeightTrendKgPerWeek?: number | null;
