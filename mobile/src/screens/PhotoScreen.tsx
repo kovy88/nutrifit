@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { analyzeFoodPhoto } from '../services/api';
 import { normalizeFoodEstimate, formatDateLabel } from '../utils/nutrition';

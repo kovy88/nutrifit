@@ -1,14 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { formatDateLabel, isToday, toDateKey } from '../utils/nutrition';
 
 export function DateHeader() {
   const { selectedDate, setSelectedDate } = useTrenr();
   const { t } = useLanguage();
+  const { colors } = useTheme();
 
   function adjustDate(days: number) {
     const current = new Date(selectedDate);
@@ -23,25 +24,25 @@ export function DateHeader() {
   const today = isToday(selectedDate);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderBottomColor: colors.border }]}>
       <View style={styles.navRow}>
-        <Pressable onPress={() => adjustDate(-1)} style={({ pressed }) => [styles.arrowBtn, pressed && styles.pressed]}>
-          <Ionicons name="chevron-back" size={20} color={colors.green} />
+        <Pressable onPress={() => adjustDate(-1)} style={({ pressed }) => [styles.arrowBtn, { backgroundColor: colors.bgElev }, pressed && styles.pressed]}>
+          <Ionicons name="chevron-back" size={20} color={colors.accent} />
         </Pressable>
 
         <View style={styles.dateLabelContainer}>
-          <Text style={styles.dateText}>{formatDateLabel(selectedDate)}</Text>
-          <Text style={styles.dateSubText}>{selectedDate}</Text>
+          <Text style={[styles.dateText, { color: colors.ink }]}>{formatDateLabel(selectedDate)}</Text>
+          <Text style={[styles.dateSubText, { color: colors.faint }]}>{selectedDate}</Text>
         </View>
 
-        <Pressable onPress={() => adjustDate(1)} style={({ pressed }) => [styles.arrowBtn, pressed && styles.pressed]}>
-          <Ionicons name="chevron-forward" size={20} color={colors.green} />
+        <Pressable onPress={() => adjustDate(1)} style={({ pressed }) => [styles.arrowBtn, { backgroundColor: colors.bgElev }, pressed && styles.pressed]}>
+          <Ionicons name="chevron-forward" size={20} color={colors.accent} />
         </Pressable>
       </View>
 
       {!today && (
-        <Pressable onPress={goToToday} style={({ pressed }) => [styles.todayBtn, pressed && styles.pressed]}>
-          <Text style={styles.todayBtnText}>{t('common.today')}</Text>
+        <Pressable onPress={goToToday} style={({ pressed }) => [styles.todayBtn, { backgroundColor: colors.accent }, pressed && styles.pressed]}>
+          <Text style={[styles.todayBtnText, { color: colors.accentText }]}>{t('common.today')}</Text>
         </Pressable>
       )}
     </View>
@@ -55,7 +56,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacingOrTen(),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     marginBottom: 8,
   },
   navRow: {
@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#eef2ed',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -82,11 +81,9 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.ink,
   },
   dateSubText: {
     fontSize: 11,
-    color: colors.faint,
     marginTop: 2,
     fontWeight: '600',
   },
@@ -95,12 +92,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: colors.green,
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayBtnText: {
-    color: '#fff',
     fontWeight: '800',
     fontSize: 12,
   },

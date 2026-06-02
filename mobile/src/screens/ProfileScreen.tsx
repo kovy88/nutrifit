@@ -1,12 +1,12 @@
 import { Alert, Linking, StyleSheet, Text, View, Modal, ScrollView, Pressable } from 'react-native';
 import { Button, Card, Field, H1, Label, Pill } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { PrimaryGoal, TrainingGoalKind } from '../types';
+import type { CoachScope, PrimaryGoal, TrainingGoalKind } from '../types';
+import { resolveCoachScope } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
 import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
@@ -21,6 +21,7 @@ export function ProfileScreen() {
   const weeklySummary = useWeeklySummary();
   const syncStatus = useSyncStatus();
   const { t } = useLanguage();
+  const { colors } = useTheme();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
 
@@ -77,6 +78,14 @@ export function ProfileScreen() {
       <H1>{t('profile.title')}</H1>
 
       <Card>
+        <Label>{t('profile.focus')}</Label>
+        <View style={styles.rowWrap}>
+          {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
+            <Pill key={s} active={resolveCoachScope(profile) === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
+              {t(('scope.' + s) as 'scope.both')}
+            </Pill>
+          ))}
+        </View>
         <Label>{t('profile.mainGoal')}</Label>
         <View style={styles.rowWrap}>
           {(['lose_weight', 'maintain_weight', 'gain_muscle', 'run_race'] as PrimaryGoal[]).map(goal => (
@@ -124,32 +133,32 @@ export function ProfileScreen() {
       {/* AI weekly summary — last generated review */}
       {weeklySummary.summary && (
         <Card>
-          <Label>🧠 Týdenní AI shrnutí</Label>
-          <Text style={styles.summaryHeadline}>{weeklySummary.summary.headline}</Text>
+          <Label>Týdenní AI shrnutí</Label>
+          <Text style={[styles.summaryHeadline, { color: colors.ink }]}>{weeklySummary.summary.headline}</Text>
           {weeklySummary.summary.highlights.length > 0 && (
             <View style={{ marginTop: 8, gap: 4 }}>
-              <Text style={styles.summarySectionLabel}>✓ Co šlo</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>✓ Co šlo</Text>
               {weeklySummary.summary.highlights.map((h, i) => (
-                <Text key={`hl-${i}`} style={styles.summaryBullet}>• {h}</Text>
+                <Text key={`hl-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {h}</Text>
               ))}
             </View>
           )}
           {weeklySummary.summary.concerns.length > 0 && (
             <View style={{ marginTop: 10, gap: 4 }}>
-              <Text style={styles.summarySectionLabel}>⚠ Hlídej</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>Hlídej</Text>
               {weeklySummary.summary.concerns.map((c, i) => (
-                <Text key={`cn-${i}`} style={styles.summaryBullet}>• {c}</Text>
+                <Text key={`cn-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {c}</Text>
               ))}
             </View>
           )}
           {weeklySummary.summary.recommendation && (
             <View style={{ marginTop: 10 }}>
-              <Text style={styles.summarySectionLabel}>→ Příští týden</Text>
-              <Text style={styles.summaryRec}>{weeklySummary.summary.recommendation}</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>→ Příští týden</Text>
+              <Text style={[styles.summaryRec, { color: colors.green }]}>{weeklySummary.summary.recommendation}</Text>
             </View>
           )}
           {weeklySummary.generatedAt && (
-            <Text style={styles.summaryMeta}>
+            <Text style={[styles.summaryMeta, { color: colors.faint }]}>
               Vygenerováno {new Date(weeklySummary.generatedAt).toLocaleDateString('cs-CZ')} pro týden {weeklySummary.weekStartISO}
             </Text>
           )}
@@ -165,7 +174,7 @@ export function ProfileScreen() {
 
       <Card>
         <Label>{t('profile.account')}</Label>
-        <Text style={styles.copy}>
+        <Text style={[styles.copy, { color: colors.muted }]}>
           Sync: {syncStatus.status}
           {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
           {syncStatus.lastSyncedAt ? ` · ${new Date(syncStatus.lastSyncedAt).toLocaleString()}` : ''}
@@ -173,7 +182,7 @@ export function ProfileScreen() {
         {syncStatus.error && <Text style={{ color: colors.red, fontSize: 12 }}>{syncStatus.error}</Text>}
         {user ? (
           <>
-            <Text style={styles.user}>{user.email}</Text>
+            <Text style={[styles.user, { color: colors.ink }]}>{user.email}</Text>
             <Button variant="secondary" onPress={exportData}>{t('profile.exportData')}</Button>
             <Button variant="secondary" onPress={signOut}>{t('profile.signOut')}</Button>
             <Button variant="danger" onPress={confirmDelete}>{t('profile.deleteAccount')}</Button>
@@ -193,9 +202,9 @@ export function ProfileScreen() {
 
       <Card>
         <Label>Podmínky a ochrana</Label>
-        <Text style={styles.copy}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
-        <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
-        <Text style={styles.link} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
+        <Text style={[styles.copy, { color: colors.muted }]}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
+        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
+        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
       </Card>
 
       <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
@@ -290,7 +299,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
         <Pressable style={styles.modalScrim} onPress={onClose} />
         <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
           <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: colors.ink }]}>🎯 Týdenní check-in</Text>
+            <Text style={[styles.modalTitle, { color: colors.ink }]}>Týdenní check-in</Text>
             <Text style={[styles.small, { color: colors.muted }]}>
               Zhodnoť svůj týden. Trenr porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
             </Text>
@@ -299,7 +308,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
             <View style={styles.row}>
               {([1, 2, 3, 4, 5] as const).map(n => (
                 <Pill key={`e-${n}`} active={energyLevel === n} onPress={() => setEnergyLevel(n)}>
-                  {n === 1 ? '🪫 1' : n === 5 ? '🔋 5' : String(n)}
+                  {n === 1 ? '1' : n === 5 ? '5' : String(n)}
                 </Pill>
               ))}
             </View>
@@ -342,7 +351,7 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
                 )}
                 {pending.adjustedGoalKind && (
                   <Text style={[styles.resultText, { color: colors.orange, marginTop: 6, fontWeight: '900' }]}>
-                    ⚠ Cíl dočasně přepneme na: {pending.adjustedGoalKind}
+                    Cíl dočasně přepneme na: {pending.adjustedGoalKind}
                   </Text>
                 )}
                 {pending.warnings.length > 0 && (
@@ -388,9 +397,9 @@ const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  user: { color: colors.ink, fontWeight: '900' },
-  copy: { color: colors.muted, lineHeight: 20 },
-  link: { color: colors.blue, fontWeight: '900' },
+  user: { fontWeight: '900' },
+  copy: { lineHeight: 20 },
+  link: { fontWeight: '900' },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
   modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25, 33, 29, 0.38)' },
   modalSheet: { maxHeight: '82%', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
@@ -399,9 +408,9 @@ const styles = StyleSheet.create({
   small: { fontSize: 13, lineHeight: 18 },
   resultBox: { marginTop: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
   resultText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  summaryHeadline: { color: colors.ink, fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 6 },
-  summarySectionLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
-  summaryBullet: { color: colors.ink, fontSize: 13, lineHeight: 19 },
-  summaryRec: { color: colors.green, fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
-  summaryMeta: { color: colors.faint, fontSize: 11, marginTop: 10 },
+  summaryHeadline: { fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 6 },
+  summarySectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  summaryBullet: { fontSize: 13, lineHeight: 19 },
+  summaryRec: { fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
+  summaryMeta: { fontSize: 11, marginTop: 10 },
 });

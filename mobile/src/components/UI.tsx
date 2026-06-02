@@ -144,6 +144,48 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
   );
 }
 
+/** Large selectable option row — title (+ optional subtitle) with a radio dot.
+ *  Used by the one-question-per-screen onboarding. */
+export function Choice({
+  active,
+  title,
+  subtitle,
+  onPress,
+}: {
+  active?: boolean;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.choice,
+        {
+          borderColor: active ? colors.accent : colors.border,
+          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
+        },
+        pressed && { opacity: 0.9 },
+      ]}
+    >
+      <View style={styles.choiceBody}>
+        <Text style={[styles.choiceTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.choiceSub, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.choiceDot,
+          { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accent : 'transparent' },
+        ]}
+      />
+    </Pressable>
+  );
+}
+
 export function FadeInView({
   children,
   delay = 0,
@@ -204,4 +246,9 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 15.5, letterSpacing: 0.2 },
   pill: { minHeight: 42, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 14 },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16 },
+  choiceBody: { flex: 1, gap: 2 },
+  choiceTitle: { fontSize: 16.5, letterSpacing: -0.2 },
+  choiceSub: { fontSize: 13, lineHeight: 18 },
+  choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
 });

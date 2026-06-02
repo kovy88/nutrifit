@@ -145,10 +145,10 @@ describe('describeStreak', () => {
       .toMatch(/pokračuj|2 dny/);
   });
 
-  it('3+ streak gets fire emoji', () => {
+  it('3+ streak is emphasized with the count', () => {
     const r = describeStreak({ current: 5, longest: 5, startDate: '2026-05-24' }, 'log');
-    expect(r).toContain('🔥');
     expect(r).toContain('5');
+    expect(r.toLowerCase()).toMatch(/longest|nejdelší/);
   });
 
   it('current = longest is celebrated', () => {

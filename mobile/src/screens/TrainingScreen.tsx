@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, H1, Label, Subtitle, FadeInView } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { toDateKey, formatDateLabel } from '../utils/nutrition';
@@ -130,23 +129,23 @@ export function TrainingScreen() {
                   ) : (
                     <View style={styles.sessionBody}>
                       <Text style={[styles.sessionTitle, { color: themeColors.ink, fontFamily: fonts.extraBold }]}>
-                        🏃 {item.session.title}
+                        {item.session.title}
                       </Text>
                       <View style={styles.sessionDetails}>
                         <Text style={[styles.detailChip, { backgroundColor: themeColors.isDark ? '#2a3630' : '#eef2ed', color: themeColors.green, fontFamily: fonts.bold }]}>
-                          ⏱️ {item.session.durationMinutes} min
+                          {item.session.durationMinutes} min
                         </Text>
                         <Text
                           style={[
                             styles.detailChip,
                             {
-                              backgroundColor: item.session.intensity === 'hard' ? '#fdefee' : '#fefaf0',
-                              color: item.session.intensity === 'hard' ? colors.red : colors.orange,
+                              backgroundColor: themeColors.bgElev,
+                              color: item.session.intensity === 'hard' ? themeColors.red : themeColors.orange,
                               fontFamily: fonts.bold,
                             },
                           ]}
                         >
-                          🔥 {t('training.intensityLabel')}: {item.session.intensity.toUpperCase()}
+                          {t('training.intensityLabel')}: {item.session.intensity.toUpperCase()}
                         </Text>
                       </View>
                     </View>

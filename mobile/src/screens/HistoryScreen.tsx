@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Card, H1, Label, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
 import { formatDateLabel } from '../utils/nutrition';
@@ -200,7 +199,7 @@ export function HistoryScreen() {
         <View style={styles.streakRow}>
           <View style={[styles.streakChip, { borderColor: logStreak.current > 0 ? themeColors.orange : themeColors.border }]}>
             <Text style={[styles.streakValue, { color: themeColors.ink }]}>
-              {logStreak.current > 0 ? `🔥 ${logStreak.current}` : '—'}
+              {logStreak.current > 0 ? `${logStreak.current}` : '—'}
             </Text>
             <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{t('history.logStreakUnit', { n: logStreak.current })}</Text>
             <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
@@ -247,24 +246,24 @@ export function HistoryScreen() {
       <Card>
         <Label>{t('history.daysOverview')}</Label>
         {summaries.length === 0 ? (
-          <Text style={styles.empty}>{t('history.noDays')}</Text>
+          <Text style={[styles.empty, { color: themeColors.faint }]}>{t('history.noDays')}</Text>
         ) : (
           summaries.map(item => (
             <Pressable
               key={item.dateKey}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              style={({ pressed }) => [styles.row, { borderBottomColor: themeColors.border }, pressed && styles.rowPressed]}
               onPress={() => handleSelectDay(item.dateKey)}
             >
               <View style={styles.leftCol}>
-                <Text style={styles.dateLabel}>{formatDateLabel(item.dateKey)}</Text>
-                <Text style={styles.dateSub}>{item.dateKey}</Text>
+                <Text style={[styles.dateLabel, { color: themeColors.ink }]}>{formatDateLabel(item.dateKey)}</Text>
+                <Text style={[styles.dateSub, { color: themeColors.muted }]}>{item.dateKey}</Text>
               </View>
               <View style={styles.rightCol}>
-                <Text style={styles.kcalInfo}>
-                  {t('history.planLabel')} <Text style={styles.boldKcal}>{item.plannedKcal}</Text> kcal
+                <Text style={[styles.kcalInfo, { color: themeColors.muted }]}>
+                  {t('history.planLabel')} <Text style={[styles.boldKcal, { color: themeColors.ink }]}>{item.plannedKcal}</Text> kcal
                 </Text>
-                <Text style={styles.kcalInfo}>
-                  {t('history.loggedLabel')} <Text style={[styles.boldKcal, styles.loggedColor]}>{item.loggedKcal}</Text> kcal
+                <Text style={[styles.kcalInfo, { color: themeColors.muted }]}>
+                  {t('history.loggedLabel')} <Text style={[styles.boldKcal, { color: themeColors.green }]}>{item.loggedKcal}</Text> kcal
                 </Text>
               </View>
             </Pressable>
@@ -276,18 +275,16 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  empty: { color: colors.faint, textAlign: 'center', paddingVertical: 20 },
+  empty: { textAlign: 'center', paddingVertical: 20 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   rowPressed: {
     opacity: 0.7,
-    backgroundColor: '#fbfbf8',
   },
   leftCol: {
     flex: 1,
@@ -296,26 +293,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   dateLabel: {
-    color: colors.ink,
     fontSize: 16,
     fontWeight: '800',
   },
   dateSub: {
-    color: colors.muted,
     fontSize: 12,
     marginTop: 2,
   },
   kcalInfo: {
     fontSize: 13,
-    color: colors.muted,
     lineHeight: 18,
   },
   boldKcal: {
     fontWeight: '800',
-    color: colors.ink,
-  },
-  loggedColor: {
-    color: colors.green,
   },
   adherenceNote: { fontSize: 12, lineHeight: 18, marginTop: 8 },
   adherenceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },

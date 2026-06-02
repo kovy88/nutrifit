@@ -50,16 +50,20 @@ export function buildCoachChatRequest(opts: {
   }
   if (rec) {
     ctxLines.push(`Readiness: ${rec.readiness.score}/100 (${rec.readiness.band})`);
-    ctxLines.push(`Today's focus: ${rec.training.focus}`);
-    ctxLines.push(
-      rec.training.session
-        ? `Today's session: ${rec.training.session.title} (${rec.training.session.durationMinutes} min, ${rec.training.session.intensity})`
-        : "Today: rest day",
-    );
-    const m = rec.nutrition.targets;
-    ctxLines.push(`Nutrition target: ${m.kcal} kcal, ${m.protein} g protein, ${m.carbs} g carbs, ${m.fat} g fat`);
+    if (rec.training) {
+      ctxLines.push(`Today's focus: ${rec.training.focus}`);
+      ctxLines.push(
+        rec.training.session
+          ? `Today's session: ${rec.training.session.title} (${rec.training.session.durationMinutes} min, ${rec.training.session.intensity})`
+          : "Today: rest day",
+      );
+    }
+    if (rec.nutrition) {
+      const m = rec.nutrition.targets;
+      ctxLines.push(`Nutrition target: ${m.kcal} kcal, ${m.protein} g protein, ${m.carbs} g carbs, ${m.fat} g fat`);
+    }
     ctxLines.push(`Coach note: ${rec.coachNote}`);
-    if (rec.training.whatNotToDo) ctxLines.push(`Avoid today: ${rec.training.whatNotToDo}`);
+    if (rec.training?.whatNotToDo) ctxLines.push(`Avoid today: ${rec.training.whatNotToDo}`);
   }
 
   const historyLines = history.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Coach'}: ${m.text}`);

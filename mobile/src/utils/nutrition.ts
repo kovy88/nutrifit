@@ -14,6 +14,7 @@ import type {
   UserProfile,
   ShoppingListGroup,
 } from '../types';
+import { resolveCoachScope, scopeHasNutrition } from '../types';
 
 const SAFETY = {
   MIN_KCAL_FEMALE: 1200,
@@ -38,6 +39,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   mealCount: 5,
   nutritionMode: 'balanced',
   planIntensity: 'moderate',
+  coachScope: 'both',
 };
 
 /** Human-readable Czech label for a primary goal, used for UI display. */
@@ -191,11 +193,15 @@ export function migrateProfile(raw: (Partial<UserProfile> & { goal?: string }) |
 
 export function validateProfile(profile: UserProfile): string[] {
   const errors: string[] = [];
-  const safety = assessProfileSafety(profile, { kind: primaryGoalToNutritionKind(profile.primaryGoal) });
-  if (!safety.allowed && safety.message) errors.push(safety.message);
-  if (profile.age > 100) errors.push('Zkontroluj věk.');
-  if (profile.height < 100 || profile.height > 250) errors.push('Výška musí být mezi 100 a 250 cm.');
-  if (profile.weight < 30 || profile.weight > 300) errors.push('Váha musí být mezi 30 a 300 kg.');
+  // Body metrics + the calorie-safety gate are only required when nutrition is in
+  // scope (BMR/macros need them). A training-only coach skips these entirely.
+  if (scopeHasNutrition(resolveCoachScope(profile))) {
+    const safety = assessProfileSafety(profile, { kind: primaryGoalToNutritionKind(profile.primaryGoal) });
+    if (!safety.allowed && safety.message) errors.push(safety.message);
+    if (profile.age > 100) errors.push('Zkontroluj věk.');
+    if (profile.height < 100 || profile.height > 250) errors.push('Výška musí být mezi 100 a 250 cm.');
+    if (profile.weight < 30 || profile.weight > 300) errors.push('Váha musí být mezi 30 a 300 kg.');
+  }
   return errors;
 }
 

@@ -13,6 +13,7 @@ import { composeMorningBriefing } from './composeMorningBriefing';
 import type { TrainingLoadAssessment } from './trainingLoad';
 import type { Locale } from '../i18n';
 import type { Macros, TrainingSession, UserProfile } from '../../types';
+import { resolveCoachScope, scopeHasNutrition, scopeHasTraining } from '../../types';
 import type {
   CoachAction,
   DailyCoachRecommendation,
@@ -29,7 +30,7 @@ const rankIntensity = (i: RecommendedIntensity): number => INTENSITY_ORDER.index
 
 export type DailyCoachInput = {
   date: string;
-  profile: Pick<UserProfile, 'primaryGoal' | 'experience'>;
+  profile: Pick<UserProfile, 'primaryGoal' | 'experience' | 'coachScope'>;
   /** Dnešní naplánovaná jednotka (z planneru) nebo null = rest. */
   session: TrainingSession | null;
   recovery: RecoveryInputs;
@@ -82,6 +83,9 @@ function focusFor(session: TrainingSession, intensity: RecommendedIntensity, loc
 
 export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyCoachRecommendation {
   const loc = input.locale ?? 'cs';
+  const scope = resolveCoachScope(input.profile);
+  const hasTraining = scopeHasTraining(scope);
+  const hasNutrition = scopeHasNutrition(scope);
   const readiness = scoreReadiness(input.recovery, loc);
 
   const assessment = evaluateReadiness({
@@ -111,23 +115,23 @@ export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyC
 
   const rec: DailyCoachRecommendation = {
     date: input.date,
-    emoji: briefing.emoji,
+    scope,
     headline: briefing.headline,
     readiness,
-    training: {
+    training: hasTraining ? {
       session: adjustedSession,
       focus: classification.focus,
       adjusted,
       whatNotToDo: buildWhatNotToDo(readiness.recommendedIntensity, input.session, loc),
-    },
-    nutrition: {
+    } : undefined,
+    nutrition: hasNutrition ? {
       targets: input.todayMacros,
       deltaVsBaselineKcal,
       reason: nutritionReason(deltaVsBaselineKcal, adjustedSession, loc),
-    },
+    } : undefined,
     coachNote: briefing.recommendation,
     warnings: [],
-    suggestedActions: buildActions(adjustedSession),
+    suggestedActions: buildActions(adjustedSession, hasTraining, hasNutrition),
   };
 
   return validateCoachRecommendationSafety(rec, input, loc);
@@ -155,9 +159,11 @@ function nutritionReason(delta: number, session: TrainingSession | null, loc: Lo
   return L(loc, 'Drž denní cíl.', 'Hold your daily target.');
 }
 
-function buildActions(session: TrainingSession | null): CoachAction[] {
-  const actions: CoachAction[] = ['swap_meal', 'adjust_today'];
-  if (session && session.kind !== 'rest') actions.push('mark_done');
+function buildActions(session: TrainingSession | null, hasTraining: boolean, hasNutrition: boolean): CoachAction[] {
+  const actions: CoachAction[] = [];
+  if (hasNutrition) actions.push('swap_meal');
+  actions.push('adjust_today');
+  if (hasTraining && session && session.kind !== 'rest') actions.push('mark_done');
   actions.push('ask_coach');
   return actions;
 }
@@ -197,7 +203,7 @@ export function validateCoachRecommendationSafety(
   }
 
   // 1) Hard session planned while readiness is low → guardrail.
-  if (rec.readiness.band === 'low' && planned && planned.intensity === 'hard') {
+  if (rec.training && rec.readiness.band === 'low' && planned && planned.intensity === 'hard') {
     if (!rec.training.whatNotToDo) {
       rec.training.whatNotToDo = L(loc, 'Nízká připravenost — vynech tvrdou jednotku.', 'Low readiness — skip the hard session.');
     }
@@ -205,7 +211,7 @@ export function validateCoachRecommendationSafety(
   }
 
   // 2) Long-run day must not be in a calorie deficit vs baseline.
-  if (planned && planned.kind === 'long_run' && rec.nutrition.deltaVsBaselineKcal <= 0) {
+  if (rec.nutrition && planned && planned.kind === 'long_run' && rec.nutrition.deltaVsBaselineKcal <= 0) {
     warnings.push(L(loc, 'Long run by neměl být v deficitu — přidej sacharidy.', "A long run shouldn't be in a deficit — add carbs."));
   }
 

@@ -4,7 +4,7 @@ import type { CoachMessage, DailyCoachRecommendation } from '../types/coach';
 
 const rec: DailyCoachRecommendation = {
   date: '2026-05-30',
-  emoji: '🟡',
+  scope: 'both',
   headline: 'Easy run. Slightly reduced readiness.',
   readiness: { score: 58, band: 'medium', recommendedIntensity: 'moderate', drivers: ['Low sleep'], confidence: 'medium' },
   training: { session: { date: '2026-05-30', kind: 'easy_run', title: 'Lehký běh', durationMinutes: 40, intensity: 'easy' }, focus: 'Aerobní báze', adjusted: false },

@@ -92,7 +92,7 @@ function todayKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Lidský label pro streak — 🔥 zazní jen pokud current >= 3. */
+/** Lidský label pro streak — zdůrazněný jen pokud current >= 3. */
 export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence', locale: Locale = 'cs'): string {
   const en = locale === 'en';
   const n = streak.current;
@@ -119,12 +119,12 @@ export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence', lo
   }
   if (en) {
     return kind === 'log'
-      ? `🔥 ${n} ${day(n)} in a row. ${n >= streak.longest ? 'Your longest!' : `Longest: ${streak.longest}.`}`
-      : `🔥 ${n} ${day(n)} on target. ${n >= streak.longest ? 'Your longest!' : `Record: ${streak.longest}.`}`;
+      ? `${n} ${day(n)} in a row. ${n >= streak.longest ? 'Your longest!' : `Longest: ${streak.longest}.`}`
+      : `${n} ${day(n)} on target. ${n >= streak.longest ? 'Your longest!' : `Record: ${streak.longest}.`}`;
   }
   return kind === 'log'
-    ? `🔥 ${n} ${day(n)} v řadě. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Nejdelší: ${streak.longest}.`}`
-    : `🔥 ${n} ${day(n)} v cíli. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Rekord: ${streak.longest}.`}`;
+    ? `${n} ${day(n)} v řadě. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Nejdelší: ${streak.longest}.`}`
+    : `${n} ${day(n)} v cíli. ${n >= streak.longest ? 'Tvůj nejdelší!' : `Rekord: ${streak.longest}.`}`;
 }
 
 function pluralDay(n: number): string {

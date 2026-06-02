@@ -38,11 +38,11 @@ describe('generateDailyCoachRecommendation', () => {
   it('produces a full recommendation on a good readiness day', () => {
     const rec = generateDailyCoachRecommendation(baseInput());
     expect(rec.readiness.band).toBe('high');
-    expect(rec.training.session).not.toBeNull();
-    expect(rec.training.focus.length).toBeGreaterThan(0);
+    expect(rec.training!.session).not.toBeNull();
+    expect(rec.training!.focus.length).toBeGreaterThan(0);
     expect(rec.coachNote.length).toBeGreaterThan(0);
     expect(rec.suggestedActions).toContain('ask_coach');
-    expect(rec.nutrition.deltaVsBaselineKcal).toBe(100);
+    expect(rec.nutrition!.deltaVsBaselineKcal).toBe(100);
   });
 
   it('downgrades a hard session and sets whatNotToDo when readiness is poor', () => {
@@ -51,9 +51,9 @@ describe('generateDailyCoachRecommendation', () => {
       recovery: { todaySleepMinutes: 300 }, // <6h → red assessment + low score
     }));
     expect(rec.readiness.band).toBe('low');
-    expect(rec.training.adjusted).toBe(true);
-    expect(rec.training.session?.intensity).not.toBe('hard');
-    expect(rec.training.whatNotToDo).toBeTruthy();
+    expect(rec.training!.adjusted).toBe(true);
+    expect(rec.training!.session?.intensity).not.toBe('hard');
+    expect(rec.training!.whatNotToDo).toBeTruthy();
   });
 
   it('warns when a long-run day is not fueled above baseline', () => {
@@ -62,7 +62,7 @@ describe('generateDailyCoachRecommendation', () => {
       baselineMacros: makeMacros(2400),
       todayMacros: makeMacros(2400), // no surplus
     }));
-    expect(rec.nutrition.reason.toLowerCase()).toContain('long run');
+    expect(rec.nutrition!.reason.toLowerCase()).toContain('long run');
     expect(rec.warnings.some(w => /carb|sachar/i.test(w))).toBe(true);
   });
 
@@ -77,7 +77,7 @@ describe('generateDailyCoachRecommendation', () => {
 
   it('handles a rest day (null session) without mark_done and never throws', () => {
     const rec = generateDailyCoachRecommendation(baseInput({ session: null, recovery: {} }));
-    expect(rec.training.session).toBeNull();
+    expect(rec.training!.session).toBeNull();
     expect(rec.suggestedActions).not.toContain('mark_done');
     expect(rec.readiness.score).toBeGreaterThanOrEqual(0);
     expect(rec.readiness.confidence).toBe('low');
@@ -90,7 +90,32 @@ describe('generateDailyCoachRecommendation', () => {
       recovery: {},
     }));
     expect(rec.readiness.confidence).toBe('low');
-    expect(rec.training.whatNotToDo).toBeTruthy();
+    expect(rec.training!.whatNotToDo).toBeTruthy();
     expect(rec.warnings.some(w => /bez dat|no sleep|orientační|guidance/i.test(w))).toBe(true);
+  });
+});
+
+describe('coachScope gating', () => {
+  it('training-only omits nutrition and never offers swap_meal', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'run_race', experience: 'intermediate', coachScope: 'training' } }));
+    expect(rec.scope).toBe('training');
+    expect(rec.training).toBeTruthy();
+    expect(rec.nutrition).toBeUndefined();
+    expect(rec.suggestedActions).not.toContain('swap_meal');
+  });
+
+  it('nutrition-only omits training and never offers mark_done', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({ profile: { primaryGoal: 'lose_weight', experience: 'intermediate', coachScope: 'nutrition' } }));
+    expect(rec.scope).toBe('nutrition');
+    expect(rec.nutrition).toBeTruthy();
+    expect(rec.training).toBeUndefined();
+    expect(rec.suggestedActions).not.toContain('mark_done');
+  });
+
+  it('both (default) includes training and nutrition', () => {
+    const rec = generateDailyCoachRecommendation(baseInput());
+    expect(rec.scope).toBe('both');
+    expect(rec.training).toBeTruthy();
+    expect(rec.nutrition).toBeTruthy();
   });
 });

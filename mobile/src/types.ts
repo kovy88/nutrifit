@@ -10,6 +10,10 @@ export type NutritionGoalKind = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'en
 export type NutritionMode = 'balanced' | 'high_protein' | 'budget_friendly' | 'simple_meal_prep' | 'endurance_fueling';
 /** Jak agresivní má být plán. Clampuje kalorický deficit i tréninkovou progresi. */
 export type PlanIntensity = 'easy' | 'moderate' | 'ambitious_but_safe';
+/** Na co uživatel kouče používá. 'both' = trénink i jídelníček, 'training' = jen
+ *  trénink, 'nutrition' = jen jídelníček. Pohání scope-aware onboarding, Today,
+ *  taby i coach engine. Undefined (starší profily) se chová jako 'both'. */
+export type CoachScope = 'both' | 'training' | 'nutrition';
 export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional';
 
 export type UserProfile = {
@@ -30,12 +34,25 @@ export type UserProfile = {
   nutritionMode?: NutritionMode;
   /** Agresivita plánu (default 'moderate'). Optional kvůli migraci starších profilů. */
   planIntensity?: PlanIntensity;
+  /** Zaměření kouče (default 'both'). Optional kvůli migraci starších profilů. */
+  coachScope?: CoachScope;
   /** ISO datum (YYYY-MM-DD) startu tréninkového programu — pohání weekIndex progrese. */
   programStartISO?: string;
   /** Aktuální týdenní běžecký objem (km) z onboardingu. Pohání bezpečný start
    *  progresivního planneru místo konzervativního beginner defaultu. */
   currentWeeklyKm?: number;
 };
+
+/** Scope helpers — undefined coachScope (legacy profiles) resolves to 'both'. */
+export function resolveCoachScope(profile: Pick<UserProfile, 'coachScope'>): CoachScope {
+  return profile.coachScope ?? 'both';
+}
+export function scopeHasNutrition(scope: CoachScope): boolean {
+  return scope === 'both' || scope === 'nutrition';
+}
+export function scopeHasTraining(scope: CoachScope): boolean {
+  return scope === 'both' || scope === 'training';
+}
 
 export type Macros = {
   kcal: number;

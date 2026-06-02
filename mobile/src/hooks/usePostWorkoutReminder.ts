@@ -90,7 +90,7 @@ export function usePostWorkoutReminder(mode: NotificationMode = 'auto'): PostWor
       : `Hydratuj se a sneď vyvážené jídlo během hodiny.`;
     void scheduler.scheduleAt({
       id: NOTIFICATION_ID,
-      title: `🔋 Post-workout refuel: ${todaySession.title}`,
+      title: `Post-workout refuel: ${todaySession.title}`,
       body: postNote,
       triggerInSeconds: secondsFromNow,
     });

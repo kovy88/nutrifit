@@ -101,7 +101,7 @@ export function usePreWorkoutReminder(mode: NotificationMode = 'auto'): PreWorko
       : `Drž lehkou hydrataci a pohyb. Pre-fuel není kritický pro tento trénink.`;
     void scheduler.scheduleAt({
       id: NOTIFICATION_ID,
-      title: `🍌 Pre-workout: ${todaySession.title}`,
+      title: `Pre-workout: ${todaySession.title}`,
       body: preNote,
       triggerInSeconds: secondsFromNow,
     });

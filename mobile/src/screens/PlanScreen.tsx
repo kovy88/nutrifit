@@ -228,7 +228,7 @@ export function PlanScreen() {
                     disabled={regeneratingIndex !== null}
                     onPress={() => handleRegenerate(meal, index)}
                   >
-                    {regeneratingIndex === index ? '⏳' : '🔄'}
+                    {regeneratingIndex === index ? t('plan.regenerating') : t('plan.regenerate')}
                   </Button>
                   <Button disabled={isMealLogged(meal)} onPress={() => logPlannedMeal(meal)}>
                     {isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}

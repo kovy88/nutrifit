@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTrenr } from '../context/TrenrContext';
+import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CoachScreen } from '../screens/CoachScreen';
@@ -24,6 +25,9 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const { t } = useLanguage();
   const { colors: themeColors } = useTheme();
+  const { profile } = useTrenr();
+  // Training-only coaches don't get the meal-plan tab.
+  const showNutrition = profile ? scopeHasNutrition(resolveCoachScope(profile)) : true;
   const tabLabels: Record<string, string> = {
     Dnes: t('tab.home'),
     Jídelníček: t('tab.plan'),
@@ -59,7 +63,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Dnes" component={TodayScreen} />
-      <Tab.Screen name="Jídelníček" component={PlanScreen} />
+      {showNutrition && <Tab.Screen name="Jídelníček" component={PlanScreen} />}
       <Tab.Screen name="Uloženo" component={HistoryScreen} />
       <Tab.Screen name="Coach" component={CoachScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />

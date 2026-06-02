@@ -1,16 +1,17 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export function LoadingScreen() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.root}>
-      <ActivityIndicator color={colors.green} />
-      <Text style={styles.text}>Načítám Trenr…</Text>
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      <ActivityIndicator color={colors.accent} />
+      <Text style={[styles.text, { color: colors.muted }]}>Načítám Trenr…</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: 12 },
-  text: { color: colors.muted, fontWeight: '700' },
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  text: { fontWeight: '700' },
 });

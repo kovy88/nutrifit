@@ -5,7 +5,7 @@
 // lib/coaching/dailyCoach.ts z readiness + strain + load + maker + session.
 // AI tyhle hodnoty NIKDY nevymýšlí, jen je vysvětluje (viz lib/ai/coachChat).
 
-import type { Macros, TrainingSession } from '../types';
+import type { CoachScope, Macros, TrainingSession } from '../types';
 import type { SubjectiveLevel } from './checkin';
 
 /** Koučovací úroveň připravenosti (app-specific, NE medicínská). */
@@ -58,12 +58,13 @@ export type CoachAction = 'swap_meal' | 'adjust_today' | 'mark_done' | 'ask_coac
 export type DailyCoachRecommendation = {
   /** YYYY-MM-DD v lokální TZ. */
   date: string;
-  /** Tone emoji odpovídající readiness (🟢 🟡 🔴 ⚪️). */
-  emoji: string;
+  /** Na co je kouč zaměřený — řídí, které sekce jsou přítomné. */
+  scope: CoachScope;
   /** Krátký nadpis: dnešní akce + stav. */
   headline: string;
   readiness: ReadinessScore;
-  training: {
+  /** Přítomné jen když scope zahrnuje trénink. */
+  training?: {
     session: TrainingSession | null;
     /** Krátký fokus dne, např. "Aerobní báze" / "Aerobic base". */
     focus: string;
@@ -72,7 +73,8 @@ export type DailyCoachRecommendation = {
     /** Co dnes NEdělat (např. "žádné tvrdé intervaly"). */
     whatNotToDo?: string;
   };
-  nutrition: {
+  /** Přítomné jen když scope zahrnuje jídelníček. */
+  nutrition?: {
     targets: Macros;
     /** Rozdíl proti baseline kvůli tréninku (může být 0). */
     deltaVsBaselineKcal: number;

@@ -4,30 +4,31 @@
 // odkud data jsou — Strava, Apple Health, Manual, ...).
 
 import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
-const KIND_EMOJI: Record<WorkoutKind, string> = {
-  run: '🏃',
-  walk: '🚶',
-  cycle: '🚴',
-  swim: '🏊',
-  strength: '🏋️',
-  hiit: '⚡',
-  yoga: '🧘',
-  functional: '💪',
-  rowing: '🚣',
-  other: '🏅',
+const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
+  run: 'fitness-outline',
+  walk: 'walk-outline',
+  cycle: 'bicycle-outline',
+  swim: 'water-outline',
+  strength: 'barbell-outline',
+  hiit: 'flash-outline',
+  yoga: 'body-outline',
+  functional: 'fitness-outline',
+  rowing: 'boat-outline',
+  other: 'ellipse-outline',
 };
 
 const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   '🍎 Apple',
-  apple_watch:    '⌚ Watch',
-  health_connect: '🤖 HC',
+  apple_health:   'Apple',
+  apple_watch:    'Watch',
+  health_connect: 'HC',
   google_fit:     'GFit',
-  strava:         '🟠 Strava',
+  strava:         'Strava',
   whoop:          'Whoop',
   garmin:         'Garmin',
   polar:          'Polar',
@@ -35,8 +36,8 @@ const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
   fitbit:         'Fitbit',
   zepp:           'Zepp',
   suunto:         'Suunto',
-  mock:           '🧪 Mock',
-  manual:         '✋ Manual',
+  mock:           'Mock',
+  manual:         'Manual',
 };
 
 export type WorkoutCardProps = {
@@ -47,7 +48,7 @@ export type WorkoutCardProps = {
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const { colors } = useTheme();
   const { t } = useLanguage();
-  const emoji = KIND_EMOJI[workout.kind];
+  const icon = KIND_ICON[workout.kind];
   const kindLabel = t(`wkind.${workout.kind}` as TranslationKey);
   const sourceBadge = SOURCE_LABEL[workout.source] || workout.source;
   const dateLabel = formatDateTime(workout.startedAt, t);
@@ -62,7 +63,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       ]}
     >
       <View style={styles.headerRow}>
-        <Text style={styles.emoji}>{emoji}</Text>
+        <Ionicons name={icon} size={24} color={colors.green} style={styles.kindIcon} />
         <View style={styles.titleCol}>
           <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>{dateLabel}</Text>
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emoji: { fontSize: 28 },
+  kindIcon: { width: 28, textAlign: 'center' },
   titleCol: { flex: 1 },
   title: { fontSize: 15, fontWeight: '900' },
   subtitle: { fontSize: 12, marginTop: 2 },

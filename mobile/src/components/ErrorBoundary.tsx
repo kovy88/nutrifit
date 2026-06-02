@@ -30,7 +30,6 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     return (
       <View style={styles.container}>
-        <Text style={styles.emoji}>🌿</Text>
         <Text style={styles.title}>Něco se pokazilo</Text>
         <Text style={styles.subtitle}>Something went wrong</Text>
         <Text style={styles.body}>

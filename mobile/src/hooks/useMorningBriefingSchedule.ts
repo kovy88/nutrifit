@@ -114,7 +114,7 @@ export function useMorningBriefingSchedule(mode: NotificationMode = 'auto'): Mor
       : `${briefing.headline}\n→ ${briefing.recommendation}`;
     void scheduler.scheduleDaily({
       id: NOTIFICATION_ID,
-      title: `${briefing.emoji} Trenr`,
+      title: 'Trenr',
       body,
       hour: settings.hour,
       minute: settings.minute,

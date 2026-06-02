@@ -4,6 +4,7 @@
 // (recent workouts). Plná breakdown a deep-link na source provider.
 
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from './UI';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
@@ -12,18 +13,18 @@ import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
-const KIND_EMOJI: Record<WorkoutKind, string> = {
-  run: '🏃', walk: '🚶', cycle: '🚴', swim: '🏊',
-  strength: '🏋️', hiit: '⚡', yoga: '🧘',
-  functional: '💪', rowing: '🚣', other: '🏅',
+const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
+  run: 'fitness-outline', walk: 'walk-outline', cycle: 'bicycle-outline', swim: 'water-outline',
+  strength: 'barbell-outline', hiit: 'flash-outline', yoga: 'body-outline',
+  functional: 'fitness-outline', rowing: 'boat-outline', other: 'ellipse-outline',
 };
 
 const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   '🍎 Apple Health',
-  apple_watch:    '⌚ Apple Watch',
-  health_connect: '🤖 Health Connect',
+  apple_health:   'Apple Health',
+  apple_watch:    'Apple Watch',
+  health_connect: 'Health Connect',
   google_fit:     'Google Fit',
-  strava:         '🟠 Strava',
+  strava:         'Strava',
   whoop:          'Whoop',
   garmin:         'Garmin Connect',
   polar:          'Polar Flow',
@@ -31,7 +32,7 @@ const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
   fitbit:         'Fitbit',
   zepp:           'Zepp',
   suunto:         'Suunto',
-  mock:           '🧪 Mock (dev)',
+  mock:           'Mock (dev)',
 };
 
 export type WorkoutDetailModalProps = {
@@ -47,7 +48,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 
   const fueling = profile ? computeFueling({ workout, weightKg: profile.weight, locale }) : null;
 
-  const emoji = KIND_EMOJI[workout.kind] || '🏅';
+  const icon = KIND_ICON[workout.kind] || 'ellipse-outline';
   const kindLabel = t(`wkindFull.${workout.kind}` as TranslationKey);
   const sourceLabel = workout.source === 'manual' ? t('workout.srcManual') : (SOURCE_LABEL[workout.source] || workout.source);
   const startedAt = formatFullDateTime(workout.startedAt, t);
@@ -68,7 +69,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
           <ScrollView contentContainerStyle={styles.content}>
             {/* Header */}
             <View style={styles.headerRow}>
-              <Text style={styles.emoji}>{emoji}</Text>
+              <Ionicons name={icon} size={34} color={colors.green} style={styles.kindIcon} />
               <View style={styles.headerCol}>
                 <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
                 <Text style={[styles.dateTime, { color: colors.muted }]}>{startedAt} – {endedAt}</Text>
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
   },
   content: { gap: 16, paddingBottom: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  emoji: { fontSize: 40 },
+  kindIcon: { width: 40, textAlign: 'center' },
   headerCol: { flex: 1, gap: 2 },
   title: { fontSize: 22, fontWeight: '900' },
   dateTime: { fontSize: 13, fontWeight: '600' },

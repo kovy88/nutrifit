@@ -6,6 +6,7 @@ import { colors } from '../constants/theme';
 import { useTrenr } from '../context/TrenrContext';
 import { normalizeFoodEstimate, remainingMacros, sumFoodLog, toDateKey, formatDateLabel } from '../utils/nutrition';
 import type { TrainingSession, TrainingGoalKind } from '../types';
+import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { DateHeader } from '../components/DateHeader';
 import { useNavigation } from '@react-navigation/native';
 import { MacroRing } from '../components/MacroRing';
@@ -55,6 +56,9 @@ export function HomeScreen() {
   const suggestedDowngrade = todaySession ? applyReadinessToSession(todaySession, coaching.assessment) : null;
 
   if (!profile || !macros) return null;
+
+  const scope = resolveCoachScope(profile);
+  const showNutrition = scopeHasNutrition(scope);
 
   const used = sumFoodLog(foodLog);
   const left = remainingMacros(macros, foodLog);
@@ -123,7 +127,11 @@ export function HomeScreen() {
     <Screen>
       <DateHeader />
       <H1>{t('home.title')}</H1>
-      <Subtitle>{t(`goal.${profile.primaryGoal}` as TranslationKey)} · {t(`diet.${profile.diet}` as TranslationKey)} · BMI {macros.bmi}</Subtitle>
+      <Subtitle>
+        {showNutrition
+          ? `${t(`goal.${profile.primaryGoal}` as TranslationKey)} · ${t(`diet.${profile.diet}` as TranslationKey)} · BMI ${macros.bmi}`
+          : t(`goal.${profile.primaryGoal}` as TranslationKey)}
+      </Subtitle>
 
       {/* Daily coach hero — the single "what should I do today?" answer:
           readiness score (0–100) + focus + coach note + what-not-to-do + actions. */}
@@ -142,20 +150,23 @@ export function HomeScreen() {
                 <Text style={[styles.heroScoreLabel, { color: colors.muted }]}>{bandLabel(rec.readiness.band, t)}</Text>
               </MacroRing>
               <View style={styles.heroHeadlineWrap}>
-                <Text style={styles.heroEmoji}>{rec.emoji}</Text>
                 <Text style={[styles.heroHeadline, { color: colors.ink }]}>{rec.headline}</Text>
-                <Text style={[styles.heroFocus, { color: colors.green }]}>{t('today.focus')}: {rec.training.focus}</Text>
+                {rec.training && (
+                  <Text style={[styles.heroFocus, { color: colors.green }]}>{t('today.focus')}: {rec.training.focus}</Text>
+                )}
               </View>
             </View>
             <Text style={[styles.heroNote, { color: colors.muted }]}>{rec.coachNote}</Text>
-            {rec.training.whatNotToDo && (
-              <Text style={[styles.heroNotToDo, { color: colors.orange }]}>⚠ {rec.training.whatNotToDo}</Text>
+            {rec.training?.whatNotToDo && (
+              <Text style={[styles.heroNotToDo, { color: colors.orange }]}>{rec.training.whatNotToDo}</Text>
             )}
             {rec.warnings.map((w, i) => (
               <Text key={`hw-${i}`} style={[styles.heroWarning, { color: colors.red }]}>• {w}</Text>
             ))}
             <View style={styles.heroActions}>
-              <Button variant="secondary" style={styles.heroActionBtn} onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
+              {showNutrition && (
+                <Button variant="secondary" style={styles.heroActionBtn} onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
+              )}
               {rec.suggestedActions.includes('mark_done') && (
                 <Button
                   variant={completion?.status === 'completed' ? 'secondary' : 'primary'}
@@ -173,7 +184,8 @@ export function HomeScreen() {
         </FadeInView>
       )}
 
-      {/* Modern Circular Macro Visual Grid */}
+      {/* Macro card — nutrition scope only */}
+      {showNutrition && (
       <FadeInView delay={100}>
         <Card>
           <Label>{t('home.remainingToday')}</Label>
@@ -229,6 +241,7 @@ export function HomeScreen() {
           </View>
         </Card>
       </FadeInView>
+      )}
 
       {/* Readiness assessment — green/yellow/red signal + coach recommendation.
           Combines sleep, HRV and RHR from the active HealthDataProvider. */}
@@ -336,7 +349,7 @@ export function HomeScreen() {
         </Card>
       </FadeInView>
 
-      {baselineMacros && dailyAdjustment && (
+      {showNutrition && baselineMacros && dailyAdjustment && (
         <FadeInView delay={200}>
           <Card>
             <Label>{t('home.adjustmentTitle')}</Label>

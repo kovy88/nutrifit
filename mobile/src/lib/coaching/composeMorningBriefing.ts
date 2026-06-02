@@ -27,8 +27,6 @@ function L(locale: Locale, cs: string, en: string): string {
 }
 
 export type MorningBriefing = {
-  /** Vizuální emoji pro tone ("🟢 🟡 🔴 ⚪️") — odpovídá readiness levelu. */
-  emoji: string;
   /** Krátký nadpis: dnešní akce + stav. */
   headline: string;
   /** 2–3 klíčové fakty, oddělené " · ". Může být prázdné. */
@@ -51,27 +49,14 @@ export function composeMorningBriefing(input: ComposeBriefingInput): MorningBrie
   const { session, readiness, trainingLoad, macros, baselineMacros } = input;
   const loc: Locale = input.locale ?? 'cs';
 
-  const emoji = pickEmoji(session, readiness);
   const headline = buildHeadline(session, readiness, loc);
   const detail = buildDetail(readiness, trainingLoad, loc);
   const recommendation = buildRecommendation(session, readiness, trainingLoad, macros, baselineMacros, loc);
 
-  return { emoji, headline, detail, recommendation };
+  return { headline, detail, recommendation };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-function pickEmoji(session: TrainingSession | null, readiness: ReadinessAssessment | null): string {
-  // Rest day má svůj vlastní vizuál — readiness color se nehodí.
-  if (!session || session.kind === 'rest') return '⚪️';
-  if (!readiness) return '🟢';
-  if (readiness.dataStatus === 'missing') return '⚪️';
-  switch (readiness.level) {
-    case 'green':  return '🟢';
-    case 'yellow': return '🟡';
-    case 'red':    return '🔴';
-  }
-}
 
 function buildHeadline(session: TrainingSession | null, readiness: ReadinessAssessment | null, loc: Locale): string {
   if (!session || session.kind === 'rest') {

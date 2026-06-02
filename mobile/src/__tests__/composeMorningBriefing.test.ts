@@ -36,7 +36,6 @@ describe('composeMorningBriefing — headline shape', () => {
       macros,
       baselineMacros: macros,
     });
-    expect(b.emoji).toBe('⚪️');
     expect(b.headline.toLowerCase()).toContain('volný den');
   });
 
@@ -55,7 +54,6 @@ describe('composeMorningBriefing — headline shape', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 480, todayRhrBpm: 58, todayHrvMs: 60 });
     expect(readiness.level).toBe('green');
     const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    expect(b.emoji).toBe('🟢');
     expect(b.headline).toContain('Long run');
     expect(b.headline.toLowerCase()).toMatch(/podle plánu|můžeš jet/);
   });
@@ -63,14 +61,12 @@ describe('composeMorningBriefing — headline shape', () => {
   it('yellow readiness → headline mentions reduced readiness + 🟡', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 390 });
     const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    expect(b.emoji).toBe('🟡');
     expect(b.headline.toLowerCase()).toMatch(/snížen|mírně/);
   });
 
   it('red readiness → headline urges regeneration + 🔴', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 240 });
     const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    expect(b.emoji).toBe('🔴');
     expect(b.headline.toLowerCase()).toMatch(/regeneraci|regenera/);
   });
 
@@ -183,7 +179,6 @@ describe('composeMorningBriefing — detail facts', () => {
   it('does not include missing-data factors', () => {
     const readiness = evaluateReadiness({}); // all missing → all 'green'+missing
     const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    expect(b.emoji).toBe('⚪️');
     expect(b.headline.toLowerCase()).toMatch(/data chybí|missing/);
     expect(b.recommendation.toLowerCase()).toMatch(/pocitu|by feel/);
     expect(b.detail).toBe('');
