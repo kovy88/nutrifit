@@ -36,12 +36,13 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarLabel: tabLabels[route.name] ?? route.name,
-        tabBarActiveTintColor: themeColors.green,
+        tabBarActiveTintColor: themeColors.accent,
         tabBarInactiveTintColor: themeColors.faint,
+        tabBarLabelStyle: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 11, letterSpacing: 0.2 },
         tabBarStyle: {
           borderTopColor: themeColors.border,
-          backgroundColor: themeColors.bg,
-          height: 70,
+          backgroundColor: themeColors.card,
+          height: 72,
           paddingBottom: 10,
           paddingTop: 8,
         },

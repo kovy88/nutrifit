@@ -1,31 +1,52 @@
+// ── Trenr design system — "Midnight Athletic" ───────────────────────────────
+// Dark-first, WHOOP/Strava-premium. Near-black canvas, electric-lime accent,
+// big Archivo numerals over a refined Hanken Grotesk body. Existing color keys
+// are preserved (nothing breaks); new tokens (accent / bgElev / glow / hairline /
+// shadow) power the upgraded components. `green` stays a white-text-safe emerald
+// for legacy fills (bubbles/badges); `accent` is the lime signature.
+
 export const lightColors = {
   isDark: false as boolean,
-  ink: '#19211d',
-  muted: '#68736d',
-  faint: '#8d9891',
-  bg: '#f7f7f4',
+  ink: '#10160D',
+  muted: '#586555',
+  faint: '#909c87',
+  bg: '#edf0e6',
   card: '#ffffff',
-  border: '#e3e5de',
-  green: '#26734d',
-  blue: '#0f6fbe',
-  orange: '#c7781f',
-  red: '#c6423b',
-  yellow: '#f4c542',
+  border: '#e0e5d6',
+  green: '#2f7d32',
+  blue: '#1f73c4',
+  orange: '#c4781a',
+  red: '#cc4034',
+  yellow: '#e6b32c',
+  // — Midnight Athletic extended tokens —
+  accent: '#4ea51f', // grass-lime that holds contrast on off-white
+  accentText: '#0a0c0b',
+  bgElev: '#f6f8f1',
+  hairline: 'rgba(16,22,13,0.06)',
+  glow: 'rgba(78,165,31,0.18)',
+  shadow: 'rgba(24,34,16,0.10)',
 };
 
 export const darkColors = {
   isDark: true as boolean,
-  ink: '#f7f7f4',
-  muted: '#a3b1a9',
-  faint: '#6e7e75',
-  bg: '#111815',
-  card: '#1b2420',
-  border: '#2a3630',
-  green: '#309965', // Vibrant, high-contrast forest green for dark mode
-  blue: '#3b9ffd',
-  orange: '#ea9c3f',
-  red: '#e95c54',
-  yellow: '#fcd35a',
+  ink: '#eaf2e2',
+  muted: '#93a38b',
+  faint: '#5d6c57',
+  bg: '#0a0c0b', // near-black canvas
+  card: '#11150f', // elevated surface, faint green-black
+  border: '#222b20',
+  green: '#34c06b', // emerald — safe with white text (bubbles/badges) + reads on dark
+  blue: '#6cc8ff',
+  orange: '#ffb454',
+  red: '#ff6257',
+  yellow: '#f1d44c',
+  // — Midnight Athletic extended tokens —
+  accent: '#c8f250', // electric lime — the signature (CTAs, rings, focus)
+  accentText: '#0a0c0b', // ink on lime
+  bgElev: '#161d14', // raised panels / inputs
+  hairline: 'rgba(255,255,255,0.05)',
+  glow: 'rgba(200,242,80,0.20)', // accent halo for glows
+  shadow: 'rgba(0,0,0,0.45)',
 };
 
 // Default colors fallbacks for static styling compatibility
@@ -39,12 +60,17 @@ export const spacing = {
   xl: 32,
 };
 
+// Font family handles. Real families are loaded in ThemeContext (Archivo for
+// display/numerals, Hanken Grotesk for body) and exposed via useTheme().fonts.
 export const fonts = {
-  regular: 'System', // system font fallback
+  regular: 'System',
+  medium: 'System',
   bold: 'System',
   extraBold: 'System',
+  display: 'System',
+  number: 'System',
+  // legacy aliases (kept so older imports don't break)
   interRegular: 'Inter-Regular',
   interBold: 'Inter-Bold',
   interExtraBold: 'Inter-ExtraBold',
 };
-

@@ -403,8 +403,8 @@ function readinessColor(
   return level === 'green' ? palette.green : level === 'yellow' ? palette.orange : palette.red;
 }
 
-function bandColor(band: 'low' | 'medium' | 'high', palette: { green: string; orange: string; red: string }): string {
-  return band === 'high' ? palette.green : band === 'medium' ? palette.orange : palette.red;
+function bandColor(band: 'low' | 'medium' | 'high', palette: { accent: string; orange: string; red: string }): string {
+  return band === 'high' ? palette.accent : band === 'medium' ? palette.orange : palette.red;
 }
 
 function bandLabel(band: 'low' | 'medium' | 'high', t: Translate): string {
@@ -484,8 +484,8 @@ function formatDelta(value: number) {
 
 const styles = StyleSheet.create({
   ringContainer: { alignItems: 'center', marginVertical: 20 },
-  ringValue: { fontSize: 32, fontWeight: '900' },
-  ringLabel: { fontSize: 13, fontWeight: '700', marginTop: 2 },
+  ringValue: { fontSize: 40, fontFamily: 'Archivo_900Black', letterSpacing: -1.5 },
+  ringLabel: { fontSize: 12, fontFamily: 'HankenGrotesk_700Bold', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
   cielText: { fontSize: 13, textAlign: 'center', fontWeight: '800', marginBottom: 16 },
   linearContainer: { gap: 14, borderTopWidth: 1, paddingTop: 16 },
   linearRow: { gap: 6 },
@@ -547,15 +547,15 @@ const styles = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   heroHeadlineWrap: { flex: 1, gap: 2 },
   heroEmoji: { fontSize: 22 },
-  heroHeadline: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
-  heroFocus: { fontSize: 13, fontWeight: '800', marginTop: 2 },
+  heroHeadline: { fontSize: 18, fontFamily: 'Archivo_800ExtraBold', lineHeight: 22, letterSpacing: -0.3 },
+  heroFocus: { fontSize: 13, fontFamily: 'HankenGrotesk_700Bold', marginTop: 3 },
   heroNote: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   heroNotToDo: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   heroWarning: { fontSize: 12, lineHeight: 16, fontWeight: '700' },
   heroActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   heroActionBtn: { flex: 1 },
-  heroScore: { fontSize: 28, fontWeight: '900', lineHeight: 30 },
-  heroScoreLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
+  heroScore: { fontSize: 44, fontFamily: 'Archivo_900Black', lineHeight: 46, letterSpacing: -2 },
+  heroScoreLabel: { fontSize: 10.5, fontFamily: 'HankenGrotesk_700Bold', textTransform: 'uppercase', letterSpacing: 1, marginTop: 1 },
   heroReadinessNote: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
   briefingCard: { borderWidth: 2, gap: 8 },
   briefingHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
