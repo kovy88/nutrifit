@@ -46,11 +46,20 @@ EXPO_PUBLIC_SUPABASE_URL=...
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-### 3. Spuštění Expo serveru
+### 3. Spuštění v dev buildu
 ```bash
+npm run ios      # poprvé vytvoří a nainstaluje iOS dev client
 npm run start
 ```
-Následně stiskni `a` pro emulátor Androidu, `i` pro iOS emulátor, nebo naskenuj QR kód v aplikaci Expo Go na svém telefonu.
+Trenr používá nativní moduly pro HealthKit, notifikace a secure storage, takže běží přes Expo dev client / EAS development build. Nepoužívej stock Expo Go pro hlavní vývoj; na SDK 56 může spadnout už při registraci nativních modulů ještě před načtením JS bundlu.
+
+Pro Android použij:
+```bash
+npm run android
+npm run start
+```
+
+`npm run start:expo-go` necháváme jen pro rychlé ověření čistě JS částí bez nativních integrací.
 
 ---
 

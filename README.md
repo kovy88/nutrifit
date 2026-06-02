@@ -25,10 +25,12 @@ tréninky) — a ten je dostupný jen v nativní iOS vrstvě, ne v prohlížeči
 ```bash
 cd mobile
 npm install
-./node_modules/.bin/expo start     # 'i' = iOS sim, 'a' = Android, nebo QR v Expo Go
+npm run ios                        # poprvé sestaví a nainstaluje iOS dev client
+npm run start                      # spustí Metro v dev-client režimu
 ```
-Nativní HealthKit / notifikace vyžadují **EAS dev build** (v Expo Go jsou stubnuté; v dev
-módu běží mock health data). Testy + typecheck:
+Nativní HealthKit / notifikace / secure storage vyžadují **Expo dev client / EAS dev build**.
+Stock Expo Go není pro hlavní vývoj podporovaný; na SDK 56 může spadnout už při registraci
+nativních modulů ještě před načtením JS bundlu. Testy + typecheck:
 ```bash
 cd mobile
 ./node_modules/.bin/tsc --noEmit -p tsconfig.json
