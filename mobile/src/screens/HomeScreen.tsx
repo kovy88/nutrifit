@@ -318,9 +318,54 @@ export function HomeScreen() {
         </FadeInView>
       )}
 
-      {/* Strain (0–21) a training load (ACWR) se přesunuly na záložku Pokrok,
-          aby Today drželo „jeden hero + pár karet". Hero coach note je dál
-          zohledňuje přes composeMorningBriefing. */}
+      {(coaching.trainingLoad || coaching.strain) && !coaching.isLoading && (
+        <FadeInView delay={140}>
+          <Card>
+            <Label>{t('home.trainingLoad')}</Label>
+            <View style={styles.loadStatsRow}>
+              {coaching.strain && (
+                <View style={[styles.loadStat, { borderColor: strainColor(coaching.strain.band, colors) }]}>
+                  <Text style={[styles.loadStatLabel, { color: colors.faint }]}>Strain</Text>
+                  <Text style={[styles.loadStatValue, { color: strainColor(coaching.strain.band, colors) }]}>
+                    {coaching.strain.score.toFixed(1)} / 21
+                  </Text>
+                  <Text style={[styles.loadStatSub, { color: colors.muted }]}>
+                    {t((`strain.${coaching.strain.band}`) as TranslationKey)}
+                  </Text>
+                </View>
+              )}
+              {coaching.trainingLoad && (
+                <View style={[styles.loadStat, { borderColor: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
+                  <Text style={[styles.loadStatLabel, { color: colors.faint }]}>ACWR</Text>
+                  <Text style={[styles.loadStatValue, { color: trainingLoadColor(coaching.trainingLoad.status, colors) }]}>
+                    {coaching.trainingLoad.acwr == null ? '—' : coaching.trainingLoad.acwr.toFixed(2)}
+                  </Text>
+                  <Text style={[styles.loadStatSub, { color: colors.muted }]}>
+                    {trainingLoadLabel(coaching.trainingLoad.status, t)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            {coaching.trainingLoad && (
+              <View style={styles.loadStatsRow}>
+                <View style={[styles.loadStat, { borderColor: colors.border }]}>
+                  <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load7d')}</Text>
+                  <Text style={[styles.loadStatValue, { color: colors.ink }]}>{Math.round(coaching.trainingLoad.acute)}</Text>
+                  <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadPerDay')}</Text>
+                </View>
+                <View style={[styles.loadStat, { borderColor: colors.border }]}>
+                  <Text style={[styles.loadStatLabel, { color: colors.faint }]}>{t('home.load28d')}</Text>
+                  <Text style={[styles.loadStatValue, { color: colors.ink }]}>{Math.round(coaching.trainingLoad.chronic)}</Text>
+                  <Text style={[styles.loadStatSub, { color: colors.muted }]}>{t('home.loadAcuteChronic')}</Text>
+                </View>
+              </View>
+            )}
+            <Text style={[styles.small, { color: colors.muted }]}>
+              {coaching.trainingLoad?.recommendation || coaching.strain?.recommendation}
+            </Text>
+          </Card>
+        </FadeInView>
+      )}
 
       {/* Health snapshot from HealthDataProvider (steps / sleep / RHR).
           In dev shows mock data; production will show Apple Health after EAS prebuild. */}
