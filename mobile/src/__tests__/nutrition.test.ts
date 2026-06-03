@@ -86,6 +86,7 @@ describe('nutrition utilities', () => {
     expect(primaryGoalToNutritionKind('lose_fat')).toBe('fat_loss');
     expect(primaryGoalToNutritionKind('improve_running')).toBe('endurance');
     expect(primaryGoalToNutritionKind('improve_fitness')).toBe('general_fitness');
+    expect(migrateProfile({ ...DEFAULT_PROFILE, primaryGoal: 'improve_recovery' })?.primaryGoal).toBe('build_consistency');
     expect(primaryGoalToNutritionKind('improve_recovery')).toBe('maintenance');
     expect(primaryGoalToNutritionKind('build_consistency')).toBe('maintenance');
     expect(primaryGoalToNutritionKind('lose_weight')).toBe('fat_loss');

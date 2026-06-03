@@ -1,21 +1,22 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { Card, H1, Label, Subtitle } from '../components/UI';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Card, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
-import { listStoredDates, loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
+import { listStoredDates, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
 import { formatDateLabel } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { DateHeader } from '../components/DateHeader';
 import { MiniTrendChart } from '../components/MiniTrendChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence, macroAdherenceBand } from '../lib/nutrition/adherenceTrend';
-import { computeLogStreak, computeAdherenceStreak, describeStreak } from '../lib/nutrition/streaks';
+import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
+import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib/nutrition/streaks';
 import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useStrainTrend } from '../hooks/useStrainTrend';
+import type { TrendPoint } from '../components/MiniTrendChart';
+import type { TranslationKey } from '../lib/i18n';
 
 type DaySummary = {
   dateKey: string;
@@ -23,10 +24,8 @@ type DaySummary = {
   loggedKcal: number;
 };
 
-import type { TrendPoint } from '../components/MiniTrendChart';
+type ProgressTab = 'overview' | 'trends' | 'history';
 
-/** Provider source wins per date; manual fills gaps. Both arrays must already
- *  cover the same date range (same length, chronological). */
 function mergeWeightTrend(primary: TrendPoint[], fallback: TrendPoint[]): TrendPoint[] {
   const byDate = new Map<string, TrendPoint>();
   for (const p of fallback) byDate.set(p.date, p);
@@ -40,57 +39,41 @@ export function HistoryScreen() {
   const { setSelectedDate, weights, baselineMacros, profile } = useTrenr();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
-  const { colors: themeColors } = useTheme();
+  const { colors } = useTheme();
   const { t, locale } = useLanguage();
+  const [tab, setTab] = useState<ProgressTab>('overview');
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
   const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
-  const [energyBalance, setEnergyBalance] = useState(() =>
-    computeEnergyBalance({ logs: {}, tdee: 2000, days: 14 }),
-  );
+  const [energyBalance, setEnergyBalance] = useState(() => computeEnergyBalance({ logs: {}, tdee: 2000, days: 14 }));
   const sleepTrend = useTrend('sleep', 14);
-  const hrvTrend = useTrend('hrv', 14);
-  const rhrTrend = useTrend('rhr', 14);
-  const stepsTrend = useTrend('steps', 14);
   const strainTrend = useStrainTrend(14);
   const weightProviderTrend = useTrend('weight', 30);
-  // Weight: merge provider history with locally-entered weights (manual log).
-  // Provider source wins per-date; manual fills any gaps the provider doesn't
-  // know about.
   const weightTrend = mergeWeightTrend(weightProviderTrend.data, buildTrendFromRecord(weights, 30));
   const adherencePoints = adherenceToTrendPoints(adherence.days);
   const logStreak = computeLogStreak(adherence.days);
   const adherenceStreak = computeAdherenceStreak(adherence.days);
 
   useEffect(() => {
-    if (isFocused) {
-      loadSummaries();
-    }
+    if (isFocused) void loadSummaries();
   }, [isFocused]);
 
   async function loadSummaries() {
     try {
       const dates = await listStoredDates();
-      const [plans, logs] = await Promise.all([
-        loadPlansByDate(),
-        loadFoodLogsByDate(),
-      ]);
-
+      const [plans, logs] = await Promise.all([loadPlansByDate(), loadFoodLogsByDate()]);
       const items: DaySummary[] = dates.map(dateKey => {
         const dayMeals = plans[dateKey] || [];
         const dayLogs = logs[dateKey] || [];
-        const plannedKcal = dayMeals.reduce((sum, m) => sum + m.kcal, 0);
-        const loggedKcal = dayLogs.reduce((sum, item) => sum + item.kcal, 0);
-        return { dateKey, plannedKcal, loggedKcal };
+        return {
+          dateKey,
+          plannedKcal: dayMeals.reduce((sum, m) => sum + m.kcal, 0),
+          loggedKcal: dayLogs.reduce((sum, item) => sum + item.kcal, 0),
+        };
       });
-
-      // Sort descending so the most recent dates are first
       items.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
       setSummaries(items);
-      // Adherence trend uses the same plans + logs we just loaded.
       setAdherence(computeAdherenceTrend(plans, logs, 14));
-      if (baselineMacros) {
-        setEnergyBalance(computeEnergyBalance({ logs, tdee: baselineMacros.tdee, days: 14 }));
-      }
+      if (baselineMacros) setEnergyBalance(computeEnergyBalance({ logs, tdee: baselineMacros.tdee, days: 14 }));
     } catch (err) {
       console.error('Failed to load history summaries', err);
     }
@@ -101,224 +84,120 @@ export function HistoryScreen() {
     navigation.navigate('Dnes');
   }
 
+  const adherenceLabel = adherence.averageRatio == null ? '-' : `${Math.round(adherence.averageRatio * 100)}%`;
+  const latestWeight = [...weightTrend].reverse().find(point => point.value != null)?.value;
+
   return (
     <Screen>
-      <DateHeader />
-      <H1>{t('history.title')}</H1>
-      <Subtitle>{t('history.subtitle')}</Subtitle>
-
-      <Card>
-        <Label>{t('history.weight30')}</Label>
-        <MiniTrendChart data={weightTrend} unit="kg" color={themeColors.green} />
-      </Card>
-
-      <Card>
-        <Label>{t('history.sleep14')}</Label>
-        <MiniTrendChart
-          data={sleepTrend.data}
-          unit=""
-          color={themeColors.blue}
-          format={v => `${Math.floor(v / 60)}h ${Math.round(v % 60)}m`}
-        />
-      </Card>
-
-      <Card>
-        <Label>{t('history.hrv14')}</Label>
-        <MiniTrendChart data={hrvTrend.data} unit="ms" color={themeColors.green} />
-      </Card>
-
-      <Card>
-        <Label>{t('history.rhr14')}</Label>
-        <MiniTrendChart data={rhrTrend.data} unit="bpm" color={themeColors.red} />
-      </Card>
-
-      <Card>
-        <Label>{t('history.steps14')}</Label>
-        <MiniTrendChart
-          data={stepsTrend.data}
-          unit=""
-          color={themeColors.orange}
-          format={v => t('history.stepsUnit', { n: Math.round(v).toLocaleString(locale === 'en' ? 'en-US' : 'cs-CZ') })}
-        />
-      </Card>
-
-      <Card>
-        <Label>{t('history.strain14')}</Label>
-        <MiniTrendChart
-          data={strainTrend.data}
-          unit=""
-          color={themeColors.orange}
-          format={v => `${v.toFixed(1)} / 21`}
-        />
-        <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-          {t('history.strainMeta')}
-        </Text>
-      </Card>
-
-      <Card>
-        <Label>{t('history.adherence14')}</Label>
-        <MiniTrendChart
-          data={adherencePoints}
-          unit="%"
-          color={
-            adherence.averageRatio == null
-              ? themeColors.muted
-              : adherence.averageRatio >= 0.95 && adherence.averageRatio <= 1.05
-                ? themeColors.green
-                : Math.abs((adherence.averageRatio ?? 1) - 1) > 0.15
-                  ? themeColors.red
-                  : themeColors.orange
-          }
-          format={v => t('history.adherenceUnit', { n: Math.round(v) })}
-        />
-        <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
-          {describeAdherence(adherence.averageRatio, locale)}
-        </Text>
-        {/* Per-macro breakdown — 4 chips s % vs cíli za 14 dní */}
-        <View style={styles.macroChipsRow}>
-          {(['protein', 'carbs', 'fat'] as const).map(macro => {
-            const ratio = adherence.averages[macro];
-            const band = macroAdherenceBand(ratio);
-            const color =
-              band === 'on_target' ? themeColors.green
-              : band === 'high' ? themeColors.orange
-              : band === 'low' ? themeColors.red
-              : themeColors.muted;
-            const label = macro === 'protein' ? t('home.macroProteinShort') : macro === 'carbs' ? t('home.macroCarbsShort') : t('home.macroFatShort');
-            return (
-              <View key={macro} style={[styles.macroChip, { borderColor: color }]}>
-                <Text style={[styles.macroChipLabel, { color: themeColors.faint }]}>{label}</Text>
-                <Text style={[styles.macroChipValue, { color }]}>
-                  {ratio != null ? `${Math.round(ratio * 100)} %` : '—'}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-        {/* Streaks — gamification co odměňuje pravidelnost */}
-        <View style={styles.streakRow}>
-          <View style={[styles.streakChip, { borderColor: logStreak.current > 0 ? themeColors.orange : themeColors.border }]}>
-            <Text style={[styles.streakValue, { color: themeColors.ink }]}>
-              {logStreak.current > 0 ? `${logStreak.current}` : '—'}
+      <ScreenHeader eyebrow={t('tab.history')} title={t('history.title')} subtitle={t('history.cleanSubtitle')} />
+      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+        {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
+          <Pressable
+            key={item}
+            onPress={() => setTab(item)}
+            style={[styles.segmentItem, tab === item && { backgroundColor: colors.accent }]}
+          >
+            <Text style={[styles.segmentText, { color: tab === item ? colors.accentText : colors.muted }]}>
+              {t(`history.tab.${item}` as TranslationKey)}
             </Text>
-            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{t('history.logStreakUnit', { n: logStreak.current })}</Text>
-            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
-          </View>
-          <View style={[styles.streakChip, { borderColor: adherenceStreak.current > 0 ? themeColors.green : themeColors.border }]}>
-            <Text style={[styles.streakValue, { color: themeColors.ink }]}>
-              {adherenceStreak.current > 0 ? `✓ ${adherenceStreak.current}` : '—'}
-            </Text>
-            <Text style={[styles.streakLabel, { color: themeColors.muted }]}>{t('history.targetStreakUnit', { n: adherenceStreak.current })}</Text>
-            <Text style={[styles.streakSub, { color: themeColors.faint }]}>{describeStreak(adherenceStreak, 'adherence', locale)}</Text>
-          </View>
-        </View>
-        <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-          {t('history.loggedPlanMeta', { logged: adherence.loggedDays, planned: adherence.plannedDays })}
-        </Text>
-      </Card>
+          </Pressable>
+        ))}
+      </View>
 
-      {/* Energy balance vs TDEE — skutečné energetické saldo */}
-      {profile && baselineMacros && energyBalance.loggedDays >= 3 && (
+      {tab === 'overview' ? (
+        <>
+          <Card>
+            <SectionHeader title={t('history.weeklyConsistency')} />
+            <View style={styles.metricGrid}>
+              <MetricCard label={t('history.adherence14')} value={adherenceLabel} color={colors.accent} />
+              <MetricCard label={t('history.logStreak')} value={logStreak.current || '-'} color={colors.orange} />
+              <MetricCard label={t('history.targetStreak')} value={adherenceStreak.current || '-'} color={colors.green} />
+              <MetricCard label={t('history.weight30')} value={latestWeight ? latestWeight.toFixed(1) : '-'} unit="kg" color={colors.blue} />
+            </View>
+            <Text style={[styles.note, { color: colors.muted }]}>{describeAdherence(adherence.averageRatio, locale)}</Text>
+            <Text style={[styles.meta, { color: colors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
+          </Card>
+
+          {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
+            <Card>
+              <SectionHeader title={t('history.energyBalance14')} />
+              <Text style={[styles.heroValue, { color: energyBalance.theoreticalKgChange < -0.2 ? colors.green : energyBalance.theoreticalKgChange > 0.2 ? colors.orange : colors.muted }]}>
+                {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{energyBalance.theoreticalKgChange.toFixed(2)} kg
+              </Text>
+              <Text style={[styles.note, { color: colors.muted }]}>
+                {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}
+              </Text>
+            </Card>
+          ) : null}
+        </>
+      ) : null}
+
+      {tab === 'trends' ? (
+        <>
+          <Card>
+            <SectionHeader title={t('history.weight30')} />
+            <MiniTrendChart data={weightTrend} unit="kg" color={colors.green} />
+          </Card>
+          <Card>
+            <SectionHeader title={t('history.sleep14')} />
+            <MiniTrendChart
+              data={sleepTrend.data}
+              color={colors.blue}
+              format={v => `${Math.floor(v / 60)}h ${Math.round(v % 60)}m`}
+            />
+          </Card>
+          <Card>
+            <SectionHeader title={t('history.strain14')} />
+            <MiniTrendChart data={strainTrend.data} color={colors.orange} format={v => `${v.toFixed(1)} / 21`} />
+            <Text style={[styles.meta, { color: colors.faint }]}>{t('history.strainMeta')}</Text>
+          </Card>
+          <Card>
+            <SectionHeader title={t('history.adherence14')} />
+            <MiniTrendChart data={adherencePoints} unit="%" color={colors.accent} format={v => t('history.adherenceUnit', { n: Math.round(v) })} />
+          </Card>
+        </>
+      ) : null}
+
+      {tab === 'history' ? (
         <Card>
-          <Label>{t('history.energyBalance14')}</Label>
-          <View style={styles.balanceHeader}>
-            <Text style={[styles.balanceValue, {
-              color:
-                energyBalance.theoreticalKgChange < -0.2 ? themeColors.green
-                : energyBalance.theoreticalKgChange > 0.2 ? themeColors.orange
-                : themeColors.muted,
-            }]}>
-              {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{energyBalance.theoreticalKgChange.toFixed(2)} kg
-            </Text>
-            <Text style={[styles.balanceSub, { color: themeColors.muted }]}>
-              {t('history.theoreticalChange', { kcal: `${energyBalance.totalBalance > 0 ? '+' : ''}${energyBalance.totalBalance}` })}
-            </Text>
-          </View>
-          <Text style={[styles.adherenceNote, { color: themeColors.muted }]}>
-            {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}
-          </Text>
-          <Text style={[styles.adherenceMeta, { color: themeColors.faint }]}>
-            {t('history.tdeeMeta', { tdee: Math.round(baselineMacros.tdee), avg: energyBalance.averageDailyBalance ?? 0 })}
-          </Text>
+          <SectionHeader title={t('history.daysOverview')} />
+          {summaries.length === 0 ? (
+            <EmptyState title={t('history.noDays')} />
+          ) : (
+            summaries.slice(0, 14).map(item => (
+              <Pressable
+                key={item.dateKey}
+                style={({ pressed }) => [styles.row, { borderBottomColor: colors.border }, pressed && { opacity: 0.7 }]}
+                onPress={() => handleSelectDay(item.dateKey)}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dateLabel, { color: colors.ink }]}>{formatDateLabel(item.dateKey)}</Text>
+                  <Text style={[styles.dateSub, { color: colors.muted }]}>{item.dateKey}</Text>
+                </View>
+                <View style={styles.rightCol}>
+                  <Text style={[styles.kcalInfo, { color: colors.muted }]}>{t('history.planLabel')} {item.plannedKcal} kcal</Text>
+                  <Text style={[styles.kcalInfo, { color: colors.accent }]}>{t('history.loggedLabel')} {item.loggedKcal} kcal</Text>
+                </View>
+              </Pressable>
+            ))
+          )}
         </Card>
-      )}
-
-      <Card>
-        <Label>{t('history.daysOverview')}</Label>
-        {summaries.length === 0 ? (
-          <Text style={[styles.empty, { color: themeColors.faint }]}>{t('history.noDays')}</Text>
-        ) : (
-          summaries.map(item => (
-            <Pressable
-              key={item.dateKey}
-              style={({ pressed }) => [styles.row, { borderBottomColor: themeColors.border }, pressed && styles.rowPressed]}
-              onPress={() => handleSelectDay(item.dateKey)}
-            >
-              <View style={styles.leftCol}>
-                <Text style={[styles.dateLabel, { color: themeColors.ink }]}>{formatDateLabel(item.dateKey)}</Text>
-                <Text style={[styles.dateSub, { color: themeColors.muted }]}>{item.dateKey}</Text>
-              </View>
-              <View style={styles.rightCol}>
-                <Text style={[styles.kcalInfo, { color: themeColors.muted }]}>
-                  {t('history.planLabel')} <Text style={[styles.boldKcal, { color: themeColors.ink }]}>{item.plannedKcal}</Text> kcal
-                </Text>
-                <Text style={[styles.kcalInfo, { color: themeColors.muted }]}>
-                  {t('history.loggedLabel')} <Text style={[styles.boldKcal, { color: themeColors.green }]}>{item.loggedKcal}</Text> kcal
-                </Text>
-              </View>
-            </Pressable>
-          ))
-        )}
-      </Card>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  empty: { textAlign: 'center', paddingVertical: 20 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  rowPressed: {
-    opacity: 0.7,
-  },
-  leftCol: {
-    flex: 1,
-  },
-  rightCol: {
-    alignItems: 'flex-end',
-  },
-  dateLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  dateSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  kcalInfo: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  boldKcal: {
-    fontWeight: '800',
-  },
-  adherenceNote: { fontSize: 12, lineHeight: 18, marginTop: 8 },
-  adherenceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },
-  macroChipsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  macroChip: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 8, alignItems: 'center' },
-  macroChipLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
-  macroChipValue: { fontSize: 15, fontWeight: '900', marginTop: 2 },
-  streakRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  streakChip: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 10 },
-  streakValue: { fontSize: 18, fontWeight: '900' },
-  streakLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3, marginTop: 2 },
-  streakSub: { fontSize: 11, lineHeight: 14, marginTop: 6 },
-  balanceHeader: { alignItems: 'center', paddingVertical: 12 },
-  balanceValue: { fontSize: 32, fontWeight: '900' },
-  balanceSub: { fontSize: 12, fontWeight: '600', marginTop: 4 },
+  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 4, gap: 4 },
+  segmentItem: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 13, fontWeight: '900' },
+  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
+  meta: { fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
+  dateLabel: { fontSize: 15, fontWeight: '900' },
+  dateSub: { fontSize: 12, marginTop: 2 },
+  rightCol: { alignItems: 'flex-end' },
+  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });

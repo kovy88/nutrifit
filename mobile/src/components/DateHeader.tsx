@@ -1,9 +1,9 @@
-import React from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { spacing } from '../constants/theme';
 import { formatDateLabel, isToday, toDateKey } from '../utils/nutrition';
 
 export function DateHeader() {
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacingOrTen(),
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     marginBottom: 8,
   },
@@ -100,7 +100,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-
-function spacingOrTen() {
-  return 10;
-}

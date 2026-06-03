@@ -142,6 +142,20 @@ describe('date-based storage and migration', () => {
     expect(profile?.trainingGoal).toBe('half_marathon');
   });
 
+  it('migrates removed recovery goal to build consistency', async () => {
+    await AsyncStorage.setItem('nutrifit.profile.v2', JSON.stringify({
+      ...DEFAULT_PROFILE,
+      primaryGoal: 'improve_recovery',
+      trainingGoal: 'walking_more',
+    }));
+
+    await runMigration();
+
+    const profile = await loadProfile();
+    expect(profile?.primaryGoal).toBe('build_consistency');
+    expect(profile?.trainingGoal).toBe('walking_more');
+  });
+
   it('migrates legacy lastPlan, foodLog, and todaySession keys to todays date, then removes them', async () => {
     const today = toDateKey(new Date());
 

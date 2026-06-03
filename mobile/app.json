@@ -81,7 +81,8 @@
           "NSHealthUpdateUsageDescription": "Trenr může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
           "background": true
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "privacyUrl": "https://nutri-fit-omega.vercel.app/legal.html#privacy",

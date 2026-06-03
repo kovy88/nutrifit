@@ -1,24 +1,18 @@
-// ── SETTINGS SCREEN
-//
-// Připojené zdroje zdravotních dat, jejich priorita, manuální propojení.
-// Otevírá se ze ProfileScreen tlačítkem "Nastavení".
-//
-// Stávající chování:
-//   - Apple Health / Health Connect: zobrazí status (available / unavailable
-//     / unsupported). "Připojit" tlačítko zatím jen otevře dokumentaci —
-//     reálná integrace přijde s EAS Build + native plugin instalací.
-//   - Strava / Whoop / Garmin / Polar / Oura / Fitbit: zobrazí jestli je
-//     token uložený. "Připojit" otevře OAuth flow (zatím stub Alert).
-//     "Odpojit" smaže token přes useHealthSources.
-//   - Vše ostatní (Zepp / Suunto / Mi Fit): pouze poznámka, že lze přes
-//     Apple Health / Health Connect sync (chain).
-
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-// Legacy subpath: expo-file-system@56's default export is the new Paths/File
-// API; cacheDirectory + writeAsStringAsync live under /legacy.
+import type { ReactNode } from 'react';
+import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
+import {
+  Button,
+  Card,
+  Pill,
+  ScreenHeader,
+  SectionHeader,
+  SegmentedControl,
+  SettingRow,
+  SourceStatusCard,
+  StatusPill,
+} from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
@@ -36,16 +30,15 @@ import { SUPPORTED_LOCALES, LOCALE_LABELS } from '../lib/i18n';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import type { OAuthService } from '../lib/health';
 
-// Mirror of app.json `extra`. Kept here as plain constants so the screen has
-// no dependency on expo-constants resolution at runtime.
 const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
 const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
+
+type SettingsTab = 'coach' | 'data' | 'privacy';
 
 type OAuthSourceMeta = {
   service: OAuthService;
   label: string;
   descKey: TranslationKey;
-  /** Hint na to, jaké datové kategorie zdroj poskytuje. */
   providesKey: TranslationKey;
 };
 
@@ -59,7 +52,7 @@ const OAUTH_SOURCES: OAuthSourceMeta[] = [
 ];
 
 export function SettingsScreen() {
-  const { colors } = useTheme();
+  const { colors, fonts } = useTheme();
   const { locale, setLocale, t } = useLanguage();
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
@@ -69,7 +62,8 @@ export function SettingsScreen() {
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
-  const { user, purgeAllUserData, signOut } = useTrenr();
+  const { user, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
+  const [tab, setTab] = useState<SettingsTab>('coach');
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -111,7 +105,6 @@ export function SettingsScreen() {
       void oura.connect();
       return;
     }
-    // TODO(oauth): Polar, Fitbit — stejný pattern.
     Alert.alert(t('settings.connectGenericTitle', { service }), t('settings.connectGenericMsg'));
   }
 
@@ -122,9 +115,6 @@ export function SettingsScreen() {
     );
   }
 
-  /** Export all server-side account data as JSON, write to a temp file and
-   *  open the system share sheet so the user can save/send it. Requires sign-in
-   *  because the endpoint is auth-gated (api/export-data). */
   async function handleExport() {
     if (!user) {
       Alert.alert(t('settings.exportTitle'), t('settings.exportSignIn'));
@@ -144,9 +134,6 @@ export function SettingsScreen() {
     }
   }
 
-  /** Two-step destructive flow: confirm, delete server-side account + data
-   *  (api/delete-account), then purge everything on-device and sign out. After
-   *  purge, profile becomes null and RootNavigator returns to onboarding. */
   function handleDeleteAccount() {
     Alert.alert(
       t('settings.deleteTitle'),
@@ -174,303 +161,238 @@ export function SettingsScreen() {
   }
 
   function openUrl(url: string) {
-    Linking.openURL(url).catch(() =>
-      Alert.alert(t('settings.openLinkFailed'), url),
+    Linking.openURL(url).catch(() => Alert.alert(t('settings.openLinkFailed'), url));
+  }
+
+  function sourceBusy(service: OAuthService) {
+    return (
+      (service === 'strava' && strava.status === 'connecting') ||
+      (service === 'whoop' && whoop.status === 'connecting') ||
+      (service === 'garmin' && garmin.status === 'connecting') ||
+      (service === 'oura' && oura.status === 'connecting')
     );
   }
 
+  function sourceError(service: OAuthService) {
+    if (service === 'strava') return strava.status === 'error' ? strava.error : undefined;
+    if (service === 'whoop') return whoop.status === 'error' ? whoop.error : undefined;
+    if (service === 'garmin') return garmin.status === 'error' ? garmin.error : undefined;
+    if (service === 'oura') return oura.status === 'error' ? oura.error : undefined;
+    return undefined;
+  }
+
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <H1>{t('settings.title')}</H1>
-        <Subtitle>{t('settings.subtitle')}</Subtitle>
+    <Screen contentContainerStyle={styles.screen}>
+      <ScreenHeader eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
+      <SegmentedControl
+        value={tab}
+        options={[
+          { value: 'coach', label: t('settings.tabCoach') },
+          { value: 'data', label: t('settings.tabData') },
+          { value: 'privacy', label: t('settings.tabPrivacy') },
+        ]}
+        onChange={setTab}
+      />
 
-        {/* ── Language switcher ─────────────────────────────────────────── */}
-        <Card>
-          <Label>{t('settings.language')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>{t('settings.languageDesc')}</Text>
-          <View style={styles.timeRow}>
-            {SUPPORTED_LOCALES.map(loc => (
-              <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
-                {LOCALE_LABELS[loc]}
+      {tab === 'coach' && (
+        <>
+          <Card>
+            <SectionHeader title={t('settings.language')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.languageDesc')}</Text>
+            <View style={styles.wrap}>
+              {SUPPORTED_LOCALES.map(loc => (
+                <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
+                  {LOCALE_LABELS[loc]}
+                </Pill>
+              ))}
+            </View>
+          </Card>
+
+          <Card>
+            <SectionHeader title="Vývojářská nastavení (Debug)" />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium.</Text>
+            <View style={styles.wrap}>
+              <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
+                {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
               </Pill>
-            ))}
-          </View>
-        </Card>
+            </View>
+          </Card>
 
-        {/* ── Morning push notification ─────────────────────────────────── */}
-        <Card>
-          <Label>{t('settings.morningCoaching')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.morningBody')}{'\n\n'}
-            <Text style={{ fontStyle: 'italic', color: colors.faint }}>
-              {t('settings.morningNote')}
-            </Text>
-          </Text>
-          <View style={styles.briefingRow}>
-            <Pill
-              active={briefing.settings.enabled}
-              onPress={() => briefing.update({ enabled: !briefing.settings.enabled })}
-            >
-              {briefing.settings.enabled ? t('settings.on') : t('settings.off')}
-            </Pill>
-            <Text style={[styles.briefingTime, { color: colors.ink }]}>
-              {String(briefing.settings.hour).padStart(2, '0')}:{String(briefing.settings.minute).padStart(2, '0')}
-            </Text>
-          </View>
-          {briefing.settings.enabled && (
-            <>
-              <Label>{t('settings.notifTime')}</Label>
-              <View style={styles.timeRow}>
-                {[6, 7, 8, 9, 10].map(h => (
-                  <Pill
-                    key={h}
-                    active={briefing.settings.hour === h}
-                    onPress={() => briefing.update({ hour: h })}
-                  >
-                    {String(h).padStart(2, '0')}:00
-                  </Pill>
-                ))}
-              </View>
-              {briefing.permission !== 'granted' && briefing.permission !== 'unavailable' && (
-                <Button variant="secondary" onPress={briefing.requestPermission}>
-                  {t('settings.allowNotif')}
-                </Button>
-              )}
-              {briefing.permission === 'unavailable' && (
-                <Text style={[styles.note, { color: colors.faint }]}>
-                  {t('settings.expoGoNote')}
-                </Text>
-              )}
-            </>
-          )}
-        </Card>
+          <ReminderRow
+            title={t('settings.morningCoaching')}
+            body={t('settings.morningBodyShort')}
+            enabled={briefing.settings.enabled}
+            status={briefing.settings.enabled ? `${String(briefing.settings.hour).padStart(2, '0')}:${String(briefing.settings.minute).padStart(2, '0')}` : t('settings.off')}
+            onToggle={() => briefing.update({ enabled: !briefing.settings.enabled })}
+          >
+            {briefing.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[6, 7, 8, 9, 10].map(hour => (
+                    <Pill key={hour} active={briefing.settings.hour === hour} onPress={() => briefing.update({ hour })}>
+                      {String(hour).padStart(2, '0')}:00
+                    </Pill>
+                  ))}
+                </View>
+                {briefing.permission !== 'granted' && briefing.permission !== 'unavailable' ? (
+                  <Button variant="secondary" onPress={briefing.requestPermission}>{t('settings.allowNotif')}</Button>
+                ) : null}
+                {briefing.permission === 'unavailable' ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.expoGoNoteShort')}</Text> : null}
+              </>
+            ) : null}
+          </ReminderRow>
 
-        {/* ── Pre-workout fueling reminder ───────────────────────────────── */}
-        <Card>
-          <Label>{t('settings.preTitle')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.preBody')}
-          </Text>
-          <View style={styles.briefingRow}>
-            <Pill
-              active={preWorkout.settings.enabled}
-              onPress={() => preWorkout.update({ enabled: !preWorkout.settings.enabled })}
-            >
-              {preWorkout.settings.enabled ? t('settings.on') : t('settings.off')}
-            </Pill>
-            <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
-              {t('settings.minBefore', { m: preWorkout.settings.minutesBefore })}
-            </Text>
-          </View>
-          {preWorkout.settings.enabled && (
-            <>
-              <Label>{t('settings.whenNotify')}</Label>
-              <View style={styles.timeRow}>
-                {[30, 60, 90, 120].map(m => (
-                  <Pill
-                    key={m}
-                    active={preWorkout.settings.minutesBefore === m}
-                    onPress={() => preWorkout.update({ minutesBefore: m })}
-                  >
-                    {m} min
-                  </Pill>
-                ))}
-              </View>
-              <Text style={[styles.note, { color: colors.faint }]}>
-                {t('settings.preNote')}
-              </Text>
-            </>
-          )}
-        </Card>
+          <ReminderRow
+            title={t('settings.preTitle')}
+            body={t('settings.preBodyShort')}
+            enabled={preWorkout.settings.enabled}
+            status={preWorkout.settings.enabled ? t('settings.minBefore', { m: preWorkout.settings.minutesBefore }) : t('settings.off')}
+            onToggle={() => preWorkout.update({ enabled: !preWorkout.settings.enabled })}
+          >
+            {preWorkout.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[30, 60, 90, 120].map(minutesBefore => (
+                    <Pill key={minutesBefore} active={preWorkout.settings.minutesBefore === minutesBefore} onPress={() => preWorkout.update({ minutesBefore })}>
+                      {minutesBefore} min
+                    </Pill>
+                  ))}
+                </View>
+                <Text style={[styles.note, { color: colors.faint }]}>{t('settings.preNoteShort')}</Text>
+              </>
+            ) : null}
+          </ReminderRow>
 
-        {/* ── Post-workout refuel reminder ───────────────────────────────── */}
-        <Card>
-          <Label>{t('settings.postTitle')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.postBody')}
-          </Text>
-          <View style={styles.briefingRow}>
-            <Pill
-              active={postWorkout.settings.enabled}
-              onPress={() => postWorkout.update({ enabled: !postWorkout.settings.enabled })}
-            >
-              {postWorkout.settings.enabled ? t('settings.on') : t('settings.off')}
-            </Pill>
-            <Text style={[styles.briefingTime, { color: colors.ink, fontSize: 18 }]}>
-              {t('settings.minAfter', { m: postWorkout.settings.minutesAfter })}
-            </Text>
-          </View>
-          {postWorkout.settings.enabled && (
-            <>
-              <Label>{t('settings.whenNotify')}</Label>
-              <View style={styles.timeRow}>
-                {[0, 5, 15, 30].map(m => (
-                  <Pill
-                    key={m}
-                    active={postWorkout.settings.minutesAfter === m}
-                    onPress={() => postWorkout.update({ minutesAfter: m })}
-                  >
-                    {m === 0 ? t('settings.rightAfter') : t('settings.plusMin', { m })}
-                  </Pill>
-                ))}
-              </View>
-              <Text style={[styles.note, { color: colors.faint }]}>
-                {t('settings.postNote')}
-              </Text>
-            </>
-          )}
-        </Card>
+          <ReminderRow
+            title={t('settings.postTitle')}
+            body={t('settings.postBodyShort')}
+            enabled={postWorkout.settings.enabled}
+            status={postWorkout.settings.enabled ? t('settings.minAfter', { m: postWorkout.settings.minutesAfter }) : t('settings.off')}
+            onToggle={() => postWorkout.update({ enabled: !postWorkout.settings.enabled })}
+          >
+            {postWorkout.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[0, 5, 15, 30].map(minutesAfter => (
+                    <Pill key={minutesAfter} active={postWorkout.settings.minutesAfter === minutesAfter} onPress={() => postWorkout.update({ minutesAfter })}>
+                      {minutesAfter === 0 ? t('settings.rightAfter') : t('settings.plusMin', { m: minutesAfter })}
+                    </Pill>
+                  ))}
+                </View>
+                <Text style={[styles.note, { color: colors.faint }]}>{t('settings.postNoteShort')}</Text>
+              </>
+            ) : null}
+          </ReminderRow>
+        </>
+      )}
 
-        {/* ── Native source: Apple Health or Health Connect ─────────────── */}
-        <Card>
-          <Label>
-            {native.platform === 'ios'
-              ? t('settings.nativeIos')
-              : native.platform === 'android'
-                ? t('settings.nativeAndroid')
-                : t('settings.nativeGeneric')}
-          </Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {native.platform === 'unsupported'
+      {tab === 'data' && (
+        <>
+          <SourceStatusCard
+            title={native.platform === 'ios' ? t('settings.nativeIos') : native.platform === 'android' ? t('settings.nativeAndroid') : t('settings.nativeGeneric')}
+            body={native.platform === 'unsupported'
               ? t('settings.nativeUnsupported')
               : native.available
                 ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
                 : native.platform === 'ios'
                   ? t('settings.nativeIosSoon')
                   : t('settings.nativeAndroidSoon')}
-          </Text>
-          {native.platform !== 'unsupported' && (
-            <Text style={[styles.note, { color: colors.faint }]}>
-              {t('settings.nativeTip', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
-            </Text>
-          )}
-          {native.platform !== 'unsupported' && (
-            <Button variant="secondary" onPress={handleConnectNative}>
-              {t('settings.detailInstructions')}
-            </Button>
-          )}
-        </Card>
+            meta={native.platform !== 'unsupported' ? t('settings.nativeTipShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' }) : undefined}
+            status={native.available ? t('settings.available') : t('settings.pending')}
+            statusTone={native.available ? 'ready' : 'caution'}
+            action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
+          />
 
-        {/* ── OAuth sources ──────────────────────────────────────────────── */}
-        <Card>
-          <Label>{t('settings.oauthTitle')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.oauthBody')}
-          </Text>
-
-          {OAUTH_SOURCES.map(src => {
-            const connected = connectedOAuth.includes(src.service);
-            return (
-              <View key={src.service} style={[styles.sourceRow, { borderTopColor: colors.border }]}>
-                <View style={styles.sourceTextCol}>
-                  <View style={styles.sourceTitleRow}>
-                    <Text style={[styles.sourceLabel, { color: colors.ink }]}>{src.label}</Text>
-                    {connected && (
-                      <Text style={[styles.connectedBadge, { color: colors.green, borderColor: colors.green }]}>
-                        {t('settings.connected')}
-                      </Text>
+          <Card>
+            <SectionHeader title={t('settings.oauthTitle')} action={isLoading ? <StatusPill label={t('settings.loadingSources')} tone="info" /> : null} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.oauthBodyShort')}</Text>
+            <View style={styles.sourceList}>
+              {OAUTH_SOURCES.map(src => {
+                const connected = connectedOAuth.includes(src.service);
+                const busy = sourceBusy(src.service);
+                const error = sourceError(src.service);
+                return (
+                  <SourceStatusCard
+                    key={src.service}
+                    title={src.label}
+                    body={t(src.descKey)}
+                    meta={[
+                      t('settings.provides', { x: t(src.providesKey) }),
+                      src.service === 'strava' && strava.athleteName && connected ? t('settings.athlete', { name: strava.athleteName }) : '',
+                    ].filter(Boolean).join(' · ')}
+                    status={connected ? t('settings.connectedShort') : busy ? t('settings.opening') : t('settings.notConnected')}
+                    statusTone={connected ? 'ready' : busy ? 'info' : 'neutral'}
+                    error={error ? t('settings.errorPrefix', { e: error }) : undefined}
+                    action={connected ? (
+                      <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect, t)}>{t('settings.disconnect')}</Button>
+                    ) : (
+                      <Button disabled={busy} onPress={() => handleConnect(src.service)}>
+                        {busy ? t('settings.opening') : t('settings.connect')}
+                      </Button>
                     )}
-                  </View>
-                  <Text style={[styles.sourceDesc, { color: colors.muted }]}>{t(src.descKey)}</Text>
-                  <Text style={[styles.sourceProvides, { color: colors.faint }]}>{t('settings.provides', { x: t(src.providesKey) })}</Text>
-                  {src.service === 'strava' && strava.status === 'error' && strava.error && (
-                    <Text style={[styles.sourceError, { color: colors.red }]}>
-                      {t('settings.errorPrefix', { e: strava.error })}
-                    </Text>
-                  )}
-                  {src.service === 'strava' && strava.athleteName && connected && (
-                    <Text style={[styles.sourceProvides, { color: colors.green }]}>
-                      {t('settings.athlete', { name: strava.athleteName })}
-                    </Text>
-                  )}
-                  {src.service === 'whoop' && whoop.status === 'error' && whoop.error && (
-                    <Text style={[styles.sourceError, { color: colors.red }]}>
-                      {t('settings.errorPrefix', { e: whoop.error })}
-                    </Text>
-                  )}
-                  {src.service === 'garmin' && garmin.status === 'error' && garmin.error && (
-                    <Text style={[styles.sourceError, { color: colors.red }]}>
-                      {t('settings.errorPrefix', { e: garmin.error })}
-                    </Text>
-                  )}
-                  {src.service === 'oura' && oura.status === 'error' && oura.error && (
-                    <Text style={[styles.sourceError, { color: colors.red }]}>
-                      {t('settings.errorPrefix', { e: oura.error })}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.sourceButtons}>
-                  {connected ? (
-                    <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect, t)}>
-                      {t('settings.disconnect')}
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled={
-                        (src.service === 'strava' && strava.status === 'connecting') ||
-                        (src.service === 'whoop' && whoop.status === 'connecting') ||
-                        (src.service === 'garmin' && garmin.status === 'connecting') ||
-                        (src.service === 'oura' && oura.status === 'connecting')
-                      }
-                      onPress={() => handleConnect(src.service)}
-                    >
-                      {(src.service === 'strava' && strava.status === 'connecting') ||
-                      (src.service === 'whoop' && whoop.status === 'connecting') ||
-                      (src.service === 'garmin' && garmin.status === 'connecting') ||
-                      (src.service === 'oura' && oura.status === 'connecting')
-                        ? t('settings.opening')
-                        : t('settings.connect')}
-                    </Button>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </Card>
+                  />
+                );
+              })}
+            </View>
+          </Card>
 
-        {/* ── Closed ecosystems (no public API) ──────────────────────────── */}
-        <Card>
-          <Label>{t('settings.noApiTitle')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.noApiBody', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
-          </Text>
-        </Card>
+          <SourceStatusCard
+            title={t('settings.noApiTitle')}
+            body={t('settings.noApiBodyShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
+            status={t('settings.info')}
+            statusTone="info"
+          />
+        </>
+      )}
 
-        {/* ── Privacy & data (GDPR: export + erase + policy) ─────────────── */}
-        <Card>
-          <Label>{t('settings.privacyTitle')}</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {t('settings.privacyBody')}
-          </Text>
-
-          <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>
-            {t('settings.privacyPolicy')}
-          </Button>
-          <View style={styles.privacySpacer} />
-          <Button variant="secondary" onPress={() => openUrl(TERMS_URL)}>
-            {t('settings.terms')}
-          </Button>
-          <View style={styles.privacySpacer} />
-          <Button variant="secondary" disabled={exporting} onPress={handleExport}>
-            {exporting ? t('settings.exporting') : t('settings.exportData')}
-          </Button>
-          <View style={styles.privacySpacer} />
-          <Button variant="danger" disabled={deleting} onPress={handleDeleteAccount}>
-            {deleting ? t('settings.deleting') : user ? t('settings.deleteAccountBtn') : t('settings.deleteLocalBtn')}
-          </Button>
-          {!user && (
-            <Text style={[styles.note, { color: colors.faint }]}>
-              {t('settings.notSignedInNote')}
-            </Text>
-          )}
-        </Card>
-
-        {isLoading && (
-          <Text style={[styles.loading, { color: colors.faint }]}>{t('settings.loadingSources')}</Text>
-        )}
-      </ScrollView>
+      {tab === 'privacy' && (
+        <>
+          <Card>
+            <SectionHeader title={t('settings.privacyTitle')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.privacyBodyShort')}</Text>
+            <View style={styles.privacyActions}>
+              <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>{t('settings.privacyPolicy')}</Button>
+              <Button variant="secondary" onPress={() => openUrl(TERMS_URL)}>{t('settings.terms')}</Button>
+              <Button variant="secondary" disabled={exporting} onPress={handleExport}>
+                {exporting ? t('settings.exporting') : t('settings.exportData')}
+              </Button>
+              <Button variant="danger" disabled={deleting} onPress={handleDeleteAccount}>
+                {deleting ? t('settings.deleting') : user ? t('settings.deleteAccountBtn') : t('settings.deleteLocalBtn')}
+              </Button>
+            </View>
+            {!user ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.notSignedInNote')}</Text> : null}
+          </Card>
+        </>
+      )}
     </Screen>
+  );
+}
+
+function ReminderRow({
+  title,
+  body,
+  enabled,
+  status,
+  onToggle,
+  children,
+}: {
+  title: string;
+  body: string;
+  enabled: boolean;
+  status: string;
+  onToggle: () => void;
+  children?: ReactNode;
+}) {
+  const { t } = useLanguage();
+  return (
+    <SettingRow
+      title={title}
+      body={body}
+      meta={status}
+      action={<Pill active={enabled} onPress={onToggle}>{enabled ? t('settings.on') : t('settings.off')}</Pill>}
+    >
+      {children}
+    </SettingRow>
   );
 }
 
@@ -487,9 +409,9 @@ function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) =
 
 function formatPermission(p: string, t: Translate): string {
   switch (p) {
-    case 'granted':  return t('settings.permGranted');
-    case 'partial':  return t('settings.permPartial');
-    case 'denied':   return t('settings.permDenied');
+    case 'granted': return t('settings.permGranted');
+    case 'partial': return t('settings.permPartial');
+    case 'denied': return t('settings.permDenied');
     case 'not_determined': return t('settings.permNotDetermined');
     case 'unavailable': return t('settings.permUnavailable');
     default: return p;
@@ -497,29 +419,10 @@ function formatPermission(p: string, t: Translate): string {
 }
 
 const styles = StyleSheet.create({
-  scroll: { gap: 12, paddingBottom: 30 },
-  body: { fontSize: 14, lineHeight: 20, marginVertical: 8 },
-  note: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', marginVertical: 6 },
-  sourceRow: { flexDirection: 'row', gap: 12, paddingVertical: 14, borderTopWidth: 1, alignItems: 'center' },
-  sourceTextCol: { flex: 1, gap: 4 },
-  sourceTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  sourceLabel: { fontSize: 16, fontWeight: '800' },
-  sourceDesc: { fontSize: 13, lineHeight: 18 },
-  sourceProvides: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
-  sourceButtons: { gap: 6 },
-  connectedBadge: {
-    fontSize: 11,
-    fontWeight: '900',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderRadius: 999,
-    letterSpacing: 0.4,
-  },
-  loading: { textAlign: 'center', fontSize: 12, marginTop: 12 },
-  briefingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
-  briefingTime: { fontSize: 22, fontWeight: '900' },
-  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
-  sourceError: { fontSize: 11, fontWeight: '700', marginTop: 4 },
-  privacySpacer: { height: 8 },
+  screen: { gap: 18 },
+  copy: { fontSize: 14, lineHeight: 20 },
+  note: { fontSize: 12, lineHeight: 17, fontStyle: 'italic' },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sourceList: { gap: 10 },
+  privacyActions: { gap: 8 },
 });

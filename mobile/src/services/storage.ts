@@ -11,6 +11,7 @@ import type {
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
 } from '../types';
+import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
 import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
@@ -39,6 +40,7 @@ const keys = {
   onboardingDraft: 'nutrifit.onboardingDraft.v1',
   /** Marker so the one-time legacy migration runs once, not on every boot. */
   schemaVersion: 'nutrifit.schemaVersion.v1',
+  isSubscribed: 'nutrifit.isSubscribed.v1',
 };
 
 /** Bump when a NEW one-time migration step is added to runMigration(). */
@@ -373,6 +375,7 @@ export type OnboardingDraft = {
   step: number;
   draft: UserProfile;
   updatedAt: string;
+  touchedFields?: TouchedOnboardingFields;
 };
 
 export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
@@ -412,4 +415,14 @@ async function readJson<T>(key: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+// Subscription Status helpers
+export async function loadSubscriptionStatus(): Promise<boolean> {
+  const raw = await readJson<{ value: boolean }>(keys.isSubscribed);
+  return raw?.value === true;
+}
+
+export async function saveSubscriptionStatus(status: boolean): Promise<void> {
+  await AsyncStorage.setItem(keys.isSubscribed, JSON.stringify({ value: status }));
 }

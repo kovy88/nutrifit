@@ -44,11 +44,10 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 10, backgroundColor: '#0B0B0E' },
-  emoji: { fontSize: 44 },
-  title: { fontSize: 22, fontWeight: '900', color: '#fff', textAlign: 'center' },
-  subtitle: { fontSize: 14, fontWeight: '700', color: '#9aa0a6', textAlign: 'center' },
-  body: { fontSize: 14, lineHeight: 20, color: '#c5cad0', textAlign: 'center', marginTop: 6 },
-  button: { marginTop: 18, backgroundColor: '#22A06B', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
-  buttonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 10, backgroundColor: '#0a0c0b' },
+  title: { fontSize: 24, lineHeight: 30, fontWeight: '900', color: '#eaf2e2', textAlign: 'center' },
+  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#c8f250', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.8 },
+  body: { fontSize: 14, lineHeight: 20, color: '#93a38b', textAlign: 'center', marginTop: 6 },
+  button: { marginTop: 18, backgroundColor: '#c8f250', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28 },
+  buttonText: { color: '#0a0c0b', fontWeight: '900', fontSize: 15 },
 });

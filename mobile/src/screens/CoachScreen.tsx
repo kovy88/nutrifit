@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Field, H1, Subtitle } from '../components/UI';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Button, Card, EmptyState, Field, Label, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,18 +11,16 @@ import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
 import type { CoachChatContext } from '../lib/ai/coachChat';
 import type { CoachMessage } from '../types/coach';
+import { PaywallModal } from '../components/PaywallModal';
 
 function uid(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-// Coach tab — chat nad DNEŠNÍM deterministickým doporučením. AI jen vysvětluje
-// a radí; čísla (makra/readiness/objem) nevymýšlí. Fallback v askCoach zajistí,
-// že uživatel vždy dostane bezpečnou odpověď i při výpadku.
 export function CoachScreen() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
-  const { profile, selectedDate, ensureAiConsent } = useTrenr();
+  const { profile, selectedDate, ensureAiConsent, isSubscribed } = useTrenr();
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
   const threadMemory = useMemo(() => ({
     goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
@@ -31,10 +30,24 @@ export function CoachScreen() {
   const [followups, setFollowups] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const prompts = [
+    t('coach.promptWhy'),
+    t('coach.promptFuel'),
+    t('coach.promptBadSleep'),
+    t('coach.promptSwapDinner'),
+    t('coach.promptMissedWorkout'),
+    t('coach.promptRaceRealistic'),
+  ];
 
   async function send(question: string) {
     const q = question.trim();
     if (!q || sending) return;
+    if (!isSubscribed) {
+      setPaywallOpen(true);
+      return;
+    }
     const consent = await ensureAiConsent();
     if (!consent) return;
 
@@ -64,16 +77,27 @@ export function CoachScreen() {
   }
 
   return (
-    <Screen>
-      <H1>{t('coach.title')}</H1>
-      <Subtitle>{t('coach.subtitle')}</Subtitle>
+    <Screen
+      footer={
+        <View style={styles.composer}>
+          <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline />
+          <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{sending ? t('coach.thinking') : t('coach.send')}</Button>
+        </View>
+      }
+    >
+      <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
 
-      <Button variant="secondary" onPress={() => send(t('coach.whyQuestion'))}>{t('coach.why')}</Button>
+      <Card>
+        <SectionHeader title={t('coach.suggestedTitle')} />
+        <View style={styles.promptGrid}>
+          {prompts.map(prompt => (
+            <PromptChip key={prompt} label={prompt} onPress={() => send(prompt)} />
+          ))}
+        </View>
+      </Card>
 
       {messages.length === 0 ? (
-        <Card>
-          <Text style={[styles.empty, { color: colors.muted }]}>{t('coach.empty')}</Text>
-        </Card>
+        <EmptyState title={t('coach.emptyTitle')} body={t('coach.empty')} />
       ) : (
         <View style={styles.thread}>
           {messages.map(m => (
@@ -82,49 +106,68 @@ export function CoachScreen() {
               style={[
                 styles.bubble,
                 m.role === 'user'
-                  ? { alignSelf: 'flex-end', backgroundColor: colors.green }
+                  ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
                   : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
               ]}
             >
-              <Text style={[styles.bubbleText, { color: m.role === 'user' ? '#fff' : colors.ink }]}>{m.text}</Text>
+              {m.role === 'coach' ? <StructuredCoachText text={m.text} /> : (
+                <Text style={[styles.bubbleText, { color: colors.accentText }]}>{m.text}</Text>
+              )}
             </View>
           ))}
         </View>
       )}
 
-      {sending && <Text style={[styles.thinking, { color: colors.muted }]}>{t('coach.thinking')}</Text>}
-
-      {followups.length > 0 && !sending && (
-        <View style={styles.followups}>
-          {followups.map((f, i) => (
-            <Text
-              key={`f-${i}`}
-              style={[styles.followupChip, { color: colors.green, borderColor: colors.border }]}
-              onPress={() => send(f)}
-            >
-              {f}
-            </Text>
-          ))}
-        </View>
-      )}
-
-      <Card>
-        <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline />
-        <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{t('coach.send')}</Button>
-      </Card>
+      {followups.length > 0 && !sending ? (
+        <Card>
+          <Label>{t('coach.followups')}</Label>
+          <View style={styles.promptGrid}>
+            {followups.map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
+          </View>
+        </Card>
+      ) : null}
 
       <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
+      <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </Screen>
   );
 }
 
+function PromptChip({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.promptChip, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
+      <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
+      <Text style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function StructuredCoachText({ text }: { text: string }) {
+  const { colors } = useTheme();
+  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  const compact = lines.length ? lines : [text];
+  return (
+    <View style={styles.structured}>
+      {compact.slice(0, 6).map((line, index) => (
+        <Text key={`${line}-${index}`} style={[index === 0 ? styles.coachLead : styles.coachLine, { color: index === 0 ? colors.ink : colors.muted }]}>
+          {line.replace(/^[-*]\s*/, '')}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  empty: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  promptChip: { minHeight: 42, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
+  promptText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
   thread: { gap: 10 },
-  bubble: { maxWidth: '88%', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  thinking: { fontSize: 13, fontStyle: 'italic' },
-  followups: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  followupChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, fontWeight: '700', overflow: 'hidden' },
+  bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
+  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  structured: { gap: 6 },
+  coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '900' },
+  coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  composer: { gap: 10 },
   disclaimer: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' },
 });

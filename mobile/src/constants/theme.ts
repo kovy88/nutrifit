@@ -25,6 +25,10 @@ export const lightColors = {
   hairline: 'rgba(16,22,13,0.06)',
   glow: 'rgba(78,165,31,0.18)',
   shadow: 'rgba(24,34,16,0.10)',
+  // Macro data-viz tints — distinct from status colors so red/green stay alerts.
+  macroProtein: '#1f9e7a',
+  macroCarb: '#b3801f',
+  macroFat: '#4a63c4',
 };
 
 export const darkColors = {
@@ -47,6 +51,10 @@ export const darkColors = {
   hairline: 'rgba(255,255,255,0.05)',
   glow: 'rgba(200,242,80,0.20)', // accent halo for glows
   shadow: 'rgba(0,0,0,0.45)',
+  // Macro data-viz tints — distinct from status colors so red/green stay alerts.
+  macroProtein: '#7ce0c3',
+  macroCarb: '#e8c27a',
+  macroFat: '#9db4ff',
 };
 
 // Default colors fallbacks for static styling compatibility
@@ -58,6 +66,41 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 40,
+};
+
+export const radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  pill: 999,
+};
+
+export const typography = {
+  label: 11,
+  caption: 12,
+  body: 14,
+  bodyLarge: 16,
+  title: 20,
+  screenTitle: 30,
+  metric: 44,
+  heroMetric: 56,
+};
+
+export const sizes = {
+  tap: 44,
+  button: 52,
+  bottomNav: 72,
+};
+
+export const statusColors = {
+  ready: '#c8f250',
+  caution: '#ffb454',
+  risk: '#ff6257',
+  recovery: '#6cc8ff',
+  nutrition: '#34c06b',
+  training: '#9fd7ff',
 };
 
 // Font family handles. Real families are loaded in ThemeContext (Archivo for

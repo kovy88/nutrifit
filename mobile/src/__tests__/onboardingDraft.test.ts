@@ -26,12 +26,14 @@ describe('onboarding draft storage', () => {
     await saveOnboardingDraft({
       step: 2,
       draft: { ...DEFAULT_PROFILE, age: 31, height: 180, weight: 78, primaryGoal: 'improve_running' },
+      touchedFields: { coachScope: true, primaryGoal: true },
       updatedAt: now,
     });
     const got = await loadOnboardingDraft();
     expect(got?.step).toBe(2);
     expect(got?.draft.age).toBe(31);
     expect(got?.draft.primaryGoal).toBe('improve_running');
+    expect(got?.touchedFields?.primaryGoal).toBe(true);
     expect(got?.updatedAt).toBe(now);
   });
 

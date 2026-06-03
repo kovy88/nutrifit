@@ -58,17 +58,19 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderColor: colors.border, backgroundColor: colors.card },
+        { borderColor: colors.border, backgroundColor: colors.card, shadowColor: colors.shadow },
         pressed && onPress ? { opacity: 0.75 } : null,
       ]}
     >
       <View style={styles.headerRow}>
-        <Ionicons name={icon} size={24} color={colors.green} style={styles.kindIcon} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.accent + '14' }]}>
+          <Ionicons name={icon} size={22} color={colors.accent} />
+        </View>
         <View style={styles.titleCol}>
           <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>{dateLabel}</Text>
         </View>
-        <Text style={[styles.sourceBadge, { color: colors.faint, borderColor: colors.border }]}>
+        <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           {sourceBadge}
         </Text>
       </View>
@@ -91,7 +93,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   const { colors } = useTheme();
   return (
-    <View style={styles.metric}>
+    <View style={[styles.metric, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
       <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
     </View>
@@ -114,15 +116,19 @@ function formatDateTime(iso: string, t: Translate): string {
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 14,
     gap: 10,
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  kindIcon: { width: 28, textAlign: 'center' },
+  iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1 },
-  title: { fontSize: 15, fontWeight: '900' },
-  subtitle: { fontSize: 12, marginTop: 2 },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  subtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   sourceBadge: {
     fontSize: 10,
     fontWeight: '800',
@@ -132,8 +138,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     letterSpacing: 0.3,
   },
-  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  metric: { minWidth: 70 },
+  metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metric: { minWidth: 76, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
   metricLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   metricValue: { fontSize: 14, fontWeight: '900', marginTop: 2 },
 });

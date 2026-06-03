@@ -446,7 +446,7 @@ export function normalizePrimaryGoal(goal: PrimaryGoal | LegacyPrimaryGoal | str
     gain_muscle: 'gain_muscle',
     improve_fitness: 'improve_fitness',
     improve_running: 'improve_running',
-    improve_recovery: 'improve_recovery',
+    improve_recovery: 'build_consistency',
     build_consistency: 'build_consistency',
     lose_weight: 'lose_fat',
     get_fit: 'improve_fitness',

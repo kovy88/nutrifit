@@ -5,3 +5,7 @@ node_modules/
 .vercel
 .DS_Store
 .claude
+
+# Expo native prebuild (CNG — regenerated via `expo prebuild`; not committed)
+mobile/ios/
+mobile/android/

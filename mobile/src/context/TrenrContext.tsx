@@ -46,6 +46,8 @@ import {
   saveTrainingCompletionsByDate,
   saveCoachThreadsByDate,
   saveDailyCoachHistory,
+  loadSubscriptionStatus,
+  saveSubscriptionStatus,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
 import type { NutritionGoalKind } from '../types';
@@ -103,6 +105,8 @@ type TrenrContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  isSubscribed: boolean;
+  setIsSubscribed: (status: boolean) => Promise<void>;
 };
 
 const Context = createContext<TrenrContextValue | null>(null);
@@ -124,6 +128,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [checkIns, setCheckIns] = useState<WeeklyCheckIn[]>([]);
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
+  const [isSubscribed, setIsSubscribedState] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -141,8 +146,9 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         loadCheckIns(),
         loadBaselineKcalDelta(),
         loadTrainingCompletionsByDate(),
+        loadSubscriptionStatus(),
       ]);
-    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta, storedCompletions]) => {
+    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta, storedCompletions, storedSubscription]) => {
       if (!active) return;
       setProfileState(storedProfile);
       setPlansByDate(storedPlans || {});
@@ -154,6 +160,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       setCheckIns(storedCheckIns || []);
       setBaselineKcalDelta(storedDelta || 0);
       setTrainingCompletionsByDate(storedCompletions || {});
+      setIsSubscribedState(storedSubscription || false);
       setIsReady(true);
     });
 
@@ -323,6 +330,12 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     setCheckIns([]);
     setBaselineKcalDelta(0);
     setOverrideGoalKind(null);
+    setIsSubscribedState(false);
+  }
+
+  async function updateSubscriptionStatus(status: boolean) {
+    await saveSubscriptionStatus(status);
+    setIsSubscribedState(status);
   }
 
   /** Persist a new weekly check-in and compute the suggested PlanAdjustment.
@@ -493,6 +506,8 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       signIn,
       signUp,
       signOut,
+      isSubscribed,
+      setIsSubscribed: updateSubscriptionStatus,
     }}>
       {children}
     </Context.Provider>

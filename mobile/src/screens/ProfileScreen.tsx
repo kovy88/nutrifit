@@ -1,11 +1,11 @@
 import { Alert, Linking, StyleSheet, Text, View, Modal, ScrollView, Pressable } from 'react-native';
-import { Button, Card, Field, H1, Label, Pill } from '../components/UI';
+import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { CoachScope, PrimaryGoal, TrainingGoalKind } from '../types';
+import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, TrainingGoalKind } from '../types';
 import { resolveCoachScope } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
 import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
@@ -14,6 +14,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { planSessionForDate } from '../lib/training';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { USER_PRIMARY_GOALS } from '../constants/goals';
+import type { TranslationKey } from '../lib/i18n';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
@@ -75,9 +77,10 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <H1>{t('profile.title')}</H1>
+      <ScreenHeader eyebrow={t('tab.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} />
 
       <Card>
+        <SectionHeader title={t('profile.coachSetup')} />
         <Label>{t('profile.focus')}</Label>
         <View style={styles.rowWrap}>
           {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
@@ -88,10 +91,20 @@ export function ProfileScreen() {
         </View>
         <Label>{t('profile.mainGoal')}</Label>
         <View style={styles.rowWrap}>
-          {(['lose_fat', 'maintain_weight', 'gain_muscle', 'improve_fitness', 'improve_running', 'improve_recovery', 'build_consistency'] as PrimaryGoal[]).map(goal => (
-            <Pill key={goal} active={profile.primaryGoal === goal} onPress={() => setProfile({ ...profile, primaryGoal: goal })}>{t(('goal.' + goal) as 'goal.lose_fat')}</Pill>
+          {USER_PRIMARY_GOALS.map(goal => (
+            <Pill
+              key={goal.value}
+              active={profile.primaryGoal === goal.value}
+              onPress={() => setProfile({ ...profile, primaryGoal: goal.value, trainingGoal: goal.trainingGoal })}
+            >
+              {t(goal.labelKey)}
+            </Pill>
           ))}
         </View>
+      </Card>
+
+      <Card>
+        <SectionHeader title={t('profile.trainingSchedule')} />
         <Label>{t('profile.trainingGoal')}</Label>
         <View style={styles.rowWrap}>
           {trainingGoals.map(goal => (
@@ -104,15 +117,9 @@ export function ProfileScreen() {
             <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>{count}×</Pill>
           ))}
         </View>
-        <Label>{t('profile.currentWeight')}</Label>
-        <Field keyboardType="number-pad" value={String(profile.weight)} onChangeText={weight => setProfile({ ...profile, weight: Number(weight) || profile.weight })} />
-
-        {/* Adaptive Weekly Check-In trigger */}
         <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
           {t('profile.weeklyCheckIn')}
         </Button>
-
-        {/* AI weekly summary trigger */}
         <Button
           style={{ marginTop: 6 }}
           variant="secondary"
@@ -121,12 +128,42 @@ export function ProfileScreen() {
         >
           {weeklySummary.isGenerating ? t('profile.aiSummaryGenerating') : t('profile.aiSummary')}
         </Button>
+      </Card>
 
-        {/* Settings — manage health data sources (Apple Health, Strava, Whoop, ...) */}
-        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => navigation.navigate('Settings')}>
+      <Card>
+        <SectionHeader title={t('profile.nutritionPrefs')} />
+        <Label>{t('profile.currentWeight')}</Label>
+        <Field keyboardType="number-pad" value={String(profile.weight)} onChangeText={weight => setProfile({ ...profile, weight: Number(weight) || profile.weight })} />
+        <Label>{t('profile.nutritionMode')}</Label>
+        <View style={styles.rowWrap}>
+          {nutritionModes.map(mode => (
+            <Pill key={mode.value} active={(profile.nutritionMode ?? 'balanced') === mode.value} onPress={() => setProfile({ ...profile, nutritionMode: mode.value })}>{t(mode.labelKey)}</Pill>
+          ))}
+        </View>
+        <Label>{t('profile.planIntensity')}</Label>
+        <View style={styles.rowWrap}>
+          {planIntensities.map(intensity => (
+            <Pill key={intensity.value} active={(profile.planIntensity ?? 'moderate') === intensity.value} onPress={() => setProfile({ ...profile, planIntensity: intensity.value })}>{t(intensity.labelKey)}</Pill>
+          ))}
+        </View>
+        <Label>{t('profile.dietType')}</Label>
+        <View style={styles.rowWrap}>
+          {dietStyles.map(diet => (
+            <Pill key={diet} active={profile.diet === diet} onPress={() => setProfile({ ...profile, diet })}>{t(`diet.${diet}` as TranslationKey)}</Pill>
+          ))}
+        </View>
+        <Label>{t('profile.foodLikes')}</Label>
+        <Field value={profile.likes} onChangeText={likes => setProfile({ ...profile, likes })} placeholder={t('profile.foodLikesPlaceholder')} multiline />
+        <Label>{t('profile.foodDislikes')}</Label>
+        <Field value={profile.dislikes} onChangeText={dislikes => setProfile({ ...profile, dislikes })} placeholder={t('profile.foodDislikesPlaceholder')} multiline />
+      </Card>
+
+      <Card>
+        <SectionHeader title={t('profile.healthData')} />
+        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.healthDataBody')}</Text>
+        <Button variant="secondary" onPress={() => navigation.navigate('Settings')}>
           {t('profile.healthSettings')}
         </Button>
-
         <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
       </Card>
 
@@ -166,20 +203,20 @@ export function ProfileScreen() {
       )}
       {weeklySummary.error && (
         <Card>
-          <Text style={{ color: colors.red, fontSize: 12 }}>
+          <Text style={[styles.errorText, { color: colors.red }]}>
             Chyba při generování AI shrnutí: {weeklySummary.error}
           </Text>
         </Card>
       )}
 
       <Card>
-        <Label>{t('profile.account')}</Label>
+        <SectionHeader title={t('profile.account')} />
         <Text style={[styles.copy, { color: colors.muted }]}>
           Sync: {syncStatus.status}
           {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
           {syncStatus.lastSyncedAt ? ` · ${new Date(syncStatus.lastSyncedAt).toLocaleString()}` : ''}
         </Text>
-        {syncStatus.error && <Text style={{ color: colors.red, fontSize: 12 }}>{syncStatus.error}</Text>}
+        {syncStatus.error && <Text style={[styles.errorText, { color: colors.red }]}>{syncStatus.error}</Text>}
         {user ? (
           <>
             <Text style={[styles.user, { color: colors.ink }]}>{user.email}</Text>
@@ -201,7 +238,7 @@ export function ProfileScreen() {
       </Card>
 
       <Card>
-        <Label>Podmínky a ochrana</Label>
+        <SectionHeader title={t('profile.privacySafety')} />
         <Text style={[styles.copy, { color: colors.muted }]}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
         <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
         <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
@@ -351,8 +388,8 @@ function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: (
             />
 
             {pending ? (
-              <View style={[styles.resultBox, { backgroundColor: colors.isDark ? '#151d1a' : '#f4fbf7', borderColor: colors.isDark ? '#2a3630' : '#dcf2e6' }]}>
-                <Text style={[styles.resultText, { color: colors.isDark ? '#309965' : colors.green }]}>
+              <View style={[styles.resultBox, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+                <Text style={[styles.resultText, { color: colors.green }]}>
                   {pending.reason}
                 </Text>
                 {pending.kcalDelta !== 0 && (
@@ -405,6 +442,31 @@ const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
   { value: 'hyrox', label: 'Hyrox' },
 ];
 
+const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
+  { value: 'balanced', labelKey: 'nutritionMode.balanced' },
+  { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
+  { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
+  { value: 'high_protein', labelKey: 'nutritionMode.high_protein' },
+  { value: 'budget_friendly', labelKey: 'nutritionMode.budget_friendly' },
+  { value: 'simple_meal_prep', labelKey: 'nutritionMode.simple_meal_prep' },
+  { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
+];
+
+const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
+  { value: 'easy', labelKey: 'planIntensity.easy' },
+  { value: 'moderate', labelKey: 'planIntensity.moderate' },
+  { value: 'ambitious_but_safe', labelKey: 'planIntensity.ambitious_but_safe' },
+];
+
+const dietStyles: DietStyle[] = [
+  'standardní',
+  'vegetariánský',
+  'veganský',
+  'bezlepkový',
+  'nízkosacharidový',
+  'vysokoproteínový',
+];
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -424,4 +486,5 @@ const styles = StyleSheet.create({
   summaryBullet: { fontSize: 13, lineHeight: 19 },
   summaryRec: { fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
   summaryMeta: { fontSize: 11, marginTop: 10 },
+  errorText: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
 });

@@ -21,7 +21,7 @@
 //   bodyMass              → BodyWeightSample (kg)
 //   HKWorkoutType         → WorkoutSummary (kind mapped from activityType)
 
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import type { HealthDataProvider } from './HealthDataProvider';
 import type {
   BodyWeightSample,
@@ -43,9 +43,14 @@ function isUnitTestRuntime(): boolean {
   return Boolean((globalThis as any).__NUTRIFIT_TEST__);
 }
 
+function isExpoGoRuntime(): boolean {
+  return Boolean(NativeModules?.ExponentConstants);
+}
+
 async function loadHealthKit(): Promise<any | null> {
   if (Platform.OS !== 'ios') return null;
   if (isUnitTestRuntime()) return null;
+  if (isExpoGoRuntime()) return null;
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
@@ -99,7 +104,7 @@ export class AppleHealthProvider implements HealthDataProvider {
   readonly name = 'apple_health' as const;
 
   static isSupported(): boolean {
-    return Platform.OS === 'ios';
+    return Platform.OS === 'ios' && !isExpoGoRuntime();
   }
 
   async isAvailable(): Promise<boolean> {
