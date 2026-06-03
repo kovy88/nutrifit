@@ -19,6 +19,34 @@ export {
   type OAuthTokenStore,
 } from './oauth/OAuthTokenStore';
 export {
+  SecureOAuthTokenStore,
+  createOAuthTokenStore,
+  isSecureStoreAvailable,
+} from './oauth/SecureOAuthTokenStore';
+export {
+  StravaOAuth,
+  parseQuery,
+  type StravaOAuthConfig,
+  type StravaConnectResult,
+} from './oauth/StravaOAuth';
+export {
+  WhoopOAuth,
+  type WhoopOAuthConfig,
+  type WhoopConnectResult,
+} from './oauth/WhoopOAuth';
+export {
+  GarminOAuth,
+  sha256Base64Url,
+  base64UrlEncode,
+  type GarminOAuthConfig,
+  type GarminConnectResult,
+} from './oauth/GarminOAuth';
+export {
+  OuraOAuth,
+  type OuraOAuthConfig,
+  type OuraConnectResult,
+} from './oauth/OuraOAuth';
+export {
   createHealthDataProvider,
   type CreateHealthDataProviderOptions,
   type HealthDataProviderMode,

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNutriFit } from '../context/NutriFitContext';
+import { useTrenr } from '../context/TrenrContext';
 import { createHealthDataProvider, type HealthDataProvider } from '../lib/health';
 
 /**
@@ -13,7 +13,7 @@ import { createHealthDataProvider, type HealthDataProvider } from '../lib/health
  * Weight from profile seeds the mock so generated values track the user's reality.
  */
 export function useHealthDataProvider(): HealthDataProvider {
-  const { profile } = useNutriFit();
+  const { profile } = useTrenr();
   const weightKg = profile?.weight ?? 75;
 
   return useMemo(

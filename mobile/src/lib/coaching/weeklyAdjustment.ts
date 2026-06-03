@@ -78,6 +78,24 @@ export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustme
     warnings.push('Adherence pod 60 % — zvaž jednodušší recepty nebo méně jídel denně.');
   }
 
+  const plannedSessions = latest.plannedSessions ?? 0;
+  const trainingCompletionRatio =
+    plannedSessions > 0 && latest.completedSessions != null
+      ? latest.completedSessions / plannedSessions
+      : null;
+
+  if (trainingCompletionRatio != null) {
+    if (trainingCompletionRatio < 0.5 && plannedSessions >= 2) {
+      warnings.push(
+        'Dokončil/a jsi méně než polovinu tréninků — příští týden raději drž plán jednodušší místo přidávání objemu.',
+      );
+    } else if (trainingCompletionRatio < 0.75 && plannedSessions >= 3) {
+      warnings.push(
+        'Několik tréninků zůstalo nedokončených — před navýšením objemu nejdřív stabilizuj pravidelnost.',
+      );
+    }
+  }
+
   // 3× po sobě nízká energie u fat_loss → automatický přepis na maintenance
   const lowEnergyStreak = countTrailing(recentCheckIns, c => (c.energyLevel ?? 5) <= 2);
   if (goalKind === 'fat_loss' && lowEnergyStreak >= 3) {

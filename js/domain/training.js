@@ -1,3 +1,6 @@
+// ⚠️ FROZEN — needituj. Kanonická logika: mobile/src/lib/training/plan.ts (TypeScript).
+//    Mobilní app je single source of truth; tohle je legacy origin webu. Viz js/domain/README.md.
+//
 // ── TRAINING PLAN CORE
 //
 // Generuje týdenní strukturu tréninků pro běžecké cíle (5k/10k/půl/maraton),

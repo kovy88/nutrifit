@@ -94,6 +94,7 @@ export class StravaProvider implements HealthDataProvider {
   // Parametry musí být přítomné, aby concrete-class call site v testech / kódu prošel TS.
   async getDailyActivityRange(_start: Date, _end: Date): Promise<DailyActivitySummary[]> { return []; }
   async getLatestBodyWeight(_maxDaysOld?: number): Promise<BodyWeightSample | null> { return null; }
+  async getBodyWeightRange(_start: Date, _end: Date): Promise<BodyWeightSample[]> { return []; }
   async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> { return []; }
   async getRestingHeartRate(_date: Date): Promise<RestingHeartRateSample | null> { return null; }
   async getHrv(_date: Date): Promise<HrvSample | null> { return null; }

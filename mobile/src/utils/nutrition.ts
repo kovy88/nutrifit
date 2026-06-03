@@ -7,13 +7,16 @@ import type {
   Macros,
   Meal,
   MealPlanValidationResult,
+  LegacyPrimaryGoal,
   NutritionGoalKind,
+  NutritionMode,
   PrimaryGoal,
   TrainingGoalKind,
   TrainingSession,
   UserProfile,
   ShoppingListGroup,
 } from '../types';
+import { resolveCoachScope, scopeHasNutrition } from '../types';
 
 const SAFETY = {
   MIN_KCAL_FEMALE: 1200,
@@ -24,7 +27,7 @@ const SAFETY = {
 
 export const DEFAULT_PROFILE: UserProfile = {
   gender: 'muz',
-  primaryGoal: 'lose_weight',
+  primaryGoal: 'lose_fat',
   trainingGoal: 'general_fitness',
   sessionsPerWeek: 3,
   experience: 'beginner',
@@ -36,19 +39,21 @@ export const DEFAULT_PROFILE: UserProfile = {
   dislikes: '',
   diet: 'standardní',
   mealCount: 5,
+  nutritionMode: 'balanced',
+  planIntensity: 'moderate',
+  coachScope: 'both',
 };
 
 /** Human-readable Czech label for a primary goal, used for UI display. */
 export function primaryGoalLabel(goal: PrimaryGoal): string {
   switch (goal) {
-    case 'lose_weight':        return 'Hubnutí';
+    case 'lose_fat':           return 'Hubnutí tuku';
     case 'maintain_weight':    return 'Udržení váhy';
     case 'gain_muscle':        return 'Nabírání svalů';
-    case 'run_race':           return 'Běžecký závod';
-    case 'triathlon':          return 'Triatlon';
-    case 'hyrox_ocr':          return 'Hyrox / OCR';
-    case 'get_fit':            return 'Kondice';
-    case 'sport_conditioning': return 'Sportovní výkon';
+    case 'improve_fitness':    return 'Zlepšit kondici';
+    case 'improve_running':    return 'Zlepšit běh';
+    case 'improve_recovery':   return 'Zlepšit regeneraci';
+    case 'build_consistency':  return 'Budovat konzistenci';
   }
 }
 
@@ -62,7 +67,7 @@ export type CalculateMacrosOptions = {
 };
 
 export function calculateMacros(
-  profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor'>,
+  profile: Pick<UserProfile, 'gender' | 'primaryGoal' | 'age' | 'height' | 'weight' | 'activityFactor' | 'nutritionMode' | 'planIntensity'>,
   options: CalculateMacrosOptions = {},
 ): Macros {
   const bmr = calcBMR(profile);
@@ -76,8 +81,9 @@ export function calculateMacros(
   const targetWithDelta = calcCalorieTarget(profile, goal, tdee) + (options.baselineKcalDelta ?? 0);
   const floor = profile.gender === 'muz' ? 1500 : 1200;
   const kcal = Math.max(targetWithDelta, floor);
-  const protein = Math.round(profile.weight * proteinPerKg(goal));
-  const fat = Math.round(Math.max((kcal * 0.27) / 9, profile.weight * 0.6));
+  const protein = Math.round(profile.weight * proteinPerKg(goal, profile.nutritionMode));
+  const fatPct = fatPctForMode(profile.nutritionMode, goal);
+  const fat = Math.round(Math.max((kcal * fatPct) / 9, profile.weight * 0.6));
   const carbs = Math.max(Math.round((kcal - protein * 4 - fat * 9) / 4), 0);
   const fiber = Math.round((kcal / 1000) * 14);
   const waterMl = calcWaterMl(profile.weight, profile.activityFactor);
@@ -88,7 +94,7 @@ export function calculateMacros(
 export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' | 'weight'>, goal: { kind: NutritionGoalKind }) {
   const bmi = profile.weight / ((profile.height / 100) ** 2);
   if (profile.age < 16) {
-    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'NutriFit není určený pro děti a dospívající pod 16 let.' };
+    return { allowed: false, level: 'blocked' as const, bmi, code: 'age_under_16', message: 'Trenr není určený pro děti a dospívající pod 16 let.' };
   }
   if (bmi < 16) {
     return { allowed: false, level: 'blocked' as const, bmi, code: 'bmi_under_16', message: 'Při BMI pod 16 automatický jídelníček nevygenerujeme. Doporučujeme odbornou konzultaci.' };
@@ -140,6 +146,12 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
   };
 }
 
+/**
+ * @deprecated Static day-of-week planner. The app now uses the progressive,
+ * safety-aware planner in `lib/training` (`planSessionForDate`). Kept only so
+ * the legacy unit tests in `__tests__/nutrition.test.ts` keep passing during
+ * the transition; remove once those are migrated.
+ */
 export function buildTrainingSessionForDate(profile: Pick<UserProfile, 'trainingGoal' | 'sessionsPerWeek'>, date = new Date()): TrainingSession {
   const dateISO = toDateKey(date);
   const day = date.getDay() || 7;
@@ -165,15 +177,16 @@ export function buildTrainingSessionForDate(profile: Pick<UserProfile, 'training
     : session(dateISO, 'rest', 'Volno', 0, 'rest');
 }
 
-export function migrateProfile(raw: (Partial<UserProfile> & { goal?: string }) | null | undefined): UserProfile | null {
+export function migrateProfile(raw: (Partial<Omit<UserProfile, 'primaryGoal'>> & { primaryGoal?: PrimaryGoal | LegacyPrimaryGoal | string; goal?: string }) | null | undefined): UserProfile | null {
   if (!raw || typeof raw !== 'object') return null;
   // legacy v1 profiles carried `goal: 'hubnutí'|'udržení'|'nabírání'`; map to primaryGoal
   const legacyPrimary = raw.goal ? legacyGoalStringToPrimary(raw.goal) : undefined;
   const { goal: _legacy, ...rest } = raw;
+  const primaryGoal = normalizePrimaryGoal(raw.primaryGoal) || legacyPrimary || DEFAULT_PROFILE.primaryGoal;
   return {
     ...DEFAULT_PROFILE,
     ...rest,
-    primaryGoal: raw.primaryGoal || legacyPrimary || DEFAULT_PROFILE.primaryGoal,
+    primaryGoal,
     trainingGoal: raw.trainingGoal || 'general_fitness',
     sessionsPerWeek: raw.sessionsPerWeek || sessionsFromActivityFactor(raw.activityFactor || DEFAULT_PROFILE.activityFactor),
     experience: raw.experience || 'beginner',
@@ -182,11 +195,15 @@ export function migrateProfile(raw: (Partial<UserProfile> & { goal?: string }) |
 
 export function validateProfile(profile: UserProfile): string[] {
   const errors: string[] = [];
-  const safety = assessProfileSafety(profile, { kind: primaryGoalToNutritionKind(profile.primaryGoal) });
-  if (!safety.allowed && safety.message) errors.push(safety.message);
-  if (profile.age > 100) errors.push('Zkontroluj věk.');
-  if (profile.height < 100 || profile.height > 250) errors.push('Výška musí být mezi 100 a 250 cm.');
-  if (profile.weight < 30 || profile.weight > 300) errors.push('Váha musí být mezi 30 a 300 kg.');
+  // Body metrics + the calorie-safety gate are only required when nutrition is in
+  // scope (BMR/macros need them). A training-only coach skips these entirely.
+  if (scopeHasNutrition(resolveCoachScope(profile))) {
+    const safety = assessProfileSafety(profile, { kind: primaryGoalToNutritionKind(profile.primaryGoal) });
+    if (!safety.allowed && safety.message) errors.push(safety.message);
+    if (profile.age > 100) errors.push('Zkontroluj věk.');
+    if (profile.height < 100 || profile.height > 250) errors.push('Výška musí být mezi 100 a 250 cm.');
+    if (profile.weight < 30 || profile.weight > 300) errors.push('Váha musí být mezi 30 a 300 kg.');
+  }
   return errors;
 }
 
@@ -374,23 +391,38 @@ function calcBMR(profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'weigh
   return profile.gender === 'muz' ? base + 5 : base - 161;
 }
 
-function calcCalorieTarget(profile: Pick<UserProfile, 'gender' | 'weight'>, goal: NutritionGoalKind, tdee: number) {
+function calcCalorieTarget(profile: Pick<UserProfile, 'gender' | 'weight' | 'planIntensity'>, goal: NutritionGoalKind, tdee: number) {
+  const intensity = profile.planIntensity ?? 'moderate';
+  const maxDeficitPct = intensity === 'easy' ? 0.15 : intensity === 'moderate' ? 0.2 : SAFETY.MAX_DEFICIT_PCT;
   let kcal = tdee;
   if (goal === 'fat_loss') {
     const safeWeeklyKg = profile.weight * SAFETY.MAX_WEEKLY_LOSS_KG_PER_KG;
-    const dailyDeficit = Math.round((safeWeeklyKg * 0.7 * 7700) / 7);
-    kcal = Math.max(tdee - dailyDeficit, Math.round(tdee * (1 - SAFETY.MAX_DEFICIT_PCT)));
+    const intensityMultiplier = intensity === 'easy' ? 0.45 : intensity === 'moderate' ? 0.6 : 0.7;
+    const dailyDeficit = Math.round((safeWeeklyKg * intensityMultiplier * 7700) / 7);
+    kcal = Math.max(tdee - dailyDeficit, Math.round(tdee * (1 - maxDeficitPct)));
   } else if (goal === 'muscle_gain') {
-    kcal = Math.round(tdee * 1.12);
+    kcal = Math.round(tdee * (intensity === 'easy' ? 1.06 : intensity === 'moderate' ? 1.1 : 1.12));
   } else if (goal === 'endurance') {
-    kcal = Math.round(tdee * 1.05);
+    kcal = Math.round(tdee * (intensity === 'easy' ? 1.03 : intensity === 'moderate' ? 1.05 : 1.08));
   }
   const floor = profile.gender === 'muz' ? SAFETY.MIN_KCAL_MALE : SAFETY.MIN_KCAL_FEMALE;
   return Math.max(kcal, floor);
 }
 
-function proteinPerKg(goal: NutritionGoalKind) {
-  return ({ fat_loss: 2.2, muscle_gain: 2.0, maintenance: 1.6, endurance: 1.6, general_fitness: 1.4 }[goal]);
+function proteinPerKg(goal: NutritionGoalKind, mode: UserProfile['nutritionMode'] = 'balanced') {
+  const base = ({ fat_loss: 2.2, muscle_gain: 2.0, maintenance: 1.6, endurance: 1.6, general_fitness: 1.4 }[goal]);
+  if (mode === 'fat_loss_friendly') return Math.min(Math.max(base, 2.2), 2.4);
+  if (mode === 'muscle_gain_friendly') return Math.min(Math.max(base, 2.0) + 0.1, 2.4);
+  if (mode === 'high_protein') return Math.min(base + 0.25, 2.4);
+  if (mode === 'endurance_fueling' && goal === 'endurance') return 1.7;
+  return base;
+}
+
+function fatPctForMode(mode: NutritionMode | undefined, goal: NutritionGoalKind): number {
+  if (mode === 'endurance_fueling') return 0.23;
+  if (mode === 'high_protein' || mode === 'fat_loss_friendly') return 0.25;
+  if (mode === 'muscle_gain_friendly' && goal === 'muscle_gain') return 0.26;
+  return 0.27;
 }
 
 function calcWaterMl(weight: number, activityFactor: number) {
@@ -401,15 +433,37 @@ function calcWaterMl(weight: number, activityFactor: number) {
 /** Migrates legacy v1 Czech goal strings to PrimaryGoal. */
 function legacyGoalStringToPrimary(goal: string): PrimaryGoal {
   return (
-    ({ hubnutí: 'lose_weight', udržení: 'maintain_weight', nabírání: 'gain_muscle' } as Record<string, PrimaryGoal>)[goal] ||
+    ({ hubnutí: 'lose_fat', udržení: 'maintain_weight', nabírání: 'gain_muscle' } as Record<string, PrimaryGoal>)[goal] ||
     'maintain_weight'
   );
 }
 
-export function primaryGoalToNutritionKind(goal: PrimaryGoal): NutritionGoalKind {
-  if (goal === 'lose_weight') return 'fat_loss';
-  if (goal === 'gain_muscle') return 'muscle_gain';
-  if (goal === 'run_race' || goal === 'triathlon' || goal === 'hyrox_ocr') return 'endurance';
+export function normalizePrimaryGoal(goal: PrimaryGoal | LegacyPrimaryGoal | string | null | undefined): PrimaryGoal | undefined {
+  if (!goal) return undefined;
+  const map: Record<string, PrimaryGoal> = {
+    lose_fat: 'lose_fat',
+    maintain_weight: 'maintain_weight',
+    gain_muscle: 'gain_muscle',
+    improve_fitness: 'improve_fitness',
+    improve_running: 'improve_running',
+    improve_recovery: 'build_consistency',
+    build_consistency: 'build_consistency',
+    lose_weight: 'lose_fat',
+    get_fit: 'improve_fitness',
+    run_race: 'improve_running',
+    triathlon: 'improve_fitness',
+    hyrox_ocr: 'improve_fitness',
+    sport_conditioning: 'improve_fitness',
+  };
+  return map[String(goal)];
+}
+
+export function primaryGoalToNutritionKind(goal: PrimaryGoal | LegacyPrimaryGoal | string): NutritionGoalKind {
+  const normalized = normalizePrimaryGoal(goal) ?? 'maintain_weight';
+  if (normalized === 'lose_fat') return 'fat_loss';
+  if (normalized === 'gain_muscle') return 'muscle_gain';
+  if (normalized === 'improve_running') return 'endurance';
+  if (normalized === 'improve_fitness') return 'general_fitness';
   return 'maintenance';
 }
 
@@ -471,4 +525,3 @@ export function formatDateLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-');
   return `${parseInt(day, 10)}. ${parseInt(month, 10)}. ${year}`;
 }
-

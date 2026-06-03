@@ -1,230 +1,428 @@
-// ── SETTINGS SCREEN
-//
-// Připojené zdroje zdravotních dat, jejich priorita, manuální propojení.
-// Otevírá se ze ProfileScreen tlačítkem "Nastavení".
-//
-// Stávající chování:
-//   - Apple Health / Health Connect: zobrazí status (available / unavailable
-//     / unsupported). "Připojit" tlačítko zatím jen otevře dokumentaci —
-//     reálná integrace přijde s EAS Build + native plugin instalací.
-//   - Strava / Whoop / Garmin / Polar / Oura / Fitbit: zobrazí jestli je
-//     token uložený. "Připojit" otevře OAuth flow (zatím stub Alert).
-//     "Odpojit" smaže token přes useHealthSources.
-//   - Vše ostatní (Zepp / Suunto / Mi Fit): pouze poznámka, že lze přes
-//     Apple Health / Health Connect sync (chain).
-
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, H1, Label, Subtitle } from '../components/UI';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  Button,
+  Card,
+  Pill,
+  ScreenHeader,
+  SectionHeader,
+  SegmentedControl,
+  SettingRow,
+  SourceStatusCard,
+  StatusPill,
+} from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
+import { useTrenr } from '../context/TrenrContext';
+import { deleteAccount, exportAccountData } from '../services/api';
 import { useHealthSources } from '../hooks/useHealthSources';
+import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
+import { usePreWorkoutReminder } from '../hooks/usePreWorkoutReminder';
+import { usePostWorkoutReminder } from '../hooks/usePostWorkoutReminder';
+import { useStravaConnect } from '../hooks/useStravaConnect';
+import { useWhoopConnect } from '../hooks/useWhoopConnect';
+import { useGarminConnect } from '../hooks/useGarminConnect';
+import { useOuraConnect } from '../hooks/useOuraConnect';
+import { useLanguage } from '../context/LanguageContext';
+import { SUPPORTED_LOCALES, LOCALE_LABELS } from '../lib/i18n';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import type { OAuthService } from '../lib/health';
+
+const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
+const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
+
+type SettingsTab = 'coach' | 'data' | 'privacy';
 
 type OAuthSourceMeta = {
   service: OAuthService;
   label: string;
-  description: string;
-  /** Hint na to, jaké datové kategorie zdroj poskytuje. */
-  provides: string;
+  descKey: TranslationKey;
+  providesKey: TranslationKey;
 };
 
 const OAUTH_SOURCES: OAuthSourceMeta[] = [
-  {
-    service: 'strava',
-    label: 'Strava',
-    description: 'Tréninky (běh, kolo, plavání, …) s GPS a HR.',
-    provides: 'tréninky',
-  },
-  {
-    service: 'whoop',
-    label: 'Whoop',
-    description: 'Spánek, HRV, klidový tep a recovery. Vyžaduje aktivní Whoop subscription.',
-    provides: 'spánek · HRV · RHR',
-  },
-  {
-    service: 'garmin',
-    label: 'Garmin Connect',
-    description: 'Tréninky + denní aktivita + spánek + HR. Vyžaduje schválení Garmin partner programem.',
-    provides: 'kroky · tréninky · spánek',
-  },
-  {
-    service: 'polar',
-    label: 'Polar Flow',
-    description: 'Tréninky a HR z Polar hodinek.',
-    provides: 'tréninky · HR',
-  },
-  {
-    service: 'oura',
-    label: 'Oura Ring',
-    description: 'Spánek, HRV, recovery, teplota.',
-    provides: 'spánek · HRV · RHR',
-  },
-  {
-    service: 'fitbit',
-    label: 'Fitbit',
-    description: 'Kroky, spánek, HR z Fitbit hodinek.',
-    provides: 'kroky · spánek · HR',
-  },
+  { service: 'strava', label: 'Strava', descKey: 'settings.srcStravaDesc', providesKey: 'settings.srcStravaProvides' },
+  { service: 'whoop', label: 'Whoop', descKey: 'settings.srcWhoopDesc', providesKey: 'settings.srcWhoopProvides' },
+  { service: 'garmin', label: 'Garmin Connect', descKey: 'settings.srcGarminDesc', providesKey: 'settings.srcGarminProvides' },
+  { service: 'polar', label: 'Polar Flow', descKey: 'settings.srcPolarDesc', providesKey: 'settings.srcPolarProvides' },
+  { service: 'oura', label: 'Oura Ring', descKey: 'settings.srcOuraDesc', providesKey: 'settings.srcOuraProvides' },
+  { service: 'fitbit', label: 'Fitbit', descKey: 'settings.srcFitbitDesc', providesKey: 'settings.srcFitbitProvides' },
 ];
 
 export function SettingsScreen() {
-  const { colors } = useTheme();
-  const { connectedOAuth, native, isLoading, disconnect } = useHealthSources();
+  const { colors, fonts } = useTheme();
+  const { locale, setLocale, t } = useLanguage();
+  const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
+  const briefing = useMorningBriefingSchedule();
+  const preWorkout = usePreWorkoutReminder();
+  const postWorkout = usePostWorkoutReminder();
+  const strava = useStravaConnect();
+  const whoop = useWhoopConnect();
+  const garmin = useGarminConnect();
+  const oura = useOuraConnect();
+  const { user, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
+  const [tab, setTab] = useState<SettingsTab>('coach');
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
+  if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) refreshSources();
+  if (garmin.status === 'connected' && !connectedOAuth.includes('garmin')) refreshSources();
+  if (oura.status === 'connected' && !connectedOAuth.includes('oura')) refreshSources();
 
   function handleConnect(service: OAuthService) {
-    // TODO(oauth): otevřít browser/expo-auth-session s authorize URL,
-    // zachytit callback přes Linking, vyměnit code za token přes /api/<service>/exchange,
-    // uložit přes AsyncStorageTokenStore.setToken, pak refresh().
-    Alert.alert(
-      `Připojit ${service}`,
-      'OAuth flow zatím není implementovaný. Až bude, klepnutí otevře přihlášení v prohlížeči.',
-    );
+    if (service === 'strava') {
+      if (strava.status === 'unavailable') {
+        Alert.alert(t('settings.stravaNotConfTitle'), t('settings.stravaNotConfMsg'));
+        return;
+      }
+      void strava.connect();
+      return;
+    }
+    if (service === 'whoop') {
+      if (whoop.status === 'unavailable') {
+        Alert.alert(t('settings.whoopNotConfTitle'), t('settings.whoopNotConfMsg'));
+        return;
+      }
+      void whoop.connect();
+      return;
+    }
+    if (service === 'garmin') {
+      if (garmin.status === 'unavailable') {
+        Alert.alert(t('settings.garminNotConfTitle'), t('settings.garminNotConfMsg'));
+        return;
+      }
+      void garmin.connect();
+      return;
+    }
+    if (service === 'oura') {
+      if (oura.status === 'unavailable') {
+        Alert.alert(t('settings.ouraNotConfTitle'), t('settings.ouraNotConfMsg'));
+        return;
+      }
+      void oura.connect();
+      return;
+    }
+    Alert.alert(t('settings.connectGenericTitle', { service }), t('settings.connectGenericMsg'));
   }
 
   function handleConnectNative() {
     Alert.alert(
-      native.platform === 'ios' ? 'Apple Health' : 'Health Connect',
-      native.platform === 'ios'
-        ? 'Reálné napojení vyžaduje EAS Build s nainstalovaným @kingstinct/react-native-healthkit a HealthKit entitlement v app.json.'
-        : 'Reálné napojení vyžaduje EAS Build s nainstalovaným react-native-health-connect a Android 14+ (nebo Health Connect z Play Store).',
+      native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
+      native.platform === 'ios' ? t('settings.iosInstrMsg') : t('settings.androidInstrMsg'),
     );
   }
 
+  async function handleExport() {
+    if (!user) {
+      Alert.alert(t('settings.exportTitle'), t('settings.exportSignIn'));
+      return;
+    }
+    setExporting(true);
+    try {
+      const data = await exportAccountData();
+      const json = JSON.stringify(data, null, 2);
+      const fileUri = `${FileSystem.cacheDirectory}nutrifit-export-${new Date().toISOString().slice(0, 10)}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await Share.share({ url: fileUri, title: t('settings.exportShareTitle') });
+    } catch (err) {
+      Alert.alert(t('settings.exportFailed'), err instanceof Error ? err.message : t('common.tryAgain'));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      t('settings.deleteTitle'),
+      user ? t('settings.deleteMsgUser') : t('settings.deleteMsgLocal'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteConfirm'),
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              if (user) await deleteAccount();
+              await purgeAllUserData();
+              if (user) await signOut();
+            } catch (err) {
+              Alert.alert(t('settings.deleteFailed'), err instanceof Error ? err.message : t('common.tryAgain'));
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function openUrl(url: string) {
+    Linking.openURL(url).catch(() => Alert.alert(t('settings.openLinkFailed'), url));
+  }
+
+  function sourceBusy(service: OAuthService) {
+    return (
+      (service === 'strava' && strava.status === 'connecting') ||
+      (service === 'whoop' && whoop.status === 'connecting') ||
+      (service === 'garmin' && garmin.status === 'connecting') ||
+      (service === 'oura' && oura.status === 'connecting')
+    );
+  }
+
+  function sourceError(service: OAuthService) {
+    if (service === 'strava') return strava.status === 'error' ? strava.error : undefined;
+    if (service === 'whoop') return whoop.status === 'error' ? whoop.error : undefined;
+    if (service === 'garmin') return garmin.status === 'error' ? garmin.error : undefined;
+    if (service === 'oura') return oura.status === 'error' ? oura.error : undefined;
+    return undefined;
+  }
+
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <H1>Nastavení</H1>
-        <Subtitle>
-          Propoj zdroje zdravotních dat. NutriPlan sjednotí všechno do jednoho přehledu, automaticky deduplikuje tréninky a doporučí úpravy podle dat z nejlepšího zdroje.
-        </Subtitle>
+    <Screen contentContainerStyle={styles.screen}>
+      <ScreenHeader eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
+      <SegmentedControl
+        value={tab}
+        options={[
+          { value: 'coach', label: t('settings.tabCoach') },
+          { value: 'data', label: t('settings.tabData') },
+          { value: 'privacy', label: t('settings.tabPrivacy') },
+        ]}
+        onChange={setTab}
+      />
 
-        {/* ── Native source: Apple Health or Health Connect ─────────────── */}
-        <Card>
-          <Label>
-            {native.platform === 'ios'
-              ? '🍎 Apple Health'
-              : native.platform === 'android'
-                ? '🤖 Health Connect (Android)'
-                : '⚪ Nativní zdroj'}
-          </Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            {native.platform === 'unsupported'
-              ? 'Tato platforma nemá unifikované health API. Použij OAuth zdroje nebo manuální zápis.'
+      {tab === 'coach' && (
+        <>
+          <Card>
+            <SectionHeader title={t('settings.language')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.languageDesc')}</Text>
+            <View style={styles.wrap}>
+              {SUPPORTED_LOCALES.map(loc => (
+                <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
+                  {LOCALE_LABELS[loc]}
+                </Pill>
+              ))}
+            </View>
+          </Card>
+
+          <Card>
+            <SectionHeader title="Vývojářská nastavení (Debug)" />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium.</Text>
+            <View style={styles.wrap}>
+              <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
+                {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
+              </Pill>
+            </View>
+          </Card>
+
+          <ReminderRow
+            title={t('settings.morningCoaching')}
+            body={t('settings.morningBodyShort')}
+            enabled={briefing.settings.enabled}
+            status={briefing.settings.enabled ? `${String(briefing.settings.hour).padStart(2, '0')}:${String(briefing.settings.minute).padStart(2, '0')}` : t('settings.off')}
+            onToggle={() => briefing.update({ enabled: !briefing.settings.enabled })}
+          >
+            {briefing.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[6, 7, 8, 9, 10].map(hour => (
+                    <Pill key={hour} active={briefing.settings.hour === hour} onPress={() => briefing.update({ hour })}>
+                      {String(hour).padStart(2, '0')}:00
+                    </Pill>
+                  ))}
+                </View>
+                {briefing.permission !== 'granted' && briefing.permission !== 'unavailable' ? (
+                  <Button variant="secondary" onPress={briefing.requestPermission}>{t('settings.allowNotif')}</Button>
+                ) : null}
+                {briefing.permission === 'unavailable' ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.expoGoNoteShort')}</Text> : null}
+              </>
+            ) : null}
+          </ReminderRow>
+
+          <ReminderRow
+            title={t('settings.preTitle')}
+            body={t('settings.preBodyShort')}
+            enabled={preWorkout.settings.enabled}
+            status={preWorkout.settings.enabled ? t('settings.minBefore', { m: preWorkout.settings.minutesBefore }) : t('settings.off')}
+            onToggle={() => preWorkout.update({ enabled: !preWorkout.settings.enabled })}
+          >
+            {preWorkout.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[30, 60, 90, 120].map(minutesBefore => (
+                    <Pill key={minutesBefore} active={preWorkout.settings.minutesBefore === minutesBefore} onPress={() => preWorkout.update({ minutesBefore })}>
+                      {minutesBefore} min
+                    </Pill>
+                  ))}
+                </View>
+                <Text style={[styles.note, { color: colors.faint }]}>{t('settings.preNoteShort')}</Text>
+              </>
+            ) : null}
+          </ReminderRow>
+
+          <ReminderRow
+            title={t('settings.postTitle')}
+            body={t('settings.postBodyShort')}
+            enabled={postWorkout.settings.enabled}
+            status={postWorkout.settings.enabled ? t('settings.minAfter', { m: postWorkout.settings.minutesAfter }) : t('settings.off')}
+            onToggle={() => postWorkout.update({ enabled: !postWorkout.settings.enabled })}
+          >
+            {postWorkout.settings.enabled ? (
+              <>
+                <View style={styles.wrap}>
+                  {[0, 5, 15, 30].map(minutesAfter => (
+                    <Pill key={minutesAfter} active={postWorkout.settings.minutesAfter === minutesAfter} onPress={() => postWorkout.update({ minutesAfter })}>
+                      {minutesAfter === 0 ? t('settings.rightAfter') : t('settings.plusMin', { m: minutesAfter })}
+                    </Pill>
+                  ))}
+                </View>
+                <Text style={[styles.note, { color: colors.faint }]}>{t('settings.postNoteShort')}</Text>
+              </>
+            ) : null}
+          </ReminderRow>
+        </>
+      )}
+
+      {tab === 'data' && (
+        <>
+          <SourceStatusCard
+            title={native.platform === 'ios' ? t('settings.nativeIos') : native.platform === 'android' ? t('settings.nativeAndroid') : t('settings.nativeGeneric')}
+            body={native.platform === 'unsupported'
+              ? t('settings.nativeUnsupported')
               : native.available
-                ? `Stav: ${formatPermission(native.permission)}. Načítá kroky, spánek, RHR, HRV a tréninky.`
+                ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
                 : native.platform === 'ios'
-                  ? 'Zatím nedostupné v této verzi — bude aktivní po EAS Build s HealthKit pluginem.'
-                  : 'Zatím nedostupné — bude aktivní po EAS Build s Health Connect pluginem.'}
-          </Text>
-          {native.platform !== 'unsupported' && (
-            <Text style={[styles.note, { color: colors.faint }]}>
-              💡 Tip: Pokud nosíš Zepp / Mi Band / Amazfit / Garmin / Suunto, zapni v jejich appce sync do{' '}
-              {native.platform === 'ios' ? 'Apple Health' : 'Health Connect'} — pak dorazí data automaticky sem.
-            </Text>
-          )}
-          {native.platform !== 'unsupported' && (
-            <Button variant="secondary" onPress={handleConnectNative}>
-              Detail / instrukce
-            </Button>
-          )}
-        </Card>
+                  ? t('settings.nativeIosSoon')
+                  : t('settings.nativeAndroidSoon')}
+            meta={native.platform !== 'unsupported' ? t('settings.nativeTipShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' }) : undefined}
+            status={native.available ? t('settings.available') : t('settings.pending')}
+            statusTone={native.available ? 'ready' : 'caution'}
+            action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
+          />
 
-        {/* ── OAuth sources ──────────────────────────────────────────────── */}
-        <Card>
-          <Label>Online služby (OAuth)</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            Propojení skrz oficiální API. Token zůstává jen na tvém telefonu a my ho můžeme kdykoliv smazat.
-          </Text>
-
-          {OAUTH_SOURCES.map(src => {
-            const connected = connectedOAuth.includes(src.service);
-            return (
-              <View key={src.service} style={[styles.sourceRow, { borderTopColor: colors.border }]}>
-                <View style={styles.sourceTextCol}>
-                  <View style={styles.sourceTitleRow}>
-                    <Text style={[styles.sourceLabel, { color: colors.ink }]}>{src.label}</Text>
-                    {connected && (
-                      <Text style={[styles.connectedBadge, { color: colors.green, borderColor: colors.green }]}>
-                        ✓ Připojeno
-                      </Text>
+          <Card>
+            <SectionHeader title={t('settings.oauthTitle')} action={isLoading ? <StatusPill label={t('settings.loadingSources')} tone="info" /> : null} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.oauthBodyShort')}</Text>
+            <View style={styles.sourceList}>
+              {OAUTH_SOURCES.map(src => {
+                const connected = connectedOAuth.includes(src.service);
+                const busy = sourceBusy(src.service);
+                const error = sourceError(src.service);
+                return (
+                  <SourceStatusCard
+                    key={src.service}
+                    title={src.label}
+                    body={t(src.descKey)}
+                    meta={[
+                      t('settings.provides', { x: t(src.providesKey) }),
+                      src.service === 'strava' && strava.athleteName && connected ? t('settings.athlete', { name: strava.athleteName }) : '',
+                    ].filter(Boolean).join(' · ')}
+                    status={connected ? t('settings.connectedShort') : busy ? t('settings.opening') : t('settings.notConnected')}
+                    statusTone={connected ? 'ready' : busy ? 'info' : 'neutral'}
+                    error={error ? t('settings.errorPrefix', { e: error }) : undefined}
+                    action={connected ? (
+                      <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect, t)}>{t('settings.disconnect')}</Button>
+                    ) : (
+                      <Button disabled={busy} onPress={() => handleConnect(src.service)}>
+                        {busy ? t('settings.opening') : t('settings.connect')}
+                      </Button>
                     )}
-                  </View>
-                  <Text style={[styles.sourceDesc, { color: colors.muted }]}>{src.description}</Text>
-                  <Text style={[styles.sourceProvides, { color: colors.faint }]}>Poskytuje: {src.provides}</Text>
-                </View>
-                <View style={styles.sourceButtons}>
-                  {connected ? (
-                    <Button variant="secondary" onPress={() => confirmDisconnect(src, disconnect)}>
-                      Odpojit
-                    </Button>
-                  ) : (
-                    <Button onPress={() => handleConnect(src.service)}>Připojit</Button>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </Card>
+                  />
+                );
+              })}
+            </View>
+          </Card>
 
-        {/* ── Closed ecosystems (no public API) ──────────────────────────── */}
-        <Card>
-          <Label>Bez vlastního API</Label>
-          <Text style={[styles.body, { color: colors.muted }]}>
-            Některé ekosystémy (Zepp / Mi Fit / Amazfit, Suunto, Withings na starší modely) nemají veřejné API.{'\n\n'}
-            Funkční cesta: v jejich vlastní appce zapni sync do{' '}
-            {native.platform === 'ios' ? 'Apple Health' : 'Health Connect'} — data potom dorazí sem přes nativní zdroj.
-          </Text>
-        </Card>
+          <SourceStatusCard
+            title={t('settings.noApiTitle')}
+            body={t('settings.noApiBodyShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' })}
+            status={t('settings.info')}
+            statusTone="info"
+          />
+        </>
+      )}
 
-        {isLoading && (
-          <Text style={[styles.loading, { color: colors.faint }]}>Načítám stav zdrojů…</Text>
-        )}
-      </ScrollView>
+      {tab === 'privacy' && (
+        <>
+          <Card>
+            <SectionHeader title={t('settings.privacyTitle')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.privacyBodyShort')}</Text>
+            <View style={styles.privacyActions}>
+              <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>{t('settings.privacyPolicy')}</Button>
+              <Button variant="secondary" onPress={() => openUrl(TERMS_URL)}>{t('settings.terms')}</Button>
+              <Button variant="secondary" disabled={exporting} onPress={handleExport}>
+                {exporting ? t('settings.exporting') : t('settings.exportData')}
+              </Button>
+              <Button variant="danger" disabled={deleting} onPress={handleDeleteAccount}>
+                {deleting ? t('settings.deleting') : user ? t('settings.deleteAccountBtn') : t('settings.deleteLocalBtn')}
+              </Button>
+            </View>
+            {!user ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.notSignedInNote')}</Text> : null}
+          </Card>
+        </>
+      )}
     </Screen>
   );
 }
 
-function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) => Promise<void>) {
+function ReminderRow({
+  title,
+  body,
+  enabled,
+  status,
+  onToggle,
+  children,
+}: {
+  title: string;
+  body: string;
+  enabled: boolean;
+  status: string;
+  onToggle: () => void;
+  children?: ReactNode;
+}) {
+  const { t } = useLanguage();
+  return (
+    <SettingRow
+      title={title}
+      body={body}
+      meta={status}
+      action={<Pill active={enabled} onPress={onToggle}>{enabled ? t('settings.on') : t('settings.off')}</Pill>}
+    >
+      {children}
+    </SettingRow>
+  );
+}
+
+function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) => Promise<void>, t: Translate) {
   Alert.alert(
-    `Odpojit ${src.label}?`,
-    'Token bude smazán z telefonu. Data, která jsme z této služby v minulosti načetli, nebudou ovlivněna.',
+    t('settings.disconnectTitle', { label: src.label }),
+    t('settings.disconnectMsg'),
     [
-      { text: 'Zrušit', style: 'cancel' },
-      { text: 'Odpojit', style: 'destructive', onPress: () => disconnect(src.service) },
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.disconnect'), style: 'destructive', onPress: () => disconnect(src.service) },
     ],
   );
 }
 
-function formatPermission(p: string): string {
+function formatPermission(p: string, t: Translate): string {
   switch (p) {
-    case 'granted':  return 'aktivní';
-    case 'partial':  return 'částečně povoleno';
-    case 'denied':   return 'odmítnuto';
-    case 'not_determined': return 'čeká na povolení';
-    case 'unavailable': return 'nedostupné';
+    case 'granted': return t('settings.permGranted');
+    case 'partial': return t('settings.permPartial');
+    case 'denied': return t('settings.permDenied');
+    case 'not_determined': return t('settings.permNotDetermined');
+    case 'unavailable': return t('settings.permUnavailable');
     default: return p;
   }
 }
 
 const styles = StyleSheet.create({
-  scroll: { gap: 12, paddingBottom: 30 },
-  body: { fontSize: 14, lineHeight: 20, marginVertical: 8 },
-  note: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', marginVertical: 6 },
-  sourceRow: { flexDirection: 'row', gap: 12, paddingVertical: 14, borderTopWidth: 1, alignItems: 'center' },
-  sourceTextCol: { flex: 1, gap: 4 },
-  sourceTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  sourceLabel: { fontSize: 16, fontWeight: '800' },
-  sourceDesc: { fontSize: 13, lineHeight: 18 },
-  sourceProvides: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
-  sourceButtons: { gap: 6 },
-  connectedBadge: {
-    fontSize: 11,
-    fontWeight: '900',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderRadius: 999,
-    letterSpacing: 0.4,
-  },
-  loading: { textAlign: 'center', fontSize: 12, marginTop: 12 },
+  screen: { gap: 18 },
+  copy: { fontSize: 14, lineHeight: 20 },
+  note: { fontSize: 12, lineHeight: 17, fontStyle: 'italic' },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sourceList: { gap: 10 },
+  privacyActions: { gap: 8 },
 });

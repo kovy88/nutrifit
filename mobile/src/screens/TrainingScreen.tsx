@@ -1,154 +1,228 @@
-import React from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Card, H1, Label, Subtitle, FadeInView } from '../components/UI';
-import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
-import { buildTrainingSessionForDate, toDateKey, formatDateLabel } from '../utils/nutrition';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Button,
+  Card,
+  EmptyState,
+  LoadingState,
+  MetricCard,
+  PlanDayCard,
+  ScreenHeader,
+  SectionHeader,
+  StatusPill,
+} from '../components/UI';
+import { Screen } from '../components/Screen';
+import { WorkoutCard } from '../components/WorkoutCard';
+import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
+import { useTrenr } from '../context/TrenrContext';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
+import { toDateKey } from '../utils/nutrition';
+import { planSessionForDate } from '../lib/training';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
+import type { WorkoutSummary } from '../lib/health';
+
+type WeekItem = ReturnType<typeof buildWeekList>[number];
 
 export function TrainingScreen() {
-  const { profile, selectedDate, setSelectedDate } = useNutriFit();
+  const { profile, selectedDate, setSelectedDate, trainingCompletions } = useTrenr();
   const navigation = useNavigation<any>();
-  const { colors: themeColors, fonts } = useTheme();
+  const { colors, fonts } = useTheme();
+  const { t } = useLanguage();
+  const recent = useRecentWorkouts(14);
+  const { completion, mark } = useTrainingCompletion();
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSummary | null>(null);
 
-  if (!profile) return null;
+  const weekList = useMemo(
+    () => profile ? buildWeekList(profile, selectedDate, recent.workouts, trainingCompletions, t) : [],
+    [profile, recent.workouts, selectedDate, t, trainingCompletions],
+  );
+  const selectedDay = weekList.find(item => item.dateKey === selectedDate) ?? weekList[0];
+  const plannedSessions = weekList.filter(item => !item.isRest).length;
+  const completedCount = weekList.filter(item => item.completionStatus === 'completed').length;
 
-  // Get Monday-Sunday training sessions for the week of selectedDate
-  function getWeekSessions() {
-    if (!profile) return [];
-    const baseDate = new Date(selectedDate);
-    const day = baseDate.getDay(); // 0 is Sun, 1 is Mon...
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    
-    const monday = new Date(baseDate);
-    monday.setDate(baseDate.getDate() + diffToMonday);
-
-    const list = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateKey = toDateKey(d);
-      const session = buildTrainingSessionForDate(profile, d);
-      
-      const dayNames = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
-      const dayLabel = dayNames[d.getDay()];
-
-      list.push({
-        dateKey,
-        dayLabel,
-        formattedDate: `${d.getDate()}. ${d.getMonth() + 1}.`,
-        session,
-        isToday: dateKey === toDateKey(new Date()),
-        isSelected: dateKey === selectedDate,
-      });
-    }
-    return list;
-  }
+  if (!profile || !selectedDay) return null;
 
   function handleSelectDay(dateKey: string) {
     setSelectedDate(dateKey);
-    navigation.navigate('Dnes');
   }
 
-  const weekList = getWeekSessions();
+  function openSelectedDayToday() {
+    navigation.navigate('Main', { screen: 'Dnes' });
+  }
+
+  const selectedCompletion = selectedDay.completionStatus ?? completion?.status;
+  const selectedDone = selectedCompletion === 'completed';
+  const selectedSkipped = selectedCompletion === 'skipped';
+  const intensityTone =
+    selectedDay.session.intensity === 'hard' ? 'risk' :
+    selectedDay.session.intensity === 'moderate' ? 'caution' :
+    selectedDay.session.intensity === 'easy' ? 'ready' :
+    'neutral';
 
   return (
-    <Screen>
-      <H1>Trénink</H1>
-      <Subtitle>Tvůj vygenerovaný tréninkový týden na základě cíle: {profile.trainingGoal.toUpperCase().replace('_', ' ')}.</Subtitle>
+    <Screen contentContainerStyle={styles.screen}>
+      <ScreenHeader
+        eyebrow={t('training.eyebrow')}
+        title={t('training.title')}
+        subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
+      />
 
-      <View style={styles.daysList}>
-        {weekList.map((item, idx) => {
-          const isRest = item.session.kind === 'rest' || item.session.durationMinutes === 0;
-          return (
-            <FadeInView key={idx} delay={idx * 60}>
-              <Pressable
-                onPress={() => handleSelectDay(item.dateKey)}
-                style={({ pressed }) => [
-                  styles.pressableCard,
-                  pressed && { opacity: 0.8 },
-                ]}
-              >
-                <Card
-                  style={[
-                    styles.dayCard,
-                    item.isSelected && { borderColor: themeColors.green, borderWidth: 2 },
-                    isRest && { opacity: 0.85 },
-                  ]}
-                >
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={[styles.dayLabel, { color: themeColors.ink, fontFamily: fonts.bold }]}>
-                        {item.dayLabel} <Text style={{ fontFamily: fonts.regular, fontWeight: 'normal', color: themeColors.muted }}>({item.formattedDate})</Text>
-                      </Text>
-                    </View>
-                    <View style={styles.badges}>
-                      {item.isToday && (
-                        <Text style={[styles.todayBadge, { backgroundColor: themeColors.green }]}>Dnes</Text>
-                      )}
-                      {item.isSelected && (
-                        <Text style={[styles.selectedBadge, { backgroundColor: themeColors.blue }]}>Vybráno</Text>
-                      )}
-                    </View>
-                  </View>
+      <Card>
+        <SectionHeader
+          title={t('training.weekOverview')}
+          action={<StatusPill label={t('training.weekStatus', { done: completedCount, total: plannedSessions })} tone={completedCount ? 'ready' : 'neutral'} />}
+        />
+        <View style={styles.weekMetrics}>
+          <MetricCard label={t('training.planned')} value={plannedSessions} detail={t('training.sessions')} color={colors.accent} />
+          <MetricCard label={t('training.done')} value={completedCount} detail={t('training.thisWeek')} color={colors.green} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
+          {weekList.map(item => (
+            <Pressable
+              key={item.dateKey}
+              onPress={() => handleSelectDay(item.dateKey)}
+              style={[
+                styles.dayChip,
+                {
+                  borderColor: item.isSelected ? colors.accent : colors.border,
+                  backgroundColor: item.isSelected ? colors.accent + '18' : colors.bgElev,
+                },
+              ]}
+            >
+              <Text style={[styles.dayDow, { color: item.isSelected ? colors.accent : colors.faint, fontFamily: fonts.bold }]}>
+                {item.shortLabel}
+              </Text>
+              <Text style={[styles.dayNumber, { color: colors.ink, fontFamily: fonts.number }]}>
+                {item.dayNumber}
+              </Text>
+              <View style={[styles.dayDot, { backgroundColor: item.isRest ? colors.border : item.done ? colors.green : colors.accent }]} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      </Card>
 
-                  {isRest ? (
-                    <View style={styles.restBody}>
-                      <Text style={styles.restText}>☕ Volno & Regenerace</Text>
-                      <Text style={[styles.restSub, { color: themeColors.muted }]}>
-                        Svaly rostou v klidu. Ideální čas na lehký strečink nebo procházku.
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.sessionBody}>
-                      <Text style={[styles.sessionTitle, { color: themeColors.ink, fontFamily: fonts.extraBold }]}>
-                        🏃 {item.session.title}
-                      </Text>
-                      <View style={styles.sessionDetails}>
-                        <Text style={[styles.detailChip, { backgroundColor: themeColors.isDark ? '#2a3630' : '#eef2ed', color: themeColors.green, fontFamily: fonts.bold }]}>
-                          ⏱️ {item.session.durationMinutes} min
-                        </Text>
-                        <Text
-                          style={[
-                            styles.detailChip,
-                            {
-                              backgroundColor: item.session.intensity === 'hard' ? '#fdefee' : '#fefaf0',
-                              color: item.session.intensity === 'hard' ? colors.red : colors.orange,
-                              fontFamily: fonts.bold,
-                            },
-                          ]}
-                        >
-                          🔥 Intenzita: {item.session.intensity.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </Card>
-              </Pressable>
-            </FadeInView>
-          );
-        })}
-      </View>
+      <PlanDayCard
+        title={selectedDay.dayTitle}
+        subtitle={selectedDay.dateLabel}
+        selected
+        markers={[
+          selectedDay.isToday ? t('common.today') : '',
+          selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : '',
+        ].filter((marker): marker is string => Boolean(marker))}
+      >
+        {selectedDay.isRest ? (
+          <View style={styles.selectedBody}>
+            <Text style={[styles.selectedTitle, { color: colors.orange, fontFamily: fonts.extraBold }]}>{t('training.restTitle')}</Text>
+            <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{t('training.restSub')}</Text>
+          </View>
+        ) : (
+          <View style={styles.selectedBody}>
+            <View style={styles.selectedTitleRow}>
+              <Text style={[styles.selectedTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{selectedDay.session.title}</Text>
+              <StatusPill label={t('training.intensityValue', { value: selectedDay.session.intensity })} tone={intensityTone} />
+            </View>
+            <View style={styles.weekMetrics}>
+              <MetricCard label={t('training.duration')} value={selectedDay.session.durationMinutes} unit="min" color={colors.accent} />
+              <MetricCard
+                label={t('training.distance')}
+                value={selectedDay.session.distanceKm ? selectedDay.session.distanceKm : '-'}
+                unit={selectedDay.session.distanceKm ? 'km' : undefined}
+                color={colors.blue}
+              />
+            </View>
+            {selectedDay.session.notes ? (
+              <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.session.notes}</Text>
+            ) : null}
+          </View>
+        )}
+        <View style={styles.actions}>
+          <Button style={styles.actionButton} disabled={selectedDone || selectedDay.isRest} onPress={() => mark('completed')}>
+            {selectedDone ? t('today.completed') : t('today.markDone')}
+          </Button>
+          <Button style={styles.actionButton} variant="secondary" disabled={selectedDay.isRest} onPress={() => mark('skipped')}>
+            {t('training.markSkipped')}
+          </Button>
+        </View>
+        <Button variant="secondary" onPress={openSelectedDayToday}>
+          {t('training.openToday')}
+        </Button>
+      </PlanDayCard>
+
+      <SectionHeader title={t('training.recentTitle')} />
+      {recent.isLoading ? (
+        <LoadingState title={t('training.loadingWorkouts')} />
+      ) : recent.workouts.length === 0 ? (
+        <EmptyState title={t('training.noWorkoutsTitle')} body={t('training.noWorkouts')} />
+      ) : (
+        <View style={styles.workoutsList}>
+          {recent.workouts.slice(0, 6).map((workout, index) => (
+            <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
+          ))}
+        </View>
+      )}
+
+      <WorkoutDetailModal workout={selectedWorkout} onClose={() => setSelectedWorkout(null)} />
     </Screen>
   );
 }
 
+function buildWeekList(
+  profile: NonNullable<ReturnType<typeof useTrenr>['profile']>,
+  selectedDate: string,
+  recentWorkouts: WorkoutSummary[],
+  trainingCompletions: ReturnType<typeof useTrenr>['trainingCompletions'],
+  t: ReturnType<typeof useLanguage>['t'],
+) {
+  const baseDate = new Date(selectedDate);
+  const day = baseDate.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(baseDate);
+  monday.setDate(baseDate.getDate() + diffToMonday);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const dateKey = toDateKey(date);
+    const session = planSessionForDate(profile, date, { recentWorkouts });
+    const isRest = session.kind === 'rest' || session.durationMinutes === 0;
+    const done = recentWorkouts.some(workout => workout.startedAt.slice(0, 10) === dateKey);
+    const completion = trainingCompletions[dateKey];
+    return {
+      dateKey,
+      session,
+      isRest,
+      done: done || completion?.status === 'completed',
+      completionStatus: completion?.status,
+      isToday: dateKey === toDateKey(new Date()),
+      isSelected: dateKey === selectedDate,
+      shortLabel: t('training.weekdayShort', { dow: date.getDay() }),
+      dayTitle: t('training.weekdayFull', { dow: date.getDay() }),
+      dayNumber: String(date.getDate()),
+      dateLabel: `${date.getDate()}. ${date.getMonth() + 1}.`,
+    };
+  });
+}
+
+function formatGoal(goal: string) {
+  return goal.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
 const styles = StyleSheet.create({
-  daysList: { gap: 14 },
-  pressableCard: { width: '100%' },
-  dayCard: { padding: 14, gap: 10 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dayLabel: { fontSize: 16 },
-  badges: { flexDirection: 'row', gap: 6 },
-  todayBadge: { color: '#fff', fontSize: 11, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, overflow: 'hidden' },
-  selectedBadge: { color: '#fff', fontSize: 11, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, overflow: 'hidden' },
-  restBody: { gap: 4, marginTop: 4 },
-  restText: { fontSize: 15, fontWeight: '800', color: '#c7781f' },
-  restSub: { fontSize: 13, lineHeight: 18 },
-  sessionBody: { gap: 8, marginTop: 4 },
-  sessionTitle: { fontSize: 16 },
-  sessionDetails: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  detailChip: { fontSize: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, overflow: 'hidden' },
+  screen: { gap: 18 },
+  weekMetrics: { flexDirection: 'row', gap: 8 },
+  weekStrip: { gap: 8, paddingTop: 2 },
+  dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayDow: { fontSize: 11, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.6 },
+  dayNumber: { fontSize: 24, lineHeight: 28 },
+  dayDot: { width: 7, height: 7, borderRadius: 4 },
+  selectedBody: { gap: 10 },
+  selectedTitleRow: { gap: 8 },
+  selectedTitle: { fontSize: 20, lineHeight: 25 },
+  selectedNote: { fontSize: 14, lineHeight: 20 },
+  actions: { flexDirection: 'row', gap: 8 },
+  actionButton: { flex: 1 },
+  workoutsList: { gap: 10 },
 });

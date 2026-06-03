@@ -2,17 +2,22 @@ import 'react-native-url-polyfill/auto';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { NutriFitProvider, useNutriFit } from './src/context/NutriFitContext';
+import { TrenrProvider, useTrenr } from './src/context/TrenrContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { LoadingScreen } from './src/screens/LoadingScreen';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { LanguageProvider } from './src/context/LanguageContext';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 function AppShell() {
-  const { isReady } = useNutriFit();
+  const { isReady } = useTrenr();
+  const { isDark } = useTheme();
+
   if (!isReady) return <LoadingScreen />;
 
   return (
     <NavigationContainer>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <RootNavigator />
     </NavigationContainer>
   );
@@ -20,8 +25,15 @@ function AppShell() {
 
 export default function App() {
   return (
-    <NutriFitProvider>
-      <AppShell />
-    </NutriFitProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <TrenrProvider>
+            <AppShell />
+          </TrenrProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
+

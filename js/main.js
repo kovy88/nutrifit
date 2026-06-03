@@ -1,14 +1,17 @@
 // ── MAIN — init, event listenery, dark mode
 
-import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=8';
-import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout } from './auth.js?v=8';
-import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=8';
-import { toggleDayPlanner } from './dayplanner.js?v=8';
-import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=8';
-import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=8';
+import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=9';
+import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout, getCurrentUser } from './auth.js?v=8';
+import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=9';
+import { toggleDayPlanner } from './dayplanner.js?v=9';
+import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=9';
+import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=9';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=8';
 import { initOnboardingWizard } from './ui/onboarding.js?v=1';
 import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=8';
+import { calcMacroTargets, adjustForDay, ACTIVITY_FACTORS, planWeeklyAdjustment, calcFatTargetG } from './domain/nutrition.js?v=2';
+import { buildTrainingSessionForDate, startOfWeekISO } from './services/daily-training-session.js?v=1';
+import { generateTrainingPlan } from './domain/training.js?v=1';
 import {
   addFoodLogItem,
   calcWaterGoal,
@@ -195,7 +198,15 @@ async function refreshSelectedDay(options = {}) {
     appState.foodLog = day.foodLog || [];
 
     if (day.target && options.applyTarget !== false) {
-      appState.macros = { ...appState.macros, ...day.target, waterGoalMl: day.target.waterGoalMl || day.target.water_goal_ml || 0 };
+      appState.macros = {
+        ...appState.macros,
+        ...day.target,
+        age: appState.macros.age || Number(document.getElementById('age')?.value || 0),
+        height: appState.macros.height || Number(document.getElementById('height')?.value || 0),
+        weight: day.target.weight || appState.macros.weight || Number(document.getElementById('weight')?.value || 0),
+        gender: appState.macros.gender || appState.gender,
+        waterGoalMl: day.target.waterGoalMl || day.target.water_goal_ml || 0,
+      };
       appState.waterGoalMl = appState.macros.waterGoalMl || appState.waterGoalMl;
       const results = document.getElementById('results');
       if (results) results.style.display = 'block';
@@ -228,7 +239,7 @@ async function refreshSelectedDay(options = {}) {
 function buildShoppingListIfPossible() {
   const output = document.getElementById('shopping-output');
   if (!output || !appState.currentRecipes?.length) return;
-  import('./shopping.js?v=8').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
+  import('./shopping.js?v=9').then(({ buildShoppingList }) => buildShoppingList(appState.currentRecipes));
 }
 
 async function persistCurrentTarget() {
@@ -291,8 +302,132 @@ function sumFoodLog() {
   }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
 }
 
+function applyDailyAdjustmentForSelectedDay() {
+  const baseline = getBaselineMacrosForAdjustment();
+  if (!baseline?.kcal) {
+    appState.todaySession = null;
+    appState.dailyAdjustment = null;
+    return;
+  }
+
+  const selectedDate = appState.selectedDate || dateKey();
+  const session = buildTrainingSessionForDate(selectedDate, readWizardTrainingGoal(), {
+    used: appState.dayPlannerUsed,
+    activities: appState.dayPlannerActivities,
+  });
+  const adjusted = adjustForDay(toDomainMacros(baseline), session, { weightKg: baseline.weight || 70 });
+  const adjustedUi = {
+    ...baseline,
+    kcal: adjusted.kcal,
+    protein: adjusted.proteinG,
+    carbs: adjusted.carbsG,
+    fat: adjusted.fatG,
+    fiber: adjusted.fiberG,
+    waterGoalMl: adjusted.waterMl,
+  };
+
+  appState.baselineMacros = baseline;
+  appState.macros = adjustedUi;
+  appState.todaySession = session;
+  appState.dailyAdjustment = {
+    note: adjusted.note || 'Dnešní cíl je upravený podle tréninku.',
+    kcalDelta: adjustedUi.kcal - baseline.kcal,
+    carbsDelta: adjustedUi.carbs - baseline.carbs,
+    fatDelta: adjustedUi.fat - baseline.fat,
+    proteinDelta: adjustedUi.protein - baseline.protein,
+    source: appState.dayPlannerUsed ? 'day_planner' : (session ? 'wizard_training_goal' : 'rest_day'),
+  };
+}
+
+function getBaselineMacrosForAdjustment() {
+  if (appState.baselineMacros?.kcal && hasProfileFields(appState.baselineMacros)) {
+    return { ...appState.baselineMacros };
+  }
+  if (!hasProfileFields(appState.macros)) return null;
+  const profile = profileFromUiMacros(appState.macros);
+  const target = calcMacroTargets(profile, { kind: goalToDomain(appState.macros.goal || appState.goal) });
+  return {
+    kcal: target.kcal,
+    protein: target.proteinG,
+    carbs: target.carbsG,
+    fat: target.fatG,
+    fiber: target.fiberG,
+    bmr: target.bmr,
+    tdee: target.tdee,
+    waterGoalMl: target.waterMl,
+    weight: appState.macros.weight,
+    height: appState.macros.height,
+    age: appState.macros.age,
+    gender: appState.macros.gender || appState.gender,
+    goal: appState.macros.goal || appState.goal,
+  };
+}
+
+function hasProfileFields(macros) {
+  return Number(macros?.weight) > 0 && Number(macros?.height) > 0 && Number(macros?.age) > 0;
+}
+
+function profileFromUiMacros(macros) {
+  return {
+    sex: (macros.gender || appState.gender) === 'muz' ? 'male' : 'female',
+    ageYears: Number(macros.age),
+    heightCm: Number(macros.height),
+    weightKg: Number(macros.weight),
+    activityLevel: activityFactorToLevel(appState.activityFactor),
+  };
+}
+
+function toDomainMacros(macros) {
+  return {
+    kcal: Number(macros.kcal || 0),
+    proteinG: Number(macros.protein || 0),
+    carbsG: Number(macros.carbs || 0),
+    fatG: Number(macros.fat || 0),
+    fiberG: Number(macros.fiber || 0),
+    waterMl: Number(macros.waterGoalMl || macros.waterMl || 0),
+    bmr: Number(macros.bmr || 0),
+    tdee: Number(macros.tdee || 0),
+    goal: goalToDomain(macros.goal || appState.goal),
+    note: macros.note,
+  };
+}
+
+function goalToDomain(goal) {
+  return ({
+    'hubnutí': 'fat_loss',
+    'udržení': 'maintenance',
+    'nabírání': 'muscle_gain',
+    fat_loss: 'fat_loss',
+    maintenance: 'maintenance',
+    muscle_gain: 'muscle_gain',
+    endurance: 'endurance',
+    general_fitness: 'general_fitness',
+  })[goal] || 'maintenance';
+}
+
+function activityFactorToLevel(factor) {
+  let best = 'light';
+  let bestDiff = Infinity;
+  for (const [level, value] of Object.entries(ACTIVITY_FACTORS)) {
+    const diff = Math.abs(value - Number(factor || 1.375));
+    if (diff < bestDiff) { best = level; bestDiff = diff; }
+  }
+  return best;
+}
+
+function readWizardTrainingGoal() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('nutriplan-training-goal') || 'null');
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function renderTrackingShell() {
+  applyDailyAdjustmentForSelectedDay();
   renderMacroValues();
+  renderDailyAdjustmentCard();
   renderDateNav();
   renderFirstRunState();
   renderDailyOverview();
@@ -311,6 +446,9 @@ function setActiveAppTab(tabName, options = {}) {
   document.querySelectorAll('[data-app-panel]').forEach(panel => {
     panel.classList.toggle('active', panel.dataset.appPanel === target);
   });
+  if (target === 'training') {
+    renderTrainingPlan();
+  }
   if (options.scroll) {
     document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -357,7 +495,7 @@ async function analyzeFoodText() {
   setPhotoActionsVisible(false);
   setPhotoOutputMessage(out, 'AI počítá makra z popisu…');
 
-  const systemPrompt = `You are NutriPlan AI, a Czech nutrition assistant. From the user's meal description, return a JSON object with an estimated nutrition breakdown. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech.
+  const systemPrompt = `You are Trenr AI, a Czech nutrition assistant. From the user's meal description, return a JSON object with an estimated nutrition breakdown. Return ONLY valid JSON with no extra text. All user-facing JSON string values must be in Czech.
 
 Estimation rules:
 - If the description contains a quantity, for example "300g", use it. Otherwise estimate an average adult portion.
@@ -619,6 +757,50 @@ function renderMacroValues() {
   });
 }
 
+function renderDailyAdjustmentCard() {
+  const card = document.getElementById('daily-adjustment-card');
+  const title = document.getElementById('daily-adjustment-title');
+  const text = document.getElementById('daily-adjustment-text');
+  const metrics = document.getElementById('daily-adjustment-metrics');
+  const detail = document.getElementById('daily-adjustment-detail');
+  if (!card || !title || !text || !metrics) return;
+  if (!appState.macros?.kcal || !appState.baselineMacros?.kcal || !appState.dailyAdjustment) {
+    card.style.display = 'none';
+    if (detail) detail.style.display = 'none';
+    return;
+  }
+
+  const session = appState.todaySession;
+  const adjustment = appState.dailyAdjustment;
+  card.style.display = 'grid';
+  title.textContent = session && session.kind !== 'rest'
+    ? session.title || 'Dnešní trénink'
+    : 'Volný den / lehčí den';
+  text.textContent = adjustment.note;
+  metrics.replaceChildren(
+    adjustmentPill('Kalorie', adjustment.kcalDelta, 'kcal'),
+    adjustmentPill('Sacharidy', adjustment.carbsDelta, 'g'),
+    adjustmentPill('Tuky', adjustment.fatDelta, 'g'),
+  );
+
+  if (detail) {
+    detail.style.display = 'block';
+    detail.textContent = `Baseline ${appState.baselineMacros.kcal} kcal → dnes ${appState.macros.kcal} kcal (${formatDelta(adjustment.kcalDelta)} kcal), sacharidy ${formatDelta(adjustment.carbsDelta)} g.`;
+  }
+}
+
+function adjustmentPill(label, delta, unit) {
+  const el = document.createElement('span');
+  el.className = `adjustment-pill ${delta > 0 ? 'up' : delta < 0 ? 'down' : 'same'}`;
+  el.textContent = `${label}: ${formatDelta(delta)} ${unit}`;
+  return el;
+}
+
+function formatDelta(value) {
+  const rounded = Math.round(Number(value || 0));
+  return rounded > 0 ? `+${rounded}` : String(rounded);
+}
+
 function renderDateNav() {
   const label = document.getElementById('selected-date-label');
   const chips = document.getElementById('date-chip-list');
@@ -804,6 +986,211 @@ async function saveWeightFromInput() {
   showToast('Váha uložená.', 'success');
 }
 
+async function loadRecentCheckIns() {
+  const user = getCurrentUser();
+  if (user) {
+    try {
+      const { supabase } = await import('./supabase.js?v=8');
+      const { data, error } = await supabase
+        .from('weekly_checkins')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('week_start_date', { ascending: true });
+      if (!error && data) {
+        return data.map(item => ({
+          weekStartISO: item.week_start_date,
+          weightKg: Number(item.weight_kg),
+          adherence: Number(item.adherence),
+          energyLevel: item.energy_level,
+          hungerLevel: item.hunger_level,
+          notes: item.notes,
+          kcalDelta: item.kcal_delta,
+          reason: item.reason,
+        }));
+      }
+    } catch (err) {
+      console.error('Chyba při stahování check-inů z DB:', err);
+    }
+  }
+  
+  // Local storage fallback
+  try {
+    const local = JSON.parse(localStorage.getItem('nutriplan-weekly-checkins') || '[]');
+    return Array.isArray(local) ? local : [];
+  } catch {
+    return [];
+  }
+}
+
+async function openCheckInModal() {
+  const modal = document.getElementById('checkin-modal');
+  if (!modal) return;
+  
+  // Pre-fill weight with current macro target weight
+  const weightInput = document.getElementById('checkin-weight-input');
+  if (weightInput) {
+    weightInput.value = appState.dailyData?.weight?.weightKg || appState.macros?.weight || '';
+  }
+  
+  // Reset rating groups to default active (value 3)
+  document.querySelectorAll('#checkin-hunger-group .toggle-btn, #checkin-energy-group .toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === '3');
+  });
+  
+  // Reset slider
+  const adherenceInput = document.getElementById('checkin-adherence-input');
+  const adherenceVal = document.getElementById('checkin-adherence-val');
+  if (adherenceInput && adherenceVal) {
+    adherenceInput.value = '80';
+    adherenceVal.textContent = '80';
+  }
+  
+  // Hide results card
+  const resultCard = document.getElementById('checkin-result-card');
+  if (resultCard) resultCard.style.display = 'none';
+  
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function renderTrainingPlan() {
+  const listEl = document.getElementById('training-sessions-list');
+  const warningsBox = document.getElementById('training-warnings-box');
+  const warningsList = document.getElementById('training-warnings-list');
+  if (!listEl) return;
+
+  const wizardGoal = readWizardTrainingGoal();
+  if (!wizardGoal || !wizardGoal.trainingGoal) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="padding: 40px 20px; text-align: center; display: flex; flex-direction: column; align-items: center;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;"><path d="M6.5 6.5h11M6.5 17.5h11M3 10h18M3 14h18M2 5v14M22 5v14"/></svg>
+        <h3 style="margin-top: 16px; font-size: 1.1rem; font-weight: 700; color: var(--text);">Nemáš nastavený tréninkový cíl</h3>
+        <p style="color: var(--text-secondary); max-width: 320px; margin: 8px auto 20px; font-size: 0.9rem;">
+          Vyplň onboarding dotazník a získej tréninkový plán na míru pro tvůj sportovní cíl.
+        </p>
+      </div>
+    `;
+    if (warningsBox) warningsBox.style.display = 'none';
+    return;
+  }
+
+  // Generate training plan using our domain core
+  const selectedDate = appState.selectedDate || dateKey();
+  const weekStart = startOfWeekISO(selectedDate);
+  
+  const plan = generateTrainingPlan({
+    goal: {
+      kind: wizardGoal.trainingGoal,
+      sessionsPerWeek: wizardGoal.sessionsPerWeek || 3,
+    },
+    weekStartISO: weekStart,
+    weekIndex: 0,
+    recentWorkouts: [],
+    recentSleep: [],
+  });
+
+  // Render warnings
+  if (warningsBox && warningsList) {
+    if (plan.warnings?.length) {
+      warningsList.replaceChildren();
+      plan.warnings.forEach(w => {
+        const li = document.createElement('li');
+        li.textContent = w;
+        warningsList.appendChild(li);
+      });
+      warningsBox.style.display = 'block';
+    } else {
+      warningsBox.style.display = 'none';
+    }
+  }
+
+  // Load completed workouts state
+  let completed = {};
+  try {
+    completed = JSON.parse(localStorage.getItem('nutriplan-completed-workouts') || '{}');
+  } catch {}
+
+  // Render sessions
+  listEl.replaceChildren();
+  plan.sessions.forEach((session) => {
+    const isCompleted = !!completed[session.date];
+    
+    const row = document.createElement('div');
+    row.className = `card training-session-row ${session.intensity} ${isCompleted ? 'completed' : ''}`;
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-1);
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
+      ${isCompleted ? 'opacity: 0.7; border-color: var(--accent);' : ''}
+    `;
+
+    // Intensity color mapping
+    const intensityColor = {
+      easy: '#4cd964',
+      moderate: '#ff9500',
+      hard: '#ff3b30',
+      rest: 'var(--text-tertiary)'
+    }[session.intensity] || 'var(--text)';
+
+    row.innerHTML = `
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: ${intensityColor};">
+            ${session.intensity.toUpperCase()}
+          </span>
+          ${session.distanceKm ? `<span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">· ${session.distanceKm} km</span>` : ''}
+          ${session.durationMinutes ? `<span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">· ${session.durationMinutes} min</span>` : ''}
+        </div>
+        <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          ${session.title}
+        </h4>
+        ${session.notes ? `<p style="font-size: 0.78rem; color: var(--text-tertiary); margin: 2px 0 0;">${session.notes}</p>` : ''}
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-left: 16px;">
+        <button class="btn-text" data-goto-date="${session.date}" style="padding: 4px 8px; font-size: 0.75rem;">Přejít</button>
+        <input type="checkbox" data-complete-date="${session.date}" ${isCompleted ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;">
+      </div>
+    `;
+
+    // Add event listener to "Přejít na den"
+    row.querySelector(`[data-goto-date]`).addEventListener('click', async (e) => {
+      const date = e.target.dataset.gotoDate;
+      appState.selectedDate = date;
+      await refreshSelectedDay({ clearMissingPlan: true });
+      setActiveAppTab('today');
+    });
+
+    // Add event listener to checkbox
+    row.querySelector(`[data-complete-date]`).addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const date = e.target.dataset.completeDate;
+      try {
+        const comp = JSON.parse(localStorage.getItem('nutriplan-completed-workouts') || '{}');
+        if (checked) {
+          comp[date] = true;
+          row.style.opacity = '0.7';
+          row.style.borderColor = 'var(--accent)';
+        } else {
+          delete comp[date];
+          row.style.opacity = '';
+          row.style.borderColor = '';
+        }
+        localStorage.setItem('nutriplan-completed-workouts', JSON.stringify(comp));
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    listEl.appendChild(row);
+  });
+}
+
 function renderTrends() {
   const streakEl = document.getElementById('streak-count');
   const streakText = document.getElementById('streak-desc');
@@ -853,6 +1240,13 @@ function setStep(n) {
   document.querySelectorAll('.step-dot').forEach((dot, i) => {
     dot.classList.toggle('active', i < (n === 'done' ? 4 : n));
     dot.classList.toggle('done', n === 'done');
+  });
+}
+
+function setLegacyOnboardingVisible(visible) {
+  document.querySelector('.steps-row')?.style.setProperty('display', visible ? 'flex' : 'none');
+  document.querySelectorAll('.onboarding-card').forEach(card => {
+    card.style.display = visible ? '' : 'none';
   });
 }
 
@@ -1001,13 +1395,35 @@ function updateUsageBadge(info) {
   });
   document.getElementById('mc-minus')?.addEventListener('click', () => changeMealCount(-1));
   document.getElementById('mc-plus')?.addEventListener('click', () => changeMealCount(1));
+  const checkDisclaimerAndGenerate = () => {
+    if (localStorage.getItem('nutriplan-safety-disclaimer-accepted') === 'true') {
+      generateMealPlan(setStep);
+    } else {
+      const modal = document.getElementById('safety-disclaimer-modal');
+      if (modal) {
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+  };
+
+  document.getElementById('btn-accept-disclaimer')?.addEventListener('click', () => {
+    localStorage.setItem('nutriplan-safety-disclaimer-accepted', 'true');
+    const modal = document.getElementById('safety-disclaimer-modal');
+    if (modal) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    generateMealPlan(setStep);
+  });
+
   document.getElementById('btn-generate')?.addEventListener('click', () => {
     setActiveAppTab('plan');
-    generateMealPlan(setStep);
+    checkDisclaimerAndGenerate();
   });
   document.getElementById('btn-start-plan')?.addEventListener('click', () => {
     setActiveAppTab('plan', { scroll: true });
-    generateMealPlan(setStep);
+    checkDisclaimerAndGenerate();
   });
   document.getElementById('btn-start-photo')?.addEventListener('click', () => setActiveAppTab('log', { scroll: true }));
   document.querySelectorAll('[data-app-tab]').forEach(tab => {
@@ -1042,6 +1458,177 @@ function updateUsageBadge(info) {
   document.getElementById('water-minus')?.addEventListener('click', () => changeWater(-250));
   document.getElementById('water-reset')?.addEventListener('click', () => changeWater(-(appState.dailyData?.water?.amountMl || 0)));
   document.getElementById('save-weight-btn')?.addEventListener('click', saveWeightFromInput);
+  
+  document.getElementById('btn-start-checkin')?.addEventListener('click', openCheckInModal);
+  
+  document.getElementById('checkin-close')?.addEventListener('click', () => {
+    const modal = document.getElementById('checkin-modal');
+    if (modal) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+
+  document.querySelectorAll('#checkin-hunger-group .toggle-btn, #checkin-energy-group .toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.parentElement;
+      group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  const checkinAdherenceInput = document.getElementById('checkin-adherence-input');
+  checkinAdherenceInput?.addEventListener('input', () => {
+    const adherenceVal = document.getElementById('checkin-adherence-val');
+    if (adherenceVal) adherenceVal.textContent = checkinAdherenceInput.value;
+  });
+
+  document.getElementById('checkin-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const weightVal = parseFloat(document.getElementById('checkin-weight-input').value);
+    const adherenceVal = parseFloat(document.getElementById('checkin-adherence-input').value) / 100;
+    const hungerVal = parseInt(document.querySelector('#checkin-hunger-group .toggle-btn.active')?.dataset.value || '3');
+    const energyVal = parseInt(document.querySelector('#checkin-energy-group .toggle-btn.active')?.dataset.value || '3');
+    const notesVal = document.getElementById('checkin-notes-input').value;
+
+    const checkIn = {
+      weekStartISO: appState.selectedDate || dateKey(),
+      weightKg: weightVal,
+      adherence: adherenceVal,
+      energyLevel: energyVal,
+      hungerLevel: hungerVal,
+      notes: notesVal,
+    };
+
+    // Load recent check-ins
+    const checkIns = await loadRecentCheckIns();
+    checkIns.push(checkIn);
+
+    // Call planWeeklyAdjustment
+    const goalKind = goalToDomain(appState.macros?.goal || appState.goal);
+    const nutritionGoal = { kind: goalKind };
+    
+    // Fallback previousBaseline if none exists
+    const prevBaseline = appState.baselineMacros || appState.macros || { kcal: 2000, protein: 120, carbs: 200, fat: 70 };
+    
+    const adjustment = planWeeklyAdjustment(prevBaseline, nutritionGoal, checkIns);
+    
+    // Store adjustment globally in state so it can be committed
+    appState.tempCheckIn = checkIn;
+    appState.tempAdjustment = adjustment;
+
+    // Render results
+    const reasonEl = document.getElementById('checkin-result-reason');
+    if (reasonEl) reasonEl.innerHTML = `<strong>Doporučení:</strong> ${adjustment.reason}<br><br>Příjem se změní o: <strong>${adjustment.kcalDelta > 0 ? '+' : ''}${adjustment.kcalDelta} kcal</strong>`;
+    
+    const warningsEl = document.getElementById('checkin-result-warnings');
+    if (warningsEl) {
+      warningsEl.replaceChildren();
+      if (adjustment.warnings?.length) {
+        adjustment.warnings.forEach(warn => {
+          const p = document.createElement('div');
+          p.style.display = 'flex';
+          p.style.alignItems = 'center';
+          p.style.gap = '6px';
+          p.innerHTML = `<span><strong>Upozornění:</strong> ${warn}</span>`;
+          warningsEl.appendChild(p);
+        });
+      }
+    }
+    
+    // Show results block
+    const resultCard = document.getElementById('checkin-result-card');
+    if (resultCard) resultCard.style.display = 'flex';
+  });
+
+  document.getElementById('btn-apply-checkin-adjustment')?.addEventListener('click', async () => {
+    if (!appState.tempAdjustment) return;
+    
+    const adjustment = appState.tempAdjustment;
+    const checkIn = appState.tempCheckIn;
+    
+    // Apply calorie delta to baselineMacros
+    const kcalDelta = adjustment.kcalDelta;
+    if (!appState.baselineMacros) {
+      appState.baselineMacros = { ...appState.macros };
+    }
+    appState.baselineMacros.kcal = Math.max(1200, (appState.baselineMacros.kcal || 2000) + kcalDelta);
+    
+    // Recalculate carbs and fats
+    const profile = profileFromUiMacros(appState.baselineMacros);
+    const fatG = calcFatTargetG(profile, appState.baselineMacros.kcal);
+    // Keep protein targets constant
+    const proteinG = appState.baselineMacros.protein || Math.round(profile.weightKg * 2.0);
+    const carbsG = Math.max(0, Math.round((appState.baselineMacros.kcal - proteinG * 4 - fatG * 9) / 4));
+    
+    appState.baselineMacros.fat = fatG;
+    appState.baselineMacros.carbs = carbsG;
+    appState.baselineMacros.protein = proteinG;
+    appState.baselineMacros.weight = checkIn.weightKg;
+    
+    // Persist check-in to Supabase and/or localStorage
+    const user = getCurrentUser();
+    if (user) {
+      try {
+        const { supabase } = await import('./supabase.js?v=8');
+        const { error } = await supabase
+          .from('weekly_checkins')
+          .upsert({
+            user_id: user.id,
+            week_start_date: checkIn.weekStartISO,
+            weight_kg: checkIn.weightKg,
+            adherence: checkIn.adherence,
+            energy_level: checkIn.energyLevel,
+            hunger_level: checkIn.hungerLevel,
+            notes: checkIn.notes,
+            kcal_delta: kcalDelta,
+            reason: adjustment.reason,
+          }, { onConflict: 'user_id,week_start_date' });
+        if (error) throw error;
+      } catch (err) {
+        console.error('Chyba při ukládání check-inu:', err.message);
+      }
+    }
+    
+    // Store check-in locally
+    try {
+      const local = JSON.parse(localStorage.getItem('nutriplan-weekly-checkins') || '[]');
+      local.push({
+        ...checkIn,
+        kcalDelta,
+        reason: adjustment.reason,
+      });
+      localStorage.setItem('nutriplan-weekly-checkins', JSON.stringify(local));
+    } catch (err) {
+      console.error('Chyba při ukládání check-inu do localStorage:', err);
+    }
+    
+    // Update weight history in app state and database
+    await upsertWeight(checkIn.weekStartISO, checkIn.weightKg, 'profile');
+    
+    // Update current macros
+    appState.macros = { ...appState.baselineMacros };
+    await persistCurrentTarget();
+    
+    // Close modal
+    const modal = document.getElementById('checkin-modal');
+    if (modal) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    
+    // Clear temporary state
+    appState.tempAdjustment = null;
+    appState.tempCheckIn = null;
+    
+    // Reset form and result card
+    document.getElementById('checkin-form')?.reset();
+    const resultCard = document.getElementById('checkin-result-card');
+    if (resultCard) resultCard.style.display = 'none';
+    
+    showToast('Týdenní adaptace byla uplatněna a uložena.', 'success');
+  });
+
   document.getElementById('food-log-list')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-remove-food-id]');
     if (btn) removeFoodLogItem(btn.dataset.removeFoodId);
@@ -1317,11 +1904,13 @@ function updateUsageBadge(info) {
   // Načti uložené hodnoty při startu (jen pokud není přihlášen — profil ho přepíše)
   appState.selectedDate = dateKey();
   loadFormFromLS();
+  if (localStorage.getItem('nutriplan-onboarding-done')) setLegacyOnboardingVisible(false);
   refreshSelectedDay({ clearMissingPlan: true });
 
   // ── ONBOARDING WIZARD — shows only on first visit
   initOnboardingWizard({
     onComplete(result) {
+      setLegacyOnboardingVisible(false);
       // Map wizard result → existing form state
       setGender(result.sex);
       const goalMap = { fat_loss: 'hubnutí', maintenance: 'udržení', muscle_gain: 'nabírání', endurance: 'hubnutí', general_fitness: 'udržení' };
@@ -1334,7 +1923,37 @@ function updateUsageBadge(info) {
       appState.activityFactor = result.activityFactor;
       document.querySelectorAll('.freq-card').forEach(c => c.classList.toggle('active', parseFloat(c.dataset.factor) === result.activityFactor));
       // Persist wizard-specific fields for later use by training planner
-      localStorage.setItem('nutriplan-training-goal', JSON.stringify({ primaryGoal: result.primaryGoal, trainingGoal: result.trainingGoal, experience: result.experience }));
+      localStorage.setItem('nutriplan-training-goal', JSON.stringify({ primaryGoal: result.primaryGoal, trainingGoal: result.trainingGoal, experience: result.experience, sessionsPerWeek: result.sessionsPerWeek }));
+      
+      // Save result to Supabase if logged in
+      const user = getCurrentUser();
+      if (user) {
+        const profile = {
+          gender: result.sex,
+          goal: czechGoal,
+          age: result.age,
+          height: result.height,
+          weight: result.weight,
+          activities: [
+            result.sessionsPerWeek >= 1 ? 'strength' : 'rest',
+            result.sessionsPerWeek >= 2 ? 'cardio' : 'rest',
+            result.sessionsPerWeek >= 3 ? 'strength' : 'rest',
+            result.sessionsPerWeek >= 4 ? 'cardio' : 'rest',
+            result.sessionsPerWeek >= 5 ? 'strength' : 'rest',
+            result.sessionsPerWeek >= 6 ? 'cardio' : 'rest',
+            'rest'
+          ].slice(0, 7),
+        };
+        import('./supabase.js?v=8').then(({ supabase }) => {
+          supabase
+            .from('profiles')
+            .upsert({ user_id: user.id, ...profile }, { onConflict: 'user_id' })
+            .then(({ error }) => {
+              if (error) console.error('Chyba při ukládání profilu z wizardu:', error.message);
+            });
+        });
+      }
+
       // Trigger calculation automatically
       appState.selectedDate = dateKey();
       calculate(setStep);
@@ -1384,7 +2003,7 @@ function updateUsageBadge(info) {
     });
     sec.querySelector('[data-action="email"]')?.addEventListener('click', () => {
       const text = buildPlainTextMealPlan();
-      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z NutriPlan') + '&body=' + encodeURIComponent(text);
+      window.location.href = 'mailto:?subject=' + encodeURIComponent('Můj jídelníček z Trenr') + '&body=' + encodeURIComponent(text);
     });
     sec.querySelector('[data-action="print"]')?.addEventListener('click', () => {
       openMealPlanPrintView();
@@ -1394,7 +2013,7 @@ function updateUsageBadge(info) {
   function buildPlainTextMealPlan() {
     const recipes = appState.currentRecipes || [];
     if (!recipes.length) return '';
-    let text = 'Jídelníček z NutriPlan\n========================\n\n';
+    let text = 'Jídelníček z Trenr\n========================\n\n';
     recipes.forEach(m => {
       text += `${m.mealType}: ${m.name}\n`;
       text += `  ${m.kcal} kcal | B: ${m.protein}g | S: ${m.carbs}g | T: ${m.fat}g\n`;
@@ -1438,7 +2057,7 @@ function updateUsageBadge(info) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NutriPlan - jídelníček</title>
+  <title>Trenr - jídelníček</title>
   <style>
     @page { size:A4; margin:14mm; }
     * { box-sizing:border-box; }
@@ -1475,7 +2094,7 @@ function updateUsageBadge(info) {
 <body>
   <header>
     <div>
-      <h1>NutriPlan jídelníček</h1>
+      <h1>Trenr jídelníček</h1>
       <div class="muted">${escapeHtml(dateLabel)}</div>
     </div>
     <button class="no-print" onclick="window.print()" style="padding:9px 14px;border:1px solid #bbb;border-radius:8px;background:#fff;font:inherit;cursor:pointer;">Uložit jako PDF / tisk</button>
@@ -1509,7 +2128,7 @@ function updateUsageBadge(info) {
     </article>
   `).join('')}
   <footer>
-    <span>Vygenerováno v NutriPlan</span>
+    <span>Vygenerováno v Trenr</span>
     <span>nutri-fit-omega.vercel.app</span>
   </footer>
   <script>

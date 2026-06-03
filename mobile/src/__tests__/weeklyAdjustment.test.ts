@@ -155,6 +155,28 @@ describe('planWeeklyAdjustment — adherence + subjective signals', () => {
     });
     expect(r.warnings.some(w => /energie|maintenance/i.test(w))).toBe(true);
   });
+
+  it('missed most planned workouts adds a training warning', () => {
+    const r = planWeeklyAdjustment({
+      goalKind: 'muscle_gain',
+      recentCheckIns: [
+        checkIn('2026-04-27', 80.2, { plannedSessions: 4, completedSessions: 4 }),
+        checkIn('2026-05-04', 80.4, { plannedSessions: 4, completedSessions: 1 }),
+      ],
+    });
+    expect(r.warnings.some(w => /trénink|objem|polovinu/i.test(w))).toBe(true);
+  });
+
+  it('does not warn about training when no workouts were planned', () => {
+    const r = planWeeklyAdjustment({
+      goalKind: 'maintenance',
+      recentCheckIns: [
+        checkIn('2026-04-27', 80, { plannedSessions: 0, completedSessions: 0 }),
+        checkIn('2026-05-04', 80, { plannedSessions: 0, completedSessions: 0 }),
+      ],
+    });
+    expect(r.warnings.some(w => /trénink|objem|pravidelnost|polovinu/i.test(w))).toBe(false);
+  });
 });
 
 describe('planWeeklyAdjustment — chronic low energy auto-switch', () => {

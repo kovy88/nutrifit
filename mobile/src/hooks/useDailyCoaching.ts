@@ -3,6 +3,10 @@ import { useHealthDataProvider } from './useHealthDataProvider';
 import { evaluateReadiness, type ReadinessAssessment } from '../lib/coaching/readiness';
 import { computePersonalBaselines, type PersonalBaselines } from '../lib/coaching/baselines';
 import { computeTrainingLoad, type TrainingLoadAssessment } from '../lib/coaching/trainingLoad';
+import { computeDailyStrain, type StrainAssessment } from '../lib/coaching/strainScore';
+import { computeSleepDebt, computeRecoveryDebt, type SleepDebtSummary, type RecoveryDebtSummary } from '../lib/coaching/debtTracker';
+import { useTrenr } from '../context/TrenrContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export type DailyCoachingState = {
   assessment: ReadinessAssessment | null;
@@ -10,6 +14,14 @@ export type DailyCoachingState = {
   baselines: PersonalBaselines | null;
   /** Training load (ACWR) over 7-day acute / 28-day chronic window. */
   trainingLoad: TrainingLoadAssessment | null;
+  /** Today's strain score 0–21 (Whoop-style). */
+  strain: StrainAssessment | null;
+  /** Cumulative sleep debt (14d). */
+  sleepDebt: SleepDebtSummary | null;
+  /** Cumulative recovery debt (14d). */
+  recoveryDebt: RecoveryDebtSummary | null;
+  /** Raw today's signals — feeds the daily coach recommendation. */
+  today: { sleepMinutes: number | null; rhrBpm: number | null; hrvMs: number | null };
   isLoading: boolean;
 };
 
@@ -23,10 +35,16 @@ export type DailyCoachingState = {
  */
 export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
   const provider = useHealthDataProvider();
+  const { locale } = useLanguage();
+  const { currentSession: todaySession } = useTrenr();
   const [state, setState] = useState<DailyCoachingState>({
     assessment: null,
     baselines: null,
     trainingLoad: null,
+    strain: null,
+    sleepDebt: null,
+    recoveryDebt: null,
+    today: { sleepMinutes: null, rhrBpm: null, hrvMs: null },
     isLoading: true,
   });
 
@@ -51,6 +69,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
       if (cancelled) return;
       const sleep = sleepArr[0] || null;
       const assessment = evaluateReadiness({
+        locale,
         todaySleepMinutes: sleep?.totalMinutes ?? null,
         todayRhrBpm: rhr?.bpm ?? null,
         todayHrvMs: hrv?.ms ?? null,
@@ -60,15 +79,79 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
           sleepMeanMinutes: baselines.sleepMeanMinutes,
         },
       });
-      const trainingLoad = computeTrainingLoad({ workouts, endDate: date });
-      setState({ assessment, baselines, trainingLoad, isLoading: false });
+      const trainingLoad = computeTrainingLoad({ workouts, endDate: date, locale });
+      // Today's workouts: filter the 28-day list to only today
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+      const todaysWorkouts = workouts.filter(w => {
+        const t = new Date(w.startedAt).getTime();
+        return t >= dayStart.getTime() && t <= dayEnd.getTime();
+      });
+      const strain = computeDailyStrain({ plannedSession: todaySession, todaysWorkouts, locale });
+
+      // Sleep + recovery debt — 14-day cumulative trackers.
+      // Fetch 14 days of sleeps in one shot; per-day readiness needs HRV+RHR
+      // per day which is N+1 — share workload by reusing baselines computation
+      // (already queried last 14 days, but separately). Pro tuhle iteraci
+      // fetch raw 14-day sleep + per-day readiness re-eval.
+      const debtStart = new Date(date);
+      debtStart.setDate(debtStart.getDate() - 13);
+      const [sleepRange, hrvSamples, rhrSamples] = await Promise.all([
+        provider.getSleepSummary(debtStart, date).catch(() => []),
+        Promise.all(Array.from({ length: 14 }, (_, i) => {
+          const d = new Date(debtStart);
+          d.setDate(d.getDate() + i);
+          return provider.getHrv(d).catch(() => null);
+        })),
+        Promise.all(Array.from({ length: 14 }, (_, i) => {
+          const d = new Date(debtStart);
+          d.setDate(d.getDate() + i);
+          return provider.getRestingHeartRate(d).catch(() => null);
+        })),
+      ]);
+      if (cancelled) return;
+
+      const sleepDebt = computeSleepDebt({ sleeps: sleepRange.slice(0, 14), days: 14 });
+      // Build per-day readiness levels for recovery debt
+      const readinessLevels: ('green' | 'yellow' | 'red')[] = [];
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(debtStart);
+        d.setDate(d.getDate() + i);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const daySleep = sleepRange.find(s => s.date === dateKey);
+        const r = evaluateReadiness({
+          todaySleepMinutes: daySleep?.totalMinutes ?? null,
+          todayHrvMs: hrvSamples[i]?.ms ?? null,
+          todayRhrBpm: rhrSamples[i]?.bpm ?? null,
+          baseline: {
+            rhrMeanBpm: baselines.rhrMeanBpm,
+            hrvMeanMs: baselines.hrvMeanMs,
+            sleepMeanMinutes: baselines.sleepMeanMinutes,
+          },
+        });
+        readinessLevels.push(r.level);
+      }
+      const recoveryDebt = computeRecoveryDebt({ readinessLevels, days: 14 });
+
+      setState({
+        assessment,
+        baselines,
+        trainingLoad,
+        strain,
+        sleepDebt,
+        recoveryDebt,
+        today: { sleepMinutes: sleep?.totalMinutes ?? null, rhrBpm: rhr?.bpm ?? null, hrvMs: hrv?.ms ?? null },
+        isLoading: false,
+      });
     }
     void load();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, dateKey]);
+  }, [provider, dateKey, locale, todaySession?.kind, todaySession?.durationMinutes, todaySession?.intensity]);
 
   return state;
 }

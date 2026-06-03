@@ -1,23 +1,54 @@
-import { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { PropsWithChildren, ReactNode } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../context/ThemeContext';
 
-export function Screen({ children }: PropsWithChildren) {
+type ScreenProps = PropsWithChildren<{
+  footer?: ReactNode;
+  contentContainerStyle?: ViewStyle;
+  scroll?: boolean;
+}>;
+
+export function Screen({ children, footer, contentContainerStyle, scroll = true }: ScreenProps) {
+  const { colors, isDark } = useTheme();
+  const content = (
+    <>
+      {children}
+      <View style={{ height: footer ? 8 : 20 }} />
+    </>
+  );
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
+      {/* Atmospheric accent glow bleeding down from the top — gives the near-black
+          canvas depth instead of a flat fill. Dark mode only; non-interactive. */}
+      {isDark && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={[colors.accent + '1f', colors.accent + '08', 'transparent']}
+          locations={[0, 0.45, 1]}
+          style={styles.glow}
+        />
+      )}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {children}
-          <View style={{ height: 20 }} />
-        </ScrollView>
+        {scroll ? (
+          <ScrollView contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">
+            {content}
+          </ScrollView>
+        ) : (
+          <View style={[styles.content, styles.flex, contentContainerStyle]}>{content}</View>
+        )}
+        {footer ? <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.bg }]}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: 20, gap: 16 },
+  footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
 });

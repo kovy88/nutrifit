@@ -1,3 +1,6 @@
+// ⚠️ FROZEN — needituj. Kanonická logika: mobile/src/utils/nutrition.ts (TypeScript).
+//    Mobilní app je single source of truth; tohle je legacy origin webu. Viz js/domain/README.md.
+//
 // ── DETERMINISTIC NUTRITION CORE
 //
 // Veškeré numerické výpočty energetického příjmu a maker. Žádné DOM přístupy,
@@ -33,6 +36,64 @@ export const ACTIVITY_FACTORS = Object.freeze({
   high: 1.725,
   very_high: 1.9,
 });
+
+/**
+ * Bezpečnostní posouzení profilu před výpočtem maker a AI plánem.
+ * @param {Pick<UserProfile,'ageYears'|'heightCm'|'weightKg'>} profile
+ * @param {NutritionGoal} goal
+ * @returns {{ allowed:boolean, level:'ok'|'warning'|'blocked', bmi:number, code?:string, title?:string, message?:string, adjustedGoalKind?:import('./types.js').NutritionGoalKind }}
+ */
+export function assessProfileSafety(profile, goal) {
+  const heightM = Number(profile.heightCm || 0) / 100;
+  const bmi = heightM > 0 ? Number(profile.weightKg || 0) / (heightM ** 2) : 0;
+
+  if (Number(profile.ageYears || 0) < 16) {
+    return {
+      allowed: false,
+      level: 'blocked',
+      bmi,
+      code: 'age_under_16',
+      title: 'Trenr není určený pro děti a dospívající',
+      message: 'U věku pod 16 let může být omezení kalorií rizikové. Jídelníček ti tady nevygenerujeme; pro bezpečný plán se obrať na lékaře nebo nutričního terapeuta.',
+    };
+  }
+
+  if (bmi > 0 && bmi < 16) {
+    return {
+      allowed: false,
+      level: 'blocked',
+      bmi,
+      code: 'bmi_under_16',
+      title: `Tvoje BMI je ${bmi.toFixed(1)} — těžká podváha`,
+      message: 'Při takovém BMI může být jakékoliv omezování kalorií nebezpečné. Jídelníček ti tady nevygenerujeme; doporučujeme konzultaci s lékařem nebo nutričním terapeutem.',
+    };
+  }
+
+  if (bmi > 40) {
+    return {
+      allowed: false,
+      level: 'blocked',
+      bmi,
+      code: 'bmi_over_40',
+      title: `Tvoje BMI je ${bmi.toFixed(1)} — potřebuje individuální péči`,
+      message: 'Při BMI nad 40 je bezpečnější postupovat s odborníkem, který zohlední zdravotní stav, léky a tempo změny. Trenr ti proto automatický plán nevygeneruje.',
+    };
+  }
+
+  if (bmi > 0 && bmi < 18.5 && goal.kind === 'fat_loss') {
+    return {
+      allowed: true,
+      level: 'warning',
+      bmi,
+      code: 'underweight_fat_loss',
+      adjustedGoalKind: 'maintenance',
+      title: `Hubnutí při podváze se nedoporučuje (BMI ${bmi.toFixed(1)})`,
+      message: 'Cíl jsme přepnuli na udržení váhy. Pokud chceš měnit hmotnost, je rozumné to řešit s lékařem nebo nutričním terapeutem.',
+    };
+  }
+
+  return { allowed: true, level: 'ok', bmi };
+}
 
 /**
  * Mifflin–St Jeor BMR.
@@ -173,8 +234,18 @@ export function calcWaterTargetMl(p) {
  * @returns {MacroTargets}
  */
 export function calcMacroTargets(profile, goal) {
-  const { kcal, tdee, bmr, note } = calcCalorieTarget(profile, goal);
-  const proteinG = calcProteinTargetG(profile, goal);
+  const safety = assessProfileSafety(profile, goal);
+  if (!safety.allowed) {
+    throw new Error(safety.message || 'Nepovolený profil z bezpečnostních důvodů.');
+  }
+
+  const activeGoal = { ...goal };
+  if (safety.adjustedGoalKind) {
+    activeGoal.kind = safety.adjustedGoalKind;
+  }
+
+  const { kcal, tdee, bmr, note } = calcCalorieTarget(profile, activeGoal);
+  const proteinG = calcProteinTargetG(profile, activeGoal);
   const fatG = calcFatTargetG(profile, kcal);
   const carbsG = Math.max(0, Math.round((kcal - proteinG * 4 - fatG * 9) / 4));
   const fiberG = calcFiberTargetG(kcal);
@@ -188,10 +259,10 @@ export function calcMacroTargets(profile, goal) {
     waterMl,
     bmr,
     tdee,
-    goal: goal.kind === 'fat_loss' || goal.kind === 'maintenance' || goal.kind === 'muscle_gain' || goal.kind === 'endurance' || goal.kind === 'general_fitness'
-      ? goal.kind
+    goal: activeGoal.kind === 'fat_loss' || activeGoal.kind === 'maintenance' || activeGoal.kind === 'muscle_gain' || activeGoal.kind === 'endurance' || activeGoal.kind === 'general_fitness'
+      ? activeGoal.kind
       : 'maintenance',
-    note,
+    note: safety.message || note,
   };
 }
 

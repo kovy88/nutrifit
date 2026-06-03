@@ -75,6 +75,11 @@ export class HealthConnectProvider implements HealthDataProvider {
     return null;
   }
 
+  async getBodyWeightRange(_start: Date, _end: Date): Promise<BodyWeightSample[]> {
+    // TODO(android): readRecords('Weight', { timeRangeFilter })
+    return [];
+  }
+
   async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> {
     // TODO(android): readRecords('SleepSession', …)
     return [];

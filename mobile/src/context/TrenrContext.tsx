@@ -11,8 +11,12 @@ import type {
   DailyPlanRecord,
   DailyFoodLogRecord,
   DailySessionRecord,
+  TrainingCompletionRecord,
+  TrainingCompletionRecordMap,
+  TrainingCompletionStatus,
 } from '../types';
-import { adjustForDay, buildTrainingSessionForDate, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
+import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
+import { planSessionForDate } from '../lib/training';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
@@ -34,26 +38,36 @@ import {
   saveCheckIn,
   loadBaselineKcalDelta,
   saveBaselineKcalDelta,
+  clearOnboardingDraft,
+  loadTrainingCompletionsByDate,
+  loadCoachThreadsByDate,
+  loadDailyCoachHistory,
+  saveTrainingCompletionForDate,
+  saveTrainingCompletionsByDate,
+  saveCoachThreadsByDate,
+  saveDailyCoachHistory,
+  loadSubscriptionStatus,
+  saveSubscriptionStatus,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
 import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
+import { loadPendingSyncWrites, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
+import { syncStore } from '../stores/syncStore';
 
 type AuthUser = {
   id: string;
   email?: string;
 };
 
-type NutriFitContextValue = {
+type TrenrContextValue = {
   isReady: boolean;
   profile: UserProfile | null;
-  macros: Macros | null;
+  /** Profile-derived macros WITHOUT the selected day's training adjustment. */
   baselineMacros: Macros | null;
-  todayMacros: Macros | null;
-  todaySession: TrainingSession | null;
+  /** baselineMacros adjusted for the selected day's session (the number the UI shows). */
+  currentMacros: Macros | null;
   dailyAdjustment: DailyAdjustment | null;
-  foodLog: FoodLogItem[];
-  meals: Meal[];
   user: AuthUser | null;
   hasAiConsent: boolean;
   selectedDate: string;
@@ -61,11 +75,17 @@ type NutriFitContextValue = {
   currentMeals: Meal[];
   currentFoodLog: FoodLogItem[];
   currentSession: TrainingSession | null;
+  trainingCompletions: TrainingCompletionRecordMap;
+  currentTrainingCompletion: TrainingCompletionRecord | null;
   weights: Record<string, number>;
   logWeight: (weight: number, date?: string) => Promise<void>;
   ensureAiConsent: () => Promise<boolean>;
   setProfile: (profile: UserProfile) => Promise<void>;
   setTodaySession: (session: TrainingSession) => Promise<void>;
+  markTrainingCompletion: (
+    status: TrainingCompletionStatus,
+    details?: Partial<Pick<TrainingCompletionRecord, 'actualDurationMinutes' | 'actualDistanceKm' | 'rpe' | 'note' | 'pairedWorkoutId' | 'source'>>,
+  ) => Promise<TrainingCompletionRecord>;
   resetLocalProfile: () => Promise<void>;
   purgeAllUserData: () => Promise<void>;
   // Weekly check-in history (chronological, oldest first)
@@ -85,11 +105,13 @@ type NutriFitContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  isSubscribed: boolean;
+  setIsSubscribed: (status: boolean) => Promise<void>;
 };
 
-const Context = createContext<NutriFitContextValue | null>(null);
+const Context = createContext<TrenrContextValue | null>(null);
 
-export function NutriFitProvider({ children }: PropsWithChildren) {
+export function TrenrProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   
@@ -98,6 +120,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   const [plansByDate, setPlansByDate] = useState<DailyPlanRecord>({});
   const [foodLogsByDate, setFoodLogsByDate] = useState<DailyFoodLogRecord>({});
   const [sessionsByDate, setSessionsByDate] = useState<DailySessionRecord>({});
+  const [trainingCompletionsByDate, setTrainingCompletionsByDate] = useState<TrainingCompletionRecordMap>({});
   const [weightsByDate, setWeightsByDate] = useState<Record<string, number>>({});
   
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -105,6 +128,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   const [checkIns, setCheckIns] = useState<WeeklyCheckIn[]>([]);
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
+  const [isSubscribed, setIsSubscribedState] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -121,8 +145,10 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
         loadWeights(),
         loadCheckIns(),
         loadBaselineKcalDelta(),
+        loadTrainingCompletionsByDate(),
+        loadSubscriptionStatus(),
       ]);
-    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta]) => {
+    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta, storedCompletions, storedSubscription]) => {
       if (!active) return;
       setProfileState(storedProfile);
       setPlansByDate(storedPlans || {});
@@ -133,6 +159,8 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
       setWeightsByDate(storedWeights || {});
       setCheckIns(storedCheckIns || []);
       setBaselineKcalDelta(storedDelta || 0);
+      setTrainingCompletionsByDate(storedCompletions || {});
+      setIsSubscribedState(storedSubscription || false);
       setIsReady(true);
     });
 
@@ -159,10 +187,14 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   // Derived current states for the selectedDate
   const currentMeals = useMemo(() => plansByDate[selectedDate] || [], [plansByDate, selectedDate]);
   const currentFoodLog = useMemo(() => foodLogsByDate[selectedDate] || [], [foodLogsByDate, selectedDate]);
+  const currentTrainingCompletion = useMemo(
+    () => trainingCompletionsByDate[selectedDate] || null,
+    [trainingCompletionsByDate, selectedDate],
+  );
   
   const currentSession = useMemo(() => {
     if (!profile) return null;
-    return sessionsByDate[selectedDate] || buildTrainingSessionForDate(profile, new Date(selectedDate));
+    return sessionsByDate[selectedDate] || planSessionForDate(profile, new Date(selectedDate));
   }, [sessionsByDate, selectedDate, profile]);
 
   const daily = useMemo(() => {
@@ -178,23 +210,108 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     };
   }, [baselineMacros, currentSession, profile, sessionsByDate, selectedDate]);
 
-  const selectedDateMacros = daily.macros;
-  
-  // Public Aliases for backward compatibility
-  const meals = currentMeals;
-  const foodLog = currentFoodLog;
-  const todaySession = currentSession;
-  const todayMacros = selectedDateMacros;
-  const macros = selectedDateMacros;
+  const currentMacros = daily.macros;
   const dailyAdjustment = daily.adjustment;
 
+  async function syncNow(overrides: Partial<{
+    profile: UserProfile | null;
+    plansByDate: DailyPlanRecord;
+    foodLogsByDate: DailyFoodLogRecord;
+    sessionsByDate: DailySessionRecord;
+    weightsByDate: Record<string, number>;
+    checkIns: WeeklyCheckIn[];
+    trainingCompletionsByDate: TrainingCompletionRecordMap;
+  }> = {}) {
+    if (!user?.id) return;
+    syncStore.setSyncing();
+    try {
+      const [storedCoachThreadsByDate, storedDailyCoachHistory] = await Promise.all([
+        loadCoachThreadsByDate(),
+        loadDailyCoachHistory(),
+      ]);
+      await pushLocalSnapshotToSupabase({
+        profile: overrides.profile ?? profile,
+        plansByDate: overrides.plansByDate ?? plansByDate,
+        foodLogsByDate: overrides.foodLogsByDate ?? foodLogsByDate,
+        sessionsByDate: overrides.sessionsByDate ?? sessionsByDate,
+        weightsByDate: overrides.weightsByDate ?? weightsByDate,
+        checkIns: overrides.checkIns ?? checkIns,
+        trainingCompletionsByDate: overrides.trainingCompletionsByDate ?? trainingCompletionsByDate,
+        coachThreadsByDate: storedCoachThreadsByDate,
+        dailyCoachHistory: storedDailyCoachHistory,
+        baselineTargetsByDate: currentMacros ? { [selectedDate]: currentMacros } : {},
+      }, user.id);
+      syncStore.setPendingWrites(0);
+      syncStore.setIdle(new Date().toISOString());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sync failed';
+      syncStore.setError(message);
+      await queuePendingSyncWrite({ entity: 'profile', payload: { reason: message } });
+      syncStore.setPendingWrites((await loadPendingSyncWrites()).length);
+    }
+  }
+
+  async function hydrateFromRemote() {
+    if (!user?.id) return;
+    const remote = await pullRemoteSnapshotFromSupabase(user.id);
+    if (remote.profile && !profile) {
+      await saveProfile(remote.profile);
+      setProfileState(remote.profile);
+    }
+    if (remote.plansByDate) {
+      const merged = { ...remote.plansByDate, ...plansByDate };
+      setPlansByDate(merged);
+      await Promise.all(Object.entries(merged).map(([date, meals]) => savePlanForDate(date, meals)));
+    }
+    if (remote.foodLogsByDate) {
+      const merged = { ...remote.foodLogsByDate, ...foodLogsByDate };
+      setFoodLogsByDate(merged);
+      await Promise.all(Object.entries(merged).map(([date, items]) => saveFoodLogForDate(date, items)));
+    }
+    if (remote.weightsByDate) {
+      const merged = { ...remote.weightsByDate, ...weightsByDate };
+      setWeightsByDate(merged);
+      await Promise.all(Object.entries(merged).map(([date, weight]) => saveWeightForDate(date, weight)));
+    }
+    if (remote.checkIns?.length) {
+      const byWeek = new Map(remote.checkIns.map(checkIn => [checkIn.weekStartISO, checkIn]));
+      checkIns.forEach(checkIn => byWeek.set(checkIn.weekStartISO, checkIn));
+      const merged = Array.from(byWeek.values()).sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
+      setCheckIns(merged);
+      for (const checkIn of merged) await saveCheckIn(checkIn);
+    }
+    if (remote.trainingCompletionsByDate) {
+      const merged = { ...remote.trainingCompletionsByDate, ...trainingCompletionsByDate };
+      setTrainingCompletionsByDate(merged);
+      await saveTrainingCompletionsByDate(merged);
+    }
+    if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
+    if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
+  }
+
+  useEffect(() => {
+    if (!isReady || !user?.id) return;
+    void hydrateFromRemote().finally(() => syncNow());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, user?.id]);
+
   async function persistProfile(next: UserProfile) {
-    await saveProfile(next);
-    setProfileState(next);
+    const normalized = {
+      ...next,
+      programStartISO: profile && profile.trainingGoal !== next.trainingGoal
+        ? selectedDate
+        : (next.programStartISO || profile?.programStartISO || selectedDate),
+    };
+    await saveProfile(normalized);
+    setProfileState(normalized);
+    void syncNow({ profile: normalized });
   }
 
   async function resetLocalProfile() {
-    await clearProfile();
+    // Clear both the saved profile AND the onboarding draft so the next entry
+    // starts on a clean step 0. Without this, "Spustit onboarding znovu"
+    // hydrated the OLD draft and felt like nothing happened.
+    await Promise.all([clearProfile(), clearOnboardingDraft()]);
     setProfileState(null);
   }
 
@@ -208,10 +325,17 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     setFoodLogsByDate({});
     setSessionsByDate({});
     setWeightsByDate({});
+    setTrainingCompletionsByDate({});
     setHasAiConsent(false);
     setCheckIns([]);
     setBaselineKcalDelta(0);
     setOverrideGoalKind(null);
+    setIsSubscribedState(false);
+  }
+
+  async function updateSubscriptionStatus(status: boolean) {
+    await saveSubscriptionStatus(status);
+    setIsSubscribedState(status);
   }
 
   /** Persist a new weekly check-in and compute the suggested PlanAdjustment.
@@ -219,6 +343,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
   async function recordCheckIn(checkIn: WeeklyCheckIn): Promise<PlanAdjustment> {
     const next = await saveCheckIn(checkIn);
     setCheckIns(next);
+    void syncNow({ checkIns: next });
     const goalKind = profile ? primaryGoalToNutritionKind(profile.primaryGoal) : 'maintenance';
     return planWeeklyAdjustment({ goalKind, recentCheckIns: next.slice(-4) });
   }
@@ -240,6 +365,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     const nextFoodLogs = { ...foodLogsByDate, [selectedDate]: next };
     setFoodLogsByDate(nextFoodLogs);
     await saveFoodLogForDate(selectedDate, next);
+    void syncNow({ foodLogsByDate: nextFoodLogs });
   }
 
   async function removeFood(id: string) {
@@ -248,30 +374,61 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     const nextFoodLogs = { ...foodLogsByDate, [selectedDate]: next };
     setFoodLogsByDate(nextFoodLogs);
     await saveFoodLogForDate(selectedDate, next);
+    void syncNow({ foodLogsByDate: nextFoodLogs });
   }
 
   async function clearFood() {
     const nextFoodLogs = { ...foodLogsByDate, [selectedDate]: [] };
     setFoodLogsByDate(nextFoodLogs);
     await saveFoodLogForDate(selectedDate, []);
+    void syncNow({ foodLogsByDate: nextFoodLogs });
   }
 
   async function persistMeals(next: Meal[]) {
     const nextPlans = { ...plansByDate, [selectedDate]: next };
     setPlansByDate(nextPlans);
     await savePlanForDate(selectedDate, next);
+    void syncNow({ plansByDate: nextPlans });
   }
 
   async function persistTodaySession(session: TrainingSession) {
     const nextSessions = { ...sessionsByDate, [selectedDate]: session };
     setSessionsByDate(nextSessions);
     await saveSessionForDate(selectedDate, session);
+    void syncNow({ sessionsByDate: nextSessions });
+  }
+
+  async function markTrainingCompletion(
+    status: TrainingCompletionStatus,
+    details: Partial<Pick<TrainingCompletionRecord, 'actualDurationMinutes' | 'actualDistanceKm' | 'rpe' | 'note' | 'pairedWorkoutId' | 'source'>> = {},
+  ): Promise<TrainingCompletionRecord> {
+    const now = new Date().toISOString();
+    const existing = trainingCompletionsByDate[selectedDate];
+    const record: TrainingCompletionRecord = {
+      date: selectedDate,
+      status,
+      plannedSession: currentSession,
+      actualDurationMinutes: details.actualDurationMinutes ?? currentSession?.durationMinutes ?? null,
+      actualDistanceKm: details.actualDistanceKm ?? currentSession?.distanceKm ?? null,
+      rpe: details.rpe ?? null,
+      note: details.note,
+      source: details.source ?? 'manual',
+      pairedWorkoutId: details.pairedWorkoutId ?? null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    const next = { ...trainingCompletionsByDate, [selectedDate]: record };
+    setTrainingCompletionsByDate(next);
+    await saveTrainingCompletionForDate(selectedDate, record);
+    void syncNow({ trainingCompletionsByDate: next });
+    return record;
   }
 
   async function logWeight(weight: number, date = selectedDate) {
     const next = { ...weightsByDate, [date]: weight };
     setWeightsByDate(next);
     await saveWeightForDate(date, weight);
+    void syncNow({ weightsByDate: next });
     if (profile && date === selectedDate) {
       await persistProfile({ ...profile, weight });
     }
@@ -282,7 +439,7 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     const accepted = await new Promise<boolean>(resolve => {
       Alert.alert(
         'Než použiješ AI',
-        'NutriFit dává orientační doporučení, nenahrazuje lékařskou péči. Plány a fotky se kvůli AI zpracování posílají na server. Nepoužívej appku pro diagnózu ani léčbu.',
+        'Trenr dává orientační doporučení, nenahrazuje lékařskou péči. Plány a fotky se kvůli AI zpracování posílají na server. Nepoužívej appku pro diagnózu ani léčbu.',
         [
           { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Rozumím', onPress: () => resolve(true) },
@@ -317,13 +474,9 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
     <Context.Provider value={{
       isReady,
       profile: profile || null,
-      macros,
       baselineMacros,
-      todayMacros,
-      todaySession,
+      currentMacros,
       dailyAdjustment,
-      foodLog,
-      meals,
       user,
       hasAiConsent,
       selectedDate,
@@ -331,11 +484,14 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
       currentMeals,
       currentFoodLog,
       currentSession,
+      trainingCompletions: trainingCompletionsByDate,
+      currentTrainingCompletion,
       weights: weightsByDate,
       logWeight,
       ensureAiConsent,
       setProfile: persistProfile,
       setTodaySession: persistTodaySession,
+      markTrainingCompletion,
       resetLocalProfile,
       purgeAllUserData,
       checkIns,
@@ -350,15 +506,17 @@ export function NutriFitProvider({ children }: PropsWithChildren) {
       signIn,
       signUp,
       signOut,
+      isSubscribed,
+      setIsSubscribed: updateSubscriptionStatus,
     }}>
       {children}
     </Context.Provider>
   );
 }
 
-export function useNutriFit() {
+export function useTrenr() {
   const ctx = useContext(Context);
-  if (!ctx) throw new Error('useNutriFit must be used inside NutriFitProvider');
+  if (!ctx) throw new Error('useTrenr must be used inside TrenrProvider');
   return ctx;
 }
 

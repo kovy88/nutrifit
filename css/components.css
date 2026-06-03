@@ -9,7 +9,7 @@
 
 /* ── DASHBOARD */
 .results-shell { animation:fadeUp 0.4s var(--ease-out) both; }
-.app-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; padding:4px; margin:0 auto 14px; border:1px solid var(--border); border-radius:12px; background:var(--bg-1); }
+.app-tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:2px; padding:4px; margin:0 auto 14px; border:1px solid var(--border); border-radius:12px; background:var(--bg-1); }
 .app-tab { min-width:0; border:0; border-radius:8px; background:transparent; color:var(--text-tertiary); font-family:inherit; font-size:0.8rem; font-weight:600; padding:10px 8px; cursor:pointer; transition:color 0.2s var(--ease-out), background 0.2s var(--ease-out); white-space:nowrap; letter-spacing:0.01em; }
 .app-tab:hover { color:var(--text); }
 .app-tab.active { color:var(--text); background:var(--bg-2); }
@@ -21,6 +21,13 @@
 .first-run-card.state-plan-ready { border-left-color:var(--accent); }
 .first-run-card.state-goal-met { border-left-color:var(--warning); }
 .first-run-card.state-readonly { border-left-style:dashed; border-left-color:var(--text-tertiary); }
+.daily-adjustment-card { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:center; margin-top:14px; padding:16px 18px; border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:var(--radius-sm); background:var(--accent-bg); }
+.daily-adjustment-kicker { font-size:0.68rem; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:var(--accent); margin-bottom:5px; }
+.daily-adjustment-metrics { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+.adjustment-pill { display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border-radius:999px; border:1px solid var(--border); background:var(--bg-1); color:var(--text-secondary); font-size:0.76rem; font-weight:700; white-space:nowrap; }
+.adjustment-pill.up { color:var(--accent); border-color:var(--accent); }
+.adjustment-pill.down { color:var(--warning); border-color:var(--warning); }
+.adaptive-detail, .plan-disclaimer { font-size:0.76rem; line-height:1.55; color:var(--text-secondary); }
 .first-run-head { display:flex; gap:14px; align-items:flex-start; min-width:0; }
 .first-run-icon { display:none; }  /* zachované pro kompatibilitu HTML, ale skryté — stav nese border-left */
 .first-run-actions { display:flex; flex-direction:column; gap:8px; }
@@ -108,9 +115,11 @@
   #intake-card { order:3; }
 }
 @media(max-width:700px){
-  .app-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:12px; border-radius:14px; }
+  .app-tabs { grid-template-columns:repeat(5,minmax(0,1fr)); margin-bottom:12px; border-radius:14px; }
   .app-tab { padding:10px 6px; font-size:0.76rem; }
   .first-run-card { grid-template-columns:1fr; padding:16px; }
+  .daily-adjustment-card { grid-template-columns:1fr; }
+  .daily-adjustment-metrics { justify-content:flex-start; }
   .today-topbar { align-items:flex-start; flex-direction:column; }
   .date-chip-list { width:100%; }
 }
@@ -499,4 +508,21 @@
   .daily-budget-grid { grid-template-columns:1fr; }
   .recipe-footer { align-items:stretch; flex-direction:column; }
   .eat-btn, .swap-btn { justify-content:center; width:100%; }
+}
+
+/* ── SMALL SCREENS OPTIMIZATIONS (<=360px) */
+@media(max-width:360px){
+  .card { padding: 14px 12px !important; }
+  .card-title { font-size: 1.02rem !important; }
+  .card-subtitle { font-size: 0.76rem !important; }
+  .app-tab { padding: 8px 4px !important; font-size: 0.68rem !important; }
+  .global-date-value { font-size: 0.88rem !important; }
+  .date-chip { min-width: 42px !important; height: 42px !important; }
+  .date-chip strong { font-size: 0.82rem !important; }
+  .budget-tile { padding: 8px !important; }
+  .budget-tile strong { font-size: 0.88rem !important; }
+  .insight-tile strong { font-size: 1.05rem !important; }
+  .insight-tile small { font-size: 0.68rem !important; }
+  .weight-input-row input { padding: 6px 8px !important; font-size: 0.82rem !important; }
+  .btn-primary, .btn-secondary { padding: 12px 16px !important; font-size: 0.88rem !important; }
 }

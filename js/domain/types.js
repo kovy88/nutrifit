@@ -1,6 +1,9 @@
+// ⚠️ FROZEN — needituj. Kanonické typy: mobile/src/types.ts + mobile/src/types/coach.ts.
+//    Mobilní app je single source of truth; tohle je legacy origin webu. Viz js/domain/README.md.
+//
 // ── DOMAIN TYPES (JSDoc)
 //
-// Centrální definice doménových typů NutriPlanu. Ostatní moduly importují
+// Centrální definice doménových typů Trenru. Ostatní moduly importují
 // pouze typy přes JSDoc; runtime nepoužívá žádné objekty z tohoto souboru.
 // Tím držíme jednu pravdu o tvaru dat napříč nutrition / training / health
 // vrstvami, aniž bychom přecházeli na TypeScript.

@@ -1,171 +1,514 @@
-import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Field, H1, Label, Pill, Subtitle } from '../components/UI';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Button, Choice, Field, H1, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
-import { colors } from '../constants/theme';
-import { useNutriFit } from '../context/NutriFitContext';
-import type { DietStyle, ExperienceLevel, Gender, PrimaryGoal, TrainingGoalKind, UserProfile } from '../types';
+import { useTheme } from '../context/ThemeContext';
+import { useTrenr } from '../context/TrenrContext';
+import type {
+  CoachScope, DietStyle, ExperienceLevel, Gender, NutritionMode, PlanIntensity, TrainingGoalKind, UserProfile,
+} from '../types';
+import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { DEFAULT_PROFILE, validateProfile, activityFactorForSessions } from '../utils/nutrition';
+import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '../services/storage';
+import { useLanguage } from '../context/LanguageContext';
+import type { TranslationKey } from '../lib/i18n';
+import { validateRaceGoalFeasibility } from '../lib/training/feasibility';
+import { NUTRITION_PRIMARY_GOALS, USER_PRIMARY_GOALS, trainingGoalsFor, isRunRaceGoal } from '../constants/goals';
+import {
+  buildOnboardingSteps,
+  validateOnboardingStep,
+  type OnboardingField,
+  type StepId,
+  type TouchedOnboardingFields,
+} from '../lib/onboarding/validation';
 
 export function OnboardingScreen() {
-  const { setProfile } = useNutriFit();
-  const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<UserProfile>(() => ({
-    ...DEFAULT_PROFILE,
-    age: 0,
-    height: 0,
-    weight: 0,
-  }));
-  const progress = useMemo(() => `${step + 1}/4`, [step]);
+  const { setProfile } = useTrenr();
+  const { t } = useLanguage();
+  const { colors } = useTheme();
+  const [stepIndex, setStepIndex] = useState(0);
+  const [draft, setDraft] = useState<UserProfile>(() => ({ ...DEFAULT_PROFILE, age: 0, height: 0, weight: 0 }));
+  const [touchedFields, setTouchedFields] = useState<TouchedOnboardingFields>({});
+
+  // Resume a < 24h draft if the app was killed mid-onboarding.
+  const hydrated = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const stored = await loadOnboardingDraft();
+      if (!stored || cancelled) { hydrated.current = true; return; }
+      const ageMs = Date.now() - new Date(stored.updatedAt).getTime();
+      if (ageMs > 24 * 3600 * 1000) { await clearOnboardingDraft(); hydrated.current = true; return; }
+      setDraft(stored.draft);
+      setStepIndex(Math.max(0, stored.step));
+      setTouchedFields(stored.touchedFields ?? {});
+      hydrated.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    void saveOnboardingDraft({ step: stepIndex, draft, touchedFields, updatedAt: new Date().toISOString() });
+  }, [stepIndex, draft, touchedFields]);
+
+  const scope = resolveCoachScope(draft);
+  const steps = useMemo(() => buildOnboardingSteps(scope, draft.trainingGoal), [scope, draft.trainingGoal]);
+  const total = steps.length;
+  const idx = Math.min(stepIndex, total - 1);
+  const step = steps[idx];
+  const isLast = idx === total - 1;
+  const feasibility = useMemo(() => (
+    isRunRaceGoal(draft.trainingGoal)
+      ? validateRaceGoalFeasibility({ trainingGoal: draft.trainingGoal, profile: draft })
+      : null
+  ), [draft]);
+  const stepValidation = validateOnboardingStep(step, draft, scope, touchedFields, feasibility?.verdict);
+
+  function markTouched(field: OnboardingField) {
+    setTouchedFields(current => ({ ...current, [field]: true }));
+  }
 
   function setField<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
     setDraft(current => ({ ...current, [key]: value }));
+    markTouched(key as OnboardingField);
+  }
+
+  function nextStep() {
+    if (!stepValidation.valid) return;
+    setStepIndex(s => s + 1);
   }
 
   async function finish() {
-    const errors = validateProfile(draft);
-    if (errors.length) {
-      Alert.alert('Ještě drobnost', errors.join('\n'));
-      return;
+    let final: UserProfile = { ...draft };
+    // Training-only: backfill safe body defaults so downstream calcs never see 0s.
+    if (!scopeHasNutrition(resolveCoachScope(final))) {
+      if (!final.age) final.age = DEFAULT_PROFILE.age;
+      if (!final.height) final.height = DEFAULT_PROFILE.height;
+      if (!final.weight) final.weight = DEFAULT_PROFILE.weight;
     }
-    await setProfile(draft);
+    const errors = validateProfile(final);
+    if (errors.length) { Alert.alert(t('onb.validationTitle'), errors.join('\n')); return; }
+    await setProfile({ ...final, programStartISO: final.programStartISO || new Date().toISOString().slice(0, 10) });
+    await clearOnboardingDraft();
   }
 
+  const footer = (
+    <View style={styles.footer}>
+      <View style={styles.actions}>
+        {idx > 0 && <Button style={styles.footerButton} variant="secondary" onPress={() => setStepIndex(s => s - 1)}>{t('common.back')}</Button>}
+        <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? finish : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
+      </View>
+      <Text style={[styles.validationText, { color: stepValidation.valid ? colors.muted : colors.orange }]}>
+        {t(stepValidation.messageKey, stepValidation.params)}
+      </Text>
+    </View>
+  );
+
   return (
-    <Screen>
-      {/* Progress Bar Visual Indicator */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>{progress}</Text>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${((step + 1) / 4) * 100}%` }]} />
+    <Screen footer={footer} contentContainerStyle={styles.screenContent}>
+      <View style={styles.progressRow}>
+        <Text style={[styles.progressText, { color: colors.accent }]}>{idx + 1}/{total}</Text>
+        <View style={[styles.progressBg, { backgroundColor: colors.bgElev }]}>
+          <View style={[styles.progressFill, { width: `${((idx + 1) / total) * 100}%`, backgroundColor: colors.accent }]} />
         </View>
       </View>
 
-      <H1>NutriFit nastavíme za minutu.</H1>
-      <Subtitle>Mobilní verze počítá denní cíle, plánuje jídelníček a dovolí upravit AI odhady před uložením.</Subtitle>
+      <H1>{questionFor(step, t)}</H1>
+      <Subtitle>{t(helpKeyFor(step))}</Subtitle>
+      {step === 'focus' && (
+        <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+          <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
+          <Text style={[styles.welcomeCopy, { color: colors.ink }]}>{t('onb.welcomePromise')}</Text>
+          <View style={styles.modeRow}>
+            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeManual')}</Text>
+            <Pressable onPress={async () => {
+              await setProfile(DEFAULT_PROFILE);
+            }}>
+              <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeDemo')}</Text>
+            </Pressable>
+            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeHealth')}</Text>
+          </View>
+        </View>
+      )}
 
-      {step === 0 && (
-        <Card>
-          <Label>Hlavní cíl</Label>
-          <View style={styles.column}>
-            {primaryGoals.map(item => (
+      <View style={styles.options}>
+        {step === 'focus' && SCOPE_OPTIONS.map(o => (
+          <Choice
+            key={o.value}
+            active={Boolean(touchedFields.coachScope) && scope === o.value}
+            title={t(o.titleKey)}
+            subtitle={t(o.subKey)}
+            onPress={() => setField('coachScope', o.value)}
+          />
+        ))}
+
+        {step === 'goal' && USER_PRIMARY_GOALS.map(item => (
+          <Choice
+            key={item.value}
+            active={Boolean(touchedFields.primaryGoal) && draft.primaryGoal === item.value}
+            title={t(item.labelKey)}
+            subtitle={t(item.subtitleKey)}
+            onPress={() => {
+              setDraft(c => ({ ...c, primaryGoal: item.value, trainingGoal: item.trainingGoal }));
+              setTouchedFields(current => ({ ...current, primaryGoal: true, trainingGoal: false }));
+            }}
+          />
+        ))}
+
+        {step === 'nutritionGoal' && NUTRITION_PRIMARY_GOALS.map(g => (
+          <Choice key={g.value} active={Boolean(touchedFields.primaryGoal) && draft.primaryGoal === g.value} title={t(g.labelKey)} subtitle={t(g.subtitleKey)} onPress={() => setField('primaryGoal', g.value)} />
+        ))}
+
+        {step === 'trainingGoal' && trainingGoalsFor(draft.primaryGoal).map(g => (
+          <Choice key={g.value} active={Boolean(touchedFields.trainingGoal) && draft.trainingGoal === g.value} title={t(g.labelKey)} onPress={() => setField('trainingGoal', g.value)} />
+        ))}
+
+        {step === 'sessions' && (
+          <View style={styles.wrap}>
+            {[1, 2, 3, 4, 5, 6].map(count => (
               <Pill
-                key={item.value}
-                active={draft.primaryGoal === item.value}
-                onPress={() => setDraft(current => ({ ...current, primaryGoal: item.value, trainingGoal: item.trainingGoal }))}
+                key={count}
+                active={Boolean(touchedFields.sessionsPerWeek) && draft.sessionsPerWeek === count}
+                onPress={() => {
+                  setDraft(c => ({ ...c, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) }));
+                  markTouched('sessionsPerWeek');
+                }}
               >
-                {item.label}
+                {count}×
               </Pill>
             ))}
           </View>
-        </Card>
-      )}
+        )}
 
-      {step === 1 && (
-        <Card>
-          <Label>Tělesné míry</Label>
-          <View style={styles.row}>
-            {(['muz', 'zena'] as Gender[]).map(g => (
-              <Pill key={g} active={draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? 'Muž' : 'Žena'}</Pill>
-            ))}
-          </View>
-          <View style={styles.grid}>
-            <Field keyboardType="number-pad" value={draft.age === 0 ? '' : String(draft.age)} onChangeText={v => setField('age', Number(v) || 0)} placeholder="Věk (např. 30)" />
-            <Field keyboardType="number-pad" value={draft.height === 0 ? '' : String(draft.height)} onChangeText={v => setField('height', Number(v) || 0)} placeholder="Výška cm (např. 175)" />
-            <Field keyboardType="number-pad" value={draft.weight === 0 ? '' : String(draft.weight)} onChangeText={v => setField('weight', Number(v) || 0)} placeholder="Váha kg (např. 75)" />
-          </View>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <Card>
-          <Label>Tréninková aktivita</Label>
-          <View style={styles.rowWrap}>
-            {trainingGoalsFor(draft.primaryGoal).map(goal => (
-              <Pill key={goal.value} active={draft.trainingGoal === goal.value} onPress={() => setField('trainingGoal', goal.value)}>{goal.label}</Pill>
-            ))}
-          </View>
-          <Label>Kolikrát týdně trénuješ?</Label>
-          <View style={styles.rowWrap}>
-            {[1, 2, 3, 4, 5, 6].map(count => (
-              <Pill key={count} active={draft.sessionsPerWeek === count} onPress={() => setDraft(current => ({ ...current, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) }))}>{count}×</Pill>
-            ))}
-          </View>
-          <Label>Zkušenosti s tréninkem</Label>
-          <View style={styles.rowWrap}>
+        {step === 'experience' && (
+          <View style={styles.wrap}>
             {(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[]).map(exp => (
-              <Pill key={exp} active={draft.experience === exp} onPress={() => setField('experience', exp)}>{experienceLabel(exp)}</Pill>
+              <Pill key={exp} active={Boolean(touchedFields.experience) && draft.experience === exp} onPress={() => setField('experience', exp)}>{t(experienceLabelKey(exp))}</Pill>
             ))}
           </View>
-        </Card>
-      )}
+        )}
 
-      {step === 3 && (
-        <Card>
-          <Label>Stravovací preference a diety</Label>
-          <Field value={draft.likes} onChangeText={v => setField('likes', v)} placeholder="Co rád/a jíš? (oblíbené suroviny)" multiline />
-          <Field value={draft.dislikes} onChangeText={v => setField('dislikes', v)} placeholder="Alergie, omezení, co vůbec nejíš" multiline />
-          <View style={styles.rowWrap}>
-            {(['standardní', 'vegetariánský', 'veganský', 'bezlepkový', 'nízkosacharidový', 'vysokoproteínový'] as DietStyle[]).map(diet => (
-              <Pill key={diet} active={draft.diet === diet} onPress={() => setField('diet', diet)}>{diet}</Pill>
-            ))}
+        {step === 'weeklyKm' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.weeklyKmField')} />
+            <Field
+              keyboardType="number-pad"
+              value={draft.currentWeeklyKm ? String(draft.currentWeeklyKm) : ''}
+              onChangeText={v => setField('currentWeeklyKm', positiveNumber(v))}
+              placeholder={t('onb.weeklyKmPlaceholder')}
+            />
           </View>
-          <View style={styles.explainBox}>
-            <Text style={styles.explainText}>
-              ✨ Po dokončení ti AI sestaví plnohodnotný denní plán jídelníčku na míru tvým preferencím a automaticky jej upraví podle tvého dnešního tréninku!
+        )}
+
+        {step === 'longestRun' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.longestRunField')} />
+            <Field
+              keyboardType="number-pad"
+              value={draft.longestRecentRunKm ? String(draft.longestRecentRunKm) : ''}
+              onChangeText={v => setField('longestRecentRunKm', positiveNumber(v))}
+              placeholder={t('onb.longestRunPlaceholder')}
+            />
+          </View>
+        )}
+
+        {step === 'runFrequency' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.runsPerWeekField')} />
+            <Field
+              keyboardType="number-pad"
+              value={draft.runsPerWeek ? String(draft.runsPerWeek) : ''}
+              onChangeText={v => setField('runsPerWeek', positiveInt(v, 7))}
+              placeholder={t('onb.runsPerWeekPlaceholder')}
+            />
+          </View>
+        )}
+
+        {step === 'runLimits' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.injuryFlag')} />
+            <View style={styles.wrap}>
+              <Pill active={draft.injuryFlag === true} onPress={() => setField('injuryFlag', true)}>{t('common.yes')}</Pill>
+              <Pill active={draft.injuryFlag !== true} onPress={() => setField('injuryFlag', false)}>{t('common.no')}</Pill>
+            </View>
+            <LabelText text={t('onb.runWalkPreferred')} />
+            <View style={styles.wrap}>
+              <Pill active={draft.runWalkPreferred === true} onPress={() => setField('runWalkPreferred', true)}>{t('common.yes')}</Pill>
+              <Pill active={draft.runWalkPreferred !== true} onPress={() => setField('runWalkPreferred', false)}>{t('common.no')}</Pill>
+            </View>
+          </View>
+        )}
+
+        {step === 'raceDate' && (
+          <View style={styles.bodyWrap}>
+            <DateTimePicker
+              value={draft.raceDateISO ? new Date(`${draft.raceDateISO}T12:00:00`) : new Date()}
+              mode="date"
+              display="inline"
+              minimumDate={new Date()}
+              onChange={(_, date) => {
+                if (date) setField('raceDateISO', date.toISOString().slice(0, 10));
+              }}
+              themeVariant={colors.isDark ? 'dark' : 'light'}
+            />
+            <Text style={[styles.datePreview, { color: colors.muted }]}>
+              {draft.raceDateISO ? t('onb.selectedRaceDate', { date: draft.raceDateISO }) : t('onb.noRaceDate')}
             </Text>
           </View>
-        </Card>
-      )}
+        )}
 
-      <View style={styles.actions}>
-        {step > 0 && <Button variant="secondary" onPress={() => setStep(s => s - 1)}>Zpět</Button>}
-        <Button onPress={step === 3 ? finish : () => setStep(s => s + 1)}>{step === 3 ? 'Dokončit a vytvořit plán' : 'Pokračovat'}</Button>
+        {step === 'raceTarget' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.targetTimeOptional')} />
+            <Field
+              keyboardType="number-pad"
+              value={draft.targetTimeSeconds ? String(Math.round(draft.targetTimeSeconds / 60)) : ''}
+              onChangeText={v => {
+                const minutes = positiveInt(v, 24 * 60);
+                setField('targetTimeSeconds', minutes ? minutes * 60 : undefined);
+              }}
+              placeholder={t('onb.targetTimePlaceholder')}
+            />
+            <LabelText text={t('onb.currentPaceOptional')} />
+            <Field
+              keyboardType="number-pad"
+              value={draft.currentPaceSecPerKm ? String(draft.currentPaceSecPerKm) : ''}
+              onChangeText={v => setField('currentPaceSecPerKm', positiveInt(v, 900))}
+              placeholder={t('onb.currentPacePlaceholder')}
+            />
+          </View>
+        )}
+
+        {step === 'raceSchedule' && (
+          <View style={styles.bodyWrap}>
+            <LabelText text={t('onb.availableDays')} />
+            <View style={styles.wrap}>
+              {[2, 3, 4, 5, 6].map(count => (
+                <Pill key={count} active={draft.availableTrainingDays === count} onPress={() => setField('availableTrainingDays', count)}>{count}×</Pill>
+              ))}
+            </View>
+            <LabelText text={t('onb.restDays')} />
+            <View style={styles.wrap}>
+              {WEEKDAY_REST.map(day => (
+                <Pill
+                  key={day.value}
+                  active={(draft.preferredRestDays ?? []).includes(day.value)}
+                  onPress={() => setField('preferredRestDays', toggleRestDay(draft.preferredRestDays, day.value))}
+                >
+                  {t(day.labelKey)}
+                </Pill>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {step === 'raceFeasibility' && feasibility && (
+          <View style={[styles.feasibilityBox, { borderColor: verdictColor(feasibility.verdict, colors), backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.feasibilityVerdict, { color: verdictColor(feasibility.verdict, colors) }]}>
+              {t(feasibilityLabelKey(feasibility.verdict))}
+            </Text>
+            <Text style={[styles.feasibilityStats, { color: colors.muted }]}>
+              {t('onb.feasibilityStats', {
+                weeks: feasibility.weeksUntilRace,
+                base: feasibility.currentBaseKm,
+                peak: feasibility.requiredPeakKm,
+                safe: feasibility.safePeakByRaceKm,
+              })}
+            </Text>
+            {(feasibility.reasons.length ? feasibility.reasons : [t('onb.feasibilityNoReasons')]).map((reason, index) => (
+              <Text key={`${reason}-${index}`} style={[styles.feasibilityReason, { color: colors.ink }]}>• {reason}</Text>
+            ))}
+            <Text style={[styles.feasibilityRecommendation, { color: colors.muted }]}>{feasibility.recommendation}</Text>
+            {feasibility.verdict === 'unrealistic' && (
+              <>
+                <Button variant="secondary" onPress={() => setField('trainingGoal', saferRaceGoal(draft.trainingGoal))}>{t('onb.saferPlan')}</Button>
+                <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('onb.continueAnyway')}</Text>
+              </>
+            )}
+          </View>
+        )}
+
+        {step === 'body' && (
+          <View style={styles.bodyWrap}>
+            <View style={styles.wrap}>
+              {(['muz', 'zena'] as Gender[]).map(g => (
+                <Pill key={g} active={draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? t('onb.male') : t('onb.female')}</Pill>
+              ))}
+            </View>
+            <LabelText text={t('onb.ageField')} />
+            <Field keyboardType="number-pad" value={draft.age === 0 ? '' : String(draft.age)} onChangeText={v => setField('age', Number(v) || 0)} placeholder={t('onb.agePlaceholder')} />
+            <LabelText text={t('onb.heightField')} />
+            <Field keyboardType="number-pad" value={draft.height === 0 ? '' : String(draft.height)} onChangeText={v => setField('height', Number(v) || 0)} placeholder={t('onb.heightPlaceholder')} />
+            <LabelText text={t('onb.weightField')} />
+            <Field keyboardType="number-pad" value={draft.weight === 0 ? '' : String(draft.weight)} onChangeText={v => setField('weight', Number(v) || 0)} placeholder={t('onb.weightPlaceholder')} />
+          </View>
+        )}
+
+        {step === 'nutritionMode' && (
+          <View style={styles.wrap}>
+            {nutritionModes.map(mode => (
+              <Pill key={mode.value} active={Boolean(touchedFields.nutritionMode) && (draft.nutritionMode ?? 'balanced') === mode.value} onPress={() => setField('nutritionMode', mode.value)}>{t(mode.labelKey)}</Pill>
+            ))}
+          </View>
+        )}
+
+        {step === 'planIntensity' && (
+          <View style={styles.wrap}>
+            {planIntensities.map(intensity => (
+              <Pill key={intensity.value} active={Boolean(touchedFields.planIntensity) && (draft.planIntensity ?? 'moderate') === intensity.value} onPress={() => setField('planIntensity', intensity.value)}>{t(intensity.labelKey)}</Pill>
+            ))}
+          </View>
+        )}
+
+        {step === 'diet' && (
+          <View style={styles.bodyWrap}>
+            <Field value={draft.likes} onChangeText={v => setField('likes', v)} placeholder={t('onb.likesPlaceholder')} multiline />
+            <Field value={draft.dislikes} onChangeText={v => setField('dislikes', v)} placeholder={t('onb.dislikesPlaceholder')} multiline />
+            <LabelText text={t('onb.dietTypeRequired')} />
+            <View style={styles.wrap}>
+              {(['standardní', 'vegetariánský', 'veganský', 'bezlepkový', 'nízkosacharidový', 'vysokoproteínový'] as DietStyle[]).map(diet => (
+                <Pill key={diet} active={draft.diet === diet} onPress={() => setField('diet', diet)}>{t(`diet.${diet}` as TranslationKey)}</Pill>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
-      <Text style={styles.disclaimer}>NutriFit není zdravotnický prostředek. Nediagnostikuje, neléčí a nenahrazuje konzultaci s lékařem ani nutričním terapeutem.</Text>
+
+      <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('onb.disclaimer')}</Text>
     </Screen>
   );
 }
 
-const primaryGoals: Array<{ value: PrimaryGoal; label: string; trainingGoal: TrainingGoalKind }> = [
-  { value: 'lose_weight', label: 'Zhubnout', trainingGoal: 'general_fitness' },
-  { value: 'maintain_weight', label: 'Udržet váhu', trainingGoal: 'general_fitness' },
-  { value: 'gain_muscle', label: 'Nabrat svalovou hmotu', trainingGoal: 'strength_basics' },
-  { value: 'run_race', label: 'Příprava na běžecký závod', trainingGoal: 'run_10k' },
-];
-
-function trainingGoalsFor(primaryGoal: PrimaryGoal): Array<{ value: TrainingGoalKind; label: string }> {
-  if (primaryGoal === 'run_race') return [
-    { value: 'run_5k', label: 'Běh 5 km' },
-    { value: 'run_10k', label: 'Běh 10 km' },
-    { value: 'half_marathon', label: 'Půlmaraton' },
-    { value: 'marathon', label: 'Maraton' },
-  ];
-  if (primaryGoal === 'gain_muscle') return [
-    { value: 'strength_basics', label: 'Silové základy' },
-    { value: 'general_fitness', label: 'Celková kondice' },
-  ];
-  return [
-    { value: 'general_fitness', label: 'Obecná kondice' },
-    { value: 'sports_conditioning', label: 'Sportovní výkon' },
-  ];
+function questionFor(step: StepId, t: (k: TranslationKey) => string): string {
+  switch (step) {
+    case 'focus':         return t('onb.focusQuestion');
+    case 'goal':          return t('onb.goalQuestion');
+    case 'nutritionGoal': return t('onb.nutritionGoalQuestion');
+    case 'trainingGoal':  return t('onb.trainingGoalQuestion');
+    case 'sessions':      return t('onb.sessionsQuestion');
+    case 'experience':    return t('onb.experienceQuestion');
+    case 'weeklyKm':      return t('onb.weeklyKmLabel');
+    case 'longestRun':    return t('onb.longestRunQuestion');
+    case 'runFrequency':  return t('onb.runFrequencyQuestion');
+    case 'runLimits':     return t('onb.runLimitsQuestion');
+    case 'raceDate':      return t('onb.raceDateQuestion');
+    case 'raceTarget':    return t('onb.raceTargetQuestion');
+    case 'raceSchedule':  return t('onb.raceScheduleQuestion');
+    case 'raceFeasibility': return t('onb.feasibilityQuestion');
+    case 'body':          return t('onb.bodyQuestion');
+    case 'nutritionMode': return t('onb.nutritionMode');
+    case 'planIntensity': return t('onb.planIntensity');
+    case 'diet':          return t('onb.dietPrefs');
+  }
 }
 
-function experienceLabel(value: ExperienceLevel) {
-  return ({ beginner: 'Začátečník', intermediate: 'Pokročilý', advanced: 'Zkušený' }[value]);
+const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }> = [
+  { value: 'both', titleKey: 'scope.both', subKey: 'scope.bothSub' },
+  { value: 'training', titleKey: 'scope.training', subKey: 'scope.trainingSub' },
+  { value: 'nutrition', titleKey: 'scope.nutrition', subKey: 'scope.nutritionSub' },
+];
+
+function helpKeyFor(step: StepId): TranslationKey {
+  return (`onb.help.${step}` as TranslationKey);
+}
+
+const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
+  { value: 'balanced', labelKey: 'nutritionMode.balanced' },
+  { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
+  { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
+  { value: 'high_protein', labelKey: 'nutritionMode.high_protein' },
+  { value: 'budget_friendly', labelKey: 'nutritionMode.budget_friendly' },
+  { value: 'simple_meal_prep', labelKey: 'nutritionMode.simple_meal_prep' },
+  { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
+];
+
+const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
+  { value: 'easy', labelKey: 'planIntensity.easy' },
+  { value: 'moderate', labelKey: 'planIntensity.moderate' },
+  { value: 'ambitious_but_safe', labelKey: 'planIntensity.ambitious_but_safe' },
+];
+
+function positiveNumber(value: string): number | undefined {
+  const n = Number(value.replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function positiveInt(value: string, max: number): number | undefined {
+  const n = Math.round(Number(value.replace(',', '.')));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, max) : undefined;
+}
+
+function toggleRestDay(current: number[] | undefined, day: number): number[] {
+  const set = new Set(current ?? []);
+  if (set.has(day)) set.delete(day);
+  else set.add(day);
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+function saferRaceGoal(goal: TrainingGoalKind): TrainingGoalKind {
+  if (goal === 'marathon') return 'half_marathon';
+  if (goal === 'half_marathon') return 'run_10k';
+  if (goal === 'run_10k') return 'run_5k';
+  return 'couch_to_5k';
+}
+
+function feasibilityLabelKey(verdict: 'feasible' | 'tight' | 'unrealistic'): TranslationKey {
+  return verdict === 'feasible'
+    ? 'onb.feasibilityFeasible'
+    : verdict === 'tight'
+      ? 'onb.feasibilityTight'
+      : 'onb.feasibilityUnrealistic';
+}
+
+function verdictColor(verdict: 'feasible' | 'tight' | 'unrealistic', colors: ReturnType<typeof useTheme>['colors']): string {
+  return verdict === 'feasible' ? colors.green : verdict === 'tight' ? colors.orange : colors.red;
+}
+
+function LabelText({ text }: { text: string }) {
+  const { colors } = useTheme();
+  return <Text style={[styles.fieldLabel, { color: colors.faint }]}>{text}</Text>;
+}
+
+const WEEKDAY_REST = [
+  { value: 1, labelKey: 'weekday.mon' as TranslationKey },
+  { value: 2, labelKey: 'weekday.tue' as TranslationKey },
+  { value: 3, labelKey: 'weekday.wed' as TranslationKey },
+  { value: 4, labelKey: 'weekday.thu' as TranslationKey },
+  { value: 5, labelKey: 'weekday.fri' as TranslationKey },
+  { value: 6, labelKey: 'weekday.sat' as TranslationKey },
+  { value: 0, labelKey: 'weekday.sun' as TranslationKey },
+];
+
+function experienceLabelKey(value: ExperienceLevel): TranslationKey {
+  return ({ beginner: 'onb.expBeginner', intermediate: 'onb.expIntermediate', advanced: 'onb.expAdvanced' } as const)[value];
 }
 
 const styles = StyleSheet.create({
-  progressContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  progressText: { color: colors.green, fontWeight: '800', fontSize: 14 },
-  progressBarBg: { flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: colors.green, borderRadius: 3 },
-  row: { flexDirection: 'row', gap: 10 },
-  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  column: { gap: 10 },
-  grid: { gap: 10 },
-  actions: { gap: 10 },
-  disclaimer: { color: colors.faint, fontSize: 12, lineHeight: 18, marginTop: 12 },
-  explainBox: { marginTop: 12, padding: 12, backgroundColor: '#f4fbf7', borderRadius: 12, borderWidth: 1, borderColor: '#dcf2e6' },
-  explainText: { color: colors.green, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  screenContent: { paddingBottom: 8 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  progressText: { fontFamily: 'Archivo_800ExtraBold', fontSize: 14 },
+  progressBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  welcomeBox: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  brand: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
+  welcomeCopy: { fontSize: 15, lineHeight: 21, fontWeight: '800' },
+  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
+  options: { gap: 10, marginTop: 4 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  bodyWrap: { gap: 12 },
+  footer: { gap: 8 },
+  actions: { flexDirection: 'row', gap: 10 },
+  footerButton: { flex: 1 },
+  disclaimer: { fontSize: 12, lineHeight: 18, marginTop: 12 },
+  fieldLabel: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  validationText: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
+  datePreview: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  feasibilityBox: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
+  feasibilityVerdict: { fontSize: 16, fontWeight: '900' },
+  feasibilityStats: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  feasibilityReason: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  feasibilityRecommendation: { fontSize: 13, lineHeight: 18, fontWeight: '800', marginTop: 2 },
 });

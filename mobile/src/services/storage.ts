@@ -8,9 +8,14 @@ import type {
   DailyPlanRecord,
   DailyFoodLogRecord,
   DailySessionRecord,
+  TrainingCompletionRecord,
+  TrainingCompletionRecordMap,
 } from '../types';
+import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
+import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
-import { ManualHealthDataProvider, AsyncStorageTokenStore } from '../lib/health';
+import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
+import { NoopNotificationScheduler } from '../lib/notifications';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -26,9 +31,20 @@ const keys = {
   sessionsByDate: 'nutrifit.sessionsByDate.v1',
   weightsByDate: 'nutrifit.weightsByDate.v1',
   checkIns: 'nutrifit.checkIns.v1',
+  trainingCompletionsByDate: 'nutrifit.trainingCompletionsByDate.v1',
+  dailyCoachHistory: 'nutrifit.dailyCoachHistory.v1',
+  coachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
+  /** Rozpracovaný onboarding (step + draft profile + last-touched). */
+  onboardingDraft: 'nutrifit.onboardingDraft.v1',
+  /** Marker so the one-time legacy migration runs once, not on every boot. */
+  schemaVersion: 'nutrifit.schemaVersion.v1',
+  isSubscribed: 'nutrifit.isSubscribed.v1',
 };
+
+/** Bump when a NEW one-time migration step is added to runMigration(). */
+const CURRENT_SCHEMA_VERSION = 3;
 
 /** Storage retention: drop date-bound entries older than this many days. */
 const RETENTION_DAYS = 90;
@@ -39,13 +55,22 @@ function allNutriFitKeys(): string[] {
 }
 
 /** Removes all NutriFit data from the device. Used after account deletion.
- *  Includes core storage keys, every manual health record, AND every stored
- *  OAuth token (Strava, Whoop, etc.) so the device leaves no trace. */
+ *  Includes core storage keys, every manual health record, every stored OAuth
+ *  token (Strava, Whoop, etc.), AND every scheduled notification record so
+ *  the device leaves no trace. */
 export async function purgeAllLocalData(): Promise<void> {
   await Promise.all([
     AsyncStorage.multiRemove(allNutriFitKeys()),
+    AsyncStorage.removeItem('nutrifit.briefing.schedule.v1'),
+    AsyncStorage.removeItem('nutrifit.preWorkoutReminder.settings.v1'),
+    AsyncStorage.removeItem('nutrifit.postWorkoutReminder.settings.v1'),
+    AsyncStorage.removeItem('nutrifit.weeklySummary.v1'),
     ManualHealthDataProvider.purge(),
     AsyncStorageTokenStore.purge(),
+    // SecureStore tokens (iOS Keychain / Android Keystore) — wipe these too
+    // so account deletion leaves no trace at the system level either.
+    SecureOAuthTokenStore.purge(),
+    NoopNotificationScheduler.purge(),
   ]);
 }
 
@@ -63,11 +88,14 @@ async function pruneDateBoundedStores(): Promise<void> {
     return next;
   };
 
-  const [plans, logs, sessions, weights] = await Promise.all([
+  const [plans, logs, sessions, weights, completions, coachHistory, coachThreads] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
     loadSessionsByDate(),
     loadWeights(),
+    loadTrainingCompletionsByDate(),
+    loadDailyCoachHistory(),
+    loadCoachThreadsByDate(),
   ]);
 
   await Promise.all([
@@ -75,6 +103,9 @@ async function pruneDateBoundedStores(): Promise<void> {
     AsyncStorage.setItem(keys.foodLogsByDate, JSON.stringify(filter(logs))),
     AsyncStorage.setItem(keys.sessionsByDate, JSON.stringify(filter(sessions))),
     AsyncStorage.setItem(keys.weightsByDate, JSON.stringify(filter(weights))),
+    AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(filter(completions))),
+    AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(filter(coachHistory))),
+    AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(filter(coachThreads))),
   ]);
 }
 
@@ -146,17 +177,136 @@ export async function saveSessionForDate(date: DateKey, session: TrainingSession
   await AsyncStorage.setItem(keys.sessionsByDate, JSON.stringify(all));
 }
 
+export async function loadTrainingCompletionsByDate(): Promise<TrainingCompletionRecordMap> {
+  const data = await readJson<TrainingCompletionRecordMap>(keys.trainingCompletionsByDate);
+  return data || {};
+}
+
+export async function saveTrainingCompletionForDate(date: DateKey, record: TrainingCompletionRecord): Promise<void> {
+  const all = await loadTrainingCompletionsByDate();
+  all[date] = record;
+  await AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(all));
+}
+
+export async function saveTrainingCompletionsByDate(records: TrainingCompletionRecordMap): Promise<void> {
+  await AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(records));
+}
+
+export async function loadDailyCoachHistory(): Promise<DailyCoachHistoryMap> {
+  const data = await readJson<DailyCoachHistoryMap>(keys.dailyCoachHistory);
+  return data || {};
+}
+
+export async function saveDailyCoachRecommendationForDate(
+  date: DateKey,
+  recommendation: DailyCoachRecommendation,
+  memory: CoachMemory,
+): Promise<void> {
+  const all = await loadDailyCoachHistory();
+  const now = new Date().toISOString();
+  const existing = all[date];
+  all[date] = {
+    date,
+    recommendation,
+    memory,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(all));
+}
+
+export async function saveDailyCoachHistory(history: DailyCoachHistoryMap): Promise<void> {
+  await AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(history));
+}
+
+export async function loadCoachThreadsByDate(): Promise<CoachThreadRecordMap> {
+  const data = await readJson<CoachThreadRecordMap>(keys.coachThreadsByDate);
+  return data || {};
+}
+
+export async function saveCoachThreadForDate(
+  date: DateKey,
+  messages: CoachMessage[],
+  memory: CoachMemory,
+): Promise<CoachThreadRecord> {
+  const all = await loadCoachThreadsByDate();
+  const now = new Date().toISOString();
+  const existing = all[date];
+  const bounded = messages.slice(-40);
+  const next: CoachThreadRecord = {
+    date,
+    messages: bounded,
+    memory,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  all[date] = next;
+  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(all));
+  return next;
+}
+
+export async function saveCoachThreadsByDate(threads: CoachThreadRecordMap): Promise<void> {
+  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(threads));
+}
+
 export async function listStoredDates(): Promise<DateKey[]> {
   const [plans, logs] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
   ]);
-  const dates = new Set([...Object.keys(plans), ...Object.keys(logs)]);
+  const [completions, coachHistory, coachThreads] = await Promise.all([
+    loadTrainingCompletionsByDate(),
+    loadDailyCoachHistory(),
+    loadCoachThreadsByDate(),
+  ]);
+  const dates = new Set([
+    ...Object.keys(plans),
+    ...Object.keys(logs),
+    ...Object.keys(completions),
+    ...Object.keys(coachHistory),
+    ...Object.keys(coachThreads),
+  ]);
   return Array.from(dates).sort();
 }
 
 // Migration Helper
 export async function runMigration(): Promise<void> {
+  // The legacy-key migration (v1 single-plan/foodLog/session → date-keyed maps)
+  // only needs to run ONCE. After it has run we record the schema version and
+  // skip the three legacy readJson + removeItem round-trips on every cold start.
+  const stored = await readJson<{ version?: number }>(keys.schemaVersion);
+  if (!stored || (stored.version ?? 0) < CURRENT_SCHEMA_VERSION) {
+    await migrateLegacyKeys();
+    await migrateStoredProfileTaxonomy();
+    await AsyncStorage.setItem(
+      keys.schemaVersion,
+      JSON.stringify({ version: CURRENT_SCHEMA_VERSION, migratedAt: new Date().toISOString() }),
+    );
+  }
+
+  // Bound storage growth: drop date-bound records older than RETENTION_DAYS.
+  // This is NOT a one-time migration — it runs every startup so AsyncStorage
+  // size stays linear in the retention window, not lifetime.
+  await pruneDateBoundedStores();
+}
+
+async function migrateStoredProfileTaxonomy(): Promise<void> {
+  const currentRaw = await readJson<Partial<UserProfile> & { primaryGoal?: string; goal?: string }>(keys.profile);
+  const current = migrateProfile(currentRaw);
+  if (current) {
+    await saveProfile(current);
+  }
+
+  const legacyRaw = await readJson<Partial<UserProfile> & { primaryGoal?: string; goal?: string }>(keys.legacyProfile);
+  const legacy = migrateProfile(legacyRaw);
+  if (!current && legacy) {
+    await saveProfile(legacy);
+    await AsyncStorage.removeItem(keys.legacyProfile);
+  }
+}
+
+/** One-time migration from the v1 single-record keys to date-keyed maps. */
+async function migrateLegacyKeys(): Promise<void> {
   const today = toDateKey(new Date());
 
   // Migrate lastPlan
@@ -190,10 +340,6 @@ export async function runMigration(): Promise<void> {
     }
     await AsyncStorage.removeItem(keys.legacyTodaySession);
   }
-
-  // Bound storage growth: drop date-bound records older than RETENTION_DAYS.
-  // Cheap on each startup; AsyncStorage size stays linear in retention window, not lifetime.
-  await pruneDateBoundedStores();
 }
 
 // ── Weekly check-ins ─────────────────────────────────────────────────────────
@@ -223,6 +369,31 @@ export async function saveBaselineKcalDelta(value: number): Promise<void> {
   await AsyncStorage.setItem(keys.baselineKcalDelta, JSON.stringify({ value }));
 }
 
+// ── Onboarding draft ────────────────────────────────────────────────────────
+
+export type OnboardingDraft = {
+  step: number;
+  draft: UserProfile;
+  updatedAt: string;
+  touchedFields?: TouchedOnboardingFields;
+};
+
+export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
+  const raw = await readJson<OnboardingDraft & { draft?: Partial<UserProfile> & { primaryGoal?: string; goal?: string } }>(keys.onboardingDraft);
+  if (!raw?.draft) return null;
+  const draft = migrateProfile(raw.draft);
+  if (!draft) return null;
+  return { ...raw, draft };
+}
+
+export async function saveOnboardingDraft(value: OnboardingDraft): Promise<void> {
+  await AsyncStorage.setItem(keys.onboardingDraft, JSON.stringify(value));
+}
+
+export async function clearOnboardingDraft(): Promise<void> {
+  await AsyncStorage.removeItem(keys.onboardingDraft);
+}
+
 // Weight logs helpers
 export async function loadWeights(): Promise<Record<DateKey, number>> {
   const data = await readJson<Record<DateKey, number>>(keys.weightsByDate);
@@ -244,4 +415,14 @@ async function readJson<T>(key: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+// Subscription Status helpers
+export async function loadSubscriptionStatus(): Promise<boolean> {
+  const raw = await readJson<{ value: boolean }>(keys.isSubscribed);
+  return raw?.value === true;
+}
+
+export async function saveSubscriptionStatus(status: boolean): Promise<void> {
+  await AsyncStorage.setItem(keys.isSubscribed, JSON.stringify({ value: status }));
 }

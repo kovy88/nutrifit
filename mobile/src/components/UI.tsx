@@ -1,15 +1,29 @@
-import { PropsWithChildren, useEffect, useRef } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { MacroRing } from './MacroRing';
 
 export function H1({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
-  return <Text style={[styles.h1, { color: colors.ink, fontFamily: fonts.extraBold }]}>{children}</Text>;
+  return <Text style={[styles.h1, { color: colors.ink, fontFamily: fonts.display }]}>{children}</Text>;
 }
 
 export function Subtitle({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
   return <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{children}</Text>;
+}
+
+// Big athletic numeral (Archivo Black) + small uppercase caption — the WHOOP-style
+// data read. Use for readiness, kcal, key stats.
+export function Stat({ value, label, color, align = 'center' }: { value: React.ReactNode; label?: string; color?: string; align?: 'center' | 'left' }) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={{ alignItems: align === 'center' ? 'center' : 'flex-start' }}>
+      <Text style={[styles.statValue, { color: color || colors.ink, fontFamily: fonts.number }]}>{value}</Text>
+      {label ? <Text style={[styles.statLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text> : null}
+    </View>
+  );
 }
 
 export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
@@ -18,7 +32,11 @@ export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
     <View
       style={[
         styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          shadowColor: colors.shadow,
+        },
         style,
       ]}
     >
@@ -29,7 +47,7 @@ export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
 
 export function Label({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
-  return <Text style={[styles.label, { color: colors.muted, fontFamily: fonts.bold }]}>{children}</Text>;
+  return <Text style={[styles.label, { color: colors.faint, fontFamily: fonts.bold }]}>{children}</Text>;
 }
 
 export function Field(props: TextInputProps) {
@@ -41,7 +59,7 @@ export function Field(props: TextInputProps) {
         styles.field,
         {
           color: colors.ink,
-          backgroundColor: colors.isDark ? '#151d1a' : '#fbfbf8',
+          backgroundColor: colors.bgElev,
           borderColor: colors.border,
           fontFamily: fonts.regular,
         },
@@ -65,31 +83,34 @@ export function Button({
 }>) {
   const { colors, fonts } = useTheme();
 
+  const textColor =
+    variant === 'primary' ? colors.accentText : variant === 'danger' ? '#fff' : colors.ink;
+
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        variant === 'primary' && { backgroundColor: colors.green },
+        variant === 'primary' && {
+          backgroundColor: colors.accent,
+          shadowColor: colors.accent,
+          shadowOpacity: 0.35,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 4 },
+        },
         variant === 'secondary' && {
-          backgroundColor: colors.isDark ? 'rgba(255,255,255,0.06)' : '#eef2ed',
-          borderWidth: 1,
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
           borderColor: colors.border,
         },
         variant === 'danger' && { backgroundColor: colors.red },
         disabled && styles.disabled,
-        pressed && !disabled && { transform: [{ scale: 0.98 }] },
+        pressed && !disabled && { transform: [{ scale: 0.97 }], opacity: 0.92 },
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.buttonText,
-          { fontFamily: fonts.bold },
-          variant === 'secondary' && { color: colors.ink },
-        ]}
-      >
+      <Text style={[styles.buttonText, { color: textColor, fontFamily: fonts.extraBold }]}>
         {children}
       </Text>
     </Pressable>
@@ -105,8 +126,8 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
       style={[
         styles.pill,
         {
-          borderColor: active ? colors.green : colors.border,
-          backgroundColor: active ? colors.green : (colors.isDark ? '#1b2420' : '#fbfbf8'),
+          borderColor: active ? colors.accent : colors.border,
+          backgroundColor: active ? colors.accent : colors.bgElev,
         },
       ]}
     >
@@ -114,7 +135,7 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
         style={[
           styles.pillText,
           {
-            color: active ? '#fff' : colors.muted,
+            color: active ? colors.accentText : colors.muted,
             fontFamily: fonts.bold,
           },
         ]}
@@ -125,10 +146,559 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
   );
 }
 
+/** Large selectable option row — title (+ optional subtitle) with a radio dot.
+ *  Used by the one-question-per-screen onboarding. */
+export function Choice({
+  active,
+  title,
+  subtitle,
+  onPress,
+}: {
+  active?: boolean;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.choice,
+        {
+          borderColor: active ? colors.accent : colors.border,
+          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
+        },
+        pressed && { opacity: 0.9 },
+      ]}
+    >
+      <View style={styles.choiceBody}>
+        <Text style={[styles.choiceTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.choiceSub, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.choiceDot,
+          { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accent : 'transparent' },
+        ]}
+      />
+    </Pressable>
+  );
+}
+
+export function ScreenHeader({
+  title,
+  subtitle,
+  eyebrow,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+  action?: ReactNode;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={styles.screenHeader}>
+      <View style={styles.screenHeaderText}>
+        {eyebrow ? <Text style={[styles.eyebrow, { color: colors.accent, fontFamily: fonts.bold }]}>{eyebrow}</Text> : null}
+        <Text style={[styles.screenTitle, { color: colors.ink, fontFamily: fonts.display }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.screenSubtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text> : null}
+      </View>
+      {action ? <View style={styles.screenHeaderAction}>{action}</View> : null}
+    </View>
+  );
+}
+
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+      {action}
+    </View>
+  );
+}
+
+export function MetricCard({
+  label,
+  value,
+  unit,
+  detail,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  unit?: string;
+  detail?: string;
+  color?: string;
+}) {
+  const { colors, fonts } = useTheme();
+  const accent = color ?? colors.accent;
+  return (
+    <View style={[styles.metricCard, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+      <Text style={[styles.metricLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
+      <View style={styles.metricValueRow}>
+        <Text style={[styles.metricValue, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
+        {unit ? <Text style={[styles.metricUnit, { color: colors.muted, fontFamily: fonts.bold }]}>{unit}</Text> : null}
+      </View>
+      {detail ? <Text style={[styles.metricDetail, { color: colors.muted, fontFamily: fonts.regular }]}>{detail}</Text> : null}
+    </View>
+  );
+}
+
+export function ScoreRing({
+  score,
+  label,
+  color,
+  size = 116,
+}: {
+  score: number;
+  label: string;
+  color?: string;
+  size?: number;
+}) {
+  const { colors, fonts } = useTheme();
+  const accent = color ?? colors.accent;
+  return (
+    <MacroRing
+      size={size}
+      strokeWidth={10}
+      progress={score / 100}
+      color={accent}
+      backgroundColor={colors.border}
+    >
+      <Text style={[styles.scoreValue, { color: colors.ink, fontFamily: fonts.number }]}>{score}</Text>
+      <Text style={[styles.scoreLabel, { color: colors.muted, fontFamily: fonts.bold }]}>{label}</Text>
+    </MacroRing>
+  );
+}
+
+export function CoachInsightCard({
+  title,
+  body,
+  warnings = [],
+  accent,
+  children,
+}: PropsWithChildren<{
+  title: string;
+  body: string;
+  warnings?: string[];
+  accent?: string;
+}>) {
+  const { colors, fonts } = useTheme();
+  const color = accent ?? colors.accent;
+  return (
+    <Card style={[styles.coachCard, { borderColor: color }]}>
+      <Text style={[styles.coachTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+      <Text style={[styles.coachBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
+      {warnings.map((warning, index) => (
+        <Text key={`${warning}-${index}`} style={[styles.warningLine, { color: colors.orange, fontFamily: fonts.bold }]}>
+          {warning}
+        </Text>
+      ))}
+      {children}
+    </Card>
+  );
+}
+
+export function NutritionTargetCard({
+  kcal,
+  protein,
+  carbs,
+  fat,
+  reason,
+  label,
+  macroLabels,
+}: {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  reason?: string;
+  label: string;
+  macroLabels: { kcal: string; protein: string; carbs: string; fat: string };
+}) {
+  const { colors } = useTheme();
+  return (
+    <Card>
+      <SectionHeader title={label} />
+      <View style={styles.metricGrid}>
+        <MetricCard label={macroLabels.kcal} value={kcal} color={colors.accent} />
+        <MetricCard label={macroLabels.protein} value={protein} unit="g" color={colors.macroProtein} />
+        <MetricCard label={macroLabels.carbs} value={carbs} unit="g" color={colors.macroCarb} />
+        <MetricCard label={macroLabels.fat} value={fat} unit="g" color={colors.macroFat} />
+      </View>
+      {reason ? <Subtitle>{reason}</Subtitle> : null}
+    </Card>
+  );
+}
+
+export function TrainingRecommendationCard({
+  title,
+  meta,
+  note,
+  cta,
+  onPress,
+  completed,
+}: {
+  title: string;
+  meta: string;
+  note?: string;
+  cta?: string;
+  onPress?: () => void;
+  completed?: boolean;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Card>
+      <SectionHeader title={title} />
+      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.extraBold }]}>{meta}</Text>
+      {note ? <Text style={[styles.trainingNote, { color: colors.muted, fontFamily: fonts.regular }]}>{note}</Text> : null}
+      {cta && onPress ? (
+        <Button variant={completed ? 'secondary' : 'primary'} disabled={completed} onPress={onPress}>
+          {cta}
+        </Button>
+      ) : null}
+    </Card>
+  );
+}
+
+export function RecoveryCard({
+  title,
+  metrics,
+  recommendation,
+}: {
+  title: string;
+  metrics: Array<{ label: string; value: string; color?: string }>;
+  recommendation: string;
+}) {
+  return (
+    <Card>
+      <SectionHeader title={title} />
+      <View style={styles.metricGrid}>
+        {metrics.map(metric => (
+          <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} />
+        ))}
+      </View>
+      <Subtitle>{recommendation}</Subtitle>
+    </Card>
+  );
+}
+
+export function WeeklyProgressCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ label: string; value: string; color?: string }>;
+}) {
+  return (
+    <Card>
+      <SectionHeader title={title} />
+      <View style={styles.metricGrid}>
+        {items.map(item => (
+          <MetricCard key={item.label} label={item.label} value={item.value} color={item.color} />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+export function PlanDayCard({
+  title,
+  subtitle,
+  selected,
+  markers = [],
+  onPress,
+  children,
+}: PropsWithChildren<{
+  title: string;
+  subtitle: string;
+  selected?: boolean;
+  markers?: string[];
+  onPress?: () => void;
+}>) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.planDayCard,
+        {
+          backgroundColor: selected ? colors.accent + '18' : colors.card,
+          borderColor: selected ? colors.accent : colors.border,
+        },
+        pressed && { opacity: 0.86 },
+      ]}
+    >
+      <View style={styles.planDayHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.planDayTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+          <Text style={[styles.planDaySubtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
+        </View>
+        {markers.length ? (
+          <View style={styles.markerRow}>
+            {markers.map(marker => (
+              <Text key={marker} style={[styles.marker, { color: colors.accentText, backgroundColor: colors.accent, fontFamily: fonts.bold }]}>
+                {marker}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </View>
+      {children}
+    </Pressable>
+  );
+}
+
+export function QuickActionButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress?: () => void;
+  disabled?: boolean;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.quickAction,
+        { borderColor: colors.border, backgroundColor: colors.bgElev },
+        pressed && !disabled && { opacity: 0.82 },
+        disabled && { opacity: 0.45 },
+      ]}
+    >
+      <Ionicons name={icon} size={20} color={colors.accent} />
+      <Text style={[styles.quickActionText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function ActionIconButton({
+  icon,
+  label,
+  onPress,
+  variant = 'secondary',
+  disabled,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'secondary' | 'danger';
+  disabled?: boolean;
+}) {
+  const { colors, fonts } = useTheme();
+  const isPrimary = variant === 'primary';
+  const isDanger = variant === 'danger';
+  const foreground = isPrimary ? colors.accentText : isDanger ? '#fff' : colors.ink;
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionIconButton,
+        {
+          backgroundColor: isPrimary ? colors.accent : isDanger ? colors.red : colors.bgElev,
+          borderColor: isPrimary ? colors.accent : isDanger ? colors.red : colors.border,
+        },
+        pressed && !disabled && { opacity: 0.86, transform: [{ scale: 0.98 }] },
+        disabled && styles.disabled,
+      ]}
+    >
+      <Ionicons name={icon} size={18} color={foreground} />
+      <Text style={[styles.actionIconText, { color: foreground, fontFamily: fonts.bold }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function StatusPill({
+  label,
+  tone = 'neutral',
+}: {
+  label: string;
+  tone?: 'neutral' | 'ready' | 'caution' | 'risk' | 'info';
+}) {
+  const { colors, fonts } = useTheme();
+  const toneColor =
+    tone === 'ready' ? colors.accent :
+    tone === 'caution' ? colors.orange :
+    tone === 'risk' ? colors.red :
+    tone === 'info' ? colors.blue :
+    colors.border;
+  return (
+    <Text
+      style={[
+        styles.statusPill,
+        {
+          color: tone === 'neutral' ? colors.muted : toneColor,
+          borderColor: toneColor,
+          backgroundColor: tone === 'neutral' ? colors.bgElev : toneColor + '16',
+          fontFamily: fonts.bold,
+        },
+      ]}
+    >
+      {label}
+    </Text>
+  );
+}
+
+export function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+      {options.map(option => {
+        const active = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            style={[styles.segment, active && { backgroundColor: colors.accent }]}
+          >
+            <Text style={[styles.segmentText, { color: active ? colors.accentText : colors.muted, fontFamily: fonts.bold }]}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function SettingRow({
+  title,
+  body,
+  meta,
+  action,
+  children,
+}: PropsWithChildren<{
+  title: string;
+  body?: string;
+  meta?: string;
+  action?: ReactNode;
+}>) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={[styles.settingRow, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+      <View style={styles.settingText}>
+        <Text style={[styles.settingTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+        {body ? <Text style={[styles.settingBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text> : null}
+        {meta ? <Text style={[styles.settingMeta, { color: colors.faint, fontFamily: fonts.bold }]}>{meta}</Text> : null}
+      </View>
+      {action ? <View style={styles.settingAction}>{action}</View> : null}
+      {children ? <View style={styles.settingChildren}>{children}</View> : null}
+    </View>
+  );
+}
+
+export function SourceStatusCard({
+  title,
+  body,
+  meta,
+  status,
+  statusTone = 'neutral',
+  action,
+  error,
+}: {
+  title: string;
+  body: string;
+  meta?: string;
+  status?: string;
+  statusTone?: 'neutral' | 'ready' | 'caution' | 'risk' | 'info';
+  action?: ReactNode;
+  error?: string;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <View style={[styles.sourceCard, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+      <View style={styles.sourceCardHeader}>
+        <Text style={[styles.sourceCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+        {status ? <StatusPill label={status} tone={statusTone} /> : null}
+      </View>
+      <Text style={[styles.sourceCardBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
+      {meta ? <Text style={[styles.sourceCardMeta, { color: colors.faint, fontFamily: fonts.bold }]}>{meta}</Text> : null}
+      {error ? <Text style={[styles.sourceCardError, { color: colors.red, fontFamily: fonts.bold }]}>{error}</Text> : null}
+      {action ? <View style={styles.sourceCardAction}>{action}</View> : null}
+    </View>
+  );
+}
+
+export function EmptyState({
+  title,
+  body,
+  cta,
+  onPress,
+}: {
+  title: string;
+  body?: string;
+  cta?: string;
+  onPress?: () => void;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Card style={styles.stateCard}>
+      <Text style={[styles.stateTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+      {body ? <Text style={[styles.stateBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text> : null}
+      {cta && onPress ? <Button onPress={onPress}>{cta}</Button> : null}
+    </Card>
+  );
+}
+
+export function LoadingState({ title, body }: { title: string; body?: string }) {
+  const { colors } = useTheme();
+  return (
+    <Card style={styles.stateCard}>
+      <View style={styles.skeletonRow}>
+        <View style={[styles.skeletonBlock, { backgroundColor: colors.bgElev }]} />
+        <View style={[styles.skeletonLine, { backgroundColor: colors.bgElev }]} />
+      </View>
+      <Text style={[styles.stateTitle, { color: colors.ink }]}>{title}</Text>
+      {body ? <Text style={[styles.stateBody, { color: colors.muted }]}>{body}</Text> : null}
+    </Card>
+  );
+}
+
+export function ErrorState({
+  title,
+  body,
+  cta,
+  onPress,
+}: {
+  title: string;
+  body: string;
+  cta?: string;
+  onPress?: () => void;
+}) {
+  const { colors, fonts } = useTheme();
+  return (
+    <Card style={[styles.stateCard, { borderColor: colors.red }]}>
+      <Text style={[styles.stateTitle, { color: colors.red, fontFamily: fonts.extraBold }]}>{title}</Text>
+      <Text style={[styles.stateBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
+      {cta && onPress ? <Button variant="secondary" onPress={onPress}>{cta}</Button> : null}
+    </Card>
+  );
+}
+
 export function FadeInView({
   children,
   delay = 0,
-  duration = 350,
+  duration = 420,
   style,
 }: PropsWithChildren<{
   delay?: number;
@@ -136,7 +706,7 @@ export function FadeInView({
   style?: any;
 }>) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -163,15 +733,88 @@ export function FadeInView({
 }
 
 const styles = StyleSheet.create({
-  h1: { fontSize: 30, letterSpacing: -0.5, lineHeight: 36 },
+  h1: { fontSize: 32, letterSpacing: -0.8, lineHeight: 37 },
   subtitle: { fontSize: 15, lineHeight: 22 },
-  card: { borderRadius: 18, borderWidth: 1, padding: 18, gap: 12 },
-  label: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.8 },
-  field: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
+  statValue: { fontSize: 46, letterSpacing: -1, lineHeight: 50 },
+  statLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 2 },
+  card: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    gap: 12,
+    // soft depth (renders on iOS + web via RNW; elevation for Android)
+    shadowOpacity: 1,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
+  },
+  label: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4 },
+  field: { minHeight: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
   button: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  disabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16 },
-  pill: { minHeight: 42, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  disabled: { opacity: 0.45 },
+  buttonText: { fontSize: 15.5, letterSpacing: 0.2 },
+  pill: { minHeight: 42, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 14 },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16 },
+  choiceBody: { flex: 1, gap: 2 },
+  choiceTitle: { fontSize: 16.5, letterSpacing: -0.2 },
+  choiceSub: { fontSize: 13, lineHeight: 18 },
+  choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
+  screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  screenHeaderText: { flex: 1, gap: 3 },
+  screenHeaderAction: { alignItems: 'flex-end' },
+  eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
+  screenTitle: { fontSize: 30, lineHeight: 36, letterSpacing: -0.6 },
+  screenSubtitle: { fontSize: 14, lineHeight: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  sectionTitle: { fontSize: 16, lineHeight: 22 },
+  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metricCard: { flex: 1, minWidth: '47%', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
+  metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
+  metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  metricValue: { fontSize: 24, lineHeight: 29, letterSpacing: -0.5 },
+  metricUnit: { fontSize: 11, marginBottom: 4 },
+  metricDetail: { fontSize: 11, lineHeight: 15 },
+  scoreValue: { fontSize: 44, lineHeight: 48, letterSpacing: -1.5 },
+  scoreLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
+  coachCard: { borderWidth: 2 },
+  coachTitle: { fontSize: 20, lineHeight: 25 },
+  coachBody: { fontSize: 14, lineHeight: 20 },
+  warningLine: { fontSize: 12, lineHeight: 17 },
+  trainingMeta: { fontSize: 22, lineHeight: 28 },
+  trainingNote: { fontSize: 14, lineHeight: 20 },
+  planDayCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
+  planDayHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  planDayTitle: { fontSize: 16, lineHeight: 21 },
+  planDaySubtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
+  markerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'flex-end' },
+  marker: { fontSize: 10, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3, textTransform: 'uppercase' },
+  quickAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, flex: 1, minWidth: '47%' },
+  quickActionText: { fontSize: 13, lineHeight: 17 },
+  actionIconButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, flex: 1 },
+  actionIconText: { fontSize: 13, lineHeight: 17 },
+  statusPill: { alignSelf: 'flex-start', fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7, borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
+  segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: 16, padding: 4, gap: 4 },
+  segment: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  segmentText: { fontSize: 13, lineHeight: 17, textAlign: 'center' },
+  settingRow: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
+  settingText: { flex: 1, gap: 3 },
+  settingTitle: { fontSize: 15, lineHeight: 20 },
+  settingBody: { fontSize: 13, lineHeight: 18 },
+  settingMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  settingAction: { alignSelf: 'flex-start' },
+  settingChildren: { gap: 8 },
+  sourceCard: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
+  sourceCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  sourceCardTitle: { flex: 1, fontSize: 15, lineHeight: 20 },
+  sourceCardBody: { fontSize: 13, lineHeight: 18 },
+  sourceCardMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sourceCardError: { fontSize: 12, lineHeight: 17 },
+  sourceCardAction: { marginTop: 2 },
+  stateCard: { alignItems: 'stretch' },
+  stateTitle: { fontSize: 17, lineHeight: 23, textAlign: 'center' },
+  stateBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  skeletonRow: { gap: 10, width: '100%' },
+  skeletonBlock: { height: 88, borderRadius: 16, opacity: 0.8 },
+  skeletonLine: { height: 14, width: '66%', alignSelf: 'center', borderRadius: 999, opacity: 0.8 },
 });
-

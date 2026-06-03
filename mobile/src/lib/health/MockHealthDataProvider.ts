@@ -113,6 +113,22 @@ export class MockHealthDataProvider implements HealthDataProvider {
     return out;
   }
 
+  async getBodyWeightRange(start: Date, end: Date): Promise<BodyWeightSample[]> {
+    // Generuj váhu ~obden, lehký drift ±0.3 kg, aby trend vypadal reálně.
+    const out: BodyWeightSample[] = [];
+    for (const date of dateRange(start, end)) {
+      const r = rng(this.seed + 6, hash(date));
+      if (r() < 0.4) continue; // ne každý den (uživatel se neváží denně)
+      const drift = (r() - 0.5) * 0.6;
+      out.push({
+        date,
+        weightKg: Math.round((this.weightKg + drift) * 10) / 10,
+        source: 'mock',
+      });
+    }
+    return out;
+  }
+
   async getLatestBodyWeight(maxDaysOld = 30): Promise<BodyWeightSample | null> {
     const today = new Date();
     // mock has weight only every ~3 days; find latest within maxDaysOld

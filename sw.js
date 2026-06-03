@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   '/css/print.css',
   '/js/main.js',
   '/js/ai-utils.js',
+  '/js/vercel-analytics.js',
   '/js/auth.js',
   '/js/calculator.js',
   '/js/state.js',

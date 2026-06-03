@@ -77,6 +77,8 @@ describe('evaluateReadiness — missing data', () => {
     expect(r.level).toBe('green');
     expect(r.recommendation).toContain('Nemáme');
     expect(r.trainingAdjustment).toBeNull();
+    expect(r.confidence).toBe('low');
+    expect(r.dataStatus).toBe('missing');
     expect(r.factors.every(f => f.key.endsWith('_missing'))).toBe(true);
   });
 
@@ -88,6 +90,8 @@ describe('evaluateReadiness — missing data', () => {
   it('only HRV missing, others normal → green', () => {
     const r = evaluateReadiness({ todaySleepMinutes: 480, todayRhrBpm: 60 });
     expect(r.level).toBe('green');
+    expect(r.confidence).toBe('medium');
+    expect(r.dataStatus).toBe('partial');
   });
 
   it('null is treated same as undefined', () => {
