@@ -41,6 +41,8 @@ const keys = {
   /** Marker so the one-time legacy migration runs once, not on every boot. */
   schemaVersion: 'nutrifit.schemaVersion.v1',
   isSubscribed: 'nutrifit.isSubscribed.v1',
+  /** Free Coach teaser usage counter (lifetime) before the paywall kicks in. */
+  coachTeaserUsed: 'nutrifit.coachTeaserUsed.v1',
 };
 
 /** Bump when a NEW one-time migration step is added to runMigration(). */
@@ -136,6 +138,19 @@ export async function loadConsent() {
 
 export async function saveConsent() {
   await AsyncStorage.setItem(keys.consent, JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString() }));
+}
+
+// Free Coach teaser — how many free coach replies have been used before the paywall.
+export async function loadCoachTeaserUsed(): Promise<number> {
+  const raw = await readJson<{ count?: unknown }>(keys.coachTeaserUsed);
+  const n = Math.floor(Number(raw?.count));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+export async function incrementCoachTeaserUsed(): Promise<number> {
+  const next = (await loadCoachTeaserUsed()) + 1;
+  await AsyncStorage.setItem(keys.coachTeaserUsed, JSON.stringify({ count: next }));
+  return next;
 }
 
 export function normalizeConsent(value: { accepted?: unknown } | null | undefined) {

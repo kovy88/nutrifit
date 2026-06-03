@@ -98,20 +98,23 @@ export function TodayScreen() {
       ) : null}
 
       {showNutrition && (
-        <NutritionTargetCard
-          label={t('today.nutritionTitle')}
-          kcal={macros.kcal}
-          protein={macros.protein}
-          carbs={macros.carbs}
-          fat={macros.fat}
-          macroLabels={{
-            kcal: 'kcal',
-            protein: t('home.protein'),
-            carbs: t('home.carbs'),
-            fat: t('home.fat'),
-          }}
-          reason={rec?.nutrition?.reason ?? dailyAdjustment?.note}
-        />
+        <>
+          <NutritionTargetCard
+            label={t('today.nutritionTitle')}
+            kcal={macros.kcal}
+            protein={macros.protein}
+            carbs={macros.carbs}
+            fat={macros.fat}
+            macroLabels={{
+              kcal: 'kcal',
+              protein: t('home.protein'),
+              carbs: t('home.carbs'),
+              fat: t('home.fat'),
+            }}
+            reason={rec?.nutrition?.reason ?? dailyAdjustment?.note}
+          />
+          <Button variant="secondary" onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
+        </>
       )}
 
       {showTraining && (

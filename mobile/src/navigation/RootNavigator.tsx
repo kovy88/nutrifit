@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTrenr } from '../context/TrenrContext';
-import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CoachScreen } from '../screens/CoachScreen';
@@ -25,14 +24,10 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const { t } = useLanguage();
   const { colors: themeColors } = useTheme();
-  const { profile } = useTrenr();
-  // Training-only coaches don't get the meal-plan tab.
-  const showNutrition = profile ? scopeHasNutrition(resolveCoachScope(profile)) : true;
   const tabLabels: Record<string, string> = {
     Dnes: t('tab.home'),
-    Jídelníček: t('tab.plan'),
-    Uloženo: t('tab.history'),
     Coach: t('tab.coach'),
+    Uloženo: t('tab.history'),
     Profil: t('tab.profile'),
   };
   return (
@@ -51,11 +46,13 @@ function MainTabs() {
           paddingTop: 8,
         },
         tabBarIcon: ({ color, size }) => {
+          // Coach is the hero surface — filled, accent-tinted, slightly larger even when inactive.
+          if (route.name === 'Coach') {
+            return <Ionicons name="sparkles" size={size + 2} color={themeColors.accent} />;
+          }
           const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
             Dnes: 'today-outline',
-            Jídelníček: 'restaurant-outline',
             Uloženo: 'stats-chart-outline',
-            Coach: 'sparkles-outline',
             Profil: 'person-circle-outline',
           };
           return <Ionicons name={icons[route.name] || 'ellipse-outline'} size={size} color={color} />;
@@ -63,9 +60,8 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Dnes" component={TodayScreen} />
-      {showNutrition && <Tab.Screen name="Jídelníček" component={PlanScreen} />}
-      <Tab.Screen name="Uloženo" component={HistoryScreen} />
       <Tab.Screen name="Coach" component={CoachScreen} />
+      <Tab.Screen name="Uloženo" component={HistoryScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -84,6 +80,13 @@ export function RootNavigator() {
               back via swipe / hardware back, or their own navigation actions. */}
           <Stack.Screen name="Trénink" component={TrainingScreen} />
           <Stack.Screen name="Foto" component={PhotoScreen} />
+          {/* Meal plan is no longer a bottom tab — reached on-demand from Today/Coach.
+              Same route name ('Jídelníček') so existing navigate() calls keep working. */}
+          <Stack.Screen
+            name="Jídelníček"
+            component={PlanScreen}
+            options={{ headerShown: true, title: '', presentation: 'card' }}
+          />
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
