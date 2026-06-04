@@ -230,6 +230,10 @@ class FakeProvider implements HealthDataProvider {
   async getSleepSummary() { return this.opts.sleep ?? []; }
   async getRestingHeartRate() { return this.opts.rhr ?? null; }
   async getHrv() { return this.opts.hrv ?? null; }
+  async getRecoveryInputs() {
+    if (this.opts.throwOn === 'getRecoveryInputs') throw new Error('boom');
+    return [];
+  }
 }
 
 describe('CompositeHealthDataProvider', () => {

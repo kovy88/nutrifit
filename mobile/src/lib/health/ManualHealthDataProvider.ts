@@ -26,6 +26,8 @@ import type {
   SleepSummary,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
+import type { SubjectiveLevel } from '../../types/checkin';
 import type { HealthDataProvider } from './HealthDataProvider';
 
 const PREFIX = 'nutrifit.health.manual';
@@ -106,6 +108,35 @@ export class ManualHealthDataProvider implements HealthDataProvider {
 
   async getHrv(date: Date): Promise<HrvSample | null> {
     return readJson<HrvSample>(KEYS.hrv(toDateKey(date)));
+  }
+
+  async getRecoveryInputs(start: Date, end: Date): Promise<RecoveryInputs[]> {
+    const sleep = await this.getSleepSummary(start, end);
+    const out: RecoveryInputs[] = [];
+    const sleepMap = new Map(sleep.map(s => [s.date, s]));
+
+    for (const dateStr of dateRange(start, end)) {
+      const d = new Date(dateStr);
+      const rhr = await this.getRestingHeartRate(d);
+      const hrv = await this.getHrv(d);
+      const sl = sleepMap.get(dateStr);
+
+      out.push({
+        date: dateStr,
+        todaySleepMinutes: sl ? sl.totalMinutes : null,
+        todayRhrBpm: rhr ? rhr.bpm : null,
+        todayHrvMs: hrv ? hrv.ms : null,
+        baseline: {
+          rhrMeanBpm: 60,
+          hrvMeanMs: 45,
+          sleepMeanMinutes: 450,
+        },
+        acwr: 1.0,
+        sleepDebtHours: 0,
+        recoveryDebt: 0,
+      });
+    }
+    return out;
   }
 
   // ── Write helpers (UI manual input) ────────────────────────────────────────

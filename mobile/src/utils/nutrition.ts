@@ -127,7 +127,8 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
   }
 
   const burn = estimateSessionKcal(session, profile.weight);
-  const preFuel = session.kind === 'long_run' ? Math.round(profile.weight) : 0;
+  const isHardDay = session.intensity === 'hard' || ['long_run', 'tempo', 'intervals', 'race'].includes(session.kind);
+  const preFuel = isHardDay ? Math.round(profile.weight) : 0;
   const refuel = Math.round((burn * 0.6) / 4);
   const addCarbs = preFuel + refuel;
   const macros = { ...baseline, kcal: baseline.kcal + addCarbs * 4, carbs: baseline.carbs + addCarbs };
@@ -136,7 +137,9 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     adjustment: {
       note: session.kind === 'long_run'
         ? `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`
-        : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`,
+        : isHardDay
+          ? `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`
+          : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`,
       kcalDelta: macros.kcal - baseline.kcal,
       carbsDelta: macros.carbs - baseline.carbs,
       fatDelta: 0,
@@ -483,7 +486,7 @@ export function activityFactorForSessions(count: number): number {
 
 export function estimateSessionKcal(session: TrainingSession, weight: number) {
   const met = {
-    easy_run: 8, recovery_run: 6, tempo: 11, intervals: 12, long_run: 9,
+    easy_run: 8, recovery_run: 6, recovery_walk: 3, tempo: 11, intervals: 12, long_run: 9,
     strength: 5, cross_training: 7, mobility: 3, rest: 0, race: 12,
     swim: 7, bike: 7, brick: 8, functional: 8,
   }[session.kind] || 6;

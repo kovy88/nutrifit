@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { MacroRing } from './MacroRing';
+export * from './premium';
 
 export function H1({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
@@ -50,7 +51,7 @@ export function Label({ children }: PropsWithChildren) {
   return <Text style={[styles.label, { color: colors.faint, fontFamily: fonts.bold }]}>{children}</Text>;
 }
 
-export function Field(props: TextInputProps) {
+export function Field({ style, ...props }: TextInputProps) {
   const { colors, fonts } = useTheme();
   return (
     <TextInput
@@ -63,6 +64,7 @@ export function Field(props: TextInputProps) {
           borderColor: colors.border,
           fontFamily: fonts.regular,
         },
+        style,
       ]}
       {...props}
     />
@@ -193,15 +195,22 @@ export function ScreenHeader({
   subtitle,
   eyebrow,
   action,
+  onBack,
 }: {
   title: string;
   subtitle?: string;
   eyebrow?: string;
   action?: ReactNode;
+  onBack?: () => void;
 }) {
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.screenHeader}>
+      {onBack ? (
+        <Pressable onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
+        </Pressable>
+      ) : null}
       <View style={styles.screenHeaderText}>
         {eyebrow ? <Text style={[styles.eyebrow, { color: colors.accent, fontFamily: fonts.bold }]}>{eyebrow}</Text> : null}
         <Text style={[styles.screenTitle, { color: colors.ink, fontFamily: fonts.display }]}>{title}</Text>
@@ -228,20 +237,22 @@ export function MetricCard({
   unit,
   detail,
   color,
+  compact,
 }: {
   label: string;
   value: string | number;
   unit?: string;
   detail?: string;
   color?: string;
+  compact?: boolean;
 }) {
   const { colors, fonts } = useTheme();
   const accent = color ?? colors.accent;
   return (
-    <View style={[styles.metricCard, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
       <Text style={[styles.metricLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
       <View style={styles.metricValueRow}>
-        <Text style={[styles.metricValue, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
+        <Text style={[styles.metricValue, compact && styles.metricValueCompact, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
         {unit ? <Text style={[styles.metricUnit, { color: colors.muted, fontFamily: fonts.bold }]}>{unit}</Text> : null}
       </View>
       {detail ? <Text style={[styles.metricDetail, { color: colors.muted, fontFamily: fonts.regular }]}>{detail}</Text> : null}
@@ -312,6 +323,7 @@ export function NutritionTargetCard({
   reason,
   label,
   macroLabels,
+  dayLabel,
 }: {
   kcal: number;
   protein: number;
@@ -320,11 +332,15 @@ export function NutritionTargetCard({
   reason?: string;
   label: string;
   macroLabels: { kcal: string; protein: string; carbs: string; fat: string };
+  dayLabel?: string;
 }) {
-  const { colors } = useTheme();
+  const { colors, fonts } = useTheme();
   return (
     <Card>
-      <SectionHeader title={label} />
+      <View style={styles.cardTitleRow}>
+        <SectionHeader title={label} />
+        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent, backgroundColor: colors.accent + '16', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
+      </View>
       <View style={styles.metricGrid}>
         <MetricCard label={macroLabels.kcal} value={kcal} color={colors.accent} />
         <MetricCard label={macroLabels.protein} value={protein} unit="g" color={colors.macroProtein} />
@@ -343,6 +359,7 @@ export function TrainingRecommendationCard({
   cta,
   onPress,
   completed,
+  intensity,
 }: {
   title: string;
   meta: string;
@@ -350,11 +367,15 @@ export function TrainingRecommendationCard({
   cta?: string;
   onPress?: () => void;
   completed?: boolean;
+  intensity?: string;
 }) {
   const { colors, fonts } = useTheme();
   return (
     <Card>
-      <SectionHeader title={title} />
+      <View style={styles.cardTitleRow}>
+        <SectionHeader title={title} />
+        {intensity ? <Text style={[styles.cardBadge, { color: colors.orange, borderColor: colors.orange, backgroundColor: colors.orange + '14', fontFamily: fonts.bold }]}>{intensity}</Text> : null}
+      </View>
       <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.extraBold }]}>{meta}</Text>
       {note ? <Text style={[styles.trainingNote, { color: colors.muted, fontFamily: fonts.regular }]}>{note}</Text> : null}
       {cta && onPress ? (
@@ -370,17 +391,23 @@ export function RecoveryCard({
   title,
   metrics,
   recommendation,
+  status,
 }: {
   title: string;
   metrics: Array<{ label: string; value: string; color?: string }>;
   recommendation: string;
+  status?: string;
 }) {
+  const { colors, fonts } = useTheme();
   return (
     <Card>
-      <SectionHeader title={title} />
+      <View style={styles.cardTitleRow}>
+        <SectionHeader title={title} />
+        {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue, backgroundColor: colors.blue + '14', fontFamily: fonts.bold }]}>{status}</Text> : null}
+      </View>
       <View style={styles.metricGrid}>
         {metrics.map(metric => (
-          <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} />
+          <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} compact />
         ))}
       </View>
       <Subtitle>{recommendation}</Subtitle>
@@ -413,6 +440,8 @@ export function PlanDayCard({
   selected,
   markers = [],
   onPress,
+  isRest,
+  isLongRun,
   children,
 }: PropsWithChildren<{
   title: string;
@@ -420,16 +449,34 @@ export function PlanDayCard({
   selected?: boolean;
   markers?: string[];
   onPress?: () => void;
+  isRest?: boolean;
+  isLongRun?: boolean;
 }>) {
   const { colors, fonts } = useTheme();
+
+  let backgroundColor = colors.card;
+  let borderColor = colors.border;
+
+  if (selected) {
+    backgroundColor = colors.accent + '18';
+    borderColor = colors.accent;
+  } else if (isRest) {
+    backgroundColor = colors.bgElev;
+    borderColor = colors.border;
+  } else if (isLongRun) {
+    backgroundColor = colors.accent + '06';
+    borderColor = colors.accent + '60';
+  }
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.planDayCard,
         {
-          backgroundColor: selected ? colors.accent + '18' : colors.card,
-          borderColor: selected ? colors.accent : colors.border,
+          backgroundColor,
+          borderColor,
+          opacity: !selected && isRest ? 0.75 : 1,
         },
         pressed && { opacity: 0.86 },
       ]}
@@ -441,11 +488,24 @@ export function PlanDayCard({
         </View>
         {markers.length ? (
           <View style={styles.markerRow}>
-            {markers.map(marker => (
-              <Text key={marker} style={[styles.marker, { color: colors.accentText, backgroundColor: colors.accent, fontFamily: fonts.bold }]}>
-                {marker}
-              </Text>
-            ))}
+            {markers.map(marker => {
+              let bg = colors.accent;
+              let fg = colors.accentText;
+              const isRestMarker = marker === 'Rest' || marker === 'Volno';
+              const isLongMarker = marker === 'Long run' || marker === 'Dlouhý běh' || marker === 'Long';
+              if (isRestMarker) {
+                bg = colors.border;
+                fg = colors.muted;
+              } else if (isLongMarker) {
+                bg = colors.orange;
+                fg = '#fff';
+              }
+              return (
+                <Text key={marker} style={[styles.marker, { color: fg, backgroundColor: bg, fontFamily: fonts.bold }]}>
+                  {marker}
+                </Text>
+              );
+            })}
           </View>
         ) : null}
       </View>
@@ -733,19 +793,19 @@ export function FadeInView({
 }
 
 const styles = StyleSheet.create({
-  h1: { fontSize: 32, letterSpacing: -0.8, lineHeight: 37 },
+  h1: { fontSize: 32, letterSpacing: 0, lineHeight: 37 },
   subtitle: { fontSize: 15, lineHeight: 22 },
-  statValue: { fontSize: 46, letterSpacing: -1, lineHeight: 50 },
+  statValue: { fontSize: 46, letterSpacing: 0, lineHeight: 50 },
   statLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 2 },
   card: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 18,
+    padding: 16,
     gap: 12,
     // soft depth (renders on iOS + web via RNW; elevation for Android)
     shadowOpacity: 1,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
   label: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4 },
@@ -763,26 +823,31 @@ const styles = StyleSheet.create({
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   screenHeaderText: { flex: 1, gap: 3 },
   screenHeaderAction: { alignItems: 'flex-end' },
+  screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
-  screenTitle: { fontSize: 30, lineHeight: 36, letterSpacing: -0.6 },
+  screenTitle: { fontSize: 30, lineHeight: 36, letterSpacing: 0 },
   screenSubtitle: { fontSize: 14, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   sectionTitle: { fontSize: 16, lineHeight: 22 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metricCard: { flex: 1, minWidth: '47%', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
+  metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  metricValue: { fontSize: 24, lineHeight: 29, letterSpacing: -0.5 },
+  metricValue: { fontSize: 25, lineHeight: 30, letterSpacing: 0 },
+  metricValueCompact: { fontSize: 20, lineHeight: 25 },
   metricUnit: { fontSize: 11, marginBottom: 4 },
   metricDetail: { fontSize: 11, lineHeight: 15 },
-  scoreValue: { fontSize: 44, lineHeight: 48, letterSpacing: -1.5 },
+  scoreValue: { fontSize: 44, lineHeight: 48, letterSpacing: 0 },
   scoreLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
-  coachCard: { borderWidth: 2 },
+  coachCard: { borderWidth: 1.5 },
   coachTitle: { fontSize: 20, lineHeight: 25 },
   coachBody: { fontSize: 14, lineHeight: 20 },
   warningLine: { fontSize: 12, lineHeight: 17 },
   trainingMeta: { fontSize: 22, lineHeight: 28 },
   trainingNote: { fontSize: 14, lineHeight: 20 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  cardBadge: { overflow: 'hidden', borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7 },
   planDayCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
   planDayHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   planDayTitle: { fontSize: 16, lineHeight: 21 },

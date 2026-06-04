@@ -35,6 +35,7 @@ import type {
   WorkoutKind,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 import { isExpired, type OAuthToken, type OAuthTokenStore } from './oauth/OAuthTokenStore';
 
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3';
@@ -98,6 +99,7 @@ export class StravaProvider implements HealthDataProvider {
   async getSleepSummary(_start: Date, _end: Date): Promise<SleepSummary[]> { return []; }
   async getRestingHeartRate(_date: Date): Promise<RestingHeartRateSample | null> { return null; }
   async getHrv(_date: Date): Promise<HrvSample | null> { return null; }
+  async getRecoveryInputs(_start: Date, _end: Date): Promise<RecoveryInputs[]> { return []; }
 
   async getWorkoutSummaries(start: Date, end: Date): Promise<WorkoutSummary[]> {
     const token = await this.tokens.getToken('strava');

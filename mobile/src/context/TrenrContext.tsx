@@ -42,10 +42,12 @@ import {
   loadTrainingCompletionsByDate,
   loadCoachThreadsByDate,
   loadDailyCoachHistory,
+  loadDailyHealthSummaries,
   saveTrainingCompletionForDate,
   saveTrainingCompletionsByDate,
   saveCoachThreadsByDate,
   saveDailyCoachHistory,
+  saveDailyHealthSummaries,
   loadSubscriptionStatus,
   saveSubscriptionStatus,
 } from '../services/storage';
@@ -225,9 +227,10 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     if (!user?.id) return;
     syncStore.setSyncing();
     try {
-      const [storedCoachThreadsByDate, storedDailyCoachHistory] = await Promise.all([
+      const [storedCoachThreadsByDate, storedDailyCoachHistory, storedDailyHealthSummaries] = await Promise.all([
         loadCoachThreadsByDate(),
         loadDailyCoachHistory(),
+        loadDailyHealthSummaries(),
       ]);
       await pushLocalSnapshotToSupabase({
         profile: overrides.profile ?? profile,
@@ -239,6 +242,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         trainingCompletionsByDate: overrides.trainingCompletionsByDate ?? trainingCompletionsByDate,
         coachThreadsByDate: storedCoachThreadsByDate,
         dailyCoachHistory: storedDailyCoachHistory,
+        dailyHealthSummaries: storedDailyHealthSummaries,
         baselineTargetsByDate: currentMacros ? { [selectedDate]: currentMacros } : {},
       }, user.id);
       syncStore.setPendingWrites(0);
@@ -287,6 +291,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     }
     if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
     if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
+    if (remote.dailyHealthSummaries) await saveDailyHealthSummaries(remote.dailyHealthSummaries);
   }
 
   useEffect(() => {

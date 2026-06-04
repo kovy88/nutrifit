@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTrenr } from '../context/TrenrContext';
@@ -13,53 +12,24 @@ import { PlanScreen } from '../screens/PlanScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { TrainingScreen } from '../screens/TrainingScreen';
+import { createBottomNavigationOptions } from '../components/premium/BottomNavigation';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// 5 záložek: Dnes (Today) · Jídelníček (Plan) · Uloženo (Progress) · Coach · Profil.
-// Foto a Trénink jsou pushed stack screens (ne top-level taby) — dostupné přes
-// akce na Today / Plan. Route names zůstávají v češtině kvůli stabilitě
-// stávajících navigation.navigate() volání; viditelné labely jdou přes i18n.
+// 5 záložek: Dnes (Today) · Jídelníček (Plan) · Coach · Uloženo (Progress) · Profil.
+// Foto a Trénink jsou pushed stack screens dostupné přes akce na Today / Plan.
+// Route names zůstávají v češtině kvůli stabilitě stávajících navigate() volání;
+// viditelné labely jdou přes i18n.
 function MainTabs() {
   const { t } = useLanguage();
   const { colors: themeColors } = useTheme();
-  const tabLabels: Record<string, string> = {
-    Dnes: t('tab.home'),
-    Coach: t('tab.coach'),
-    Uloženo: t('tab.history'),
-    Profil: t('tab.profile'),
-  };
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarLabel: tabLabels[route.name] ?? route.name,
-        tabBarActiveTintColor: themeColors.accent,
-        tabBarInactiveTintColor: themeColors.faint,
-        tabBarLabelStyle: { fontFamily: 'HankenGrotesk_700Bold', fontSize: 11, letterSpacing: 0.2 },
-        tabBarStyle: {
-          borderTopColor: themeColors.border,
-          backgroundColor: themeColors.card,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 8,
-        },
-        tabBarIcon: ({ color, size }) => {
-          // Coach is the hero surface — filled, accent-tinted, slightly larger even when inactive.
-          if (route.name === 'Coach') {
-            return <Ionicons name="sparkles" size={size + 2} color={themeColors.accent} />;
-          }
-          const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-            Dnes: 'today-outline',
-            Uloženo: 'stats-chart-outline',
-            Profil: 'person-circle-outline',
-          };
-          return <Ionicons name={icons[route.name] || 'ellipse-outline'} size={size} color={color} />;
-        },
-      })}
+      screenOptions={createBottomNavigationOptions(themeColors, t)}
     >
       <Tab.Screen name="Dnes" component={TodayScreen} />
+      <Tab.Screen name="Jídelníček" component={PlanScreen} />
       <Tab.Screen name="Coach" component={CoachScreen} />
       <Tab.Screen name="Uloženo" component={HistoryScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />
@@ -69,7 +39,6 @@ function MainTabs() {
 
 export function RootNavigator() {
   const { profile } = useTrenr();
-  const { t } = useLanguage();
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -77,20 +46,13 @@ export function RootNavigator() {
         <>
           <Stack.Screen name="Main" component={MainTabs} />
           {/* Pushed screens reached from Today/Plan actions. No header (own H1);
-              back via swipe / hardware back, or their own navigation actions. */}
+          back via swipe / hardware back, or their own navigation actions. */}
           <Stack.Screen name="Trénink" component={TrainingScreen} />
           <Stack.Screen name="Foto" component={PhotoScreen} />
-          {/* Meal plan is no longer a bottom tab — reached on-demand from Today/Coach.
-              Same route name ('Jídelníček') so existing navigate() calls keep working. */}
-          <Stack.Screen
-            name="Jídelníček"
-            component={PlanScreen}
-            options={{ headerShown: true, title: '', presentation: 'card' }}
-          />
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ headerShown: true, title: t('settings.title'), presentation: 'card' }}
+            options={{ headerShown: false, presentation: 'card' }}
           />
         </>
       ) : (

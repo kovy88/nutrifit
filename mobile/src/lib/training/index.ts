@@ -19,7 +19,7 @@ export type PlanContext = {
   hrvBaseline?: number;
 };
 
-type PlannerProfile = Pick<UserProfile, 'trainingGoal' | 'programStartISO' | 'currentWeeklyKm'>;
+type PlannerProfile = Partial<UserProfile> & Pick<UserProfile, 'trainingGoal'>;
 
 function toDateKey(d: Date): string {
   const year = d.getFullYear();
@@ -37,7 +37,7 @@ export function mondayOf(date: Date): string {
   return toDateKey(d);
 }
 
-/** weekIndex = počet celých týdnů od programStartISO do daného pondělí (>= 0). */
+/** weekIndex = počet celých tývnů od programStartISO do daného pondělí (>= 0). */
 export function weekIndexFor(programStartISO: string | undefined, weekStartISO: string): number {
   if (!programStartISO) return 0;
   const startMonday = mondayOf(new Date(`${programStartISO}T12:00:00`));
@@ -52,7 +52,19 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
   const weekStartISO = mondayOf(date);
   const goal: TrainingGoal = {
     kind: profile.trainingGoal,
-    ...(profile.currentWeeklyKm && profile.currentWeeklyKm > 0 ? { currentWeeklyKm: profile.currentWeeklyKm } : {}),
+    currentWeeklyKm: profile.currentWeeklyKm,
+    longestRecentRunKm: profile.longestRecentRunKm,
+    runsPerWeek: profile.runsPerWeek,
+    experience: profile.experience,
+    raceDateISO: profile.raceDateISO,
+    targetTimeSeconds: profile.targetTimeSeconds,
+    availableTrainingDays: profile.availableTrainingDays,
+    preferredRestDays: profile.preferredRestDays,
+    injuryFlag: profile.injuryFlag,
+    runWalkPreferred: profile.runWalkPreferred,
+    desiredWeightChangeKg: profile.goalProfile?.desiredWeightChangeKg,
+    timelineWeeks: profile.goalProfile?.timelineWeeks,
+    primaryGoal: profile.primaryGoal,
   };
   return generateTrainingPlan({
     goal,

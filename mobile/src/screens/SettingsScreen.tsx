@@ -14,6 +14,7 @@ import {
   StatusPill,
 } from '../components/UI';
 import { Screen } from '../components/Screen';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { deleteAccount, exportAccountData } from '../services/api';
@@ -53,6 +54,7 @@ const OAUTH_SOURCES: OAuthSourceMeta[] = [
 
 export function SettingsScreen() {
   const { colors, fonts } = useTheme();
+  const navigation = useNavigation<any>();
   const { locale, setLocale, t } = useLanguage();
   const { connectedOAuth, native, isLoading, disconnect, refresh: refreshSources } = useHealthSources();
   const briefing = useMorningBriefingSchedule();
@@ -62,7 +64,7 @@ export function SettingsScreen() {
   const whoop = useWhoopConnect();
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
-  const { user, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
+  const { user, profile, setProfile, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
   const [tab, setTab] = useState<SettingsTab>('coach');
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -113,6 +115,12 @@ export function SettingsScreen() {
       native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
       native.platform === 'ios' ? t('settings.iosInstrMsg') : t('settings.androidInstrMsg'),
     );
+  }
+
+  async function handleSelectMode(mode: 'auto' | 'mock' | 'manual') {
+    if (profile) {
+      await setProfile({ ...profile, healthProviderMode: mode });
+    }
   }
 
   async function handleExport() {
@@ -183,7 +191,7 @@ export function SettingsScreen() {
 
   return (
     <Screen contentContainerStyle={styles.screen}>
-      <ScreenHeader eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
       <SegmentedControl
         value={tab}
         options={[
@@ -288,6 +296,29 @@ export function SettingsScreen() {
 
       {tab === 'data' && (
         <>
+          <Card>
+            <SectionHeader title={t('settings.healthSourceTitle')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular, marginBottom: 12 }]}>
+              {t('settings.healthSourceDesc')}
+            </Text>
+            <View style={styles.wrap}>
+              {(['manual', 'mock', 'auto'] as const).map(mode => {
+                const label = mode === 'manual' ? t('settings.healthModeManual') 
+                            : mode === 'mock' ? t('settings.healthModeMock') 
+                            : t('settings.healthModeAuto');
+                const isSelected = (profile?.healthProviderMode || 'auto') === mode;
+                return (
+                  <Pill key={mode} active={isSelected} onPress={() => handleSelectMode(mode)}>
+                    {label}
+                  </Pill>
+                );
+              })}
+            </View>
+            <Text style={[styles.note, { color: colors.faint, marginTop: 10 }]}>
+              {t('settings.healthSourceExplain')}
+            </Text>
+          </Card>
+
           <SourceStatusCard
             title={native.platform === 'ios' ? t('settings.nativeIos') : native.platform === 'android' ? t('settings.nativeAndroid') : t('settings.nativeGeneric')}
             body={native.platform === 'unsupported'

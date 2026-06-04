@@ -7,7 +7,15 @@ import {
   generateTrainingPlan,
   TRAINING_RULES,
 } from '../lib/training/plan';
-import { planSessionForDate, mondayOf, weekIndexFor } from '../lib/training';
+import {
+  planSessionForDate,
+  mondayOf,
+  weekIndexFor,
+  validateRaceGoalFeasibility,
+  adjustTrainingForRecovery,
+  adjustTrainingAfterMissedSession,
+  validateTrainingPlanSafety,
+} from '../lib/training';
 import type { SleepSummary } from '../types/health';
 
 const sleep = (totalMinutes: number, i = 1): SleepSummary => ({
@@ -171,5 +179,142 @@ describe('planSessionForDate adapter', () => {
     const s = planSessionForDate({ trainingGoal: 'run_10k' }, new Date('2026-01-07T12:00:00'));
     expect(s.date).toBe('2026-01-07');
     expect(typeof s.kind).toBe('string');
+  });
+});
+
+describe('Running Goals & Support Core Checks', () => {
+  it('5K plan generation: generates safe sessions with strength and rest', () => {
+    const plan = generateTrainingPlan({
+      goal: { kind: 'run_5k', experience: 'beginner', runsPerWeek: 3 },
+      weekStartISO: '2026-01-05',
+    });
+    expect(plan.sessions.length).toBe(7);
+    expect(plan.sessions.some(s => s.kind === 'strength')).toBe(true);
+    expect(plan.sessions.some(s => s.kind === 'rest')).toBe(true);
+    expect(plan.sessions.some(s => s.kind === 'long_run')).toBe(true);
+  });
+
+  it('10K plan generation: calculates safe volume progression and weekly distribution', () => {
+    const planW0 = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 20, experience: 'intermediate', runsPerWeek: 4 },
+      weekStartISO: '2026-01-05',
+      weekIndex: 0,
+    });
+    const planW1 = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 20, experience: 'intermediate', runsPerWeek: 4 },
+      weekStartISO: '2026-01-12',
+      weekIndex: 1,
+    });
+    // Checks that volume progresses and doesn't exceed 10% jump
+    expect(planW1.totalKm).toBeLessThanOrEqual(planW0.totalKm * 1.1 + 0.1);
+  });
+
+  it('half marathon feasibility: realistic timeline vs unrealistic', () => {
+    // 16 weeks target: realistic
+    const res1 = validateRaceGoalFeasibility({
+      trainingGoal: 'half_marathon',
+      profile: {
+        experience: 'intermediate',
+        currentWeeklyKm: 30,
+        longestRecentRunKm: 15,
+        runsPerWeek: 4,
+        raceDateISO: '2026-05-01', // ~17 weeks from local time
+        injuryFlag: false,
+      },
+      todayISO: '2026-01-01',
+    });
+    expect(res1.verdict).toBe('feasible');
+
+    // 4 weeks target: unrealistic
+    const res2 = validateRaceGoalFeasibility({
+      trainingGoal: 'half_marathon',
+      profile: {
+        experience: 'beginner',
+        currentWeeklyKm: 5,
+        longestRecentRunKm: 3,
+        runsPerWeek: 2,
+        raceDateISO: '2026-01-29', // 4 weeks
+        injuryFlag: false,
+      },
+      todayISO: '2026-01-01',
+    });
+    expect(res2.verdict).toBe('unrealistic');
+  });
+
+  it('marathon feasibility: beginner marathon is blocked or warned', () => {
+    // Beginner with no running history → unrealistic/blocked
+    const res = validateRaceGoalFeasibility({
+      trainingGoal: 'marathon',
+      profile: {
+        experience: 'beginner',
+        currentWeeklyKm: 0,
+        longestRecentRunKm: 0,
+        runsPerWeek: 0,
+        raceDateISO: '2026-06-01',
+        injuryFlag: false,
+      },
+      todayISO: '2026-01-01',
+    });
+    expect(res.verdict).toBe('unrealistic');
+    expect(res.reasons.some(r => r.includes('historie') || r.includes('začátečník') || r.includes('experience') || r.includes('běžecký základ') || r.includes('Marathon') || r.includes('blocked'))).toBe(true);
+  });
+
+  it('weekly volume progression handles deload weeks', () => {
+    // Deload week (every 4th week is deload by ~30%)
+    const normalPlan = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 30 },
+      weekStartISO: '2026-01-05',
+      weekIndex: 2,
+    });
+    const deloadPlan = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 30 },
+      weekStartISO: '2026-01-12',
+      weekIndex: 3, // Week index 3 is deload (0-indexed 3 = 4th week)
+    });
+    expect(deloadPlan.totalKm).toBeLessThan(normalPlan.totalKm);
+  });
+
+  it('low readiness adjustment downscales volume and intensity', () => {
+    const plan = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 30 },
+      weekStartISO: '2026-01-05',
+    });
+    const adjusted = adjustTrainingForRecovery(plan, 'red');
+    
+    // Low readiness reduces volume and removes hard runs
+    expect(adjusted.totalKm).toBeLessThan(plan.totalKm);
+    expect(adjusted.sessions.filter(s => s.intensity === 'hard').length).toBe(0);
+  });
+
+  it('missed workout adjustment reschedules or scales back next sessions', () => {
+    const plan = generateTrainingPlan({
+      goal: { kind: 'run_10k', currentWeeklyKm: 30 },
+      weekStartISO: '2026-01-05',
+    });
+    // Set date for sessions
+    plan.sessions.forEach((s, i) => {
+      s.date = `2026-01-0${i + 5}`;
+    });
+    
+    // Simulate missing the first session (2026-01-05)
+    const adjusted = adjustTrainingAfterMissedSession(plan, '2026-01-05');
+    // Missed session gets flagged or scales down subsequent volume to prevent stacking
+    const totalAdjustedKm = adjusted.sessions.reduce((sum, s) => sum + (s.distanceKm ?? 0), 0);
+    const totalOriginalKm = plan.sessions.reduce((sum, s) => sum + (s.distanceKm ?? 0), 0);
+    expect(totalAdjustedKm).toBeLessThan(totalOriginalKm);
+  });
+
+  it('safety validation flags marathon beginner and fat loss conflicts', () => {
+    const plan = generateTrainingPlan({
+      goal: { kind: 'marathon', experience: 'beginner', desiredWeightChangeKg: 8, timelineWeeks: 10 },
+      weekStartISO: '2026-01-05',
+    });
+    
+    const errors = validateTrainingPlanSafety(plan, 'beginner');
+    expect(errors.length).toBeGreaterThan(0);
+    // Beginner marathon is warned
+    expect(errors.some(e => e.includes('maraton') || e.includes('půlmaraton'))).toBe(true);
+    // Aggressive fat loss is warned
+    expect(errors.some(e => e.includes('hubnutí') || e.includes('Kombinace'))).toBe(true);
   });
 });

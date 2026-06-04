@@ -115,5 +115,6 @@ function makeFake(weights: BodyWeightSample[] | undefined, shouldThrow = false):
     getSleepSummary: async () => [],
     getRestingHeartRate: async () => null,
     getHrv: async () => null,
+    getRecoveryInputs: async () => [],
   };
 }

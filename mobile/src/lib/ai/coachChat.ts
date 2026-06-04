@@ -2,7 +2,7 @@
 //
 // Pure builder pro coach chat. Stejný pattern jako mealPrompts/weeklySummary:
 // vrací { systemPrompt, prompt, maxTokens }. Chat běží přes /api/generate
-// (JSON mode), takže odpověď je { reply, followups } validovaná coachReplySchema.
+// (JSON mode), takže odpověď je { reply, followups, actions } validovaná Zodem.
 //
 // KLÍČOVÉ: AI dostane DETERMINISTICKY spočítané dnešní doporučení jako kontext
 // a smí ho jen VYSVĚTLOVAT / přizpůsobovat kvalitativně. Nesmí vymýšlet kalorie,
@@ -37,10 +37,10 @@ export function buildCoachChatRequest(opts: {
   const systemPrompt = [
     'You are Trenr AI Coach — a calm, practical daily coach for nutrition, training and recovery.',
     `Reply in ${lang}.`,
-    'Return ONLY valid JSON: {"reply":"<answer>","followups":["<short suggested question>"]}. No markdown, no extra text.',
+    'Return ONLY valid JSON: {"reply":"<answer>","followups":["<short suggested question>"],"actions":[{"type":"swap_meal|adjust_today|mark_done|change_goal|explain|weekly_review","label":"<short label>","payload":{},"requiresConfirmation":true}]}. No markdown, no extra text.',
     'Ground every answer in the DAILY PLAN CONTEXT below. NEVER invent calories, macros, readiness numbers or training volume — those are already computed deterministically; you only explain, adjust qualitatively, motivate, and answer.',
     'Not a medical device: no diagnosis, no medical claims, no extreme calorie deficits or aggressive training jumps. If asked for those, decline gently and offer a safe alternative.',
-    'Keep "reply" short (2–4 sentences). Provide 0–3 short "followups".',
+    'Keep "reply" short (2–4 sentences). Provide 0–3 short "followups" and 0–2 actions. Only propose actions grounded in the DAILY PLAN CONTEXT.',
   ].join('\n');
 
   const rec = context.recommendation;

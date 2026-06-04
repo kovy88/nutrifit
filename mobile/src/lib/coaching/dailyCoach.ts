@@ -28,9 +28,11 @@ function L(locale: Locale, cs: string, en: string): string {
 const INTENSITY_ORDER: RecommendedIntensity[] = ['rest', 'easy', 'moderate', 'hard'];
 const rankIntensity = (i: RecommendedIntensity): number => INTENSITY_ORDER.indexOf(i);
 
+import type { WeeklyCheckIn } from '../../types/checkin';
+
 export type DailyCoachInput = {
   date: string;
-  profile: Pick<UserProfile, 'primaryGoal' | 'experience' | 'coachScope'>;
+  profile: Pick<UserProfile, 'primaryGoal' | 'experience' | 'coachScope'> & Partial<UserProfile>;
   /** Dnešní naplánovaná jednotka (z planneru) nebo null = rest. */
   session: TrainingSession | null;
   recovery: RecoveryInputs;
@@ -40,6 +42,8 @@ export type DailyCoachInput = {
   todayMacros: Macros;
   trainingLoad?: TrainingLoadAssessment | null;
   locale?: Locale;
+  recentCheckIns?: WeeklyCheckIn[];
+  planAdherencePct?: number;
 };
 
 export type TodayClassification = {
@@ -132,10 +136,52 @@ export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyC
     coachNote: briefing.recommendation,
     warnings: [],
     suggestedActions: buildActions(adjustedSession, hasTraining, hasNutrition),
+
+    // ── NEW STRUCTURED FIELDS ────────────────────────────────────────────────
+    readinessScore: readiness.score,
+    readinessLabel: readiness.band,
+    todayFocus: classification.focus,
+    trainingRecommendation: hasTraining ? {
+      type: adjustedSession ? adjustedSession.kind : 'rest',
+      title: adjustedSession ? adjustedSession.title : L(loc, 'Volno', 'Rest'),
+      durationMinutes: adjustedSession ? adjustedSession.durationMinutes : 0,
+      intensity: adjustedSession ? `RPE ${adjustedSession.intensity}` : 'rest',
+    } : null,
+    nutritionRecommendation: hasNutrition ? {
+      calories: input.todayMacros.kcal,
+      protein: input.todayMacros.protein,
+      carbs: input.todayMacros.carbs,
+      fat: input.todayMacros.fat,
+      reason: nutritionReason(deltaVsBaselineKcal, adjustedSession, loc),
+    } : null,
+    coachMessage: briefing.recommendation, // initial deterministic message
+    quickActions: buildQuickActionLabels(adjustedSession, hasTraining, hasNutrition, loc),
   };
 
   return validateCoachRecommendationSafety(rec, input, loc);
 }
+
+function buildQuickActionLabels(
+  session: TrainingSession | null,
+  hasTraining: boolean,
+  hasNutrition: boolean,
+  locale: Locale
+): string[] {
+  const actions: string[] = [];
+  if (locale === 'en') {
+    actions.push('Ask coach');
+    if (hasNutrition) actions.push('Swap meal');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('Mark workout done');
+    actions.push('Check in');
+  } else {
+    actions.push('Zeptej se kouče');
+    if (hasNutrition) actions.push('Vyměnit jídlo');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('Splněno');
+    actions.push('Zapsat den');
+  }
+  return actions;
+}
+
 
 function buildWhatNotToDo(
   ceiling: RecommendedIntensity,

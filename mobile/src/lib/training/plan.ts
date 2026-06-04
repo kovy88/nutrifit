@@ -16,26 +16,29 @@
 import type { SessionKind, TrainingGoalKind, TrainingSession } from '../../types';
 import type { SleepSummary, WorkoutSummary } from '../../types/health';
 
-export type TrainingGoal = {
-  kind: TrainingGoalKind;
-  /** Aktuální týdenní běžecký objem (km), pokud ho uživatel zná. */
-  currentWeeklyKm?: number;
-  /** Triatlon: aktuální týdenní objem plavání (km). */
-  currentWeeklySwimKm?: number;
-  /** Triatlon: aktuální týdenní objem cyklistiky (km). */
-  currentWeeklyBikeKm?: number;
-};
+import {
+  type TrainingGoal,
+  type TrainingPlan,
+  estimateFitnessLevel,
+  validateRaceGoalFeasibility,
+  calculateSafeWeeklyVolume,
+  generateRunningWeek,
+  generateTrainingPlan as coreGenerateTrainingPlan,
+  validateTrainingPlanSafety,
+  adjustTrainingForRecovery,
+  adjustTrainingAfterMissedSession,
+} from './training-core';
 
-export type TrainingPlan = {
-  goalKind: TrainingGoalKind;
-  weekStartISO: string;
-  weekIndex: number;
-  sessions: TrainingSession[];
-  /** Pouze běžecké km. Swim a bike jsou oddělené. */
-  totalKm: number;
-  totalSwimKm?: number;
-  totalBikeKm?: number;
-  warnings: string[];
+export {
+  TrainingGoal,
+  TrainingPlan,
+  estimateFitnessLevel,
+  calculateSafeWeeklyVolume,
+  generateRunningWeek,
+  coreGenerateTrainingPlan,
+  validateTrainingPlanSafety,
+  adjustTrainingForRecovery,
+  adjustTrainingAfterMissedSession,
 };
 
 export type GenerateTrainingPlanInput = {
@@ -118,6 +121,9 @@ function avgMinutes(sleep: SleepSummary[]): number {
 /** Hlavní generátor. Vrací plán na týden. */
 export function generateTrainingPlan(input: GenerateTrainingPlanInput): TrainingPlan {
   const { goal, weekStartISO, weekIndex = 0, recentWorkouts = [], recentSleep = [], hrvLatest, hrvBaseline } = input;
+  if (['run_5k', 'run_10k', 'half_marathon', 'marathon', 'basic_strength', 'sport_conditioning'].includes(goal.kind)) {
+    return coreGenerateTrainingPlan(input);
+  }
   const readiness = readinessSignal(recentSleep, hrvLatest, hrvBaseline);
   const warnings: string[] = [];
   if (readiness === 'red') warnings.push('Únava nebo špatný spánek — kvalitní session vyměněna za snadný běh.');

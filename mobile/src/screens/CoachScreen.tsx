@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, EmptyState, Field, Label, ScreenHeader, SectionHeader } from '../components/UI';
+import { Button, Card, EmptyState, Field, Label, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,11 +26,11 @@ const COACH_FREE_LIMIT = 3;
 export function CoachScreen() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
-  const { profile, selectedDate, ensureAiConsent, isSubscribed } = useTrenr();
+  const { profile, selectedDate, currentSession, currentMacros, ensureAiConsent, isSubscribed } = useTrenr();
   const navigation = useNavigation<any>();
   const showNutrition = profile ? scopeHasNutrition(resolveCoachScope(profile)) : false;
   const [freeUsed, setFreeUsed] = useState(0);
-  useEffect(() => { void loadCoachTeaserUsed().then(setFreeUsed); }, []);
+  useEffect(() => { loadCoachTeaserUsed().then(setFreeUsed).catch(() => {}); }, []);
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
   const threadMemory = useMemo(() => ({
     goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
@@ -76,7 +76,7 @@ export function CoachScreen() {
       await persist([
         ...prior,
         userMsg,
-        { id: uid(), role: 'coach', text: res.reply, createdAt: new Date().toISOString() },
+        { id: uid(), role: 'coach', text: res.reply, proposedActions: res.actions, createdAt: new Date().toISOString() },
       ], threadMemory);
       setFollowups(res.followups || []);
       if (!isSubscribed) {
@@ -100,6 +100,19 @@ export function CoachScreen() {
       }
     >
       <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
+
+      <Card>
+        <SectionHeader title={t('coach.todayContext')} />
+        <View style={styles.contextGrid}>
+          <MetricCard compact label={t('home.readiness')} value={recommendation ? recommendation.readiness.score : '-'} color={readinessColor(recommendation?.readiness.band, colors)} />
+          <MetricCard compact label={t('today.trainingTitle')} value={currentSession?.kind === 'rest' ? t('home.restDay') : currentSession?.durationMinutes ? `${currentSession.durationMinutes}` : '-'} unit={currentSession?.kind !== 'rest' && currentSession?.durationMinutes ? 'min' : undefined} color={colors.orange} />
+          <MetricCard compact label={t('today.nutritionTitle')} value={currentMacros?.kcal ?? '-'} color={colors.accent} />
+          <MetricCard compact label={t('today.focus')} value={recommendation?.readiness.recommendedIntensity ?? '-'} color={colors.blue} />
+        </View>
+        <Text style={[styles.contextNote, { color: colors.muted }]}>
+          {recommendation?.coachNote ?? t('coach.todayContextEmpty')}
+        </Text>
+      </Card>
 
       <Card>
         <SectionHeader title={t('coach.suggestedTitle')} />
@@ -175,7 +188,16 @@ function StructuredCoachText({ text }: { text: string }) {
   );
 }
 
+function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: ReturnType<typeof useTheme>['colors']): string {
+  if (band === 'high') return colors.accent;
+  if (band === 'medium') return colors.orange;
+  if (band === 'low') return colors.red;
+  return colors.muted;
+}
+
 const styles = StyleSheet.create({
+  contextGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  contextNote: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   promptChip: { minHeight: 42, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
   promptText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },

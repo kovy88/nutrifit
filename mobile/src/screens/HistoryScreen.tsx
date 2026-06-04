@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
+import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
 import { formatDateLabel } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { MiniTrendChart } from '../components/MiniTrendChart';
+import { SimpleLineChart } from '../components/premium/SimpleLineChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -90,6 +90,11 @@ export function HistoryScreen() {
   return (
     <Screen>
       <ScreenHeader eyebrow={t('tab.history')} title={t('history.title')} subtitle={t('history.cleanSubtitle')} />
+      <CoachInsightCard
+        title={t('history.coachSnapshot')}
+        body={describeAdherence(adherence.averageRatio, locale)}
+        accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
+      />
       <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
         {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
           <Pressable
@@ -136,11 +141,11 @@ export function HistoryScreen() {
         <>
           <Card>
             <SectionHeader title={t('history.weight30')} />
-            <MiniTrendChart data={weightTrend} unit="kg" color={colors.green} />
+            <SimpleLineChart data={weightTrend} unit="kg" color={colors.green} />
           </Card>
           <Card>
             <SectionHeader title={t('history.sleep14')} />
-            <MiniTrendChart
+            <SimpleLineChart
               data={sleepTrend.data}
               color={colors.blue}
               format={v => `${Math.floor(v / 60)}h ${Math.round(v % 60)}m`}
@@ -148,12 +153,12 @@ export function HistoryScreen() {
           </Card>
           <Card>
             <SectionHeader title={t('history.strain14')} />
-            <MiniTrendChart data={strainTrend.data} color={colors.orange} format={v => `${v.toFixed(1)} / 21`} />
+            <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => `${v.toFixed(1)} / 21`} />
             <Text style={[styles.meta, { color: colors.faint }]}>{t('history.strainMeta')}</Text>
           </Card>
           <Card>
             <SectionHeader title={t('history.adherence14')} />
-            <MiniTrendChart data={adherencePoints} unit="%" color={colors.accent} format={v => t('history.adherenceUnit', { n: Math.round(v) })} />
+            <SimpleLineChart data={adherencePoints} unit="%" color={colors.accent} format={v => t('history.adherenceUnit', { n: Math.round(v) })} />
           </Card>
         </>
       ) : null}

@@ -31,6 +31,7 @@ import type {
   SleepSummary,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 
 export class HealthConnectProvider implements HealthDataProvider {
   readonly name = 'health_connect' as const;
@@ -94,5 +95,10 @@ export class HealthConnectProvider implements HealthDataProvider {
     // TODO(android): readRecords('HeartRateVariabilityRmssd', …)
     // Pozor: Health Connect dává RMSSD, ne SDNN — mapovat metric: 'rmssd'.
     return null;
+  }
+
+  async getRecoveryInputs(_start: Date, _end: Date): Promise<RecoveryInputs[]> {
+    // TODO(android): readRecords('SleepSession' / 'RestingHeartRate' / 'HeartRateVariabilityRmssd' …)
+    return [];
   }
 }

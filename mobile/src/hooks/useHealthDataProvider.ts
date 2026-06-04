@@ -15,11 +15,12 @@ import { createHealthDataProvider, type HealthDataProvider } from '../lib/health
 export function useHealthDataProvider(): HealthDataProvider {
   const { profile } = useTrenr();
   const weightKg = profile?.weight ?? 75;
+  const mode = profile?.healthProviderMode ?? 'auto';
 
   return useMemo(
-    () => createHealthDataProvider({ mode: 'auto', weightKg }),
+    () => createHealthDataProvider({ mode, weightKg }),
     // Note: providers are stateless w.r.t. weight beyond the mock seed —
-    // only re-create on substantial weight change (>2 kg) to avoid churn.
-    [Math.round(weightKg / 2)],
+    // only re-create on substantial weight change (>2 kg) or mode change to avoid churn.
+    [mode, Math.round(weightKg / 2)],
   );
 }

@@ -1,5 +1,10 @@
 # Trenr — architecture
 
+> Current canonical architecture lives in [`docs/architecture.md`](docs/architecture.md)
+> and the target domain model lives in [`docs/domain-model.md`](docs/domain-model.md).
+> This historical note is kept for context while the mobile app remains the
+> product and root web remains landing/legacy.
+
 Tento dokument popisuje cílovou architekturu po refaktoringu na adaptivní
 nutriční + tréninkový plánovač. Záměrně inkrementálně — současné UI a
 Vercel/Supabase backend zůstávají v provozu, nová vrstva přibyla vedle.

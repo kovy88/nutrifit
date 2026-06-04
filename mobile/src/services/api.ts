@@ -4,10 +4,11 @@ import { buildAllergenRepairRequest, buildMealPlanRequest, buildSingleMealReques
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
 import { parseAllergensFromFreeText, validateMealsAgainstAllergens } from '../lib/nutrition/allergens';
 import { buildWeeklySummaryRequest, parseWeeklySummary, type WeeklySummary, type WeeklySummaryInput } from '../lib/ai/weeklySummary';
-import { parseMealPlanResponse, parseWeeklySummarySafe, parseCoachReply } from '../lib/ai/schemas';
+import { parseMealPlanResponse, parseWeeklySummarySafe, parseStructuredCoachReply } from '../lib/ai/schemas';
 import { buildCoachChatRequest, type CoachChatContext } from '../lib/ai/coachChat';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
 import type { CoachMessage } from '../types/coach';
+import type { CoachProposedAction } from '../types/coach';
 import type { Locale } from '../lib/i18n';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';
@@ -269,12 +270,12 @@ export async function askCoach(opts: {
   history: CoachMessage[];
   question: string;
   locale: Locale;
-}): Promise<{ reply: string; followups: string[] }> {
+}): Promise<{ reply: string; followups: string[]; actions: CoachProposedAction[] }> {
   const request = buildCoachChatRequest(opts);
   try {
     const data = await postJsonWithRetry<any>('/api/generate', request);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsed = text ? parseCoachReply(parseJson(text)) : null;
+    const parsed = text ? parseStructuredCoachReply(parseJson(text)) : null;
     if (parsed) return parsed;
   } catch {
     // fall through to deterministic fallback
@@ -282,7 +283,14 @@ export async function askCoach(opts: {
   const fallback = opts.locale === 'en'
     ? "I couldn't reach the coach right now. Stick to today's plan: keep the recommended intensity and hit your protein target."
     : 'Kouče se teď nepodařilo spojit. Drž dnešní plán: dodrž doporučenou intenzitu a trefa cíl bílkovin.';
-  return { reply: fallback, followups: [] };
+  return { reply: fallback, followups: [], actions: [] };
+}
+
+export async function callAiCoachProxy(request: { systemPrompt: string; prompt: string; maxTokens: number }): Promise<string> {
+  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('AI nevrátila žádný text.');
+  return text;
 }
 
 function parseJson(text: string) {
@@ -290,3 +298,4 @@ function parseJson(text: string) {
   const cleaned = String(text).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
   return JSON.parse(cleaned);
 }
+

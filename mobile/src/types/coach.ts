@@ -32,6 +32,7 @@ export type ReadinessScore = {
 /** Vstupy pro readiness/recovery výpočet. Skládá je lib/coaching/recoveryInputs.ts
  *  z health providera + posledního check-inu + debtTrackeru. Žádná raw HR série. */
 export type RecoveryInputs = {
+  date?: string;
   todaySleepMinutes?: number | null;
   todayRhrBpm?: number | null;
   todayHrvMs?: number | null;
@@ -52,8 +53,22 @@ export type RecoveryInputs = {
   subjectiveSoreness?: SubjectiveLevel | null;
 };
 
-/** Akce, které kouč nabízí jako quick-action na Today obrazovce. */
-export type CoachAction = 'swap_meal' | 'adjust_today' | 'mark_done' | 'ask_coach';
+/** Akce, které kouč nabízí jako quick-action nebo AI navrhne strukturovaně. */
+export type CoachAction =
+  | 'swap_meal'
+  | 'adjust_today'
+  | 'mark_done'
+  | 'ask_coach'
+  | 'change_goal'
+  | 'explain'
+  | 'weekly_review';
+
+export type CoachProposedAction = {
+  type: CoachAction;
+  label: string;
+  payload?: Record<string, unknown>;
+  requiresConfirmation: boolean;
+};
 
 /** HLAVNÍ VÝSTUP APPKY: "co dnes dělat". Deterministicky složené, AI to jen
  *  vysvětluje. Persistuje se per den (history + explainer). */
@@ -86,7 +101,28 @@ export type DailyCoachRecommendation = {
   coachNote: string;
   warnings: string[];
   suggestedActions: CoachAction[];
+
+  // ── NEW FIELDS ─────────────────────────────────────────────────────────────
+  readinessScore?: number;
+  readinessLabel?: 'low' | 'medium' | 'high';
+  todayFocus?: string;
+  trainingRecommendation?: {
+    type: string;
+    title: string;
+    durationMinutes: number;
+    intensity: string;
+  } | null;
+  nutritionRecommendation?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    reason: string;
+  } | null;
+  coachMessage?: string;
+  quickActions?: string[];
 };
+
 
 /** Role zprávy v coach chatu. */
 export type CoachRole = 'user' | 'coach';
@@ -97,6 +133,7 @@ export type CoachMessage = {
   role: CoachRole;
   text: string;
   createdAt: string;
+  proposedActions?: CoachProposedAction[];
 };
 
 /** Malá, odvozená paměť pro coach chat. ŽÁDNÁ raw health data — jen pár faktů,

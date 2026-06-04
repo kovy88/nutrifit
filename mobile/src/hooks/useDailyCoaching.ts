@@ -91,25 +91,12 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
       });
       const strain = computeDailyStrain({ plannedSession: todaySession, todaysWorkouts, locale });
 
-      // Sleep + recovery debt — 14-day cumulative trackers.
-      // Fetch 14 days of sleeps in one shot; per-day readiness needs HRV+RHR
-      // per day which is N+1 — share workload by reusing baselines computation
-      // (already queried last 14 days, but separately). Pro tuhle iteraci
-      // fetch raw 14-day sleep + per-day readiness re-eval.
+      // Sleep + recovery debt — 14-day trackers compiled efficiently in a single batch query.
       const debtStart = new Date(date);
       debtStart.setDate(debtStart.getDate() - 13);
-      const [sleepRange, hrvSamples, rhrSamples] = await Promise.all([
+      const [sleepRange, recoveryRange] = await Promise.all([
         provider.getSleepSummary(debtStart, date).catch(() => []),
-        Promise.all(Array.from({ length: 14 }, (_, i) => {
-          const d = new Date(debtStart);
-          d.setDate(d.getDate() + i);
-          return provider.getHrv(d).catch(() => null);
-        })),
-        Promise.all(Array.from({ length: 14 }, (_, i) => {
-          const d = new Date(debtStart);
-          d.setDate(d.getDate() + i);
-          return provider.getRestingHeartRate(d).catch(() => null);
-        })),
+        provider.getRecoveryInputs(debtStart, date).catch(() => []),
       ]);
       if (cancelled) return;
 
@@ -121,10 +108,12 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
         d.setDate(d.getDate() + i);
         const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const daySleep = sleepRange.find(s => s.date === dateKey);
+        const dayRecovery = recoveryRange.find(r => r.date === dateKey);
+
         const r = evaluateReadiness({
           todaySleepMinutes: daySleep?.totalMinutes ?? null,
-          todayHrvMs: hrvSamples[i]?.ms ?? null,
-          todayRhrBpm: rhrSamples[i]?.bpm ?? null,
+          todayHrvMs: dayRecovery?.todayHrvMs ?? null,
+          todayRhrBpm: dayRecovery?.todayRhrBpm ?? null,
           baseline: {
             rhrMeanBpm: baselines.rhrMeanBpm,
             hrvMeanMs: baselines.hrvMeanMs,

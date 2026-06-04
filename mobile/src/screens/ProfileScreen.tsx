@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
 import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, TrainingGoalKind } from '../types';
-import { resolveCoachScope } from '../types';
+import { resolveCoachScope, scopeHasTraining } from '../types';
 import type { PlanAdjustment } from '../types/checkin';
 import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
@@ -14,8 +14,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { planSessionForDate } from '../lib/training';
 import { useSyncStatus } from '../hooks/useSyncStatus';
-import { USER_PRIMARY_GOALS } from '../constants/goals';
+import { USER_PRIMARY_GOALS, isRunRaceGoal } from '../constants/goals';
 import type { TranslationKey } from '../lib/i18n';
+import { profileSetupCompleteness, type SetupMissingItem } from '../lib/onboarding/validation';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
@@ -28,6 +29,8 @@ export function ProfileScreen() {
   const [showCheckIn, setShowCheckIn] = useState(false);
 
   if (!profile) return null;
+  const scope = resolveCoachScope(profile);
+  const setup = profileSetupCompleteness(profile);
 
   async function login() {
     try {
@@ -80,11 +83,42 @@ export function ProfileScreen() {
       <ScreenHeader eyebrow={t('tab.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} />
 
       <Card>
+        <SectionHeader title={t('profile.coachOverview')} />
+        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.coachOverviewBody')}</Text>
+        <View style={styles.summaryGrid}>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.focus')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(('scope.' + scope) as 'scope.both')}</Text>
+          </View>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.mainGoal')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(`goal.${profile.primaryGoal}` as TranslationKey)}</Text>
+          </View>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.sessionsPerWeek')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.accent }]}>{profile.sessionsPerWeek}×</Text>
+          </View>
+        </View>
+      </Card>
+
+      {!setup.complete ? (
+        <Card>
+          <SectionHeader title={t('setup.profileTitle')} />
+          <Text style={[styles.copy, { color: colors.muted }]}>{t('setup.profileBody', { count: setup.missing.length })}</Text>
+          <View style={styles.setupList}>
+            {setup.missing.slice(0, 3).map(item => (
+              <Text key={item} style={[styles.setupItem, { color: colors.ink }]}>• {t(setupMissingLabelKey(item))}</Text>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      <Card>
         <SectionHeader title={t('profile.coachSetup')} />
         <Label>{t('profile.focus')}</Label>
         <View style={styles.rowWrap}>
           {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
-            <Pill key={s} active={resolveCoachScope(profile) === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
+            <Pill key={s} active={scope === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
               {t(('scope.' + s) as 'scope.both')}
             </Pill>
           ))}
@@ -117,6 +151,43 @@ export function ProfileScreen() {
             <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>{count}×</Pill>
           ))}
         </View>
+        {scopeHasTraining(scope) ? (
+          <>
+            <Label>{t('profile.restDays')}</Label>
+            <View style={styles.rowWrap}>
+              {WEEKDAY_REST.map(day => (
+                <Pill
+                  key={day.value}
+                  active={(profile.preferredRestDays ?? []).includes(day.value)}
+                  onPress={() => setProfile({ ...profile, preferredRestDays: toggleRestDay(profile.preferredRestDays, day.value) })}
+                >
+                  {t(day.labelKey)}
+                </Pill>
+              ))}
+            </View>
+          </>
+        ) : null}
+        {isRunRaceGoal(profile.trainingGoal) ? (
+          <>
+            <Label>{t('onb.targetTimeOptional')}</Label>
+            <Field
+              keyboardType="number-pad"
+              value={profile.targetTimeSeconds ? String(Math.round(profile.targetTimeSeconds / 60)) : ''}
+              onChangeText={value => {
+                const minutes = parseOptionalInt(value, 24 * 60);
+                setProfile({ ...profile, targetTimeSeconds: minutes ? minutes * 60 : undefined });
+              }}
+              placeholder={t('onb.targetTimePlaceholder')}
+            />
+            <Label>{t('onb.currentPaceOptional')}</Label>
+            <Field
+              keyboardType="number-pad"
+              value={profile.currentPaceSecPerKm ? String(profile.currentPaceSecPerKm) : ''}
+              onChangeText={value => setProfile({ ...profile, currentPaceSecPerKm: parseOptionalInt(value, 900) })}
+              placeholder={t('onb.currentPacePlaceholder')}
+            />
+          </>
+        ) : null}
         <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
           {t('profile.weeklyCheckIn')}
         </Button>
@@ -467,9 +538,41 @@ const dietStyles: DietStyle[] = [
   'vysokoproteínový',
 ];
 
+const WEEKDAY_REST = [
+  { value: 1, labelKey: 'weekday.mon' as TranslationKey },
+  { value: 2, labelKey: 'weekday.tue' as TranslationKey },
+  { value: 3, labelKey: 'weekday.wed' as TranslationKey },
+  { value: 4, labelKey: 'weekday.thu' as TranslationKey },
+  { value: 5, labelKey: 'weekday.fri' as TranslationKey },
+  { value: 6, labelKey: 'weekday.sat' as TranslationKey },
+  { value: 0, labelKey: 'weekday.sun' as TranslationKey },
+];
+
+function toggleRestDay(current: number[] | undefined, day: number): number[] {
+  const set = new Set(current ?? []);
+  if (set.has(day)) set.delete(day);
+  else set.add(day);
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+function parseOptionalInt(value: string, max: number): number | undefined {
+  const parsed = Math.round(Number(value.replace(',', '.')));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, max) : undefined;
+}
+
+function setupMissingLabelKey(item: SetupMissingItem): TranslationKey {
+  return `setup.missing.${item}` as TranslationKey;
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  summaryTile: { flex: 1, minWidth: '30%', borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
+  summaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  summaryValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
+  setupList: { gap: 5, marginTop: 8 },
+  setupItem: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   user: { fontWeight: '900' },
   copy: { lineHeight: 20 },
   link: { fontWeight: '900' },

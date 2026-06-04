@@ -8,7 +8,7 @@
 // Z N posledních check-inů odvodíme `PlanAdjustment` — co změnit pro
 // příští týden. Logika v lib/coaching/weeklyAdjustment.ts.
 
-import type { NutritionGoalKind } from '../types';
+import type { NutritionGoalKind, TrainingSession } from '../types';
 
 export type SubjectiveLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -46,4 +46,35 @@ export type PlanAdjustment = {
   warnings: string[];
   /** Cílový NutritionGoalKind po případné automatické korekci (např. „přepneme z fat_loss na maintenance“). */
   adjustedGoalKind?: NutritionGoalKind;
+  /** Datum, od kterého se doporučení použije. Undefined = okamžitě / aktuální týden. */
+  effectiveDateISO?: string;
+  /** Volitelná úprava tréninku pro příští plánovací období. */
+  trainingAdjustment?: {
+    type: 'deload' | 'maintain' | 'increase' | 'reduce_intensity';
+    reason: string;
+    sessionOverride?: TrainingSession;
+  };
+};
+
+export type WeeklyReview = {
+  weekStartISO: string;
+  checkIn: WeeklyCheckIn | null;
+  adherenceRatio: number | null;
+  completedSessions: number;
+  plannedSessions: number;
+  weightTrendKgPerWeek?: number | null;
+  readinessCounts?: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  summary?: {
+    headline: string;
+    highlights: string[];
+    concerns: string[];
+    recommendation: string;
+  };
+  adjustment: PlanAdjustment;
+  createdAt: string;
+  updatedAt: string;
 };

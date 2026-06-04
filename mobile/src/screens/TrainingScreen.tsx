@@ -65,6 +65,7 @@ export function TrainingScreen() {
   return (
     <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader
+        onBack={() => navigation.goBack()}
         eyebrow={t('training.eyebrow')}
         title={t('training.title')}
         subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
