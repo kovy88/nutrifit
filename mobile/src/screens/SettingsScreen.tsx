@@ -216,15 +216,17 @@ export function SettingsScreen() {
             </View>
           </Card>
 
-          <Card>
-            <SectionHeader title="Vývojářská nastavení (Debug)" />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium.</Text>
-            <View style={styles.wrap}>
-              <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
-                {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
-              </Pill>
-            </View>
-          </Card>
+          {__DEV__ && (
+            <Card>
+              <SectionHeader title="Vývojářská nastavení (Debug)" />
+              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium. Jen ve vývoji — v produkci se nezobrazuje.</Text>
+              <View style={styles.wrap}>
+                <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
+                  {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
+                </Pill>
+              </View>
+            </Card>
+          )}
 
           <ReminderRow
             title={t('settings.morningCoaching')}
