@@ -73,7 +73,7 @@ export function buildOnboardingSteps(
   const goalAlreadyChoseTraining = Boolean(goalProfile);
   const shouldChooseTrainingGoal = !goalAlreadyChoseTraining && (primaryGoal === 'improve_running' || primaryGoal === 'improve_fitness' || primaryGoal === 'gain_muscle');
   const hasDays = Boolean(goalProfile?.availableTrainingDays);
-  const hasExperience = false;
+  const hasExperience = Boolean(goalProfile?.experienceLevel);
   const hasWeeklyKm = Boolean(goalProfile?.currentWeeklyKm);
   const hasLongestRun = Boolean(goalProfile?.longestRecentRunKm);
   const hasRaceDate = Boolean(goalProfile?.raceDateISO && /^\d{4}-\d{2}-\d{2}$/.test(goalProfile.raceDateISO));

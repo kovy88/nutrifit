@@ -55,9 +55,13 @@ export type RecoveryInputs = {
 
 /** Akce, které kouč nabízí jako quick-action nebo AI navrhne strukturovaně. */
 export type CoachAction =
+  | 'check_in'
   | 'swap_meal'
+  | 'simple_meal'
   | 'adjust_today'
   | 'mark_done'
+  | 'no_time'
+  | 'fatigue'
   | 'ask_coach'
   | 'change_goal'
   | 'explain'
@@ -121,6 +125,8 @@ export type DailyCoachRecommendation = {
   } | null;
   coachMessage?: string;
   quickActions?: string[];
+  /** Deterministic "why" shown to the user or passed to AI for wording. */
+  explanation?: string[];
 };
 
 

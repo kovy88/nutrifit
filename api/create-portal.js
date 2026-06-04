@@ -2,29 +2,22 @@
 // Env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_URL
 
 const stripe = require('stripe');
+const { method, requireUser, sendError } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
-  const allowedOrigins = [
-    'https://nutri-fit-omega.vercel.app',
-  ];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!method(req, res, ['POST'])) return;
+
+  const requester = await requireUser(req, res);
+  if (!requester) return;
 
   const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_SECRET_KEY) {
-    return res.status(500).json({ error: 'Stripe není nakonfigurován.' });
+    return sendError(res, 500, 'stripe_not_configured', 'Stripe není nakonfigurován.');
   }
 
-  const { email } = req.body || {};
+  const email = requester.user.email;
   if (!email) {
-    return res.status(400).json({ error: 'Chybí email.' });
+    return sendError(res, 400, 'missing_user_email', 'Přihlášený účet nemá e-mail.');
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://nutri-fit-omega.vercel.app';
@@ -35,7 +28,7 @@ module.exports = async function handler(req, res) {
     // Find customer by email
     const customers = await stripeClient.customers.list({ email, limit: 1 });
     if (!customers.data.length) {
-      return res.status(404).json({ error: 'Zákazník nenalezen.' });
+      return sendError(res, 404, 'customer_not_found', 'Zákazník nenalezen.');
     }
 
     const session = await stripeClient.billingPortal.sessions.create({
@@ -45,6 +38,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return sendError(res, 500, 'portal_failed', err.message || 'Portál se nepodařilo vytvořit.');
   }
 };

@@ -54,4 +54,19 @@ describe('deterministic onboarding goal parser', () => {
     expect(goalProfileFromQuickStart('lose_fat')).toMatchObject({ primaryGoal: 'lose_fat' });
     expect(() => goalProfileFromQuickStart('maintenance' as never)).toThrow();
   });
+
+  it('maps running quick-start text into concrete race distances', () => {
+    expect(parseGoalText('I want to run 5 km.').goalProfile).toMatchObject({
+      primaryGoal: 'run_race',
+      raceGoal: 'run_5k',
+    });
+    expect(parseGoalText('I want to run 10 km.').goalProfile).toMatchObject({
+      primaryGoal: 'run_race',
+      raceGoal: 'run_10k',
+    });
+    expect(parseGoalText('I want to run a half marathon.').goalProfile).toMatchObject({
+      primaryGoal: 'run_race',
+      raceGoal: 'half_marathon',
+    });
+  });
 });

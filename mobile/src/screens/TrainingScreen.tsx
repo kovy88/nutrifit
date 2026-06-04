@@ -18,7 +18,7 @@ import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
 import { useTrenr } from '../context/TrenrContext';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { toDateKey } from '../utils/nutrition';
-import { planSessionForDate } from '../lib/training';
+import { adjustedPlanForDate } from '../lib/training';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
@@ -99,7 +99,7 @@ export function TrainingScreen() {
               <Text style={[styles.dayNumber, { color: colors.ink, fontFamily: fonts.number }]}>
                 {item.dayNumber}
               </Text>
-              <View style={[styles.dayDot, { backgroundColor: item.isRest ? colors.border : item.done ? colors.green : colors.accent }]} />
+              <View style={[styles.dayDot, { backgroundColor: dayDotColor(item, colors) }]} />
             </Pressable>
           ))}
         </ScrollView>
@@ -112,6 +112,7 @@ export function TrainingScreen() {
         markers={[
           selectedDay.isToday ? t('common.today') : '',
           selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : '',
+          selectedDay.adjustedAfterMissed ? t('training.adjustedAfterMissed') : '',
         ].filter((marker): marker is string => Boolean(marker))}
       >
         {selectedDay.isRest ? (
@@ -136,6 +137,9 @@ export function TrainingScreen() {
             </View>
             {selectedDay.session.notes ? (
               <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.session.notes}</Text>
+            ) : null}
+            {selectedDay.adjustedAfterMissed ? (
+              <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
             ) : null}
           </View>
         )}
@@ -182,12 +186,19 @@ function buildWeekList(
   const diffToMonday = day === 0 ? -6 : 1 - day;
   const monday = new Date(baseDate);
   monday.setDate(baseDate.getDate() + diffToMonday);
+  const adjusted = adjustedPlanForDate(profile, baseDate, trainingCompletions, { recentWorkouts });
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     const dateKey = toDateKey(date);
-    const session = planSessionForDate(profile, date, { recentWorkouts });
+    const session = adjusted.plan.sessions.find(item => item.date === dateKey) ?? {
+      date: dateKey,
+      kind: 'rest' as const,
+      title: 'Volno',
+      durationMinutes: 0,
+      intensity: 'rest' as const,
+    };
     const isRest = session.kind === 'rest' || session.durationMinutes === 0;
     const done = recentWorkouts.some(workout => workout.startedAt.slice(0, 10) === dateKey);
     const completion = trainingCompletions[dateKey];
@@ -197,6 +208,7 @@ function buildWeekList(
       isRest,
       done: done || completion?.status === 'completed',
       completionStatus: completion?.status,
+      adjustedAfterMissed: adjusted.adjustedDates.includes(dateKey),
       isToday: dateKey === toDateKey(new Date()),
       isSelected: dateKey === selectedDate,
       shortLabel: t('training.weekdayShort', { dow: date.getDay() }),
@@ -205,6 +217,17 @@ function buildWeekList(
       dateLabel: `${date.getDate()}. ${date.getMonth() + 1}.`,
     };
   });
+}
+
+function dayDotColor(
+  item: WeekItem,
+  colors: ReturnType<typeof useTheme>['colors'],
+): string {
+  if (item.completionStatus === 'skipped') return colors.orange;
+  if (item.isRest) return colors.border;
+  if (item.done) return colors.green;
+  if (item.adjustedAfterMissed) return colors.blue;
+  return colors.accent;
 }
 
 function formatGoal(goal: string) {
@@ -223,6 +246,7 @@ const styles = StyleSheet.create({
   selectedTitleRow: { gap: 8 },
   selectedTitle: { fontSize: 20, lineHeight: 25 },
   selectedNote: { fontSize: 14, lineHeight: 20 },
+  adjustedNote: { fontSize: 13, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1 },
   workoutsList: { gap: 10 },

@@ -237,7 +237,8 @@ describe('AI Coach Service & Fallback Handling', () => {
     expect(result.readinessScore).toBeGreaterThan(0);
     expect(result.readinessLabel).toBeDefined();
     expect(result.todayFocus).toBeDefined();
-    expect(result.quickActions).toContain('Ask coach');
+    expect(result.quickActions).toEqual(expect.arrayContaining(['Check in', 'Mark workout done', 'No time today', 'Feeling tired']));
+    expect(result.quickActions).not.toContain('Ask coach');
   });
 
   it('gracefully drops back to deterministic fallback message on api timeout/failure', async () => {

@@ -11,12 +11,12 @@ type GoalSignal = {
 
 export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
   { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.' },
-  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.' },
-  { id: 'run_race', labelKey: 'onb.quickRunRace', subtitleKey: 'onb.quickRunRaceSub', text: 'I want to run a race.' },
   { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.' },
+  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.' },
+  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.' },
+  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.' },
+  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.' },
   { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.' },
-  { id: 'recover_better', labelKey: 'onb.quickRecoverBetter', subtitleKey: 'onb.quickRecoverBetterSub', text: 'I want to recover better.' },
-  { id: 'build_consistency', labelKey: 'onb.quickBuildConsistency', subtitleKey: 'onb.quickBuildConsistencySub', text: 'I want to feel better and be consistent.' },
 ];
 
 export function parseGoalText(rawText: string): GoalParseResult {
@@ -35,10 +35,13 @@ export function parseGoalText(rawText: string): GoalParseResult {
 
 export function goalProfileFromQuickStart(primaryGoal: PrimaryGoal): GoalProfile {
   const quickStart = GOAL_QUICK_STARTS.find(item => item.id === primaryGoal);
+  if (!quickStart) {
+    throw new Error(`Unknown quick start: ${primaryGoal}`);
+  }
   const signal = signalFromPrimaryGoal(primaryGoal);
   return buildGoalProfile({
     ...signal,
-    rawText: quickStart?.text ?? signal.summary,
+    rawText: quickStart.text,
   });
 }
 

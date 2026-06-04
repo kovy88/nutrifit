@@ -1,5 +1,6 @@
 import type { WeeklyCheckIn, PlanAdjustment } from '../../types/checkin';
 import type { Locale } from '../i18n';
+import type { TranslationKey } from '../i18n';
 import type { NutritionGoalKind } from '../../types';
 import { planWeeklyAdjustment, type WeeklyAdjustmentInput } from './weeklyAdjustment';
 
@@ -25,6 +26,25 @@ export type WeeklyReview = {
   kcalDelta: number;
   warnings: string[];
   adjustedGoalKind?: NutritionGoalKind;
+};
+
+export type WeeklyMiniReviewInput = {
+  completedSessions: number;
+  plannedSessions: number;
+  readinessScores: number[];
+  nutritionTargetDays: number;
+  nutritionLoggedDays: number;
+};
+
+export type WeeklyMiniReview = {
+  completedSessions: number;
+  plannedSessions: number;
+  trainingAdherencePct: number | null;
+  averageReadiness: number | null;
+  nutritionTargetDays: number;
+  nutritionLoggedDays: number;
+  nutritionAdherencePct: number | null;
+  recommendationKey: TranslationKey;
 };
 
 export function generateWeeklyReview(input: WeeklyReviewInput): WeeklyReview {
@@ -139,4 +159,36 @@ export function generateWeeklyReview(input: WeeklyReviewInput): WeeklyReview {
 
 export function adjustPlanFromCheckIn(input: WeeklyAdjustmentInput): PlanAdjustment {
   return planWeeklyAdjustment(input);
+}
+
+export function generateWeeklyMiniReview(input: WeeklyMiniReviewInput): WeeklyMiniReview {
+  const trainingAdherencePct = input.plannedSessions > 0
+    ? Math.round((input.completedSessions / input.plannedSessions) * 100)
+    : null;
+  const averageReadiness = input.readinessScores.length
+    ? Math.round(input.readinessScores.reduce((sum, score) => sum + score, 0) / input.readinessScores.length)
+    : null;
+  const nutritionAdherencePct = input.nutritionLoggedDays > 0
+    ? Math.round((input.nutritionTargetDays / input.nutritionLoggedDays) * 100)
+    : null;
+
+  let recommendationKey: TranslationKey = 'history.weeklyRecommendationHold';
+  if (averageReadiness != null && averageReadiness < 55) {
+    recommendationKey = 'history.weeklyRecommendationRecover';
+  } else if (trainingAdherencePct != null && trainingAdherencePct < 70) {
+    recommendationKey = 'history.weeklyRecommendationConsistency';
+  } else if (nutritionAdherencePct != null && nutritionAdherencePct < 70) {
+    recommendationKey = 'history.weeklyRecommendationNutrition';
+  }
+
+  return {
+    completedSessions: input.completedSessions,
+    plannedSessions: input.plannedSessions,
+    trainingAdherencePct,
+    averageReadiness,
+    nutritionTargetDays: input.nutritionTargetDays,
+    nutritionLoggedDays: input.nutritionLoggedDays,
+    nutritionAdherencePct,
+    recommendationKey,
+  };
 }

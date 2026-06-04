@@ -20,6 +20,7 @@ module.exports = async function handler(req, res) {
       trainingCompletions,
       coachThreads,
       dailyCoachRecommendations,
+      dailyHealthSummaries,
     ] = await Promise.all([
       supabaseRest(`/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}&select=*`),
       supabaseRest(`/rest/v1/meal_history?user_id=eq.${encodeURIComponent(userId)}&select=*&order=created_at.desc`),
@@ -32,6 +33,7 @@ module.exports = async function handler(req, res) {
       supabaseRest(`/rest/v1/training_completions?user_id=eq.${encodeURIComponent(userId)}&select=*&order=completion_date.desc`),
       supabaseRest(`/rest/v1/coach_threads?user_id=eq.${encodeURIComponent(userId)}&select=*&order=thread_date.desc`),
       supabaseRest(`/rest/v1/daily_coach_recommendations?user_id=eq.${encodeURIComponent(userId)}&select=*&order=recommendation_date.desc`),
+      supabaseRest(`/rest/v1/daily_health_summaries?user_id=eq.${encodeURIComponent(userId)}&select=*&order=summary_date.desc`),
     ]);
 
     return res.status(200).json({
@@ -51,6 +53,7 @@ module.exports = async function handler(req, res) {
       trainingCompletions: trainingCompletions || [],
       coachThreads: coachThreads || [],
       dailyCoachRecommendations: dailyCoachRecommendations || [],
+      dailyHealthSummaries: dailyHealthSummaries || [],
     });
   } catch (err) {
     return sendError(res, 500, 'export_failed', err.message || 'Export dat se nepodařil.');

@@ -41,7 +41,10 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.training!.session).not.toBeNull();
     expect(rec.training!.focus.length).toBeGreaterThan(0);
     expect(rec.coachNote.length).toBeGreaterThan(0);
-    expect(rec.suggestedActions).toContain('ask_coach');
+    expect(rec.suggestedActions).toContain('check_in');
+    expect(rec.suggestedActions).toContain('mark_done');
+    expect(rec.quickActions).toEqual(expect.arrayContaining(['Zapsat check-in', 'Trénink hotový', 'Nemám dnes čas', 'Chci jednodušší jídlo', 'Cítím únavu']));
+    expect(rec.explanation?.length).toBeGreaterThan(1);
     expect(rec.nutrition!.deltaVsBaselineKcal).toBe(100);
   });
 
@@ -95,6 +98,7 @@ describe('generateDailyCoachRecommendation', () => {
     const rec = generateDailyCoachRecommendation(baseInput({ session: null, recovery: {} }));
     expect(rec.training!.session).toBeNull();
     expect(rec.suggestedActions).not.toContain('mark_done');
+    expect(rec.suggestedActions).not.toContain('no_time');
     expect(rec.readiness.score).toBeGreaterThanOrEqual(0);
     expect(rec.readiness.confidence).toBe('low');
     expect(rec.warnings.some(w => /bez dat|no sleep|guidance/i.test(w))).toBe(true);
@@ -118,6 +122,7 @@ describe('coachScope gating', () => {
     expect(rec.training).toBeTruthy();
     expect(rec.nutrition).toBeUndefined();
     expect(rec.suggestedActions).not.toContain('swap_meal');
+    expect(rec.suggestedActions).not.toContain('simple_meal');
   });
 
   it('nutrition-only omits training and never offers mark_done', () => {

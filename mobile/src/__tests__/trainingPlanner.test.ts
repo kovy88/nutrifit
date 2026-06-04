@@ -6,8 +6,11 @@ import {
   readinessSignal,
   generateTrainingPlan,
   TRAINING_RULES,
+  type TrainingPlan,
 } from '../lib/training/plan';
 import {
+  adjustPlanForTrainingCompletions,
+  adjustedPlanSessionForDate,
   planSessionForDate,
   mondayOf,
   weekIndexFor,
@@ -181,6 +184,103 @@ describe('planSessionForDate adapter', () => {
     expect(typeof s.kind).toBe('string');
   });
 });
+
+describe('adjustPlanForTrainingCompletions', () => {
+  it('returns the original plan without skipped completions', () => {
+    const plan = fixturePlan();
+    const result = adjustPlanForTrainingCompletions(plan, {
+      '2026-01-05': completion('2026-01-05', 'completed', plan.sessions[0]),
+    });
+
+    expect(result.plan).toBe(plan);
+    expect(result.skippedDates).toEqual([]);
+    expect(result.adjustedDates).toEqual([]);
+  });
+
+  it('lowers later hard sessions after one skipped hard session without stacking a replacement', () => {
+    const plan = fixturePlan();
+    const result = adjustPlanForTrainingCompletions(plan, {
+      '2026-01-05': completion('2026-01-05', 'skipped', plan.sessions[0]),
+    });
+
+    const skipped = result.plan.sessions.find(session => session.date === '2026-01-05');
+    const laterHard = result.plan.sessions.find(session => session.date === '2026-01-07');
+    const originalTotal = plan.sessions.reduce((sum, session) => sum + (session.distanceKm ?? 0), 0);
+    const adjustedTotal = result.plan.sessions.reduce((sum, session) => sum + (session.distanceKm ?? 0), 0);
+
+    expect(skipped?.kind).toBe('rest');
+    expect(skipped?.durationMinutes).toBe(0);
+    expect(laterHard?.intensity).toBe('easy');
+    expect(laterHard?.durationMinutes).toBeLessThanOrEqual(plan.sessions[2].durationMinutes);
+    expect(adjustedTotal).toBeLessThan(originalTotal);
+    expect(result.adjustedDates).toContain('2026-01-07');
+  });
+
+  it('applies multiple skipped sessions chronologically and preserves rest days', () => {
+    const plan = fixturePlan();
+    const result = adjustPlanForTrainingCompletions(plan, {
+      '2026-01-05': completion('2026-01-05', 'skipped', plan.sessions[0]),
+      '2026-01-07': completion('2026-01-07', 'skipped', plan.sessions[2]),
+    });
+
+    expect(result.skippedDates).toEqual(['2026-01-05', '2026-01-07']);
+    expect(result.plan.sessions.find(session => session.date === '2026-01-05')?.kind).toBe('rest');
+    expect(result.plan.sessions.find(session => session.date === '2026-01-07')?.kind).toBe('rest');
+    expect(result.plan.sessions.find(session => session.date === '2026-01-06')?.kind).toBe('rest');
+    expect(result.plan.sessions.find(session => session.date === '2026-01-09')?.intensity).toBe('easy');
+  });
+
+  it('adjustedPlanSessionForDate uses skipped completions for later days', () => {
+    const session = adjustedPlanSessionForDate(
+      { trainingGoal: 'strength_basics' },
+      new Date('2026-01-07T12:00:00'),
+      {
+        '2026-01-05': completion('2026-01-05', 'skipped', null),
+      },
+    );
+
+    expect(session.date).toBe('2026-01-07');
+    expect(session.intensity).toBe('easy');
+    expect(session.title).toContain('úprava po vynechaném tréninku');
+  });
+});
+
+function completion(
+  date: string,
+  status: 'completed' | 'skipped',
+  plannedSession: TrainingPlan['sessions'][number] | null,
+) {
+  return {
+    date,
+    status,
+    plannedSession,
+    source: 'manual' as const,
+    createdAt: `${date}T08:00:00.000Z`,
+    updatedAt: `${date}T08:00:00.000Z`,
+  };
+}
+
+function fixturePlan(): TrainingPlan {
+  return {
+    goalKind: 'run_10k',
+    weekStartISO: '2026-01-05',
+    weekIndex: 0,
+    totalKm: 20,
+    weeklyVolume: 20,
+    longRunDistance: 8,
+    sessions: [
+      { date: '2026-01-05', kind: 'intervals', title: 'Intervaly', distanceKm: 5, durationMinutes: 35, intensity: 'hard' },
+      { date: '2026-01-06', kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' },
+      { date: '2026-01-07', kind: 'tempo', title: 'Tempo', distanceKm: 5, durationMinutes: 35, intensity: 'hard' },
+      { date: '2026-01-08', kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' },
+      { date: '2026-01-09', kind: 'intervals', title: 'Kvalita', distanceKm: 4, durationMinutes: 28, intensity: 'hard' },
+      { date: '2026-01-10', kind: 'long_run', title: 'Long run', distanceKm: 6, durationMinutes: 42, intensity: 'moderate' },
+      { date: '2026-01-11', kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' },
+    ],
+    warnings: [],
+    intensityDistribution: { easy: 3, moderate: 1, hard: 3 },
+  };
+}
 
 describe('Running Goals & Support Core Checks', () => {
   it('5K plan generation: generates safe sessions with strength and rest', () => {

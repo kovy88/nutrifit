@@ -14,6 +14,8 @@ import {
  * RevenueCat key (the factory picks RevenueCat then).
  */
 export class MockSubscriptionProvider implements SubscriptionProvider {
+  constructor(private readonly allowLocalEntitlement = true) {}
+
   isAvailable(): boolean {
     return false;
   }
@@ -27,15 +29,18 @@ export class MockSubscriptionProvider implements SubscriptionProvider {
   }
 
   async getStatus(): Promise<SubscriptionStatus> {
-    return { isActive: await loadSubscriptionStatus(), source: 'mock' };
+    return { isActive: this.allowLocalEntitlement ? await loadSubscriptionStatus() : false, source: 'mock' };
   }
 
   async purchase(planId: SubscriptionPlanId): Promise<SubscriptionStatus> {
+    if (!this.allowLocalEntitlement) {
+      return { isActive: false, planId, source: 'mock' };
+    }
     await saveSubscriptionStatus(true);
     return { isActive: true, planId, source: 'mock' };
   }
 
   async restore(): Promise<SubscriptionStatus> {
-    return { isActive: await loadSubscriptionStatus(), source: 'mock' };
+    return { isActive: this.allowLocalEntitlement ? await loadSubscriptionStatus() : false, source: 'mock' };
   }
 }

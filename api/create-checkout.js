@@ -2,37 +2,30 @@
 // Env vars: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, NEXT_PUBLIC_URL
 
 const stripe = require('stripe');
+const { method, requireUser, sendError } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
-  const allowedOrigins = [
-    'https://nutri-fit-omega.vercel.app',
-  ];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!method(req, res, ['POST'])) return;
+
+  const requester = await requireUser(req, res);
+  if (!requester) return;
 
   const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_SECRET_KEY) {
-    return res.status(500).json({ error: 'Stripe není nakonfigurován.' });
-  }
-
-  const { userId, email } = req.body || {};
-  if (!userId || !email) {
-    return res.status(400).json({ error: 'Chybí userId nebo email.' });
+    return sendError(res, 500, 'stripe_not_configured', 'Stripe není nakonfigurován.');
   }
 
   const PRICE_ID = process.env.STRIPE_PRICE_ID;
   if (!PRICE_ID) {
-    return res.status(500).json({ error: 'STRIPE_PRICE_ID není nastaven.' });
+    return sendError(res, 500, 'missing_price_id', 'STRIPE_PRICE_ID není nastaven.');
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://nutri-fit-omega.vercel.app';
+  const userId = requester.user.id;
+  const email = requester.user.email;
+  if (!email) {
+    return sendError(res, 400, 'missing_user_email', 'Přihlášený účet nemá e-mail.');
+  }
 
   try {
     const stripeClient = stripe(STRIPE_SECRET_KEY);
@@ -48,6 +41,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return sendError(res, 500, 'checkout_failed', err.message || 'Platbu se nepodařilo vytvořit.');
   }
 };

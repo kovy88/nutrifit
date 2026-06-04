@@ -2,8 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import type { TranslationKey } from '../../lib/i18n';
 import { generateGoalFollowUps } from '../../lib/onboarding/follow-up-question-generator';
-import { goalProfileFromQuickStart, GOAL_QUICK_STARTS, parseGoalText, updateGoalProfile } from '../../lib/onboarding/goal-parser';
-import type { GoalProfile, PrimaryGoal } from '../../types/goal-types';
+import { parseGoalText, updateGoalProfile } from '../../lib/onboarding/goal-parser';
+import type { GoalProfile, GoalQuickStart } from '../../types/goal-types';
 import { FollowUpQuestions } from './FollowUpQuestions';
 import { GoalQuickStartOptions } from './GoalQuickStartOptions';
 import { GoalTextInput } from './GoalTextInput';
@@ -31,10 +31,10 @@ export function GoalInputStep({
     onGoalProfileChange(parsed.goalProfile);
   }
 
-  function handleQuickStart(primaryGoal: PrimaryGoal) {
-    const next = goalProfileFromQuickStart(primaryGoal);
-    onTextChange(GOAL_QUICK_STARTS.find(item => item.id === primaryGoal)?.text ?? next.rawText ?? '');
-    onGoalProfileChange(next);
+  function handleQuickStart(quickStart: GoalQuickStart) {
+    const parsed = parseGoalText(quickStart.text);
+    onTextChange(quickStart.text);
+    onGoalProfileChange(parsed.goalProfile);
   }
 
   function handleFollowUp(patch: Partial<GoalProfile>) {
@@ -49,7 +49,7 @@ export function GoalInputStep({
         <Text style={[styles.coachCopy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('onb.goalCoachCopy')}</Text>
       </View>
       <GoalTextInput value={value} onChangeText={handleTextChange} placeholder={t('onb.goalInputPlaceholder')} />
-      <GoalQuickStartOptions activeGoal={goalProfile?.primaryGoal} onSelect={handleQuickStart} t={t} />
+      <GoalQuickStartOptions activeText={goalProfile?.rawText} onSelect={handleQuickStart} t={t} />
       <ParsedGoalSummary goalProfile={goalProfile} t={t} />
       {goalProfile ? <FollowUpQuestions questions={followUps} goalProfile={goalProfile} onChange={handleFollowUp} t={t} /> : null}
     </View>

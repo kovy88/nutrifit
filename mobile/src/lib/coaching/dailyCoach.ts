@@ -156,6 +156,17 @@ export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyC
     } : null,
     coachMessage: briefing.recommendation, // initial deterministic message
     quickActions: buildQuickActionLabels(adjustedSession, hasTraining, hasNutrition, loc),
+    explanation: buildExplanation({
+      readiness,
+      classification,
+      adjusted,
+      adjustedSession,
+      hasTraining,
+      hasNutrition,
+      nutritionReasonText: hasNutrition ? nutritionReason(deltaVsBaselineKcal, adjustedSession, loc) : null,
+      trainingLoad: input.trainingLoad ?? null,
+      locale: loc,
+    }),
   };
 
   return validateCoachRecommendationSafety(rec, input, loc);
@@ -169,15 +180,17 @@ function buildQuickActionLabels(
 ): string[] {
   const actions: string[] = [];
   if (locale === 'en') {
-    actions.push('Ask coach');
-    if (hasNutrition) actions.push('Swap meal');
-    if (hasTraining && session && session.kind !== 'rest') actions.push('Mark workout done');
     actions.push('Check in');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('Mark workout done');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('No time today');
+    if (hasNutrition) actions.push('Simpler meal');
+    actions.push('Feeling tired');
   } else {
-    actions.push('Zeptej se kouče');
-    if (hasNutrition) actions.push('Vyměnit jídlo');
-    if (hasTraining && session && session.kind !== 'rest') actions.push('Splněno');
-    actions.push('Zapsat den');
+    actions.push('Zapsat check-in');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('Trénink hotový');
+    if (hasTraining && session && session.kind !== 'rest') actions.push('Nemám dnes čas');
+    if (hasNutrition) actions.push('Chci jednodušší jídlo');
+    actions.push('Cítím únavu');
   }
   return actions;
 }
@@ -207,11 +220,56 @@ function nutritionReason(delta: number, session: TrainingSession | null, loc: Lo
 
 function buildActions(session: TrainingSession | null, hasTraining: boolean, hasNutrition: boolean): CoachAction[] {
   const actions: CoachAction[] = [];
-  if (hasNutrition) actions.push('swap_meal');
-  actions.push('adjust_today');
+  actions.push('check_in');
   if (hasTraining && session && session.kind !== 'rest') actions.push('mark_done');
-  actions.push('ask_coach');
+  if (hasTraining && session && session.kind !== 'rest') actions.push('no_time');
+  if (hasNutrition) actions.push('simple_meal');
+  actions.push('fatigue');
   return actions;
+}
+
+function buildExplanation({
+  readiness,
+  classification,
+  adjusted,
+  adjustedSession,
+  hasTraining,
+  hasNutrition,
+  nutritionReasonText,
+  trainingLoad,
+  locale,
+}: {
+  readiness: ReturnType<typeof scoreReadiness>;
+  classification: TodayClassification;
+  adjusted: boolean;
+  adjustedSession: TrainingSession | null;
+  hasTraining: boolean;
+  hasNutrition: boolean;
+  nutritionReasonText: string | null;
+  trainingLoad: TrainingLoadAssessment | null;
+  locale: Locale;
+}): string[] {
+  const out: string[] = [];
+  out.push(L(
+    locale,
+    `Readiness ${readiness.score}/100 (${readiness.band}) nastavuje dnešní strop intenzity na ${readiness.recommendedIntensity}.`,
+    `Readiness ${readiness.score}/100 (${readiness.band}) sets today's intensity ceiling to ${readiness.recommendedIntensity}.`,
+  ));
+  if (readiness.drivers.length) out.push(readiness.drivers.slice(0, 2).join(' · '));
+  if (hasTraining) {
+    if (adjusted) {
+      out.push(L(locale, 'Trénink byl snížen deterministicky podle readiness guardrails.', 'Training was lowered deterministically by readiness guardrails.'));
+    } else if (adjustedSession && adjustedSession.kind !== 'rest') {
+      out.push(L(locale, `Dnešní fokus: ${classification.focus}.`, `Today focus: ${classification.focus}.`));
+    } else {
+      out.push(L(locale, 'Dnes je volno nebo regenerační den.', 'Today is rest or recovery.'));
+    }
+  }
+  if (hasNutrition && nutritionReasonText) out.push(nutritionReasonText);
+  if (trainingLoad?.status === 'overreaching' || trainingLoad?.status === 'high_risk') {
+    out.push(trainingLoad.recommendation || trainingLoad.message);
+  }
+  return out;
 }
 
 // ── SAFETY VALIDATION ─────────────────────────────────────────────────────────

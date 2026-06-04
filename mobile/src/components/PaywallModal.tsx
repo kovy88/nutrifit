@@ -12,9 +12,11 @@ interface PaywallModalProps {
 
 export function PaywallModal({ visible, onClose }: PaywallModalProps) {
   const { colors, fonts } = useTheme();
-  const { purchaseSubscription, restoreSubscription } = useTrenr();
+  const { purchaseSubscription, restoreSubscription, subscriptionPackages } = useTrenr();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
+  const monthly = subscriptionPackages.find(pkg => pkg.planId === 'monthly');
+  const yearly = subscriptionPackages.find(pkg => pkg.planId === 'yearly');
 
   async function handleSubscribe() {
     setLoading(true);
@@ -53,12 +55,14 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
           
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.crownIcon, { color: colors.accent }]}>👑</Text>
+            <View style={[styles.crownIcon, { backgroundColor: colors.accent + '18' }]}>
+              <Ionicons name="sparkles-outline" size={28} color={colors.accent} />
+            </View>
             <Text style={[styles.title, { color: colors.ink, fontFamily: fonts.display }]}>
               Trenr Premium
             </Text>
             <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
-              Odemkněte plný potenciál svého adaptivního AI kouče.
+              Free pokryje první týden a Today doporučení. Premium odemkne adaptivní plán a hlubší koučování.
             </Text>
             <Pressable onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.muted} />
@@ -69,24 +73,24 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
             {/* Features List */}
             <FadeInView delay={100} style={styles.features}>
               <FeatureRow
-                icon="fast-food-outline"
-                title="AI Jídelníčky na míru"
-                description="Generování kompletních jídelních receptů přizpůsobených vašim alergiím a cílům."
+                icon="checkmark-circle-outline"
+                title="Free"
+                description="Onboarding, Today doporučení, jeden týdenní plán a ruční check-in."
               />
               <FeatureRow
-                icon="camera-outline"
-                title="Okamžitá analýza jídla"
-                description="Stačí vyfotit jídlo a AI okamžitě odhadne kalorie a makroživiny."
+                icon="trending-up-outline"
+                title="Adaptivní plán"
+                description="Úpravy po vynechaném tréninku, weekly review a bezpečné korekce podle readiness."
               />
               <FeatureRow
                 icon="chatbubble-ellipses-outline"
-                title="AI Osobní Kouč 24/7"
-                description="Chatujte s koučem o své formě, únavě nebo tréninku kdykoliv potřebujete."
+                title="AI coach chat"
+                description="Vysvětlení doporučení, meal swaps a odpovědi nad deterministicky spočítaným plánem."
               />
               <FeatureRow
-                icon="heart-outline"
-                title="Integrace Apple Health"
-                description="Automatická adaptace plánu podle reálných dat o spánku, krocích a HRV."
+                icon="analytics-outline"
+                title="Recovery insights"
+                description="Detailnější trendy, běžecký plán a přehled pokroku bez medicínských diagnóz."
               />
             </FadeInView>
 
@@ -109,10 +113,10 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                   {selectedPlan === 'monthly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  199 Kč <Text style={styles.planUnit}>/ měsíc</Text>
+                  {monthly?.priceString ?? '149 Kč'} <Text style={styles.planUnit}>/ měsíc</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
-                  7 dní zdarma, poté 199 Kč
+                  Měsíční flexibilita
                 </Text>
               </Pressable>
 
@@ -136,10 +140,10 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                   {selectedPlan === 'yearly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  1 490 Kč <Text style={styles.planUnit}>/ rok</Text>
+                  {yearly?.priceString ?? '1 290 Kč'} <Text style={styles.planUnit}>/ rok</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
-                  7 dní zdarma, poté 124 Kč/měsíc
+                  Nejlepší hodnota pro dlouhodobý plán
                 </Text>
               </Pressable>
             </FadeInView>
@@ -151,11 +155,11 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 onPress={handleSubscribe}
                 style={styles.subscribeBtn}
               >
-                {loading ? 'Zpracování...' : 'Aktivovat 7 dní zdarma'}
+                {loading ? 'Zpracování...' : 'Pokračovat s Premium'}
               </Button>
               
               <Text style={[styles.disclaimer, { color: colors.faint, fontFamily: fonts.regular }]}>
-                Předplatné se automaticky obnovuje. Můžete jej kdykoliv zrušit v nastavení App Store. Aktivací trialu souhlasíte s Obchodními podmínkami.
+                Předplatné se obnovuje podle pravidel obchodu. V Expo/dev režimu se používá lokální entitlement bez reálné platby.
               </Text>
 
               <Pressable onPress={handleRestore} style={styles.restoreLink}>
@@ -211,7 +215,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   crownIcon: {
-    fontSize: 40,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   title: {

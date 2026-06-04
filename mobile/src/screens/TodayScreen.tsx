@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
+import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
 import {
   Button,
   Card,
   CoachInsightCard,
+  EmptyState,
+  LoadingState,
   MetricCard,
   NutritionTargetCard,
   QuickActionButton,
@@ -45,6 +49,8 @@ export function TodayScreen() {
   const { completion, mark } = useTrainingCompletion();
   const health = useDailyHealth(new Date(selectedDate));
   const { recommendation: rec, coaching } = useDailyCoachRecommendation(new Date(selectedDate));
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [missedFeedbackVisible, setMissedFeedbackVisible] = useState(false);
 
   if (!profile || !macros) return null;
 
@@ -64,6 +70,22 @@ export function TodayScreen() {
   async function markTodayDone() {
     await mark('completed');
     Alert.alert(t('today.completedTitle'), t('today.completedMsg'));
+  }
+
+  async function markNoTimeToday() {
+    await mark('skipped', { note: t('today.noTimeMsg') });
+    setMissedFeedbackVisible(true);
+    Alert.alert(t('today.noTimeTitle'), t('today.noTimeMsg'));
+  }
+
+  async function handleFatigue() {
+    if (suggestedDowngrade?.adjusted) {
+      await setTodaySession(suggestedDowngrade.session);
+      Alert.alert(t('today.fatigueTitle'), t('today.fatigueAdjustedMsg'));
+      return;
+    }
+    Alert.alert(t('today.fatigueTitle'), t('today.fatigueFallbackMsg'));
+    navigation.navigate('Trénink');
   }
 
   return (
@@ -93,6 +115,14 @@ export function TodayScreen() {
         <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
           <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
         </CoachInsightCard>
+      ) : null}
+
+      {coaching.isLoading && !rec ? (
+        <LoadingState title={t('today.loadingCoachTitle')} body={t('today.loadingCoachBody')} />
+      ) : null}
+
+      {!coaching.isLoading && !rec ? (
+        <EmptyState title={t('today.emptyCoachTitle')} body={t('today.emptyCoachBody')} />
       ) : null}
 
       {rec ? (
@@ -168,19 +198,28 @@ export function TodayScreen() {
       />
 
       <View style={styles.quickGrid}>
-        <QuickActionButton icon="sparkles-outline" label={t('today.askCoach')} onPress={() => navigation.navigate('Coach')} />
-        {showNutrition ? <QuickActionButton icon="restaurant-outline" label={t('today.swapMeal')} onPress={() => navigation.navigate('Jídelníček')} /> : null}
-        <QuickActionButton icon="options-outline" label={t('today.adjustToday')} onPress={() => navigation.navigate(showTraining ? 'Trénink' : 'Jídelníček')} />
+        <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => setShowCheckIn(true)} />
         {showTraining && currentSession?.kind !== 'rest' ? (
-          <QuickActionButton icon="checkmark-circle-outline" label={t('today.markDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
+          <QuickActionButton icon="checkmark-circle-outline" label={t('today.workoutDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
         ) : null}
-        <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => navigation.navigate('Profil')} />
+        {showTraining && currentSession?.kind !== 'rest' ? (
+          <QuickActionButton icon="time-outline" label={t('today.noTime')} onPress={markNoTimeToday} disabled={completion?.status === 'completed' || completion?.status === 'skipped'} />
+        ) : null}
+        {showNutrition ? <QuickActionButton icon="restaurant-outline" label={t('today.simpleMeal')} onPress={() => navigation.navigate('Jídelníček')} /> : null}
+        <QuickActionButton icon="bed-outline" label={t('today.fatigued')} onPress={handleFatigue} />
       </View>
+
+      {showTraining && (missedFeedbackVisible || completion?.status === 'skipped') ? (
+        <CoachInsightCard title={t('today.missedAdjustedTitle')} body={t('today.missedAdjustedBody')} accent={colors.orange}>
+          <Button variant="secondary" onPress={() => navigation.navigate('Trénink')}>{t('today.openTraining')}</Button>
+        </CoachInsightCard>
+      ) : null}
 
       <WeeklyProgressCard
         title={t('today.weekTitle')}
         items={[
           { label: t('today.sessions'), value: `${week.completed}/${week.planned}`, color: colors.accent },
+          { label: t('today.skipped'), value: String(week.skipped), color: week.skipped ? colors.orange : colors.faint },
           { label: t('today.protein'), value: `${proteinPct}%`, color: colors.green },
           { label: t('today.planAdherence'), value: currentMeals.length ? t('common.yes') : t('common.no'), color: currentMeals.length ? colors.green : colors.orange },
           { label: t('today.nextCheckIn'), value: nextCheckInLabel(selectedDate, locale), color: colors.blue },
@@ -195,6 +234,7 @@ export function TodayScreen() {
           color={colors.accent}
         />
       ) : null}
+      <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
     </Screen>
   );
 }
@@ -307,6 +347,7 @@ function weeklyCompletion(records: TrainingCompletionRecordMap, selectedDate: st
   const monday = new Date(base);
   monday.setDate(base.getDate() - (day - 1));
   let completed = 0;
+  let skipped = 0;
   let planned = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
@@ -314,8 +355,9 @@ function weeklyCompletion(records: TrainingCompletionRecordMap, selectedDate: st
     const record = records[toDateKey(d)];
     if (record) planned += 1;
     if (record?.status === 'completed') completed += 1;
+    if (record?.status === 'skipped') skipped += 1;
   }
-  return { completed, planned: Math.max(planned, completed) };
+  return { completed, skipped, planned: Math.max(planned, completed + skipped) };
 }
 
 const styles = StyleSheet.create({

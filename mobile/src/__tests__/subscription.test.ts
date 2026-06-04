@@ -26,6 +26,15 @@ describe('MockSubscriptionProvider', () => {
     expect(offerings.map(o => o.planId)).toContain('monthly');
     expect(offerings.map(o => o.planId)).toContain('yearly');
   });
+
+  it('can be locked so local premium flags are ignored outside dev/test', async () => {
+    await saveSubscriptionStatus(true);
+    const p = new MockSubscriptionProvider(false);
+
+    expect((await p.getStatus()).isActive).toBe(false);
+    expect((await p.purchase('yearly')).isActive).toBe(false);
+    expect((await p.restore()).isActive).toBe(false);
+  });
 });
 
 describe('createSubscriptionProvider', () => {

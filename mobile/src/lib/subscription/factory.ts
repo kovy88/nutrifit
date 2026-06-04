@@ -6,6 +6,10 @@ function isUnitTestRuntime(): boolean {
   return Boolean((globalThis as any).__NUTRIFIT_TEST__);
 }
 
+function isDevRuntime(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__;
+}
+
 let singleton: SubscriptionProvider | null = null;
 
 /**
@@ -17,7 +21,7 @@ export function createSubscriptionProvider(): SubscriptionProvider {
   if (!isUnitTestRuntime() && RevenueCatSubscriptionProvider.hasKey()) {
     return new RevenueCatSubscriptionProvider();
   }
-  return new MockSubscriptionProvider();
+  return new MockSubscriptionProvider(isUnitTestRuntime() || isDevRuntime());
 }
 
 /** App-wide singleton (configure once, read entitlement anywhere). */

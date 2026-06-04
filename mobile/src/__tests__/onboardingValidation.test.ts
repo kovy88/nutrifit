@@ -79,6 +79,7 @@ describe('onboarding step validation', () => {
     expect(buildOnboardingSteps('training', 'couch_to_5k', 'improve_running')).not.toContain('raceDate');
     expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('raceDate');
     expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('raceSchedule');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('experience');
   });
 
   it('summarizes optional setup items for later completion', () => {

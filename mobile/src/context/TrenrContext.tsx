@@ -16,7 +16,7 @@ import type {
   TrainingCompletionStatus,
 } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
-import { planSessionForDate } from '../lib/training';
+import { adjustedPlanSessionForDate } from '../lib/training';
 import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
@@ -219,8 +219,8 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   
   const currentSession = useMemo(() => {
     if (!profile) return null;
-    return sessionsByDate[selectedDate] || planSessionForDate(profile, new Date(selectedDate));
-  }, [sessionsByDate, selectedDate, profile]);
+    return sessionsByDate[selectedDate] || adjustedPlanSessionForDate(profile, new Date(selectedDate), trainingCompletionsByDate);
+  }, [sessionsByDate, selectedDate, profile, trainingCompletionsByDate]);
 
   const daily = useMemo(() => {
     if (!profile || !baselineMacros) return { macros: null, adjustment: null };

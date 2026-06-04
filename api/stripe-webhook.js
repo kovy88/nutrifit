@@ -64,7 +64,7 @@ module.exports = async function handler(req, res) {
 };
 
 async function setUserPremium(supabaseUrl, serviceKey, userId, isPremium) {
-  await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${userId}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -74,4 +74,8 @@ async function setUserPremium(supabaseUrl, serviceKey, userId, isPremium) {
     },
     body: JSON.stringify({ is_premium: isPremium }),
   });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || `Supabase premium update failed (${response.status})`);
+  }
 }

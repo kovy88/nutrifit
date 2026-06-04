@@ -5,8 +5,9 @@
 // Generuje TÝDENNÍ plán a vrátí jednotku pro konkrétní den.
 
 import type { TrainingSession, UserProfile } from '../../types';
+import type { TrainingCompletionRecordMap } from '../../types';
 import type { SleepSummary, WorkoutSummary } from '../../types/health';
-import { generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
+import { adjustTrainingAfterMissedSession, generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
 
 export * from './plan';
 export * from './feasibility';
@@ -83,6 +84,78 @@ export function planSessionForDate(profile: PlannerProfile, date: Date, ctx: Pla
   const key = toDateKey(date);
   return (
     plan.sessions.find(s => s.date === key) ?? {
+      date: key,
+      kind: 'rest',
+      title: 'Volno',
+      durationMinutes: 0,
+      intensity: 'rest',
+    }
+  );
+}
+
+export type AdjustedTrainingPlan = {
+  plan: TrainingPlan;
+  skippedDates: string[];
+  adjustedDates: string[];
+};
+
+export function adjustPlanForTrainingCompletions(
+  plan: TrainingPlan,
+  completions: TrainingCompletionRecordMap,
+): AdjustedTrainingPlan {
+  const originalByDate = new Map(plan.sessions.map(session => [session.date, session]));
+  const skippedDates = plan.sessions
+    .filter(session => session.kind !== 'rest' && session.durationMinutes > 0)
+    .map(session => session.date)
+    .filter(date => completions[date]?.status === 'skipped')
+    .sort();
+
+  if (!skippedDates.length) {
+    return { plan, skippedDates: [], adjustedDates: [] };
+  }
+
+  const adjusted = skippedDates.reduce(
+    (currentPlan, skippedDate) => adjustTrainingAfterMissedSession(currentPlan, skippedDate),
+    plan,
+  );
+
+  const adjustedDates = adjusted.sessions
+    .filter(session => !skippedDates.includes(session.date))
+    .filter(session => {
+      const original = originalByDate.get(session.date);
+      if (!original) return false;
+      return (
+        original.kind !== session.kind ||
+        original.title !== session.title ||
+        original.durationMinutes !== session.durationMinutes ||
+        original.intensity !== session.intensity ||
+        original.distanceKm !== session.distanceKm
+      );
+    })
+    .map(session => session.date);
+
+  return { plan: adjusted, skippedDates, adjustedDates };
+}
+
+export function adjustedPlanForDate(
+  profile: PlannerProfile,
+  date: Date,
+  completions: TrainingCompletionRecordMap,
+  ctx: PlanContext = {},
+): AdjustedTrainingPlan {
+  return adjustPlanForTrainingCompletions(planForDate(profile, date, ctx), completions);
+}
+
+export function adjustedPlanSessionForDate(
+  profile: PlannerProfile,
+  date: Date,
+  completions: TrainingCompletionRecordMap,
+  ctx: PlanContext = {},
+): TrainingSession {
+  const adjusted = adjustedPlanForDate(profile, date, completions, ctx);
+  const key = toDateKey(date);
+  return (
+    adjusted.plan.sessions.find(session => session.date === key) ?? {
       date: key,
       kind: 'rest',
       title: 'Volno',

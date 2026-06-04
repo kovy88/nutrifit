@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
-import { listStoredDates, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
+import { listStoredDates, loadDailyCoachHistory, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
 import { formatDateLabel } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { SimpleLineChart } from '../components/premium/SimpleLineChart';
@@ -15,6 +15,9 @@ import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib
 import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useStrainTrend } from '../hooks/useStrainTrend';
+import { generateWeeklyMiniReview } from '../lib/coaching/weekly-review';
+import { planSessionForDate } from '../lib/training';
+import { resolveCoachScope, scopeHasTraining } from '../types';
 import type { TrendPoint } from '../components/MiniTrendChart';
 import type { TranslationKey } from '../lib/i18n';
 
@@ -36,7 +39,7 @@ function mergeWeightTrend(primary: TrendPoint[], fallback: TrendPoint[]): TrendP
 }
 
 export function HistoryScreen() {
-  const { setSelectedDate, weights, baselineMacros, profile } = useTrenr();
+  const { setSelectedDate, selectedDate, weights, baselineMacros, profile, trainingCompletions } = useTrenr();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { colors } = useTheme();
@@ -45,6 +48,13 @@ export function HistoryScreen() {
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
   const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
   const [energyBalance, setEnergyBalance] = useState(() => computeEnergyBalance({ logs: {}, tdee: 2000, days: 14 }));
+  const [weeklyReview, setWeeklyReview] = useState(() => generateWeeklyMiniReview({
+    completedSessions: 0,
+    plannedSessions: 0,
+    readinessScores: [],
+    nutritionTargetDays: 0,
+    nutritionLoggedDays: 0,
+  }));
   const sleepTrend = useTrend('sleep', 14);
   const strainTrend = useStrainTrend(14);
   const weightProviderTrend = useTrend('weight', 30);
@@ -60,7 +70,7 @@ export function HistoryScreen() {
   async function loadSummaries() {
     try {
       const dates = await listStoredDates();
-      const [plans, logs] = await Promise.all([loadPlansByDate(), loadFoodLogsByDate()]);
+      const [plans, logs, coachHistory] = await Promise.all([loadPlansByDate(), loadFoodLogsByDate(), loadDailyCoachHistory()]);
       const items: DaySummary[] = dates.map(dateKey => {
         const dayMeals = plans[dateKey] || [];
         const dayLogs = logs[dateKey] || [];
@@ -72,8 +82,31 @@ export function HistoryScreen() {
       });
       items.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
       setSummaries(items);
-      setAdherence(computeAdherenceTrend(plans, logs, 14));
+      const nextAdherence = computeAdherenceTrend(plans, logs, 14);
+      setAdherence(nextAdherence);
       if (baselineMacros) setEnergyBalance(computeEnergyBalance({ logs, tdee: baselineMacros.tdee, days: 14 }));
+      const weekDates = currentWeekDates(selectedDate);
+      const hasTraining = profile ? scopeHasTraining(resolveCoachScope(profile)) : false;
+      const plannedSessions = hasTraining && profile
+        ? weekDates.filter(dateKey => {
+            const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`));
+            return session && session.kind !== 'rest';
+          }).length
+        : 0;
+      const completedSessions = weekDates.filter(dateKey => trainingCompletions[dateKey]?.status === 'completed').length;
+      const readinessScores = weekDates
+        .map(dateKey => coachHistory[dateKey]?.recommendation.readiness.score)
+        .filter((score): score is number => typeof score === 'number');
+      const weekAdherenceDays = nextAdherence.days.filter(day => weekDates.includes(day.date));
+      const nutritionLoggedDays = weekAdherenceDays.filter(day => day.loggedKcal > 0).length;
+      const nutritionTargetDays = weekAdherenceDays.filter(day => day.ratio != null && day.ratio >= 0.85 && day.ratio <= 1.15).length;
+      setWeeklyReview(generateWeeklyMiniReview({
+        completedSessions,
+        plannedSessions,
+        readinessScores,
+        nutritionTargetDays,
+        nutritionLoggedDays,
+      }));
     } catch (err) {
       console.error('Failed to load history summaries', err);
     }
@@ -121,6 +154,29 @@ export function HistoryScreen() {
             </View>
             <Text style={[styles.note, { color: colors.muted }]}>{describeAdherence(adherence.averageRatio, locale)}</Text>
             <Text style={[styles.meta, { color: colors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
+          </Card>
+
+          <Card>
+            <SectionHeader title={t('history.weeklyReview')} />
+            <View style={styles.metricGrid}>
+              <MetricCard
+                label={t('history.weeklyTraining')}
+                value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`}
+                color={weeklyReview.trainingAdherencePct == null || weeklyReview.trainingAdherencePct >= 70 ? colors.accent : colors.orange}
+              />
+              <MetricCard
+                label={t('history.weeklyReadiness')}
+                value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness}
+                color={weeklyReview.averageReadiness == null || weeklyReview.averageReadiness >= 55 ? colors.blue : colors.orange}
+              />
+              <MetricCard
+                label={t('history.weeklyNutrition')}
+                value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`}
+                color={weeklyReview.nutritionAdherencePct == null || weeklyReview.nutritionAdherencePct >= 70 ? colors.green : colors.orange}
+              />
+            </View>
+            <Text style={[styles.meta, { color: colors.faint }]}>{t('history.weeklyRecommendation')}</Text>
+            <Text style={[styles.note, { color: colors.muted }]}>{t(weeklyReview.recommendationKey)}</Text>
           </Card>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
@@ -206,3 +262,15 @@ const styles = StyleSheet.create({
   rightCol: { alignItems: 'flex-end' },
   kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });
+
+function currentWeekDates(selectedDate: string): string[] {
+  const base = new Date(`${selectedDate}T12:00:00`);
+  const day = base.getDay() || 7;
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - (day - 1));
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return date.toISOString().slice(0, 10);
+  });
+}
