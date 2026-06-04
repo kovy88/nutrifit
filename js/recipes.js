@@ -8,6 +8,7 @@ import { checkAndIncrement } from './generation-limit.js?v=8';
 import { normalizeMeal, normalizeMealPlanResponse, parseGeminiJSON, sanitizeUserPrompt } from './ai-utils.js?v=8';
 import { dateKey } from './tracking-store.js?v=8';
 import { buildAIPlanPrompt, validateAIPlanOutput } from './services/ai-plan-service.js?v=1';
+import { authHeaders } from './supabase.js?v=8';
 
 // ── GOOGLE GEMINI API — volání přes serverless proxy /api/generate
 // API klíč je uložen jako env proměnná na serveru (Vercel), nikdy nedorazí do prohlížeče
@@ -17,7 +18,7 @@ async function callGemini(systemPrompt, prompt, maxTokens = 3500) {
   try {
     res = await fetch('/api/generate', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ systemPrompt, prompt, maxTokens }),
     });
   } catch {

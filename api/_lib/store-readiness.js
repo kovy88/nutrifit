@@ -84,6 +84,10 @@ function fallbackRateLimit(key, windowMs, max) {
   return entry.count > max;
 }
 
+function allowInMemoryRateLimitFallback() {
+  return !process.env.VERCEL && process.env.NODE_ENV !== 'production';
+}
+
 async function rateLimit(req, res, bucket, max, windowMs = 60 * 60 * 1000) {
   const ip = getClientIp(req);
   const requester = await getRequester(req);
@@ -116,9 +120,19 @@ async function rateLimit(req, res, bucket, max, windowMs = 60 * 60 * 1000) {
         }
         return true;
       }
+      if (!allowInMemoryRateLimitFallback()) {
+        sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.');
+        return false;
+      }
     } catch {
-      // Fall through to local fallback so development and partial env setup keep working.
+      if (!allowInMemoryRateLimitFallback()) {
+        sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.');
+        return false;
+      }
     }
+  } else if (!allowInMemoryRateLimitFallback()) {
+    sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není nakonfigurovaná.');
+    return false;
   }
 
   if (fallbackRateLimit(key, windowMs, max)) {

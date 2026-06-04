@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
 import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
+import type { HealthDataSummary } from '../types/health';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
 import { NoopNotificationScheduler } from '../lib/notifications';
@@ -33,6 +34,7 @@ const keys = {
   checkIns: 'nutrifit.checkIns.v1',
   trainingCompletionsByDate: 'nutrifit.trainingCompletionsByDate.v1',
   dailyCoachHistory: 'nutrifit.dailyCoachHistory.v1',
+  dailyHealthSummaries: 'nutrifit.dailyHealthSummaries.v1',
   coachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
@@ -41,6 +43,8 @@ const keys = {
   /** Marker so the one-time legacy migration runs once, not on every boot. */
   schemaVersion: 'nutrifit.schemaVersion.v1',
   isSubscribed: 'nutrifit.isSubscribed.v1',
+  /** Free Coach teaser usage counter (lifetime) before the paywall kicks in. */
+  coachTeaserUsed: 'nutrifit.coachTeaserUsed.v1',
 };
 
 /** Bump when a NEW one-time migration step is added to runMigration(). */
@@ -88,7 +92,7 @@ async function pruneDateBoundedStores(): Promise<void> {
     return next;
   };
 
-  const [plans, logs, sessions, weights, completions, coachHistory, coachThreads] = await Promise.all([
+  const [plans, logs, sessions, weights, completions, coachHistory, coachThreads, healthSummaries] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
     loadSessionsByDate(),
@@ -96,6 +100,7 @@ async function pruneDateBoundedStores(): Promise<void> {
     loadTrainingCompletionsByDate(),
     loadDailyCoachHistory(),
     loadCoachThreadsByDate(),
+    loadDailyHealthSummaries(),
   ]);
 
   await Promise.all([
@@ -106,6 +111,7 @@ async function pruneDateBoundedStores(): Promise<void> {
     AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(filter(completions))),
     AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(filter(coachHistory))),
     AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(filter(coachThreads))),
+    AsyncStorage.setItem(keys.dailyHealthSummaries, JSON.stringify(filter(healthSummaries))),
   ]);
 }
 
@@ -136,6 +142,19 @@ export async function loadConsent() {
 
 export async function saveConsent() {
   await AsyncStorage.setItem(keys.consent, JSON.stringify({ accepted: true, acceptedAt: new Date().toISOString() }));
+}
+
+// Free Coach teaser — how many free coach replies have been used before the paywall.
+export async function loadCoachTeaserUsed(): Promise<number> {
+  const raw = await readJson<{ count?: unknown }>(keys.coachTeaserUsed);
+  const n = Math.floor(Number(raw?.count));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+export async function incrementCoachTeaserUsed(): Promise<number> {
+  const next = (await loadCoachTeaserUsed()) + 1;
+  await AsyncStorage.setItem(keys.coachTeaserUsed, JSON.stringify({ count: next }));
+  return next;
 }
 
 export function normalizeConsent(value: { accepted?: unknown } | null | undefined) {
@@ -219,6 +238,21 @@ export async function saveDailyCoachHistory(history: DailyCoachHistoryMap): Prom
   await AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(history));
 }
 
+export async function loadDailyHealthSummaries(): Promise<Record<DateKey, HealthDataSummary>> {
+  const data = await readJson<Record<DateKey, HealthDataSummary>>(keys.dailyHealthSummaries);
+  return data || {};
+}
+
+export async function saveDailyHealthSummaryForDate(date: DateKey, summary: HealthDataSummary): Promise<void> {
+  const all = await loadDailyHealthSummaries();
+  all[date] = summary;
+  await AsyncStorage.setItem(keys.dailyHealthSummaries, JSON.stringify(all));
+}
+
+export async function saveDailyHealthSummaries(summaries: Record<DateKey, HealthDataSummary>): Promise<void> {
+  await AsyncStorage.setItem(keys.dailyHealthSummaries, JSON.stringify(summaries));
+}
+
 export async function loadCoachThreadsByDate(): Promise<CoachThreadRecordMap> {
   const data = await readJson<CoachThreadRecordMap>(keys.coachThreadsByDate);
   return data || {};
@@ -254,10 +288,11 @@ export async function listStoredDates(): Promise<DateKey[]> {
     loadPlansByDate(),
     loadFoodLogsByDate(),
   ]);
-  const [completions, coachHistory, coachThreads] = await Promise.all([
+  const [completions, coachHistory, coachThreads, healthSummaries] = await Promise.all([
     loadTrainingCompletionsByDate(),
     loadDailyCoachHistory(),
     loadCoachThreadsByDate(),
+    loadDailyHealthSummaries(),
   ]);
   const dates = new Set([
     ...Object.keys(plans),
@@ -265,6 +300,7 @@ export async function listStoredDates(): Promise<DateKey[]> {
     ...Object.keys(completions),
     ...Object.keys(coachHistory),
     ...Object.keys(coachThreads),
+    ...Object.keys(healthSummaries),
   ]);
   return Array.from(dates).sort();
 }

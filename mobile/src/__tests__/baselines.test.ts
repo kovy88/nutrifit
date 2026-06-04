@@ -37,6 +37,7 @@ describe('computePersonalBaselines', () => {
       getSleepSummary: async () => [],
       getRestingHeartRate: async () => null,
       getHrv: async () => null,
+      getRecoveryInputs: async () => [],
     };
     const baseline = await computePersonalBaselines(empty);
     expect(baseline.rhrMeanBpm).toBeNull();
@@ -63,6 +64,7 @@ describe('computePersonalBaselines', () => {
       getSleepSummary: async () => { throw new Error('boom'); },
       getRestingHeartRate: async () => { throw new Error('boom'); },
       getHrv: async () => { throw new Error('boom'); },
+      getRecoveryInputs: async () => { throw new Error('boom'); },
     };
     const baseline = await computePersonalBaselines(broken);
     expect(baseline.rhrMeanBpm).toBeNull();

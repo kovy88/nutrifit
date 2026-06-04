@@ -63,4 +63,6 @@ export type {
   BodyWeightSample,
   RestingHeartRateSample,
   HrvSample,
+  HealthDataCompleteness,
+  HealthDataSummary,
 } from '../../types/health';

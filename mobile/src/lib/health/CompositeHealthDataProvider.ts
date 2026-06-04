@@ -31,6 +31,7 @@ import type {
   SleepSummary,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 
 export class CompositeHealthDataProvider implements HealthDataProvider {
   readonly name = 'composite' as const;
@@ -141,6 +142,58 @@ export class CompositeHealthDataProvider implements HealthDataProvider {
       if (v) return v;
     }
     return null;
+  }
+
+  async getRecoveryInputs(start: Date, end: Date): Promise<RecoveryInputs[]> {
+    const all = await Promise.all(this.providers.map(p => safe(p.getRecoveryInputs(start, end), [] as RecoveryInputs[])));
+    const byDate = new Map<string, RecoveryInputs>();
+    for (const list of all) {
+      for (const item of list) {
+        if (!item.date) continue;
+        const existing = byDate.get(item.date);
+        if (!existing) {
+          byDate.set(item.date, { ...item, baseline: { ...item.baseline } });
+        } else {
+          if (existing.todaySleepMinutes === null || existing.todaySleepMinutes === undefined) {
+            existing.todaySleepMinutes = item.todaySleepMinutes;
+          }
+          if (existing.todayRhrBpm === null || existing.todayRhrBpm === undefined) {
+            existing.todayRhrBpm = item.todayRhrBpm;
+          }
+          if (existing.todayHrvMs === null || existing.todayHrvMs === undefined) {
+            existing.todayHrvMs = item.todayHrvMs;
+          }
+          if (existing.acwr === null || existing.acwr === undefined) {
+            existing.acwr = item.acwr;
+          }
+          if (existing.sleepDebtHours === null || existing.sleepDebtHours === undefined) {
+            existing.sleepDebtHours = item.sleepDebtHours;
+          }
+          if (existing.recoveryDebt === null || existing.recoveryDebt === undefined) {
+            existing.recoveryDebt = item.recoveryDebt;
+          }
+          if (existing.subjectiveEnergy === null || existing.subjectiveEnergy === undefined) {
+            existing.subjectiveEnergy = item.subjectiveEnergy;
+          }
+          if (existing.subjectiveSoreness === null || existing.subjectiveSoreness === undefined) {
+            existing.subjectiveSoreness = item.subjectiveSoreness;
+          }
+          if (item.baseline) {
+            existing.baseline = existing.baseline || {};
+            if (existing.baseline.rhrMeanBpm === null || existing.baseline.rhrMeanBpm === undefined) {
+              existing.baseline.rhrMeanBpm = item.baseline.rhrMeanBpm;
+            }
+            if (existing.baseline.hrvMeanMs === null || existing.baseline.hrvMeanMs === undefined) {
+              existing.baseline.hrvMeanMs = item.baseline.hrvMeanMs;
+            }
+            if (existing.baseline.sleepMeanMinutes === null || existing.baseline.sleepMeanMinutes === undefined) {
+              existing.baseline.sleepMeanMinutes = item.baseline.sleepMeanMinutes;
+            }
+          }
+        }
+      }
+    }
+    return Array.from(byDate.values()).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   }
 }
 

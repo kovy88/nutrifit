@@ -3,6 +3,8 @@ import {
   parseMealPlanResponse,
   parseWeeklySummarySafe,
   parseCoachReply,
+  parseOnboardingCoachReply,
+  parseStructuredCoachReply,
 } from '../lib/ai/schemas';
 
 describe('parseMealPlanResponse', () => {
@@ -47,5 +49,52 @@ describe('parseCoachReply', () => {
   it('rejects an empty or missing reply', () => {
     expect(parseCoachReply({ followups: ['x'] })).toBeNull();
     expect(parseCoachReply({ reply: '' })).toBeNull();
+  });
+});
+
+describe('parseStructuredCoachReply', () => {
+  it('parses proposed coach actions with safe defaults', () => {
+    const parsed = parseStructuredCoachReply({
+      reply: 'Můžu ti upravit den.',
+      actions: [{ type: 'adjust_today', label: 'Upravit dnešek' }],
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed!.actions[0]).toEqual({
+      type: 'adjust_today',
+      label: 'Upravit dnešek',
+      requiresConfirmation: true,
+    });
+  });
+
+  it('rejects unsupported action types', () => {
+    expect(parseStructuredCoachReply({
+      reply: 'Nope',
+      actions: [{ type: 'invent_calories', label: 'Bad' }],
+    })).toBeNull();
+  });
+});
+
+describe('parseOnboardingCoachReply', () => {
+  it('parses extracted onboarding fields and coerces numbers', () => {
+    const parsed = parseOnboardingCoachReply({
+      reply: 'Rozumím, cíl je 10K.',
+      extracted: {
+        primaryGoal: 'improve_running',
+        trainingGoal: 'run_10k',
+        sessionsPerWeek: '4',
+      },
+      confidence: 'high',
+      missingFields: ['raceDateISO'],
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed!.extracted.sessionsPerWeek).toBe(4);
+    expect(parsed!.missingFields).toEqual(['raceDateISO']);
+  });
+
+  it('rejects unknown training goals', () => {
+    expect(parseOnboardingCoachReply({
+      reply: 'Bad',
+      extracted: { trainingGoal: 'ultra_100_miles' },
+    })).toBeNull();
   });
 });

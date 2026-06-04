@@ -1,4 +1,4 @@
-import { Alert, Linking, StyleSheet, Text, View, Modal, ScrollView, Pressable } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
@@ -6,16 +6,16 @@ import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
 import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, TrainingGoalKind } from '../types';
-import { resolveCoachScope } from '../types';
-import type { PlanAdjustment } from '../types/checkin';
-import { activityFactorForSessions, toDateKey } from '../utils/nutrition';
+import { resolveCoachScope, scopeHasTraining } from '../types';
+import { activityFactorForSessions } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { planSessionForDate } from '../lib/training';
 import { useSyncStatus } from '../hooks/useSyncStatus';
-import { USER_PRIMARY_GOALS } from '../constants/goals';
+import { USER_PRIMARY_GOALS, isRunRaceGoal } from '../constants/goals';
 import type { TranslationKey } from '../lib/i18n';
+import { profileSetupCompleteness, type SetupMissingItem } from '../lib/onboarding/validation';
+import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
@@ -28,6 +28,8 @@ export function ProfileScreen() {
   const [showCheckIn, setShowCheckIn] = useState(false);
 
   if (!profile) return null;
+  const scope = resolveCoachScope(profile);
+  const setup = profileSetupCompleteness(profile);
 
   async function login() {
     try {
@@ -80,11 +82,42 @@ export function ProfileScreen() {
       <ScreenHeader eyebrow={t('tab.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} />
 
       <Card>
+        <SectionHeader title={t('profile.coachOverview')} />
+        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.coachOverviewBody')}</Text>
+        <View style={styles.summaryGrid}>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.focus')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(('scope.' + scope) as 'scope.both')}</Text>
+          </View>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.mainGoal')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(`goal.${profile.primaryGoal}` as TranslationKey)}</Text>
+          </View>
+          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.sessionsPerWeek')}</Text>
+            <Text style={[styles.summaryValue, { color: colors.accent }]}>{profile.sessionsPerWeek}×</Text>
+          </View>
+        </View>
+      </Card>
+
+      {!setup.complete ? (
+        <Card>
+          <SectionHeader title={t('setup.profileTitle')} />
+          <Text style={[styles.copy, { color: colors.muted }]}>{t('setup.profileBody', { count: setup.missing.length })}</Text>
+          <View style={styles.setupList}>
+            {setup.missing.slice(0, 3).map(item => (
+              <Text key={item} style={[styles.setupItem, { color: colors.ink }]}>• {t(setupMissingLabelKey(item))}</Text>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      <Card>
         <SectionHeader title={t('profile.coachSetup')} />
         <Label>{t('profile.focus')}</Label>
         <View style={styles.rowWrap}>
           {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
-            <Pill key={s} active={resolveCoachScope(profile) === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
+            <Pill key={s} active={scope === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
               {t(('scope.' + s) as 'scope.both')}
             </Pill>
           ))}
@@ -117,6 +150,43 @@ export function ProfileScreen() {
             <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>{count}×</Pill>
           ))}
         </View>
+        {scopeHasTraining(scope) ? (
+          <>
+            <Label>{t('profile.restDays')}</Label>
+            <View style={styles.rowWrap}>
+              {WEEKDAY_REST.map(day => (
+                <Pill
+                  key={day.value}
+                  active={(profile.preferredRestDays ?? []).includes(day.value)}
+                  onPress={() => setProfile({ ...profile, preferredRestDays: toggleRestDay(profile.preferredRestDays, day.value) })}
+                >
+                  {t(day.labelKey)}
+                </Pill>
+              ))}
+            </View>
+          </>
+        ) : null}
+        {isRunRaceGoal(profile.trainingGoal) ? (
+          <>
+            <Label>{t('onb.targetTimeOptional')}</Label>
+            <Field
+              keyboardType="number-pad"
+              value={profile.targetTimeSeconds ? String(Math.round(profile.targetTimeSeconds / 60)) : ''}
+              onChangeText={value => {
+                const minutes = parseOptionalInt(value, 24 * 60);
+                setProfile({ ...profile, targetTimeSeconds: minutes ? minutes * 60 : undefined });
+              }}
+              placeholder={t('onb.targetTimePlaceholder')}
+            />
+            <Label>{t('onb.currentPaceOptional')}</Label>
+            <Field
+              keyboardType="number-pad"
+              value={profile.currentPaceSecPerKm ? String(profile.currentPaceSecPerKm) : ''}
+              onChangeText={value => setProfile({ ...profile, currentPaceSecPerKm: parseOptionalInt(value, 900) })}
+              placeholder={t('onb.currentPacePlaceholder')}
+            />
+          </>
+        ) : null}
         <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
           {t('profile.weeklyCheckIn')}
         </Button>
@@ -249,188 +319,6 @@ export function ProfileScreen() {
   );
 }
 
-function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment, trainingCompletions } = useTrenr();
-  const { colors } = useTheme();
-
-  const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [hungerLevel, setHungerLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [sorenessLevel, setSorenessLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
-  const [adherencePct, setAdherencePct] = useState<number>(80);
-  const [currentWeight, setCurrentWeight] = useState(profile ? String(profile.weight) : '');
-  const [pending, setPending] = useState<PlanAdjustment | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  if (!profile) return null;
-
-  async function evaluateCheckIn() {
-    if (!profile || submitting) return;
-    const nextWeight = parseFloat(currentWeight.replace(',', '.'));
-    if (!nextWeight || nextWeight < 30 || nextWeight > 300) {
-      Alert.alert('Chyba', 'Zadej prosím platnou váhu.');
-      return;
-    }
-
-    // Week start = Monday of the week containing selectedDate
-    const d = new Date(selectedDate);
-    const dayOfWeek = d.getDay() || 7;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - (dayOfWeek - 1));
-    const weekStartISO = toDateKey(monday);
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const day = new Date(monday);
-      day.setDate(monday.getDate() + i);
-      return day;
-    });
-    const plannedSessions = weekDays
-      .map(day => planSessionForDate(profile, day))
-      .filter(session => session.kind !== 'rest' && session.durationMinutes > 0)
-      .length;
-    const completedSessions = weekDays
-      .map(day => trainingCompletions[toDateKey(day)])
-      .filter(completion => completion?.status === 'completed')
-      .length;
-
-    setSubmitting(true);
-    try {
-      const adjustment = await recordCheckIn({
-        weekStartISO,
-        weightKg: nextWeight,
-        energyLevel,
-        hungerLevel,
-        sorenessLevel,
-        adherence: adherencePct / 100,
-        completedSessions,
-        plannedSessions,
-        createdAt: new Date().toISOString(),
-      });
-      // Also persist the new weight on profile so calculateMacros picks it up immediately
-      await setProfile({ ...profile, weight: nextWeight });
-      setPending(adjustment);
-    } catch (err) {
-      Alert.alert('Chyba', err instanceof Error ? err.message : 'Check-in se nepodařil.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function acceptAdjustment() {
-    if (!pending) return;
-    await applyAdjustment(pending);
-    Alert.alert(
-      'Použito',
-      pending.kcalDelta === 0
-        ? 'Plán zůstává beze změny. Pokračuj jak máš.'
-        : `Denní cíl ${pending.kcalDelta > 0 ? 'zvýšen' : 'snížen'} o ${Math.abs(pending.kcalDelta)} kcal pro příští týden.`,
-    );
-    setPending(null);
-    onClose();
-  }
-
-  function dismissAdjustment() {
-    setPending(null);
-    onClose();
-  }
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <Pressable style={styles.modalScrim} onPress={onClose} />
-        <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: colors.ink }]}>Týdenní check-in</Text>
-            <Text style={[styles.small, { color: colors.muted }]}>
-              Zhodnoť svůj týden. Trenr porovná váhu s minulým týdnem a doporučí úpravy v jídelníčku.
-            </Text>
-
-            <Label>Energie tento týden (1–5)</Label>
-            <View style={styles.row}>
-              {([1, 2, 3, 4, 5] as const).map(n => (
-                <Pill key={`e-${n}`} active={energyLevel === n} onPress={() => setEnergyLevel(n)}>
-                  {n === 1 ? '1' : n === 5 ? '5' : String(n)}
-                </Pill>
-              ))}
-            </View>
-
-            <Label>Hlad přes den (1 = ne, 5 = stále)</Label>
-            <View style={styles.row}>
-              {([1, 2, 3, 4, 5] as const).map(n => (
-                <Pill key={`h-${n}`} active={hungerLevel === n} onPress={() => setHungerLevel(n)}>
-                  {String(n)}
-                </Pill>
-              ))}
-            </View>
-
-            <Label>Bolest / svalovka (1 = žádná, 5 = výrazná)</Label>
-            <View style={styles.row}>
-              {([1, 2, 3, 4, 5] as const).map(n => (
-                <Pill key={`s-${n}`} active={sorenessLevel === n} onPress={() => setSorenessLevel(n)}>
-                  {String(n)}
-                </Pill>
-              ))}
-            </View>
-
-            <Label>Adherence — kolik % plánu jsi dodržel/a?</Label>
-            <View style={styles.row}>
-              {[40, 60, 80, 100].map(pct => (
-                <Pill key={`a-${pct}`} active={adherencePct === pct} onPress={() => setAdherencePct(pct)}>
-                  {pct}%
-                </Pill>
-              ))}
-            </View>
-
-            <Label>Dnešní váha (kg)</Label>
-            <Field
-              keyboardType="numeric"
-              value={currentWeight}
-              onChangeText={setCurrentWeight}
-              placeholder="Zadej aktuální váhu..."
-            />
-
-            {pending ? (
-              <View style={[styles.resultBox, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
-                <Text style={[styles.resultText, { color: colors.green }]}>
-                  {pending.reason}
-                </Text>
-                {pending.kcalDelta !== 0 && (
-                  <Text style={[styles.resultText, { color: colors.ink, marginTop: 6 }]}>
-                    {pending.kcalDelta > 0 ? '+' : ''}{pending.kcalDelta} kcal / den pro příští týden
-                  </Text>
-                )}
-                {pending.adjustedGoalKind && (
-                  <Text style={[styles.resultText, { color: colors.orange, marginTop: 6, fontWeight: '900' }]}>
-                    Cíl dočasně přepneme na: {pending.adjustedGoalKind}
-                  </Text>
-                )}
-                {pending.warnings.length > 0 && (
-                  <View style={{ marginTop: 10, gap: 4 }}>
-                    {pending.warnings.map((w, i) => (
-                      <Text key={i} style={[styles.resultText, { color: colors.muted }]}>• {w}</Text>
-                    ))}
-                  </View>
-                )}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                  <Button style={{ flex: 1 }} variant="secondary" onPress={dismissAdjustment}>
-                    Tento týden nepoužít
-                  </Button>
-                  <Button style={{ flex: 1 }} onPress={acceptAdjustment}>
-                    Použít na příští týden
-                  </Button>
-                </View>
-              </View>
-            ) : (
-              <Button onPress={evaluateCheckIn}>
-                {submitting ? 'Vyhodnocuji…' : 'Vyhodnotit týden'}
-              </Button>
-            )}
-          </ScrollView>
-          <Button variant="secondary" onPress={onClose}>Zavřít</Button>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
   { value: 'general_fitness', label: 'Kondice' },
   { value: 'walking_more', label: 'Chůze' },
@@ -467,20 +355,44 @@ const dietStyles: DietStyle[] = [
   'vysokoproteínový',
 ];
 
+const WEEKDAY_REST = [
+  { value: 1, labelKey: 'weekday.mon' as TranslationKey },
+  { value: 2, labelKey: 'weekday.tue' as TranslationKey },
+  { value: 3, labelKey: 'weekday.wed' as TranslationKey },
+  { value: 4, labelKey: 'weekday.thu' as TranslationKey },
+  { value: 5, labelKey: 'weekday.fri' as TranslationKey },
+  { value: 6, labelKey: 'weekday.sat' as TranslationKey },
+  { value: 0, labelKey: 'weekday.sun' as TranslationKey },
+];
+
+function toggleRestDay(current: number[] | undefined, day: number): number[] {
+  const set = new Set(current ?? []);
+  if (set.has(day)) set.delete(day);
+  else set.add(day);
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+function parseOptionalInt(value: string, max: number): number | undefined {
+  const parsed = Math.round(Number(value.replace(',', '.')));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, max) : undefined;
+}
+
+function setupMissingLabelKey(item: SetupMissingItem): TranslationKey {
+  return `setup.missing.${item}` as TranslationKey;
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  summaryTile: { flex: 1, minWidth: '30%', borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
+  summaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  summaryValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
+  setupList: { gap: 5, marginTop: 8 },
+  setupItem: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   user: { fontWeight: '900' },
   copy: { lineHeight: 20 },
   link: { fontWeight: '900' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25, 33, 29, 0.38)' },
-  modalSheet: { maxHeight: '82%', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
-  modalContent: { gap: 12, paddingBottom: 6 },
-  modalTitle: { fontSize: 22, fontWeight: '900' },
-  small: { fontSize: 13, lineHeight: 18 },
-  resultBox: { marginTop: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
-  resultText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   summaryHeadline: { fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 6 },
   summarySectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
   summaryBullet: { fontSize: 13, lineHeight: 19 },

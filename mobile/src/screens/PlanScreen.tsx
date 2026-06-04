@@ -20,10 +20,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
-import { planSessionForDate } from '../lib/training';
+import { planSessionForDate, planForDate } from '../lib/training';
 import type { Meal, TrainingSession } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { PaywallModal } from '../components/PaywallModal';
+import { loadPlansByDate } from '../services/storage';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 export function PlanScreen() {
   const {
@@ -51,12 +53,27 @@ export function PlanScreen() {
   const [likes, setLikes] = useState(profile?.likes || '');
   const [dislikes, setDislikes] = useState(profile?.dislikes || '');
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [expandedDay, setExpandedDay] = useState(selectedDate);
+  const [plansByDate, setPlansByDate] = useState<Record<string, Meal[]>>({});
+  const { completion, mark } = useTrainingCompletion();
 
   useEffect(() => {
     if (!profile) return;
     setLikes(profile.likes);
     setDislikes(profile.dislikes);
   }, [profile?.likes, profile?.dislikes]);
+
+  useEffect(() => {
+    setExpandedDay(selectedDate);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPlansByDate().then(plans => {
+      if (!cancelled) setPlansByDate(plans);
+    });
+    return () => { cancelled = true; };
+  }, [selectedDate, meals.length]);
 
   const weekDays = useMemo(() => buildWeek(selectedDate, locale), [selectedDate, locale]);
 
@@ -66,6 +83,7 @@ export function PlanScreen() {
   const activeMacros = currentMacros;
   const shoppingGroups = buildShoppingList(meals);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate));
+  const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate)), [activeProfile, selectedDate]);
 
   async function savePrefs() {
     await setProfile({ ...activeProfile, likes, dislikes });
@@ -95,6 +113,7 @@ export function PlanScreen() {
     try {
       const next = await generateMealPlan(activeProfile, activeMacros, selectedSession);
       await setMeals(next);
+      setPlansByDate(current => ({ ...current, [selectedDate]: next }));
     } catch (err) {
       Alert.alert(t('plan.generateFailed'), err instanceof Error ? err.message : t('plan.tryAgain'));
     } finally {
@@ -140,6 +159,7 @@ export function PlanScreen() {
       const nextMeals = meals.slice();
       nextMeals[index] = next;
       await setMeals(nextMeals);
+      setPlansByDate(current => ({ ...current, [selectedDate]: nextMeals }));
     } catch (err) {
       Alert.alert(t('plan.regenFailed'), err instanceof Error ? err.message : t('plan.tryAgainShort'));
     } finally {
@@ -152,6 +172,11 @@ export function PlanScreen() {
       .map(group => `${group.category}\n${group.items.map(item => `- ${item}`).join('\n')}`)
       .join('\n\n');
     Share.share({ message: `${t('plan.shoppingShareHeader')}\n\n${body}` });
+  }
+
+  async function markWorkoutDoneForSelectedDay() {
+    if (selectedSession.kind === 'rest') return;
+    await mark('completed');
   }
 
   return (
@@ -167,49 +192,85 @@ export function PlanScreen() {
         }
       />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
+      {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
+        <Card style={{ borderColor: colors.orange, backgroundColor: colors.orange + '10', marginBottom: 12, padding: 14 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+            <Ionicons name="warning-outline" size={20} color={colors.orange} />
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.ink, flex: 1 }}>
+              {t('plan.ambitiousWarning')}
+            </Text>
+          </View>
+          {weeklyPlan.safetyWarnings.map((warning, index) => (
+            <Text key={index} style={{ fontSize: 13, color: colors.muted, lineHeight: 18, marginTop: 2 }}>
+              • {warning}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
+
+      {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
+        <View style={{ marginBottom: 12, paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: colors.accent }}>
+            {t('plan.weeklyVolume', { volume: Math.round(weeklyPlan.weeklyVolume) })}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.weekList}>
         {weekDays.map(day => {
           const session = planSessionForDate(activeProfile, new Date(day.key));
           const selected = day.key === selectedDate;
+          const expanded = day.key === expandedDay;
+          const dayMeals = selected ? meals : plansByDate[day.key] ?? [];
           return (
-            <Pressable
+            <PlanDayCard
               key={day.key}
-              onPress={() => setSelectedDate(day.key)}
-              style={[
-                styles.dayPill,
-                {
-                  backgroundColor: selected ? colors.accent : colors.bgElev,
-                  borderColor: selected ? colors.accent : colors.border,
-                },
-              ]}
+              selected={selected}
+              isRest={session.kind === 'rest'}
+              isLongRun={session.kind === 'long_run'}
+              title={`${day.name} ${day.num}`}
+              subtitle={sessionLine(session, t)}
+              markers={planMarkers(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}
+              onPress={() => {
+                setSelectedDate(day.key);
+                setExpandedDay(expanded ? day.key : day.key);
+              }}
             >
-              <Text style={[styles.dayName, { color: selected ? colors.accentText : colors.faint }]}>{day.name}</Text>
-              <Text style={[styles.dayNum, { color: selected ? colors.accentText : colors.ink }]}>{day.num}</Text>
-              <Text style={[styles.dayKind, { color: selected ? colors.accentText : colors.muted }]} numberOfLines={1}>
-                {shortSession(session, t)}
-              </Text>
-            </Pressable>
+              {expanded ? (
+                <View style={styles.dayDetails}>
+                  <View style={styles.daySummaryRow}>
+                    <View style={styles.daySummaryBlock}>
+                      <Text style={[styles.daySummaryLabel, { color: colors.faint }]}>{t('plan.mealSummary')}</Text>
+                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{mealSummary(dayMeals, t)}</Text>
+                    </View>
+                    <View style={styles.daySummaryBlock}>
+                      <Text style={[styles.daySummaryLabel, { color: colors.faint }]}>{t('plan.trainingSummary')}</Text>
+                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{shortSession(session, t)}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.metricRow}>
+                    <MetricCard compact label="kcal" value={selected ? activeMacros.kcal : totalMealKcal(dayMeals) || '-'} color={colors.accent} />
+                    <MetricCard compact label={t('home.protein')} value={selected ? activeMacros.protein : totalMealProtein(dayMeals) || '-'} unit={selected || totalMealProtein(dayMeals) ? 'g' : undefined} color={colors.green} />
+                  </View>
+                  <Text style={[styles.fueling, { color: colors.muted }]}>{nutritionNote(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}</Text>
+                  <View style={styles.dayActions}>
+                    <QuickActionButton icon="restaurant-outline" label={dayMeals.length ? t('today.swapMeal') : t('plan.generate')} onPress={generate} disabled={loading || !selected} />
+                    <QuickActionButton icon="options-outline" label={t('today.adjustToday')} onPress={() => navigation.navigate('Trénink')} />
+                    {session.kind !== 'rest' ? (
+                      <QuickActionButton
+                        icon="checkmark-circle-outline"
+                        label={completion?.status === 'completed' && selected ? t('today.completed') : t('today.markDone')}
+                        onPress={markWorkoutDoneForSelectedDay}
+                        disabled={!selected || completion?.status === 'completed'}
+                      />
+                    ) : null}
+                  </View>
+                </View>
+              ) : null}
+            </PlanDayCard>
           );
         })}
-      </ScrollView>
-
-      <PlanDayCard
-        selected
-        title={formatDateLabel(selectedDate)}
-        subtitle={sessionLine(selectedSession, t)}
-        markers={planMarkers(selectedSession, dailyAdjustment?.carbsDelta ?? 0, t)}
-      >
-        <View style={styles.metricRow}>
-          <MetricCard label="kcal" value={activeMacros.kcal} color={colors.accent} />
-          <MetricCard label={t('home.protein')} value={activeMacros.protein} unit="g" color={colors.green} />
-        </View>
-        {selectedSession.kind === 'long_run' && dailyAdjustment && dailyAdjustment.carbsDelta > 0 ? (
-          <Text style={[styles.fueling, { color: colors.accent }]}>{t('plan.longRunFueling', {
-            carbs: Math.round(dailyAdjustment.carbsDelta),
-            kcal: Math.round(dailyAdjustment.kcalDelta),
-          })}</Text>
-        ) : null}
-      </PlanDayCard>
+      </View>
 
       <View style={styles.quickGrid}>
         <QuickActionButton icon="sparkles-outline" label={t('plan.generate')} onPress={generate} disabled={loading} />
@@ -429,16 +490,38 @@ function planMarkers(session: TrainingSession, carbsDelta: number, t: ReturnType
   return markers;
 }
 
+function mealSummary(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string {
+  if (!meals.length) return t('plan.noMealsYet');
+  return t('plan.mealSummaryValue', { count: meals.length, kcal: totalMealKcal(meals) });
+}
+
+function totalMealKcal(meals: Meal[]): number {
+  return meals.reduce((sum, meal) => sum + meal.kcal, 0);
+}
+
+function totalMealProtein(meals: Meal[]): number {
+  return meals.reduce((sum, meal) => sum + meal.protein, 0);
+}
+
+function nutritionNote(session: TrainingSession, carbsDelta: number, t: ReturnType<typeof useLanguage>['t']): string {
+  if (carbsDelta > 0) return t('plan.fuelAdjustmentShort', { carbs: Math.round(carbsDelta) });
+  if (session.kind === 'rest') return t('plan.restAdjustmentShort');
+  if (session.intensity === 'hard' || session.kind === 'long_run') return t('plan.hardDayAdjustmentShort');
+  return t('plan.easyDayAdjustmentShort');
+}
+
 const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  weekStrip: { gap: 8, paddingRight: 20 },
-  dayPill: { width: 76, minHeight: 88, borderWidth: 1, borderRadius: 16, padding: 10, justifyContent: 'space-between' },
-  dayName: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  dayNum: { fontSize: 22, fontWeight: '900' },
-  dayKind: { fontSize: 11, fontWeight: '800' },
+  weekList: { gap: 10 },
+  dayDetails: { gap: 12 },
+  daySummaryRow: { flexDirection: 'row', gap: 10 },
+  daySummaryBlock: { flex: 1, gap: 3 },
+  daySummaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  daySummaryText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   metricRow: { flexDirection: 'row', gap: 8 },
   fueling: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   quickGrid: { flexDirection: 'row', gap: 8 },
+  dayActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   mealRow: { borderTopWidth: 1, paddingTop: 14, gap: 9 },
   mealTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   mealType: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },

@@ -126,3 +126,28 @@ export type HrvSample = {
   metric: 'sdnn' | 'rmssd';
   source: HealthDataSource;
 };
+
+export type HealthDataCompleteness = {
+  activity: boolean;
+  workouts: boolean;
+  sleep: boolean;
+  restingHeartRate: boolean;
+  hrv: boolean;
+  bodyWeight: boolean;
+};
+
+export type HealthDataSummary = {
+  /** YYYY-MM-DD in the user's local timezone. */
+  date: string;
+  activity: DailyActivitySummary | null;
+  sleep: SleepSummary | null;
+  restingHeartRate: RestingHeartRateSample | null;
+  hrv: HrvSample | null;
+  latestWeight: BodyWeightSample | null;
+  workouts: WorkoutSummary[];
+  sources: HealthDataSource[];
+  completeness: HealthDataCompleteness;
+  confidence: 'low' | 'medium' | 'high';
+  createdAt: string;
+  updatedAt: string;
+};

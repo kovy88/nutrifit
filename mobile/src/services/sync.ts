@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import type { WeeklyCheckIn } from '../types/checkin';
 import type { CoachThreadRecordMap, DailyCoachHistoryMap } from '../types/coach';
+import type { HealthDataSummary } from '../types/health';
 
 const PENDING_KEY = 'nutrifit.sync.pendingWrites.v1';
 
@@ -34,6 +35,7 @@ export type LocalSyncSnapshot = {
   trainingCompletionsByDate?: TrainingCompletionRecordMap;
   coachThreadsByDate?: CoachThreadRecordMap;
   dailyCoachHistory?: DailyCoachHistoryMap;
+  dailyHealthSummaries?: Record<string, HealthDataSummary>;
 };
 
 export type SyncRows = ReturnType<typeof buildSyncRows>;
@@ -165,6 +167,22 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
     updated_at: day.updatedAt,
   }));
 
+  const dailyHealthSummaries = Object.values(snapshot.dailyHealthSummaries ?? {}).map(day => ({
+    user_id: userId,
+    summary_date: day.date,
+    activity: day.activity,
+    sleep: day.sleep,
+    resting_heart_rate: day.restingHeartRate,
+    hrv: day.hrv,
+    latest_weight: day.latestWeight,
+    workouts: day.workouts,
+    sources: day.sources,
+    completeness: day.completeness,
+    confidence: day.confidence,
+    created_at: day.createdAt,
+    updated_at: day.updatedAt,
+  }));
+
   const profile = snapshot.profile
     ? [{ user_id: userId, profile: snapshot.profile, updated_at: timestamp }]
     : [];
@@ -195,6 +213,7 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
     trainingCompletions,
     coachThreads,
     dailyCoachRecommendations,
+    dailyHealthSummaries,
   };
 }
 
@@ -209,6 +228,7 @@ export async function pushLocalSnapshotToSupabase(snapshot: LocalSyncSnapshot, u
   await upsertRows('training_completions', rows.trainingCompletions, 'user_id,completion_date');
   await upsertRows('coach_threads', rows.coachThreads, 'user_id,thread_date');
   await upsertRows('daily_coach_recommendations', rows.dailyCoachRecommendations, 'user_id,recommendation_date');
+  await upsertRows('daily_health_summaries', rows.dailyHealthSummaries, 'user_id,summary_date');
 }
 
 export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<RemoteSyncSnapshot> {
@@ -221,6 +241,7 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
     completionsRes,
     coachThreadsRes,
     coachHistoryRes,
+    healthSummariesRes,
   ] = await Promise.all([
     supabase.from('profiles').select('profile').eq('user_id', userId).maybeSingle(),
     supabase.from('daily_meal_plans').select('plan_date,meals').eq('user_id', userId),
@@ -230,9 +251,10 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
     supabase.from('training_completions').select('completion_date,status,planned_session,actual_duration_minutes,actual_distance_km,rpe,note,source,paired_workout_id,created_at,updated_at').eq('user_id', userId),
     supabase.from('coach_threads').select('thread_date,messages,memory,created_at,updated_at').eq('user_id', userId),
     supabase.from('daily_coach_recommendations').select('recommendation_date,recommendation,memory,created_at,updated_at').eq('user_id', userId),
+    supabase.from('daily_health_summaries').select('summary_date,activity,sleep,resting_heart_rate,hrv,latest_weight,workouts,sources,completeness,confidence,created_at,updated_at').eq('user_id', userId),
   ]);
 
-  const firstError = [profileRes, plansRes, logsRes, weightsRes, checkInsRes, completionsRes, coachThreadsRes, coachHistoryRes]
+  const firstError = [profileRes, plansRes, logsRes, weightsRes, checkInsRes, completionsRes, coachThreadsRes, coachHistoryRes, healthSummariesRes]
     .find(res => res.error)?.error;
   if (firstError) throw new Error(firstError.message);
 
@@ -277,6 +299,27 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
       date: row.recommendation_date,
       recommendation: row.recommendation,
       memory: row.memory ?? { goalSummary: 'general_fitness', updatedAt: nowISO() },
+      createdAt: row.created_at ?? nowISO(),
+      updatedAt: row.updated_at ?? nowISO(),
+    }])),
+    dailyHealthSummaries: Object.fromEntries(((healthSummariesRes.data as any[]) ?? []).map(row => [row.summary_date, {
+      date: row.summary_date,
+      activity: row.activity ?? null,
+      sleep: row.sleep ?? null,
+      restingHeartRate: row.resting_heart_rate ?? null,
+      hrv: row.hrv ?? null,
+      latestWeight: row.latest_weight ?? null,
+      workouts: row.workouts ?? [],
+      sources: row.sources ?? [],
+      completeness: row.completeness ?? {
+        activity: false,
+        workouts: false,
+        sleep: false,
+        restingHeartRate: false,
+        hrv: false,
+        bodyWeight: false,
+      },
+      confidence: row.confidence ?? 'low',
       createdAt: row.created_at ?? nowISO(),
       updatedAt: row.updated_at ?? nowISO(),
     }])),

@@ -95,7 +95,7 @@ describe('GarminOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new GarminOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(async () => {
@@ -174,7 +174,7 @@ describe('GarminOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new GarminOAuth({ clientId: 'cid' }, store);
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(async () => {

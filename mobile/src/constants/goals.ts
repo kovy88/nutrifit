@@ -16,12 +16,6 @@ export const USER_PRIMARY_GOALS: PrimaryGoalOption[] = [
     trainingGoal: 'general_fitness',
   },
   {
-    value: 'maintain_weight',
-    labelKey: 'onb.goalMaintainWeight',
-    subtitleKey: 'onb.goalMaintainWeightSub',
-    trainingGoal: 'general_fitness',
-  },
-  {
     value: 'gain_muscle',
     labelKey: 'onb.goalGainMuscle',
     subtitleKey: 'onb.goalGainMuscleSub',
@@ -37,7 +31,7 @@ export const USER_PRIMARY_GOALS: PrimaryGoalOption[] = [
     value: 'improve_running',
     labelKey: 'goal.improve_running',
     subtitleKey: 'onb.goalImproveRunningSub',
-    trainingGoal: 'run_10k',
+    trainingGoal: 'couch_to_5k',
   },
   {
     value: 'build_consistency',

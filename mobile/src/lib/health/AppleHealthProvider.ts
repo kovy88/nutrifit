@@ -35,6 +35,7 @@ import type {
   WorkoutKind,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 
 /** Singleton init guard — HealthKit must be initialized once before queries. */
 let initPromise: Promise<any | null> | null = null;
@@ -317,6 +318,41 @@ export class AppleHealthProvider implements HealthDataProvider {
     } catch {
       return null;
     }
+  }
+
+  async getRecoveryInputs(start: Date, end: Date): Promise<RecoveryInputs[]> {
+    const hk = await loadHealthKit();
+    if (!hk) return [];
+
+    // TODO: Implement direct native HealthKit batch recovery query once native plugin is built.
+    // Currently we aggregate sleep, resting heart rate, and HRV samples.
+    const sleep = await this.getSleepSummary(start, end);
+    const out: RecoveryInputs[] = [];
+    const sleepMap = new Map(sleep.map(s => [s.date, s]));
+
+    const dates = enumerateDates(start, end);
+    for (const d of dates) {
+      const dateStr = dateKey(d);
+      const rhr = await this.getRestingHeartRate(d);
+      const hrv = await this.getHrv(d);
+      const sl = sleepMap.get(dateStr);
+
+      out.push({
+        date: dateStr,
+        todaySleepMinutes: sl ? sl.totalMinutes : null,
+        todayRhrBpm: rhr ? rhr.bpm : null,
+        todayHrvMs: hrv ? hrv.ms : null,
+        baseline: {
+          rhrMeanBpm: 60,
+          hrvMeanMs: 45,
+          sleepMeanMinutes: 450,
+        },
+        acwr: 1.0,
+        sleepDebtHours: 0,
+        recoveryDebt: 0,
+      });
+    }
+    return out;
   }
 }
 

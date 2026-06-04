@@ -3,6 +3,8 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Button, Choice, Field, H1, Pill, Subtitle } from '../components/UI';
 import { Screen } from '../components/Screen';
+import { GoalInputStep } from '../components/onboarding/GoalInputStep';
+import { OnboardingProgress } from '../components/onboarding/OnboardingProgress';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import type {
@@ -14,9 +16,13 @@ import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '
 import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../lib/i18n';
 import { validateRaceGoalFeasibility } from '../lib/training/feasibility';
-import { NUTRITION_PRIMARY_GOALS, USER_PRIMARY_GOALS, trainingGoalsFor, isRunRaceGoal } from '../constants/goals';
+import { trainingGoalsFor, isRunRaceGoal } from '../constants/goals';
+import { applyGoalProfileToUserProfile } from '../lib/onboarding/goal-profile-adapter';
+import type { GoalProfile } from '../types/goal-types';
 import {
   buildOnboardingSteps,
+  isAutoAdvanceStep,
+  isStepTouched,
   validateOnboardingStep,
   type OnboardingField,
   type StepId,
@@ -30,6 +36,7 @@ export function OnboardingScreen() {
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<UserProfile>(() => ({ ...DEFAULT_PROFILE, age: 0, height: 0, weight: 0 }));
   const [touchedFields, setTouchedFields] = useState<TouchedOnboardingFields>({});
+  const [goalInput, setGoalInput] = useState('');
 
   // Resume a < 24h draft if the app was killed mid-onboarding.
   const hydrated = useRef(false);
@@ -41,6 +48,7 @@ export function OnboardingScreen() {
       const ageMs = Date.now() - new Date(stored.updatedAt).getTime();
       if (ageMs > 24 * 3600 * 1000) { await clearOnboardingDraft(); hydrated.current = true; return; }
       setDraft(stored.draft);
+      setGoalInput(stored.draft.goalProfile?.rawText ?? '');
       setStepIndex(Math.max(0, stored.step));
       setTouchedFields(stored.touchedFields ?? {});
       hydrated.current = true;
@@ -54,17 +62,25 @@ export function OnboardingScreen() {
   }, [stepIndex, draft, touchedFields]);
 
   const scope = resolveCoachScope(draft);
-  const steps = useMemo(() => buildOnboardingSteps(scope, draft.trainingGoal), [scope, draft.trainingGoal]);
+  const steps = useMemo(() => buildOnboardingSteps(scope, draft.trainingGoal, draft.primaryGoal, draft.goalProfile), [scope, draft.goalProfile, draft.primaryGoal, draft.trainingGoal]);
   const total = steps.length;
   const idx = Math.min(stepIndex, total - 1);
   const step = steps[idx];
   const isLast = idx === total - 1;
+  const autoStep = isAutoAdvanceStep(step);
   const feasibility = useMemo(() => (
     isRunRaceGoal(draft.trainingGoal)
       ? validateRaceGoalFeasibility({ trainingGoal: draft.trainingGoal, profile: draft })
       : null
   ), [draft]);
   const stepValidation = validateOnboardingStep(step, draft, scope, touchedFields, feasibility?.verdict);
+  const touchedCurrentStep = isStepTouched(step, touchedFields);
+  const shouldShowRequired = !stepValidation.valid && !autoStep && touchedCurrentStep;
+  const footerMessageKey = autoStep && !stepValidation.valid
+    ? 'onb.tapToContinue'
+    : shouldShowRequired
+      ? stepValidation.messageKey
+      : helpKeyFor(step);
 
   function markTouched(field: OnboardingField) {
     setTouchedFields(current => ({ ...current, [field]: true }));
@@ -75,13 +91,39 @@ export function OnboardingScreen() {
     markTouched(key as OnboardingField);
   }
 
+  function chooseField<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
+    const nextDraft = { ...draft, [key]: value };
+    const nextTouched = { ...touchedFields, [key]: true };
+    completeChoice(nextDraft, nextTouched);
+  }
+
+  function setGoalProfile(goalProfile: GoalProfile | null) {
+    if (!goalProfile) {
+      setDraft(current => ({ ...current, goalProfile: undefined }));
+      setTouchedFields(current => ({ ...current, goalProfile: false }));
+      return;
+    }
+    setDraft(current => applyGoalProfileToUserProfile(current, goalProfile));
+    setTouchedFields(current => ({ ...current, goalProfile: true }));
+  }
+
+  function completeChoice(nextDraft: UserProfile, nextTouched: TouchedOnboardingFields) {
+    setDraft(nextDraft);
+    setTouchedFields(nextTouched);
+    if (isLast) {
+      void finish(nextDraft);
+      return;
+    }
+    setStepIndex(s => s + 1);
+  }
+
   function nextStep() {
     if (!stepValidation.valid) return;
     setStepIndex(s => s + 1);
   }
 
-  async function finish() {
-    let final: UserProfile = { ...draft };
+  async function finish(profileOverride?: UserProfile) {
+    let final: UserProfile = { ...(profileOverride ?? draft) };
     // Training-only: backfill safe body defaults so downstream calcs never see 0s.
     if (!scopeHasNutrition(resolveCoachScope(final))) {
       if (!final.age) final.age = DEFAULT_PROFILE.age;
@@ -98,22 +140,19 @@ export function OnboardingScreen() {
     <View style={styles.footer}>
       <View style={styles.actions}>
         {idx > 0 && <Button style={styles.footerButton} variant="secondary" onPress={() => setStepIndex(s => s - 1)}>{t('common.back')}</Button>}
-        <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? finish : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
+        {(!autoStep || isLast) && (
+          <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? () => finish() : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
+        )}
       </View>
-      <Text style={[styles.validationText, { color: stepValidation.valid ? colors.muted : colors.orange }]}>
-        {t(stepValidation.messageKey, stepValidation.params)}
+      <Text style={[styles.validationText, { color: shouldShowRequired ? colors.orange : colors.muted }]}>
+        {t(footerMessageKey, stepValidation.params)}
       </Text>
     </View>
   );
 
   return (
     <Screen footer={footer} contentContainerStyle={styles.screenContent}>
-      <View style={styles.progressRow}>
-        <Text style={[styles.progressText, { color: colors.accent }]}>{idx + 1}/{total}</Text>
-        <View style={[styles.progressBg, { backgroundColor: colors.bgElev }]}>
-          <View style={[styles.progressFill, { width: `${((idx + 1) / total) * 100}%`, backgroundColor: colors.accent }]} />
-        </View>
-      </View>
+      <OnboardingProgress current={idx + 1} total={total} />
 
       <H1>{questionFor(step, t)}</H1>
       <Subtitle>{t(helpKeyFor(step))}</Subtitle>
@@ -140,29 +179,28 @@ export function OnboardingScreen() {
             active={Boolean(touchedFields.coachScope) && scope === o.value}
             title={t(o.titleKey)}
             subtitle={t(o.subKey)}
-            onPress={() => setField('coachScope', o.value)}
+            onPress={() => chooseField('coachScope', o.value)}
           />
         ))}
 
-        {step === 'goal' && USER_PRIMARY_GOALS.map(item => (
-          <Choice
-            key={item.value}
-            active={Boolean(touchedFields.primaryGoal) && draft.primaryGoal === item.value}
-            title={t(item.labelKey)}
-            subtitle={t(item.subtitleKey)}
-            onPress={() => {
-              setDraft(c => ({ ...c, primaryGoal: item.value, trainingGoal: item.trainingGoal }));
-              setTouchedFields(current => ({ ...current, primaryGoal: true, trainingGoal: false }));
-            }}
+        {step === 'goal' && (
+          <GoalInputStep
+            value={goalInput}
+            goalProfile={draft.goalProfile}
+            onTextChange={setGoalInput}
+            onGoalProfileChange={setGoalProfile}
+            t={t}
           />
-        ))}
-
-        {step === 'nutritionGoal' && NUTRITION_PRIMARY_GOALS.map(g => (
-          <Choice key={g.value} active={Boolean(touchedFields.primaryGoal) && draft.primaryGoal === g.value} title={t(g.labelKey)} subtitle={t(g.subtitleKey)} onPress={() => setField('primaryGoal', g.value)} />
-        ))}
+        )}
 
         {step === 'trainingGoal' && trainingGoalsFor(draft.primaryGoal).map(g => (
-          <Choice key={g.value} active={Boolean(touchedFields.trainingGoal) && draft.trainingGoal === g.value} title={t(g.labelKey)} onPress={() => setField('trainingGoal', g.value)} />
+          <Choice
+            key={g.value}
+            active={Boolean(touchedFields.trainingGoal) && draft.trainingGoal === g.value}
+            title={t(g.labelKey)}
+            subtitle={(g.value === 'half_marathon' || g.value === 'marathon') ? t('onb.raceGoalExplanation') : undefined}
+            onPress={() => chooseField('trainingGoal', g.value)}
+          />
         ))}
 
         {step === 'sessions' && (
@@ -172,8 +210,10 @@ export function OnboardingScreen() {
                 key={count}
                 active={Boolean(touchedFields.sessionsPerWeek) && draft.sessionsPerWeek === count}
                 onPress={() => {
-                  setDraft(c => ({ ...c, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) }));
-                  markTouched('sessionsPerWeek');
+                  completeChoice(
+                    { ...draft, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) },
+                    { ...touchedFields, sessionsPerWeek: true },
+                  );
                 }}
               >
                 {count}×
@@ -185,7 +225,7 @@ export function OnboardingScreen() {
         {step === 'experience' && (
           <View style={styles.wrap}>
             {(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[]).map(exp => (
-              <Pill key={exp} active={Boolean(touchedFields.experience) && draft.experience === exp} onPress={() => setField('experience', exp)}>{t(experienceLabelKey(exp))}</Pill>
+              <Pill key={exp} active={Boolean(touchedFields.experience) && draft.experience === exp} onPress={() => chooseField('experience', exp)}>{t(experienceLabelKey(exp))}</Pill>
             ))}
           </View>
         )}
@@ -230,13 +270,13 @@ export function OnboardingScreen() {
           <View style={styles.bodyWrap}>
             <LabelText text={t('onb.injuryFlag')} />
             <View style={styles.wrap}>
-              <Pill active={draft.injuryFlag === true} onPress={() => setField('injuryFlag', true)}>{t('common.yes')}</Pill>
-              <Pill active={draft.injuryFlag !== true} onPress={() => setField('injuryFlag', false)}>{t('common.no')}</Pill>
+              <Pill active={Boolean(touchedFields.injuryFlag) && draft.injuryFlag === true} onPress={() => setField('injuryFlag', true)}>{t('common.yes')}</Pill>
+              <Pill active={Boolean(touchedFields.injuryFlag) && draft.injuryFlag === false} onPress={() => setField('injuryFlag', false)}>{t('common.no')}</Pill>
             </View>
             <LabelText text={t('onb.runWalkPreferred')} />
             <View style={styles.wrap}>
-              <Pill active={draft.runWalkPreferred === true} onPress={() => setField('runWalkPreferred', true)}>{t('common.yes')}</Pill>
-              <Pill active={draft.runWalkPreferred !== true} onPress={() => setField('runWalkPreferred', false)}>{t('common.no')}</Pill>
+              <Pill active={Boolean(touchedFields.runWalkPreferred) && draft.runWalkPreferred === true} onPress={() => setField('runWalkPreferred', true)}>{t('common.yes')}</Pill>
+              <Pill active={Boolean(touchedFields.runWalkPreferred) && draft.runWalkPreferred === false} onPress={() => setField('runWalkPreferred', false)}>{t('common.no')}</Pill>
             </View>
           </View>
         )}
@@ -323,7 +363,10 @@ export function OnboardingScreen() {
             <Text style={[styles.feasibilityRecommendation, { color: colors.muted }]}>{feasibility.recommendation}</Text>
             {feasibility.verdict === 'unrealistic' && (
               <>
-                <Button variant="secondary" onPress={() => setField('trainingGoal', saferRaceGoal(draft.trainingGoal))}>{t('onb.saferPlan')}</Button>
+                <Button variant="secondary" onPress={() => {
+                  setField('trainingGoal', saferRaceGoal(draft.trainingGoal));
+                  setStepIndex(s => Math.max(0, s - 1));
+                }}>{t('onb.saferPlan')}</Button>
                 <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('onb.continueAnyway')}</Text>
               </>
             )}
@@ -334,7 +377,7 @@ export function OnboardingScreen() {
           <View style={styles.bodyWrap}>
             <View style={styles.wrap}>
               {(['muz', 'zena'] as Gender[]).map(g => (
-                <Pill key={g} active={draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? t('onb.male') : t('onb.female')}</Pill>
+                <Pill key={g} active={Boolean(touchedFields.gender) && draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? t('onb.male') : t('onb.female')}</Pill>
               ))}
             </View>
             <LabelText text={t('onb.ageField')} />
@@ -349,7 +392,7 @@ export function OnboardingScreen() {
         {step === 'nutritionMode' && (
           <View style={styles.wrap}>
             {nutritionModes.map(mode => (
-              <Pill key={mode.value} active={Boolean(touchedFields.nutritionMode) && (draft.nutritionMode ?? 'balanced') === mode.value} onPress={() => setField('nutritionMode', mode.value)}>{t(mode.labelKey)}</Pill>
+              <Pill key={mode.value} active={Boolean(touchedFields.nutritionMode) && (draft.nutritionMode ?? 'balanced') === mode.value} onPress={() => chooseField('nutritionMode', mode.value)}>{t(mode.labelKey)}</Pill>
             ))}
           </View>
         )}
@@ -357,19 +400,17 @@ export function OnboardingScreen() {
         {step === 'planIntensity' && (
           <View style={styles.wrap}>
             {planIntensities.map(intensity => (
-              <Pill key={intensity.value} active={Boolean(touchedFields.planIntensity) && (draft.planIntensity ?? 'moderate') === intensity.value} onPress={() => setField('planIntensity', intensity.value)}>{t(intensity.labelKey)}</Pill>
+              <Pill key={intensity.value} active={Boolean(touchedFields.planIntensity) && (draft.planIntensity ?? 'moderate') === intensity.value} onPress={() => chooseField('planIntensity', intensity.value)}>{t(intensity.labelKey)}</Pill>
             ))}
           </View>
         )}
 
         {step === 'diet' && (
           <View style={styles.bodyWrap}>
-            <Field value={draft.likes} onChangeText={v => setField('likes', v)} placeholder={t('onb.likesPlaceholder')} multiline />
-            <Field value={draft.dislikes} onChangeText={v => setField('dislikes', v)} placeholder={t('onb.dislikesPlaceholder')} multiline />
             <LabelText text={t('onb.dietTypeRequired')} />
             <View style={styles.wrap}>
               {(['standardní', 'vegetariánský', 'veganský', 'bezlepkový', 'nízkosacharidový', 'vysokoproteínový'] as DietStyle[]).map(diet => (
-                <Pill key={diet} active={draft.diet === diet} onPress={() => setField('diet', diet)}>{t(`diet.${diet}` as TranslationKey)}</Pill>
+                <Pill key={diet} active={Boolean(touchedFields.diet) && draft.diet === diet} onPress={() => chooseField('diet', diet)}>{t(`diet.${diet}` as TranslationKey)}</Pill>
               ))}
             </View>
           </View>
@@ -384,7 +425,7 @@ export function OnboardingScreen() {
 function questionFor(step: StepId, t: (k: TranslationKey) => string): string {
   switch (step) {
     case 'focus':         return t('onb.focusQuestion');
-    case 'goal':          return t('onb.goalQuestion');
+    case 'goal':          return t('onb.goalHybridTitle');
     case 'nutritionGoal': return t('onb.nutritionGoalQuestion');
     case 'trainingGoal':  return t('onb.trainingGoalQuestion');
     case 'sessions':      return t('onb.sessionsQuestion');
@@ -411,6 +452,7 @@ const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey
 ];
 
 function helpKeyFor(step: StepId): TranslationKey {
+  if (step === 'goal') return 'onb.goalHybridSubtitle';
   return (`onb.help.${step}` as TranslationKey);
 }
 
@@ -487,10 +529,6 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 
 const styles = StyleSheet.create({
   screenContent: { paddingBottom: 8 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  progressText: { fontFamily: 'Archivo_800ExtraBold', fontSize: 14 },
-  progressBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
   welcomeBox: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
   brand: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
   welcomeCopy: { fontSize: 15, lineHeight: 21, fontWeight: '800' },

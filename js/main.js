@@ -7,6 +7,7 @@ import { toggleDayPlanner } from './dayplanner.js?v=9';
 import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=9';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=9';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=8';
+import { authHeaders } from './supabase.js?v=8';
 import { initOnboardingWizard } from './ui/onboarding.js?v=1';
 import { normalizeFoodEstimate, parseGeminiJSON } from './ai-utils.js?v=8';
 import { calcMacroTargets, adjustForDay, ACTIVITY_FACTORS, planWeeklyAdjustment, calcFatTargetG } from './domain/nutrition.js?v=2';
@@ -87,7 +88,7 @@ async function analyzeFoodPhoto() {
     const imageBase64 = await fileToBase64(file);
     const res = await fetch('/api/analyze-food-photo', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ imageBase64, mimeType: file.type || 'image/jpeg' }),
     });
     const data = await res.json();
@@ -510,7 +511,7 @@ Return JSON in this format:
   try {
     const res = await fetch('/api/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify({ systemPrompt, prompt, maxTokens: 600 }),
     });
     const data = await res.json();
@@ -1704,14 +1705,14 @@ function updateUsageBadge(info) {
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Chyba při vytváření platby.');
+        throw new Error(data.error?.message || data.error || 'Chyba při vytváření platby.');
       }
     } catch (err) {
       btn.disabled = false;
@@ -1818,9 +1819,6 @@ function updateUsageBadge(info) {
 
     const isManage = btn.dataset.action === 'manage';
     const endpoint = isManage ? '/api/create-portal' : '/api/create-checkout';
-    const body = isManage
-      ? { email: user.email }
-      : { userId: user.id, email: user.email };
     const originalText = btn.textContent;
 
     btn.disabled = true;
@@ -1828,14 +1826,14 @@ function updateUsageBadge(info) {
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Chyba při vytváření platby.');
+        throw new Error(data.error?.message || data.error || 'Chyba při vytváření platby.');
       }
     } catch (err) {
       btn.disabled = false;

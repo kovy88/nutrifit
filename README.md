@@ -15,6 +15,12 @@ tréninky) — a ten je dostupný jen v nativní iOS vrstvě, ne v prohlížeči
 | **`js/domain/`** | ⚠️ **FROZEN** legacy origin. Kanonická logika je v `mobile/src/{utils,lib}`. Viz [`js/domain/README.md`](js/domain/README.md). |
 | **`supabase/migrations/`** | DB schema (sdílené). |
 
+Canonical product architecture and domain model notes now live in
+[`docs/architecture.md`](docs/architecture.md) and
+[`docs/domain-model.md`](docs/domain-model.md). Treat those as the current
+implementation direction: mobile is the product, web is distribution/legacy, and
+AI explains or proposes actions while deterministic code owns numbers and safety.
+
 > **Rozhodnutí (mobile-first, inkrementálně):** mobilní app je produkt, web je landing
 > nad sdíleným `api/` backendem. Monorepo (`packages/core`) je **odložené** — vytáhne se
 > z mobilu, až bude druhý reálný konzument (web demo / serverový výpočet). Web se zatím

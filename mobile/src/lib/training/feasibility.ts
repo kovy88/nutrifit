@@ -1,5 +1,6 @@
 import type { PrimaryGoal, TrainingGoalKind, UserProfile } from '../../types';
 import { peakWeeklyKm, progressVolume } from './plan';
+import { validateRaceGoalFeasibility as coreValidateRaceGoalFeasibility } from './training-core';
 
 const RUN_RACE_GOALS: TrainingGoalKind[] = ['couch_to_5k', 'run_5k', 'run_10k', 'half_marathon', 'marathon'];
 const FITNESS_EVENT_GOALS: TrainingGoalKind[] = ['sports_conditioning', 'hyrox', 'ocr', 'sprint_triathlon', 'olympic_triathlon', 'half_ironman', 'full_ironman'];
@@ -70,66 +71,18 @@ export type RaceFeasibilityResult = {
 };
 
 export function validateRaceGoalFeasibility(input: RaceFeasibilityInput): RaceFeasibilityResult {
-  const { trainingGoal, profile } = input;
-  const todayISO = input.todayISO ?? toISODate(new Date());
-  const requiredPeakKm = peakWeeklyKm(trainingGoal);
-  const hasValidRaceDate = Boolean(profile.raceDateISO && isValidISODate(profile.raceDateISO));
-  const weeksUntilRace = weeksBetween(todayISO, profile.raceDateISO);
-  const currentBaseKm = resolveCurrentBaseKm(profile);
-  const safePeakByRaceKm = maxSafePeakByWeek(currentBaseKm, weeksUntilRace, requiredPeakKm || currentBaseKm);
-  const reasons: string[] = [];
-
-  if (!RUN_RACE_GOALS.includes(trainingGoal)) {
-    return {
-      verdict: 'feasible',
-      weeksUntilRace,
-      requiredPeakKm,
-      currentBaseKm,
-      safePeakByRaceKm,
-      reasons: ['No race-specific feasibility gate needed for this goal.'],
-      recommendation: 'Continue with the normal training plan.',
-    };
-  }
-
-  if (!hasValidRaceDate) {
-    reasons.push('Race date is missing, so the app cannot compare the build length with a safe ramp.');
-  }
-  if (profile.injuryFlag) reasons.push('Recent injury requires a more conservative build.');
-  if ((profile.runsPerWeek ?? 0) > 0 && (profile.runsPerWeek ?? 0) < 3 && trainingGoal !== 'couch_to_5k') {
-    reasons.push('Current run frequency is below the usual baseline for this event.');
-  }
-  if (weeksUntilRace < minimumWeeks(trainingGoal, profile.experience)) {
-    reasons.push('The race date leaves less time than the conservative minimum for this goal.');
-  }
-  if (safePeakByRaceKm < requiredPeakKm * 0.72) {
-    reasons.push('A 10 percent weekly ramp cannot reach enough peak volume by race day.');
-  }
-  if ((profile.longestRecentRunKm ?? 0) > 0 && profile.longestRecentRunKm! < longestRunBaseline(trainingGoal)) {
-    reasons.push('The longest recent run is well below the event-specific baseline.');
-  }
-
-  const hardSignals = [
-    !hasValidRaceDate,
-    profile.injuryFlag === true,
-    safePeakByRaceKm < requiredPeakKm * 0.6,
-    weeksUntilRace < Math.ceil(minimumWeeks(trainingGoal, profile.experience) * 0.7),
-  ].filter(Boolean).length;
-
-  const verdict: RaceFeasibilityVerdict = hardSignals > 0 || reasons.length >= 3
-    ? 'unrealistic'
-    : reasons.length > 0 || safePeakByRaceKm < requiredPeakKm
-      ? 'tight'
-      : 'feasible';
-
-  return {
-    verdict,
-    weeksUntilRace,
-    requiredPeakKm,
-    currentBaseKm,
-    safePeakByRaceKm,
-    reasons,
-    recommendation: recommendationFor(verdict, trainingGoal),
-  };
+  return coreValidateRaceGoalFeasibility({
+    trainingGoal: input.trainingGoal,
+    profile: {
+      experience: input.profile.experience,
+      currentWeeklyKm: input.profile.currentWeeklyKm,
+      longestRecentRunKm: input.profile.longestRecentRunKm,
+      runsPerWeek: input.profile.runsPerWeek,
+      raceDateISO: input.profile.raceDateISO,
+      injuryFlag: input.profile.injuryFlag,
+    },
+    todayISO: input.todayISO,
+  });
 }
 
 export function allowedTrainingGoalsFor(primaryGoal: PrimaryGoal): TrainingGoalKind[] {

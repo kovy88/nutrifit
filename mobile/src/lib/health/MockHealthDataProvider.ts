@@ -20,6 +20,7 @@ import type {
   WorkoutKind,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 import type { HealthDataProvider } from './HealthDataProvider';
 
 export type MockHealthDataProviderOptions = {
@@ -179,6 +180,35 @@ export class MockHealthDataProvider implements HealthDataProvider {
     const key = toDateKey(date);
     const r = rng(this.seed + 5, hash(key));
     return { date: key, ms: Math.round(30 + r() * 30), metric: 'sdnn', source: 'mock' };
+  }
+
+  async getRecoveryInputs(start: Date, end: Date): Promise<RecoveryInputs[]> {
+    const sleep = await this.getSleepSummary(start, end);
+    const out: RecoveryInputs[] = [];
+    const sleepMap = new Map(sleep.map(s => [s.date, s]));
+
+    for (const dateStr of dateRange(start, end)) {
+      const d = new Date(dateStr);
+      const rhr = await this.getRestingHeartRate(d);
+      const hrv = await this.getHrv(d);
+      const sl = sleepMap.get(dateStr);
+
+      out.push({
+        date: dateStr,
+        todaySleepMinutes: sl ? sl.totalMinutes : null,
+        todayRhrBpm: rhr ? rhr.bpm : null,
+        todayHrvMs: hrv ? hrv.ms : null,
+        baseline: {
+          rhrMeanBpm: 60,
+          hrvMeanMs: 45,
+          sleepMeanMinutes: 450,
+        },
+        acwr: 1.0,
+        sleepDebtHours: 0,
+        recoveryDebt: 0,
+      });
+    }
+    return out;
   }
 }
 

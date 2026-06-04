@@ -4,10 +4,12 @@ import type {
   PlanIntensity,
   UserProfile,
 } from '../../types';
-import { scopeHasNutrition } from '../../types';
+import { scopeHasNutrition, scopeHasTraining } from '../../types';
 import type { TranslationKey, TranslateParams } from '../i18n';
 import { isRunningGoal, isRunRaceGoal } from '../../constants/goals';
 import type { RaceFeasibilityVerdict } from '../training/feasibility';
+import type { GoalProfile } from '../../types/goal-types';
+import { hasRequiredGoalFollowUps } from './follow-up-question-generator';
 
 export type StepId =
   | 'focus' | 'goal' | 'trainingGoal' | 'nutritionGoal'
@@ -32,6 +34,7 @@ export type OnboardingField =
     'currentPaceSecPerKm' |
     'availableTrainingDays' |
     'preferredRestDays' |
+    'goalProfile' |
     'gender' |
     'age' |
     'height' |
@@ -49,23 +52,102 @@ export type StepValidation = {
   params?: TranslateParams;
 };
 
-export function buildOnboardingSteps(scope: CoachScope, trainingGoal: UserProfile['trainingGoal']): StepId[] {
+export type SetupMissingItem = 'foodPreferences' | 'raceDetails' | 'restDays';
+
+export type ProfileSetupCompleteness = {
+  complete: boolean;
+  missing: SetupMissingItem[];
+};
+
+export function buildOnboardingSteps(
+  scope: CoachScope,
+  trainingGoal: UserProfile['trainingGoal'],
+  primaryGoal?: UserProfile['primaryGoal'],
+  goalProfile?: GoalProfile | null,
+): StepId[] {
   if (scope === 'nutrition') {
-    return ['focus', 'nutritionGoal', 'body', 'nutritionMode', 'planIntensity', 'diet'];
+    return ['focus', 'goal', 'body', 'nutritionMode', 'planIntensity', 'diet'];
   }
   const running = isRunningGoal(trainingGoal);
   const race = isRunRaceGoal(trainingGoal);
+  const goalAlreadyChoseTraining = Boolean(goalProfile);
+  const shouldChooseTrainingGoal = !goalAlreadyChoseTraining && (primaryGoal === 'improve_running' || primaryGoal === 'improve_fitness' || primaryGoal === 'gain_muscle');
+  const hasDays = Boolean(goalProfile?.availableTrainingDays);
+  const hasExperience = Boolean(goalProfile?.experienceLevel);
+  const hasWeeklyKm = Boolean(goalProfile?.currentWeeklyKm);
+  const hasLongestRun = Boolean(goalProfile?.longestRecentRunKm);
+  const hasRaceDate = Boolean(goalProfile?.raceDateISO && /^\d{4}-\d{2}-\d{2}$/.test(goalProfile.raceDateISO));
   const training: StepId[] = [
     'focus',
     'goal',
-    'trainingGoal',
-    'sessions',
-    'experience',
-    ...(running ? ['weeklyKm' as StepId, 'longestRun' as StepId, 'runFrequency' as StepId, 'runLimits' as StepId] : []),
-    ...(race ? ['raceDate' as StepId, 'raceTarget' as StepId, 'raceSchedule' as StepId, 'raceFeasibility' as StepId] : []),
+    ...(shouldChooseTrainingGoal ? ['trainingGoal' as StepId] : []),
+    ...(!hasDays ? ['sessions' as StepId] : []),
+    ...(!hasExperience ? ['experience' as StepId] : []),
+    ...(running ? [
+      ...(!hasWeeklyKm ? ['weeklyKm' as StepId] : []),
+      ...(!hasLongestRun ? ['longestRun' as StepId] : []),
+      'runFrequency' as StepId,
+      'runLimits' as StepId,
+    ] : []),
+    ...(race ? [
+      ...(!hasRaceDate ? ['raceDate' as StepId] : []),
+      ...(!hasDays ? ['raceSchedule' as StepId] : []),
+      'raceFeasibility' as StepId,
+    ] : []),
   ];
   if (scope === 'training') return training;
   return [...training, 'body', 'nutritionMode', 'planIntensity', 'diet'];
+}
+
+export function isAutoAdvanceStep(step: StepId): boolean {
+  return [
+    'focus',
+    'nutritionGoal',
+    'trainingGoal',
+    'sessions',
+    'experience',
+    'nutritionMode',
+    'planIntensity',
+    'diet',
+  ].includes(step);
+}
+
+export function isStepTouched(step: StepId, touched: TouchedOnboardingFields): boolean {
+  switch (step) {
+    case 'focus':         return Boolean(touched.coachScope);
+    case 'goal':          return Boolean(touched.goalProfile);
+    case 'nutritionGoal': return Boolean(touched.primaryGoal);
+    case 'trainingGoal':  return Boolean(touched.trainingGoal);
+    case 'sessions':      return Boolean(touched.sessionsPerWeek);
+    case 'experience':    return Boolean(touched.experience);
+    case 'weeklyKm':      return Boolean(touched.currentWeeklyKm);
+    case 'longestRun':    return Boolean(touched.longestRecentRunKm);
+    case 'runFrequency':  return Boolean(touched.runsPerWeek);
+    case 'runLimits':     return Boolean(touched.injuryFlag || touched.runWalkPreferred);
+    case 'raceDate':      return Boolean(touched.raceDateISO);
+    case 'raceTarget':    return Boolean(touched.targetTimeSeconds || touched.currentPaceSecPerKm);
+    case 'raceSchedule':  return Boolean(touched.availableTrainingDays || touched.preferredRestDays);
+    case 'raceFeasibility': return true;
+    case 'body':          return Boolean(touched.gender || touched.age || touched.height || touched.weight);
+    case 'nutritionMode': return Boolean(touched.nutritionMode);
+    case 'planIntensity': return Boolean(touched.planIntensity);
+    case 'diet':          return Boolean(touched.diet);
+  }
+}
+
+export function profileSetupCompleteness(profile: UserProfile): ProfileSetupCompleteness {
+  const missing: SetupMissingItem[] = [];
+  const scope = profile.coachScope ?? 'both';
+  if (scopeHasNutrition(scope) && !profile.likes.trim() && !profile.dislikes.trim()) {
+    missing.push('foodPreferences');
+  }
+  if (scopeHasTraining(scope) && isRunRaceGoal(profile.trainingGoal) && (!profile.targetTimeSeconds || !profile.currentPaceSecPerKm)) {
+    missing.push('raceDetails');
+  }
+  if (scopeHasTraining(scope) && !(profile.preferredRestDays ?? []).length) {
+    missing.push('restDays');
+  }
+  return { complete: missing.length === 0, missing };
 }
 
 export function validateOnboardingStep(
@@ -79,6 +161,9 @@ export function validateOnboardingStep(
     case 'focus':
       return touched.coachScope ? ok('onb.help.focus') : missing('onb.required.focus');
     case 'goal':
+      return touched.goalProfile && draft.goalProfile && hasRequiredGoalFollowUps(draft.goalProfile)
+        ? ok('onb.help.goal')
+        : missing('onb.required.goal');
     case 'nutritionGoal':
       return touched.primaryGoal ? ok(helpKeyFor(step)) : missing('onb.required.goal');
     case 'trainingGoal':

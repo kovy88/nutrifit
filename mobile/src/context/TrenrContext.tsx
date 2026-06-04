@@ -16,7 +16,8 @@ import type {
   TrainingCompletionStatus,
 } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
-import { planSessionForDate } from '../lib/training';
+import { adjustedPlanSessionForDate } from '../lib/training';
+import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
@@ -42,10 +43,12 @@ import {
   loadTrainingCompletionsByDate,
   loadCoachThreadsByDate,
   loadDailyCoachHistory,
+  loadDailyHealthSummaries,
   saveTrainingCompletionForDate,
   saveTrainingCompletionsByDate,
   saveCoachThreadsByDate,
   saveDailyCoachHistory,
+  saveDailyHealthSummaries,
   loadSubscriptionStatus,
   saveSubscriptionStatus,
 } from '../services/storage';
@@ -107,6 +110,9 @@ type TrenrContextValue = {
   signOut: () => Promise<void>;
   isSubscribed: boolean;
   setIsSubscribed: (status: boolean) => Promise<void>;
+  purchaseSubscription: (planId: SubscriptionPlanId) => Promise<boolean>;
+  restoreSubscription: () => Promise<boolean>;
+  subscriptionPackages: SubscriptionPackage[];
 };
 
 const Context = createContext<TrenrContextValue | null>(null);
@@ -129,6 +135,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
   const [isSubscribed, setIsSubscribedState] = useState(false);
+  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(FALLBACK_PACKAGES);
 
   useEffect(() => {
     let active = true;
@@ -173,6 +180,24 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  // Configure billing + reconcile the real entitlement once auth resolves. The
+  // Mock provider just reflects the stored flag; RevenueCat returns the live
+  // store entitlement (and we cache it locally for offline).
+  useEffect(() => {
+    const provider = getSubscriptionProvider();
+    void (async () => {
+      try {
+        await provider.configure(user?.id ?? null);
+        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings()]);
+        setIsSubscribedState(status.isActive);
+        await saveSubscriptionStatus(status.isActive);
+        if (packages.length) setSubscriptionPackages(packages);
+      } catch {
+        // keep the locally stored flag on any billing/offline error
+      }
+    })();
+  }, [user?.id]);
+
   const baselineMacros = useMemo(
     () =>
       profile
@@ -194,8 +219,8 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   
   const currentSession = useMemo(() => {
     if (!profile) return null;
-    return sessionsByDate[selectedDate] || planSessionForDate(profile, new Date(selectedDate));
-  }, [sessionsByDate, selectedDate, profile]);
+    return sessionsByDate[selectedDate] || adjustedPlanSessionForDate(profile, new Date(selectedDate), trainingCompletionsByDate);
+  }, [sessionsByDate, selectedDate, profile, trainingCompletionsByDate]);
 
   const daily = useMemo(() => {
     if (!profile || !baselineMacros) return { macros: null, adjustment: null };
@@ -225,9 +250,10 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     if (!user?.id) return;
     syncStore.setSyncing();
     try {
-      const [storedCoachThreadsByDate, storedDailyCoachHistory] = await Promise.all([
+      const [storedCoachThreadsByDate, storedDailyCoachHistory, storedDailyHealthSummaries] = await Promise.all([
         loadCoachThreadsByDate(),
         loadDailyCoachHistory(),
+        loadDailyHealthSummaries(),
       ]);
       await pushLocalSnapshotToSupabase({
         profile: overrides.profile ?? profile,
@@ -239,6 +265,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         trainingCompletionsByDate: overrides.trainingCompletionsByDate ?? trainingCompletionsByDate,
         coachThreadsByDate: storedCoachThreadsByDate,
         dailyCoachHistory: storedDailyCoachHistory,
+        dailyHealthSummaries: storedDailyHealthSummaries,
         baselineTargetsByDate: currentMacros ? { [selectedDate]: currentMacros } : {},
       }, user.id);
       syncStore.setPendingWrites(0);
@@ -287,6 +314,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     }
     if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
     if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
+    if (remote.dailyHealthSummaries) await saveDailyHealthSummaries(remote.dailyHealthSummaries);
   }
 
   useEffect(() => {
@@ -336,6 +364,20 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   async function updateSubscriptionStatus(status: boolean) {
     await saveSubscriptionStatus(status);
     setIsSubscribedState(status);
+  }
+
+  async function purchaseSubscription(planId: SubscriptionPlanId): Promise<boolean> {
+    const status = await getSubscriptionProvider().purchase(planId);
+    await saveSubscriptionStatus(status.isActive);
+    setIsSubscribedState(status.isActive);
+    return status.isActive;
+  }
+
+  async function restoreSubscription(): Promise<boolean> {
+    const status = await getSubscriptionProvider().restore();
+    await saveSubscriptionStatus(status.isActive);
+    setIsSubscribedState(status.isActive);
+    return status.isActive;
   }
 
   /** Persist a new weekly check-in and compute the suggested PlanAdjustment.
@@ -508,6 +550,9 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       signOut,
       isSubscribed,
       setIsSubscribed: updateSubscriptionStatus,
+      purchaseSubscription,
+      restoreSubscription,
+      subscriptionPackages,
     }}>
       {children}
     </Context.Provider>

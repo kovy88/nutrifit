@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROFILE } from '../utils/nutrition';
-import { buildOnboardingSteps, validateOnboardingStep } from '../lib/onboarding/validation';
+import { buildOnboardingSteps, isAutoAdvanceStep, profileSetupCompleteness, validateOnboardingStep } from '../lib/onboarding/validation';
+import { parseGoalText, updateGoalProfile } from '../lib/onboarding/goal-parser';
 
 describe('onboarding step validation', () => {
   it('requires explicit user choices for default-backed steps', () => {
@@ -8,7 +9,9 @@ describe('onboarding step validation', () => {
     expect(validateOnboardingStep('focus', DEFAULT_PROFILE, 'both', { coachScope: true }).valid).toBe(true);
 
     expect(validateOnboardingStep('goal', DEFAULT_PROFILE, 'both', {}).valid).toBe(false);
-    expect(validateOnboardingStep('goal', DEFAULT_PROFILE, 'both', { primaryGoal: true }).valid).toBe(true);
+    expect(validateOnboardingStep('goal', { ...DEFAULT_PROFILE, goalProfile: parseGoalText('I want to eat healthier').goalProfile! }, 'both', { goalProfile: true }).valid).toBe(true);
+    expect(isAutoAdvanceStep('goal')).toBe(false);
+    expect(isAutoAdvanceStep('body')).toBe(false);
   });
 
   it('requires body metrics only when nutrition is in scope', () => {
@@ -50,9 +53,39 @@ describe('onboarding step validation', () => {
     expect(validateOnboardingStep('raceFeasibility', DEFAULT_PROFILE, 'both', {}, 'tight').valid).toBe(true);
   });
 
-  it('builds scope-specific step lists', () => {
-    expect(buildOnboardingSteps('nutrition', 'general_fitness')).not.toContain('weeklyKm');
-    expect(buildOnboardingSteps('training', 'half_marathon')).toContain('raceFeasibility');
-    expect(buildOnboardingSteps('both', 'general_fitness')).toContain('body');
+  it('builds quick-start step lists by scope and selected goal', () => {
+    const completeRaceGoal = updateGoalProfile(parseGoalText('I want to run a half marathon').goalProfile!, {
+      raceDateISO: '2099-05-01',
+      currentWeeklyKm: 24,
+      longestRecentRunKm: 12,
+      availableTrainingDays: 4,
+    });
+
+    expect(buildOnboardingSteps('both', 'general_fitness', 'build_consistency')).toEqual([
+      'focus',
+      'goal',
+      'sessions',
+      'experience',
+      'body',
+      'nutritionMode',
+      'planIntensity',
+      'diet',
+    ]);
+    expect(buildOnboardingSteps('nutrition', 'general_fitness', 'lose_fat')).toContain('goal');
+    expect(buildOnboardingSteps('nutrition', 'general_fitness', 'lose_fat')).not.toContain('nutritionGoal');
+    expect(buildOnboardingSteps('training', 'general_fitness', 'build_consistency')).not.toContain('body');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running')).toContain('raceFeasibility');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running')).not.toContain('raceTarget');
+    expect(buildOnboardingSteps('training', 'couch_to_5k', 'improve_running')).not.toContain('raceDate');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('raceDate');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('raceSchedule');
+    expect(buildOnboardingSteps('training', 'half_marathon', 'improve_running', completeRaceGoal)).not.toContain('experience');
+  });
+
+  it('summarizes optional setup items for later completion', () => {
+    const quickProfile = { ...DEFAULT_PROFILE, likes: '', dislikes: '', preferredRestDays: undefined };
+
+    expect(profileSetupCompleteness(quickProfile).complete).toBe(false);
+    expect(profileSetupCompleteness({ ...quickProfile, likes: 'vejce', preferredRestDays: [0] }).complete).toBe(true);
   });
 });

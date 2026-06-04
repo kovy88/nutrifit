@@ -30,6 +30,7 @@ import type {
   SleepSummary,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 import { isExpired, type OAuthTokenStore } from './oauth/OAuthTokenStore';
 
 const WHOOP_API_BASE = 'https://api.prod.whoop.com/developer/v1';
@@ -89,6 +90,11 @@ export class WhoopProvider implements HealthDataProvider {
     // TODO(whoop): GET /cycle?start=date,end=date → hrv_rmssd_milli
     // metric: 'rmssd' (Whoop dává RMSSD, ne SDNN)
     return null;
+  }
+
+  async getRecoveryInputs(_start: Date, _end: Date): Promise<RecoveryInputs[]> {
+    // TODO(whoop): GET /cycle?start=...&end=... → map to RecoveryInputs[]
+    return [];
   }
 }
 

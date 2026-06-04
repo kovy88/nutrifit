@@ -23,6 +23,7 @@ import type {
   SleepSummary,
   WorkoutSummary,
 } from '../../types/health';
+import type { RecoveryInputs } from '../../types/coach';
 
 export type HealthDataProviderName =
   | 'mock'
@@ -72,4 +73,7 @@ export interface HealthDataProvider {
 
   /** HRV pro konkrétní den, pokud existuje. */
   getHrv(date: Date): Promise<HrvSample | null>;
+
+  /** Hromadné načtení recovery signálů (spánek, HRV, RHR) pro dané období. */
+  getRecoveryInputs(start: Date, end: Date): Promise<RecoveryInputs[]>;
 }

@@ -37,7 +37,7 @@ describe('StravaOAuth.handleCallback', () => {
     store = new AsyncStorageTokenStore();
     oauth = new StravaOAuth({ clientId: '12345' }, store);
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(async () => {
@@ -128,7 +128,7 @@ describe('StravaOAuth.refresh', () => {
     store = new AsyncStorageTokenStore();
     oauth = new StravaOAuth({ clientId: '12345' }, store);
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(async () => {

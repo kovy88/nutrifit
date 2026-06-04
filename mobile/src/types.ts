@@ -1,3 +1,14 @@
+import type { GoalProfile as OnboardingGoalProfile } from './types/goal-types';
+export type {
+  ExperienceLevel as OnboardingExperienceLevel,
+  FollowUpQuestion as GoalFollowUpQuestion,
+  GoalProfile as OnboardingGoalProfile,
+  NutritionMode as OnboardingNutritionMode,
+  PlanIntensity as OnboardingPlanIntensity,
+  PrimaryGoal as OnboardingPrimaryGoal,
+  RaceGoal as OnboardingRaceGoal,
+} from './types/goal-types';
+
 export type Gender = 'muz' | 'zena';
 /** @deprecated only used for storage migration from v1 profiles */
 export type Goal = 'hubnutí' | 'udržení' | 'nabírání';
@@ -5,8 +16,9 @@ export type DietStyle = 'standardní' | 'vegetariánský' | 'veganský' | 'bezle
 export type PrimaryGoal = 'lose_fat' | 'maintain_weight' | 'gain_muscle' | 'improve_fitness' | 'improve_running' | 'improve_recovery' | 'build_consistency';
 /** @deprecated only used for storage migration from pre-taxonomy profiles */
 export type LegacyPrimaryGoal = 'lose_weight' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
-export type TrainingGoalKind = 'general_fitness' | 'walking_more' | 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'sports_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr';
+export type TrainingGoalKind = 'none' | 'general_fitness' | 'walking_more' | 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'basic_strength' | 'sports_conditioning' | 'sport_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+export type TrainingExperience = 'beginner' | 'intermediate' | 'advanced';
 export type NutritionGoalKind = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';
 /** Styl makro rozložení / preferencí jídelníčku. Ovládá macro split + AI prompt. */
 export type NutritionMode = 'balanced' | 'high_protein' | 'budget_friendly' | 'simple_meal_prep' | 'endurance_fueling' | 'fat_loss_friendly' | 'muscle_gain_friendly';
@@ -16,7 +28,10 @@ export type PlanIntensity = 'easy' | 'moderate' | 'ambitious_but_safe';
  *  trénink, 'nutrition' = jen jídelníček. Pohání scope-aware onboarding, Today,
  *  taby i coach engine. Undefined (starší profily) se chová jako 'both'. */
 export type CoachScope = 'both' | 'training' | 'nutrition';
-export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional';
+export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'recovery_walk' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional';
+export type TrainingSessionType = 'rest' | 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'recovery_walk' | 'strength' | 'mobility' | 'cross_training';
+export type RaceFeasibilityVerdict = 'feasible' | 'tight' | 'unrealistic';
+
 
 export type UserProfile = {
   gender: Gender;
@@ -38,6 +53,8 @@ export type UserProfile = {
   planIntensity?: PlanIntensity;
   /** Zaměření kouče (default 'both'). Optional kvůli migraci starších profilů. */
   coachScope?: CoachScope;
+  /** Výběr zdroje zdravotních dat (default 'auto'). */
+  healthProviderMode?: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect';
   /** ISO datum (YYYY-MM-DD) startu tréninkového programu — pohání weekIndex progrese. */
   programStartISO?: string;
   /** Aktuální týdenní běžecký objem (km) z onboardingu. Pohání bezpečný start
@@ -53,6 +70,39 @@ export type UserProfile = {
   availableTrainingDays?: number;
   preferredRestDays?: number[];
   runWalkPreferred?: boolean;
+  /** New chat-first onboarding goal model. Existing fields above remain engine-compatible mirrors. */
+  goalProfile?: OnboardingGoalProfile;
+};
+
+export type LegacyGoalProfile = {
+  primaryGoal: PrimaryGoal;
+  trainingGoal: TrainingGoalKind;
+  nutritionMode: NutritionMode;
+  planIntensity: PlanIntensity;
+  coachScope: CoachScope;
+  programStartISO: string;
+  constraints: {
+    sessionsPerWeek: number;
+    experience: ExperienceLevel;
+    preferredRestDays?: number[];
+    injuryFlag?: boolean;
+  };
+};
+
+export type RaceGoal = {
+  trainingGoal: Extract<TrainingGoalKind, 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon'>;
+  raceDateISO?: string;
+  currentWeeklyKm?: number;
+  longestRecentRunKm?: number;
+  runsPerWeek?: number;
+  targetTimeSeconds?: number;
+  currentPaceSecPerKm?: number;
+  availableTrainingDays?: number;
+  preferredRestDays?: number[];
+  injuryFlag?: boolean;
+  runWalkPreferred?: boolean;
+  feasibilityVerdict?: RaceFeasibilityVerdict;
+  feasibilityReasons?: string[];
 };
 
 /** Scope helpers — undefined coachScope (legacy profiles) resolves to 'both'. */
@@ -78,6 +128,8 @@ export type Macros = {
   bmi: number;
   goal: NutritionGoalKind;
 };
+
+export type NutritionTargets = Macros;
 
 export type TrainingSession = {
   date: string;
@@ -161,6 +213,16 @@ export type MealPlanValidationResult = {
   };
 };
 
+export type MealPlan = {
+  date: DateKey;
+  meals: Meal[];
+  totals: MealPlanValidationResult['totals'];
+  validation: MealPlanValidationResult;
+  source: 'ai' | 'fallback' | 'manual';
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ShoppingListGroup = {
   category: string;
   items: string[];
@@ -174,7 +236,7 @@ export type DailySessionRecord = Record<DateKey, TrainingSession>;
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
 export type SyncConflict<T = unknown> = {
-  entity: 'profile' | 'daily_meal_plans' | 'daily_food_logs' | 'daily_targets' | 'weight_entries' | 'weekly_checkins' | 'training_completions' | 'coach_threads' | 'daily_coach_recommendations';
+  entity: 'profile' | 'daily_meal_plans' | 'daily_food_logs' | 'daily_targets' | 'weight_entries' | 'weekly_checkins' | 'training_completions' | 'coach_threads' | 'daily_coach_recommendations' | 'daily_health_summaries';
   key: string;
   localUpdatedAt?: string | null;
   remoteUpdatedAt?: string | null;
