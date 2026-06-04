@@ -6,6 +6,10 @@ const stripe = require('stripe');
 // Vercel neposílá raw body defaultně — musíme vypnout bodyParser
 module.exports.config = { api: { bodyParser: false } };
 
+function isUuid(v) {
+  return typeof v === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(v);
+}
+
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -35,14 +39,15 @@ module.exports = async function handler(req, res) {
   try {
     event = stripeClient.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
   } catch (err) {
-    return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
+    console.error('Stripe webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 
   // Zpracuj relevantní eventy
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.supabase_user_id;
-    if (userId) {
+    if (isUuid(userId)) {
       await setUserPremium(SUPABASE_URL, SUPABASE_SERVICE_KEY, userId, true);
     }
   }
@@ -55,7 +60,7 @@ module.exports = async function handler(req, res) {
       limit: 1,
     });
     const userId = sessions.data[0]?.metadata?.supabase_user_id;
-    if (userId) {
+    if (isUuid(userId)) {
       await setUserPremium(SUPABASE_URL, SUPABASE_SERVICE_KEY, userId, false);
     }
   }

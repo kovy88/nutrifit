@@ -64,7 +64,7 @@ export function useDailyCoaching(date: Date = new Date()): DailyCoachingState {
         provider.getRestingHeartRate(date),
         provider.getHrv(date),
         computePersonalBaselines(provider, { endDate: date, days: 14 }),
-        provider.getWorkoutSummaries(chronicStart, date).catch(() => []),
+        provider.getWorkoutSummaries(chronicStart, date).catch((err) => { if (__DEV__) console.warn('useDailyCoaching: workout fetch failed', err); return []; }),
       ]);
       if (cancelled) return;
       const sleep = sleepArr[0] || null;

@@ -57,10 +57,10 @@ module.exports = async function handler(req, res) {
 };
 
 async function callGeminiModel({ apiKey, model, systemPrompt, prompt, maxTokens, thinkingConfig, fallbackFrom }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const geminiRes = await fetch(url, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt || '' }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
