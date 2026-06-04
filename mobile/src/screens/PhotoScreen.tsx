@@ -99,7 +99,7 @@ export function PhotoScreen() {
 
   return (
     <Screen contentContainerStyle={styles.screen}>
-      <ScreenHeader eyebrow={t('photo.eyebrow')} title={t('photo.title')} subtitle={t('photo.cleanSubtitle')} />
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('photo.eyebrow')} title={t('photo.title')} subtitle={t('photo.cleanSubtitle')} />
 
       <Card>
         <SectionHeader
