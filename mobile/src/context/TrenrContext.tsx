@@ -17,6 +17,7 @@ import type {
 } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
 import { planSessionForDate } from '../lib/training';
+import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
@@ -109,6 +110,9 @@ type TrenrContextValue = {
   signOut: () => Promise<void>;
   isSubscribed: boolean;
   setIsSubscribed: (status: boolean) => Promise<void>;
+  purchaseSubscription: (planId: SubscriptionPlanId) => Promise<boolean>;
+  restoreSubscription: () => Promise<boolean>;
+  subscriptionPackages: SubscriptionPackage[];
 };
 
 const Context = createContext<TrenrContextValue | null>(null);
@@ -131,6 +135,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
   const [isSubscribed, setIsSubscribedState] = useState(false);
+  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(FALLBACK_PACKAGES);
 
   useEffect(() => {
     let active = true;
@@ -174,6 +179,24 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  // Configure billing + reconcile the real entitlement once auth resolves. The
+  // Mock provider just reflects the stored flag; RevenueCat returns the live
+  // store entitlement (and we cache it locally for offline).
+  useEffect(() => {
+    const provider = getSubscriptionProvider();
+    void (async () => {
+      try {
+        await provider.configure(user?.id ?? null);
+        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings()]);
+        setIsSubscribedState(status.isActive);
+        await saveSubscriptionStatus(status.isActive);
+        if (packages.length) setSubscriptionPackages(packages);
+      } catch {
+        // keep the locally stored flag on any billing/offline error
+      }
+    })();
+  }, [user?.id]);
 
   const baselineMacros = useMemo(
     () =>
@@ -341,6 +364,20 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   async function updateSubscriptionStatus(status: boolean) {
     await saveSubscriptionStatus(status);
     setIsSubscribedState(status);
+  }
+
+  async function purchaseSubscription(planId: SubscriptionPlanId): Promise<boolean> {
+    const status = await getSubscriptionProvider().purchase(planId);
+    await saveSubscriptionStatus(status.isActive);
+    setIsSubscribedState(status.isActive);
+    return status.isActive;
+  }
+
+  async function restoreSubscription(): Promise<boolean> {
+    const status = await getSubscriptionProvider().restore();
+    await saveSubscriptionStatus(status.isActive);
+    setIsSubscribedState(status.isActive);
+    return status.isActive;
   }
 
   /** Persist a new weekly check-in and compute the suggested PlanAdjustment.
@@ -513,6 +550,9 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       signOut,
       isSubscribed,
       setIsSubscribed: updateSubscriptionStatus,
+      purchaseSubscription,
+      restoreSubscription,
+      subscriptionPackages,
     }}>
       {children}
     </Context.Provider>

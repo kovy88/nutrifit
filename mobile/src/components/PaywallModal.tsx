@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
@@ -12,18 +12,33 @@ interface PaywallModalProps {
 
 export function PaywallModal({ visible, onClose }: PaywallModalProps) {
   const { colors, fonts } = useTheme();
-  const { setIsSubscribed } = useTrenr();
+  const { purchaseSubscription, restoreSubscription } = useTrenr();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
 
   async function handleSubscribe() {
     setLoading(true);
-    // Simulate payment call
-    setTimeout(async () => {
-      await setIsSubscribed(true);
+    try {
+      const active = await purchaseSubscription(selectedPlan);
+      if (active) onClose();
+    } catch {
+      // user cancelled the store sheet or the purchase failed — stay on paywall
+    } finally {
       setLoading(false);
-      onClose();
-    }, 1200);
+    }
+  }
+
+  async function handleRestore() {
+    setLoading(true);
+    try {
+      const active = await restoreSubscription();
+      if (active) onClose();
+      else Alert.alert('Trenr', 'Nenašli jsme žádný aktivní nákup k obnovení.');
+    } catch {
+      Alert.alert('Trenr', 'Obnovení se nepodařilo. Zkuste to prosím znovu.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -143,7 +158,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 Předplatné se automaticky obnovuje. Můžete jej kdykoliv zrušit v nastavení App Store. Aktivací trialu souhlasíte s Obchodními podmínkami.
               </Text>
 
-              <Pressable onPress={onClose} style={styles.restoreLink}>
+              <Pressable onPress={handleRestore} style={styles.restoreLink}>
                 <Text style={[styles.restoreText, { color: colors.muted, fontFamily: fonts.bold }]}>
                   Obnovit nákupy
                 </Text>
