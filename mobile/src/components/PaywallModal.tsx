@@ -3,6 +3,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button, Card, FadeInView } from './UI';
 
 interface PaywallModalProps {
@@ -12,6 +13,7 @@ interface PaywallModalProps {
 
 export function PaywallModal({ visible, onClose }: PaywallModalProps) {
   const { colors, fonts } = useTheme();
+  const { t } = useLanguage();
   const { purchaseSubscription, restoreSubscription, subscriptionPackages } = useTrenr();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
@@ -35,9 +37,9 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
     try {
       const active = await restoreSubscription();
       if (active) onClose();
-      else Alert.alert('Trenr', 'Nenašli jsme žádný aktivní nákup k obnovení.');
+      else Alert.alert('Trenr', t('paywall.restoreNone'));
     } catch {
-      Alert.alert('Trenr', 'Obnovení se nepodařilo. Zkuste to prosím znovu.');
+      Alert.alert('Trenr', t('paywall.restoreFailed'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
               Trenr Premium
             </Text>
             <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
-              Free pokryje první týden a Today doporučení. Premium odemkne adaptivní plán a hlubší koučování.
+              {t('paywall.subtitle')}
             </Text>
             <Pressable onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.muted} />
@@ -74,23 +76,23 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
             <FadeInView delay={100} style={styles.features}>
               <FeatureRow
                 icon="checkmark-circle-outline"
-                title="Free"
-                description="Onboarding, Today doporučení, jeden týdenní plán a ruční check-in."
+                title={t('paywall.featFreeTitle')}
+                description={t('paywall.featFreeDesc')}
               />
               <FeatureRow
                 icon="trending-up-outline"
-                title="Adaptivní plán"
-                description="Úpravy po vynechaném tréninku, weekly review a bezpečné korekce podle readiness."
+                title={t('paywall.featAdaptiveTitle')}
+                description={t('paywall.featAdaptiveDesc')}
               />
               <FeatureRow
                 icon="chatbubble-ellipses-outline"
-                title="AI coach chat"
-                description="Vysvětlení doporučení, meal swaps a odpovědi nad deterministicky spočítaným plánem."
+                title={t('paywall.featCoachTitle')}
+                description={t('paywall.featCoachDesc')}
               />
               <FeatureRow
                 icon="analytics-outline"
-                title="Recovery insights"
-                description="Detailnější trendy, běžecký plán a přehled pokroku bez medicínských diagnóz."
+                title={t('paywall.featRecoveryTitle')}
+                description={t('paywall.featRecoveryDesc')}
               />
             </FadeInView>
 
@@ -108,15 +110,15 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
               >
                 <View style={styles.planHeader}>
                   <Text style={[styles.planTitle, { color: colors.ink, fontFamily: fonts.bold }]}>
-                    Měsíční plán
+                    {t('paywall.monthlyTitle')}
                   </Text>
                   {selectedPlan === 'monthly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  {monthly?.priceString ?? '149 Kč'} <Text style={styles.planUnit}>/ měsíc</Text>
+                  {monthly?.priceString ?? '149 Kč'} <Text style={styles.planUnit}>{t('paywall.perMonth')}</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
-                  Měsíční flexibilita
+                  {t('paywall.monthlyTrial')}
                 </Text>
               </Pressable>
 
@@ -131,19 +133,19 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 ]}
               >
                 <View style={styles.badge}>
-                  <Text style={[styles.badgeText, { color: colors.accentText }]}>Ušetříte 37 %</Text>
+                  <Text style={[styles.badgeText, { color: colors.accentText }]}>{t('paywall.savePct')}</Text>
                 </View>
                 <View style={styles.planHeader}>
                   <Text style={[styles.planTitle, { color: colors.ink, fontFamily: fonts.bold }]}>
-                    Roční plán
+                    {t('paywall.yearlyTitle')}
                   </Text>
                   {selectedPlan === 'yearly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  {yearly?.priceString ?? '1 290 Kč'} <Text style={styles.planUnit}>/ rok</Text>
+                  {yearly?.priceString ?? '1 290 Kč'} <Text style={styles.planUnit}>{t('paywall.perYear')}</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
-                  Nejlepší hodnota pro dlouhodobý plán
+                  {t('paywall.yearlyTrial')}
                 </Text>
               </Pressable>
             </FadeInView>
@@ -155,16 +157,16 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 onPress={handleSubscribe}
                 style={styles.subscribeBtn}
               >
-                {loading ? 'Zpracování...' : 'Pokračovat s Premium'}
+                {loading ? t('paywall.processing') : t('paywall.cta')}
               </Button>
-              
+
               <Text style={[styles.disclaimer, { color: colors.faint, fontFamily: fonts.regular }]}>
-                Předplatné se obnovuje podle pravidel obchodu. V Expo/dev režimu se používá lokální entitlement bez reálné platby.
+                {t('paywall.disclaimer')}
               </Text>
 
               <Pressable onPress={handleRestore} style={styles.restoreLink}>
                 <Text style={[styles.restoreText, { color: colors.muted, fontFamily: fonts.bold }]}>
-                  Obnovit nákupy
+                  {t('paywall.restore')}
                 </Text>
               </Pressable>
             </FadeInView>

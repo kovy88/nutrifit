@@ -869,6 +869,30 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'goal.build_consistency': 'Build consistency',
 
   // ── Pluralized helpers ─────────────────────────────────────────────────────────
+  // ── Paywall (Premium) ──────────────────────────────────────────────────────────
+  'paywall.subtitle': 'Free covers your first week and the Today recommendation. Premium unlocks the adaptive plan and deeper coaching.',
+  'paywall.featFreeTitle': 'Free',
+  'paywall.featFreeDesc': 'Onboarding, the Today recommendation, one weekly plan and manual check-in.',
+  'paywall.featAdaptiveTitle': 'Adaptive plan',
+  'paywall.featAdaptiveDesc': 'Adjustments after a missed workout, weekly review and safe corrections based on readiness.',
+  'paywall.featCoachTitle': 'AI coach chat',
+  'paywall.featCoachDesc': 'Explanations, meal swaps and answers grounded in your deterministically computed plan.',
+  'paywall.featRecoveryTitle': 'Recovery insights',
+  'paywall.featRecoveryDesc': 'Deeper trends, a running plan and progress overview — without medical diagnoses.',
+  'paywall.monthlyTitle': 'Monthly plan',
+  'paywall.yearlyTitle': 'Yearly plan',
+  'paywall.perMonth': '/ month',
+  'paywall.perYear': '/ year',
+  'paywall.monthlyTrial': 'Monthly flexibility',
+  'paywall.yearlyTrial': 'Best value for the long run',
+  'paywall.savePct': 'Save 37%',
+  'paywall.processing': 'Processing…',
+  'paywall.cta': 'Continue with Premium',
+  'paywall.disclaimer': 'The subscription renews per store rules. In Expo/dev mode a local entitlement is used with no real payment.',
+  'paywall.restore': 'Restore purchases',
+  'paywall.restoreNone': 'We found no active purchase to restore.',
+  'paywall.restoreFailed': 'Restore failed. Please try again.',
+
   // ── Profile account alerts ─────────────────────────────────────────────────────
   'profile.loginFailed': 'Sign-in failed',
   'profile.registerFailed': 'Sign-up failed',
