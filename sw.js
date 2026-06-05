@@ -1,5 +1,8 @@
 // ── NutriFit Service Worker — offline cache
-const CACHE_NAME = 'nutriplan-v8';
+const CACHE_NAME = 'nutriplan-v9';
+// Marketing landing only — the in-browser app was retired, so we no longer
+// precache the old /js/* app bundle (kept the SW install from failing on
+// removed files, and stops shipping dead code to visitors).
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -10,21 +13,7 @@ const STATIC_ASSETS = [
   '/css/variables.css',
   '/css/layout.css',
   '/css/components.css',
-  '/css/modals.css',
-  '/css/print.css',
-  '/js/main.js',
-  '/js/ai-utils.js',
   '/js/vercel-analytics.js',
-  '/js/auth.js',
-  '/js/calculator.js',
-  '/js/state.js',
-  '/js/tracking-store.js',
-  '/js/recipes.js',
-  '/js/profile.js',
-  '/js/shopping.js',
-  '/js/dayplanner.js',
-  '/js/generation-limit.js',
-  '/js/supabase.js',
 ];
 
 // Install — cache static assets
