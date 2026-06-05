@@ -12,6 +12,7 @@ import { PlanScreen } from '../screens/PlanScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { TrainingScreen } from '../screens/TrainingScreen';
+import { WeeklyScheduleScreen } from '../screens/WeeklyScheduleScreen';
 import { createBottomNavigationOptions } from '../components/premium/BottomNavigation';
 
 const Stack = createNativeStackNavigator();
@@ -52,6 +53,11 @@ export function RootNavigator() {
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
+            options={{ headerShown: false, presentation: 'card' }}
+          />
+          <Stack.Screen
+            name="MujTyden"
+            component={WeeklyScheduleScreen}
             options={{ headerShown: false, presentation: 'card' }}
           />
         </>

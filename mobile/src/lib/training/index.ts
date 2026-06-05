@@ -9,6 +9,9 @@ import type { TrainingCompletionRecordMap } from '../../types';
 import type { SleepSummary, WorkoutSummary } from '../../types/health';
 import { adjustTrainingAfterMissedSession, generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
 import { localizeTrainingText, localizeSessionTitles } from './localizeTitle';
+import { hasCustomSchedule, materializeWeeklyTemplate } from './customSchedule';
+
+export { hasCustomSchedule, materializeWeeklyTemplate } from './customSchedule';
 
 export * from './plan';
 export * from './feasibility';
@@ -64,6 +67,10 @@ export function weekIndexFor(programStartISO: string | undefined, weekStartISO: 
 /** Vygeneruje týdenní plán pro týden obsahující `date`, na základě profilu. */
 export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'cs'): TrainingPlan {
   const weekStartISO = mondayOf(date);
+  // "Můj týden" custom režim: materializuj uživatelskou šablonu místo generování plánu.
+  if (hasCustomSchedule(profile)) {
+    return materializeWeeklyTemplate(profile, weekStartISO, locale);
+  }
   const goal: TrainingGoal = {
     kind: profile.trainingGoal,
     currentWeeklyKm: profile.currentWeeklyKm,
@@ -158,7 +165,12 @@ export function adjustedPlanForDate(
   ctx: PlanContext = {},
   locale: string = 'cs',
 ): AdjustedTrainingPlan {
-  return adjustPlanForTrainingCompletions(planForDate(profile, date, ctx, locale), completions, locale);
+  const plan = planForDate(profile, date, ctx, locale);
+  // Custom týden je uživatelův pevný rytmus — nepřeskupuj ho po vynechání tréninku.
+  if (hasCustomSchedule(profile)) {
+    return { plan, skippedDates: [], adjustedDates: [] };
+  }
+  return adjustPlanForTrainingCompletions(plan, completions, locale);
 }
 
 export function adjustedPlanSessionForDate(

@@ -28,9 +28,30 @@ export type PlanIntensity = 'easy' | 'moderate' | 'ambitious_but_safe';
  *  trénink, 'nutrition' = jen jídelníček. Pohání scope-aware onboarding, Today,
  *  taby i coach engine. Undefined (starší profily) se chová jako 'both'. */
 export type CoachScope = 'both' | 'training' | 'nutrition';
-export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'recovery_walk' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional';
+export type SessionKind = 'easy_run' | 'tempo' | 'intervals' | 'long_run' | 'recovery_run' | 'recovery_walk' | 'strength' | 'mobility' | 'rest' | 'cross_training' | 'race' | 'swim' | 'bike' | 'brick' | 'functional' | 'sport' | 'match' | 'combat' | 'recovery';
 export type TrainingSessionType = 'rest' | 'easy_run' | 'long_run' | 'tempo' | 'intervals' | 'recovery_walk' | 'strength' | 'mobility' | 'cross_training';
 export type RaceFeasibilityVerdict = 'feasible' | 'tight' | 'unrealistic';
+
+/** Jedna naplánovaná aktivita ve „Můj týden" šabloně (custom režim). */
+export type PlannedActivity = {
+  kind: SessionKind;
+  /** Zobrazený název. Volný uživatelský text (např. „Hokejbal"); prázdné = odvodí se z kind. */
+  title?: string;
+  intensity: 'easy' | 'moderate' | 'hard' | 'rest';
+  durationMinutes?: number;
+  distanceKm?: number;
+  /** True = zápas/soutěž → klíčový den (carb pre-fuel + taper kolem). */
+  isMatch?: boolean;
+};
+
+/** Opakující se týdenní šablona: offset od pondělí (0=Po … 6=Ne) → aktivity daného dne. */
+export type WeeklyActivityTemplate = Partial<Record<0 | 1 | 2 | 3 | 4 | 5 | 6, PlannedActivity[]>>;
+
+/** Hlavní sport uživatele — kontext pro relevantní doporučení kouče (custom režim). */
+export type MainSport = {
+  /** Uživatelský název, např. „Hokejbal". User content — neprochází i18n. */
+  label: string;
+};
 
 
 export type UserProfile = {
@@ -70,6 +91,11 @@ export type UserProfile = {
   availableTrainingDays?: number;
   preferredRestDays?: number[];
   runWalkPreferred?: boolean;
+  /** „Můj týden": opakující se týdenní šablona vlastních aktivit. Přítomnost = custom režim
+   *  (engine nediktuje plán, jen materializuje tuto šablonu). */
+  weeklyActivities?: WeeklyActivityTemplate;
+  /** Hlavní sport pro kontext doporučení kouče v custom režimu (např. { label: 'Hokejbal' }). */
+  mainSport?: MainSport;
   /** New chat-first onboarding goal model. Existing fields above remain engine-compatible mirrors. */
   goalProfile?: OnboardingGoalProfile;
 };
