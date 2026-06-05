@@ -1,0 +1,91 @@
+import { describe, it, expect } from 'vitest';
+import { materializeWeeklyTemplate, hasCustomSchedule } from '../lib/training/customSchedule';
+import { planForDate } from '../lib/training';
+import { adjustForDay } from '../utils/nutrition';
+import type { WeeklyActivityTemplate } from '../types';
+
+const WEEK = '2026-01-05'; // pondělí
+
+const template: WeeklyActivityTemplate = {
+  0: [{ kind: 'sport', title: 'Hokejbal', intensity: 'moderate' }],                                   // Po
+  1: [{ kind: 'combat', title: 'Thai box', intensity: 'hard' }],                                      // Út
+  2: [{ kind: 'strength', title: 'Fitko', intensity: 'moderate' }, { kind: 'recovery', title: 'Sauna', intensity: 'easy' }], // St (2 aktivity)
+  3: [{ kind: 'easy_run', intensity: 'easy' }],                                                        // Čt (bez titulku → default)
+  4: [],                                                                                                // Pá (prázdno → rest)
+  5: [{ kind: 'match', title: 'Zápas', intensity: 'hard', isMatch: true }],                            // So (zápas)
+  // Ne chybí → rest
+};
+
+function profileWith(tpl?: WeeklyActivityTemplate): any {
+  return { trainingGoal: 'general_fitness', weight: 80, weeklyActivities: tpl, mainSport: { label: 'Hokejbal' } };
+}
+
+describe('custom weekly schedule — „Můj týden"', () => {
+  it('hasCustomSchedule detekuje neprázdnou šablonu', () => {
+    expect(hasCustomSchedule(profileWith(template))).toBe(true);
+    expect(hasCustomSchedule(profileWith({}))).toBe(false);
+    expect(hasCustomSchedule(profileWith(undefined))).toBe(false);
+    expect(hasCustomSchedule(null)).toBe(false);
+  });
+
+  it('materializuje 7 session se správnými daty (Po→Ne)', () => {
+    const plan = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
+    expect(plan.sessions).toHaveLength(7);
+    expect(plan.sessions[0].date).toBe('2026-01-05');
+    expect(plan.sessions[6].date).toBe('2026-01-11');
+  });
+
+  it('zachová uživatelský titul, jinak lokalizovaný default', () => {
+    const cs = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
+    const en = materializeWeeklyTemplate(profileWith(template), WEEK, 'en');
+    expect(cs.sessions[0].title).toBe('Hokejbal'); // user content beze změny
+    expect(cs.sessions[3].title).toBe('Lehký běh'); // bez titulku → cs default
+    expect(en.sessions[3].title).toBe('Easy run');  // bez titulku → en default
+  });
+
+  it('zápasový den → kind match + hard', () => {
+    const plan = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
+    expect(plan.sessions[5].kind).toBe('match');
+    expect(plan.sessions[5].intensity).toBe('hard');
+  });
+
+  it('prázdný i chybějící den → rest', () => {
+    const plan = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
+    expect(plan.sessions[4].kind).toBe('rest'); // Pá prázdno
+    expect(plan.sessions[6].kind).toBe('rest'); // Ne chybí
+  });
+
+  it('víc aktivit za den → primary (vyšší intenzita) + extras v notes', () => {
+    const plan = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
+    const wed = plan.sessions[2];
+    expect(wed.kind).toBe('strength'); // moderate > easy
+    expect(wed.title).toBe('Fitko');
+    expect(wed.notes).toContain('Sauna');
+  });
+
+  it('planForDate routuje na materializer když je šablona', () => {
+    const plan = planForDate(profileWith(template), new Date('2026-01-07T12:00:00'), {}, 'cs');
+    expect(plan.sessions.find(s => s.date === '2026-01-05')?.title).toBe('Hokejbal');
+  });
+
+  it('planForDate použije generátor bez šablony (regrese)', () => {
+    const plan = planForDate(profileWith(undefined), new Date('2026-01-07T12:00:00'), {}, 'cs');
+    expect(plan.sessions.length).toBeGreaterThan(0);
+    expect(plan.sessions.some(s => s.title === 'Hokejbal')).toBe(false);
+  });
+
+  it('zápasový den dostane carb pre-fuel (fueling)', () => {
+    const baseline = { kcal: 2200, protein: 150, carbs: 250, fat: 70, tdee: 2200 } as any;
+    const match = { date: WEEK, kind: 'match' as const, title: 'Zápas', durationMinutes: 70, intensity: 'hard' as const };
+    const res = adjustForDay(baseline, match, { weight: 80 });
+    expect(res.adjustment.carbsDelta).toBeGreaterThan(0);
+  });
+
+  it('play_sport aktivuje custom režim i s prázdnou šablonou', () => {
+    const profile = { trainingGoal: 'play_sport', weight: 80 } as any;
+    expect(hasCustomSchedule(profile)).toBe(true);
+    const plan = planForDate(profile, new Date('2026-01-07T12:00:00'), {}, 'cs');
+    expect(plan.sessions).toHaveLength(7);
+    expect(plan.sessions.every(x => x.kind === 'rest')).toBe(true); // prázdná šablona → samé rest, uživatel si týden postaví
+  });
+});

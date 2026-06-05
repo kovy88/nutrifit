@@ -28,6 +28,8 @@ import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
+import { complementarySuggestions } from '../lib/coaching/complementarySuggestions';
+import { planForDate, hasCustomSchedule } from '../lib/training';
 import type { TranslationKey } from '../lib/i18n';
 import { profileSetupCompleteness } from '../lib/onboarding/validation';
 
@@ -51,6 +53,7 @@ export function TodayScreen() {
   const { recommendation: rec, coaching } = useDailyCoachRecommendation(new Date(selectedDate));
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [missedFeedbackVisible, setMissedFeedbackVisible] = useState(false);
+  const [tipsDismissed, setTipsDismissed] = useState(false);
 
   if (!profile || !macros) return null;
 
@@ -66,6 +69,14 @@ export function TodayScreen() {
   const trainingDay = Boolean(currentSession && currentSession.kind !== 'rest');
   const week = weeklyCompletion(trainingCompletions, selectedDate);
   const setup = profileSetupCompleteness(profile);
+  const weekTips = (showTraining && hasCustomSchedule(profile))
+    ? complementarySuggestions({
+        mainSport: profile.mainSport?.label,
+        sessions: planForDate(profile, new Date(selectedDate), {}, locale).sessions,
+        todayISO: selectedDate,
+        locale,
+      })
+    : [];
 
   async function markTodayDone() {
     await mark('completed');
@@ -196,6 +207,12 @@ export function TodayScreen() {
         ]}
         recommendation={coaching.assessment?.recommendation ?? t('today.recoveryFallback')}
       />
+
+      {weekTips.length > 0 && !tipsDismissed ? (
+        <CoachInsightCard title={t('myweek.tipsTitle')} body={weekTips.map(tip => '• ' + tip).join('\n')} accent={colors.accent}>
+          <Button variant="secondary" onPress={() => setTipsDismissed(true)}>{t('myweek.tipsDismiss')}</Button>
+        </CoachInsightCard>
+      ) : null}
 
       <View style={styles.quickGrid}>
         <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => setShowCheckIn(true)} />

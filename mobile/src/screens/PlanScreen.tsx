@@ -192,6 +192,8 @@ export function PlanScreen() {
         }
       />
 
+      <QuickActionButton icon="calendar-outline" label={t('myweek.openCta')} onPress={() => navigation.navigate('MujTyden')} />
+
       {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
         <Card style={{ borderColor: colors.orange, backgroundColor: colors.orange + '10', marginBottom: 12, padding: 14 }}>
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 4 }}>

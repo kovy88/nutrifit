@@ -128,7 +128,7 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
   }
 
   const burn = estimateSessionKcal(session, profile.weight);
-  const isHardDay = session.intensity === 'hard' || ['long_run', 'tempo', 'intervals', 'race'].includes(session.kind);
+  const isHardDay = session.intensity === 'hard' || ['long_run', 'tempo', 'intervals', 'race', 'match'].includes(session.kind);
   const preFuel = isHardDay ? Math.round(profile.weight) : 0;
   const refuel = Math.round((burn * 0.6) / 4);
   const addCarbs = preFuel + refuel;
@@ -496,6 +496,7 @@ export function estimateSessionKcal(session: TrainingSession, weight: number) {
     easy_run: 8, recovery_run: 6, recovery_walk: 3, tempo: 11, intervals: 12, long_run: 9,
     strength: 5, cross_training: 7, mobility: 3, rest: 0, race: 12,
     swim: 7, bike: 7, brick: 8, functional: 8,
+    sport: 9, match: 11, combat: 10, recovery: 2,
   }[session.kind] || 6;
   return Math.round((met * weight * session.durationMinutes) / 60);
 }
