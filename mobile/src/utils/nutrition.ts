@@ -108,7 +108,8 @@ export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' 
   return { allowed: true, level: 'ok' as const, bmi };
 }
 
-export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>): { macros: Macros; adjustment: DailyAdjustment } {
+export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'cs'): { macros: Macros; adjustment: DailyAdjustment } {
+  const en = locale === 'en';
   if (!session || session.kind === 'rest' || session.intensity === 'rest') {
     const carbs = Math.max(0, Math.round(baseline.carbs * 0.9));
     const movedKcal = (baseline.carbs - carbs) * 4;
@@ -116,7 +117,7 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     return {
       macros: { ...baseline, carbs, fat },
       adjustment: {
-        note: 'Volný den — méně sacharidů, více tuků.',
+        note: en ? 'Rest day — fewer carbs, more fat.' : 'Volný den — méně sacharidů, více tuků.',
         kcalDelta: 0,
         carbsDelta: carbs - baseline.carbs,
         fatDelta: fat - baseline.fat,
@@ -136,10 +137,16 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     macros,
     adjustment: {
       note: session.kind === 'long_run'
-        ? `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`
+        ? (en
+          ? `Long run — pre-fuel +${preFuel} g and refuel +${refuel} g carbs.`
+          : `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`)
         : isHardDay
-          ? `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`
-          : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`,
+          ? (en
+            ? `Hard session (${session.title}) — pre-workout carbs +${preFuel} g and refuel +${refuel} g.`
+            : `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`)
+          : (en
+            ? `Training day (${session.title}) — added ${addCarbs} g carbs.`
+            : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`),
       kcalDelta: macros.kcal - baseline.kcal,
       carbsDelta: macros.carbs - baseline.carbs,
       fatDelta: 0,

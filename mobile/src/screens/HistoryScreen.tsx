@@ -89,7 +89,7 @@ export function HistoryScreen() {
       const hasTraining = profile ? scopeHasTraining(resolveCoachScope(profile)) : false;
       const plannedSessions = hasTraining && profile
         ? weekDates.filter(dateKey => {
-            const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`));
+            const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`), {}, locale);
             return session && session.kind !== 'rest';
           }).length
         : 0;

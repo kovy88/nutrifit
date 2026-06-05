@@ -30,14 +30,14 @@ export function TrainingScreen() {
   const { profile, selectedDate, setSelectedDate, trainingCompletions } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors, fonts } = useTheme();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const recent = useRecentWorkouts(14);
   const { completion, mark } = useTrainingCompletion();
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSummary | null>(null);
 
   const weekList = useMemo(
-    () => profile ? buildWeekList(profile, selectedDate, recent.workouts, trainingCompletions, t) : [],
-    [profile, recent.workouts, selectedDate, t, trainingCompletions],
+    () => profile ? buildWeekList(profile, selectedDate, recent.workouts, trainingCompletions, t, locale) : [],
+    [profile, recent.workouts, selectedDate, t, trainingCompletions, locale],
   );
   const selectedDay = weekList.find(item => item.dateKey === selectedDate) ?? weekList[0];
   const plannedSessions = weekList.filter(item => !item.isRest).length;
@@ -180,13 +180,14 @@ function buildWeekList(
   recentWorkouts: WorkoutSummary[],
   trainingCompletions: ReturnType<typeof useTrenr>['trainingCompletions'],
   t: ReturnType<typeof useLanguage>['t'],
+  locale: string,
 ) {
   const baseDate = new Date(selectedDate);
   const day = baseDate.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   const monday = new Date(baseDate);
   monday.setDate(baseDate.getDate() + diffToMonday);
-  const adjusted = adjustedPlanForDate(profile, baseDate, trainingCompletions, { recentWorkouts });
+  const adjusted = adjustedPlanForDate(profile, baseDate, trainingCompletions, { recentWorkouts }, locale);
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(monday);

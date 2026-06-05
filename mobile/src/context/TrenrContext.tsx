@@ -17,6 +17,7 @@ import type {
 } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
 import { adjustedPlanSessionForDate } from '../lib/training';
+import { useLanguage } from './LanguageContext';
 import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
@@ -118,6 +119,7 @@ type TrenrContextValue = {
 const Context = createContext<TrenrContextValue | null>(null);
 
 export function TrenrProvider({ children }: PropsWithChildren) {
+  const { locale } = useLanguage();
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   
@@ -219,12 +221,12 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   
   const currentSession = useMemo(() => {
     if (!profile) return null;
-    return sessionsByDate[selectedDate] || adjustedPlanSessionForDate(profile, new Date(selectedDate), trainingCompletionsByDate);
-  }, [sessionsByDate, selectedDate, profile, trainingCompletionsByDate]);
+    return sessionsByDate[selectedDate] || adjustedPlanSessionForDate(profile, new Date(selectedDate), trainingCompletionsByDate, {}, locale);
+  }, [sessionsByDate, selectedDate, profile, trainingCompletionsByDate, locale]);
 
   const daily = useMemo(() => {
     if (!profile || !baselineMacros) return { macros: null, adjustment: null };
-    const result = adjustForDay(baselineMacros, currentSession, profile);
+    const result = adjustForDay(baselineMacros, currentSession, profile, locale);
     const isManual = !!sessionsByDate[selectedDate];
     return {
       macros: result.macros,
@@ -233,7 +235,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         source: isManual ? 'manual_today_session' as const : 'profile_training_goal' as const,
       },
     };
-  }, [baselineMacros, currentSession, profile, sessionsByDate, selectedDate]);
+  }, [baselineMacros, currentSession, profile, sessionsByDate, selectedDate, locale]);
 
   const currentMacros = daily.macros;
   const dailyAdjustment = daily.adjustment;
