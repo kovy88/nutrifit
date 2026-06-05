@@ -875,6 +875,21 @@ export const cs = {
   'goal.improve_recovery': 'Zlepšit regeneraci',
   'goal.build_consistency': 'Budovat konzistenci',
 
+  // ── Profile account alerts ─────────────────────────────────────────────────────
+  'profile.loginFailed': 'Přihlášení selhalo',
+  'profile.registerFailed': 'Registrace selhala',
+  'profile.registerDone': 'Hotovo',
+  'profile.registerDoneMsg': 'Pokud Supabase vyžaduje ověření e-mailu, zkontroluj schránku.',
+  'profile.tryAgain': 'Zkus to prosím znovu.',
+  'profile.exportReady': 'Export připraven',
+  'profile.exportSummary': ({ profile, count }: Record<string, string | number>) => `Profil: ${profile}\nHistorie: ${count} záznamů`,
+  'profile.exportFailed': 'Export selhal',
+  'profile.signInAgain': 'Přihlaš se prosím znovu.',
+  'profile.deleteTitle': 'Smazat účet?',
+  'profile.deleteMsg': 'Tahle akce smaže účet a serverová data. Nelze ji vrátit zpět.',
+  'profile.deleteFailed': 'Smazání selhalo',
+  'profile.deleteFailedMsg': 'Použij veřejný deletion request link.',
+
   // ── Pluralized helpers (exported as functions) ─────────────────────────────────
   'streak.daysLogged': ({ n }: Record<string, string | number>) => `${n} ${czDay(Number(n))} zapsáno`,
   'streak.daysOnTarget': ({ n }: Record<string, string | number>) => `${n} ${czDay(Number(n))} v cíli`,

@@ -35,33 +35,33 @@ export function ProfileScreen() {
     try {
       await signIn(auth.email.trim(), auth.password);
     } catch (err) {
-      Alert.alert('Přihlášení selhalo', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+      Alert.alert(t('profile.loginFailed'), err instanceof Error ? err.message : t('profile.tryAgain'));
     }
   }
 
   async function register() {
     try {
       await signUp(auth.name.trim(), auth.email.trim(), auth.password);
-      Alert.alert('Hotovo', 'Pokud Supabase vyžaduje ověření e-mailu, zkontroluj schránku.');
+      Alert.alert(t('profile.registerDone'), t('profile.registerDoneMsg'));
     } catch (err) {
-      Alert.alert('Registrace selhala', err instanceof Error ? err.message : 'Zkus to prosím znovu.');
+      Alert.alert(t('profile.registerFailed'), err instanceof Error ? err.message : t('profile.tryAgain'));
     }
   }
 
   async function exportData() {
     try {
       const data = await exportAccountData();
-      Alert.alert('Export připraven', `Profil: ${data.profile ? 'ano' : 'ne'}\nHistorie: ${data.mealHistory?.length || 0} záznamů`);
+      Alert.alert(t('profile.exportReady'), t('profile.exportSummary', { profile: t(data.profile ? 'common.yes' : 'common.no'), count: data.mealHistory?.length || 0 }));
     } catch (err) {
-      Alert.alert('Export selhal', err instanceof Error ? err.message : 'Přihlaš se prosím znovu.');
+      Alert.alert(t('profile.exportFailed'), err instanceof Error ? err.message : t('profile.signInAgain'));
     }
   }
 
   async function confirmDelete() {
-    Alert.alert('Smazat účet?', 'Tahle akce smaže účet a serverová data. Nelze ji vrátit zpět.', [
-      { text: 'Zrušit', style: 'cancel' },
+    Alert.alert(t('profile.deleteTitle'), t('profile.deleteMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Smazat',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -70,7 +70,7 @@ export function ProfileScreen() {
             // (profile, plans, food logs, training sessions, weights, consent).
             await purgeAllUserData();
           } catch (err) {
-            Alert.alert('Smazání selhalo', err instanceof Error ? err.message : 'Použij veřejný deletion request link.');
+            Alert.alert(t('profile.deleteFailed'), err instanceof Error ? err.message : t('profile.deleteFailedMsg'));
           }
         },
       },
