@@ -514,6 +514,7 @@ export const cs = {
   'onb.tgGeneralFitnessAlt': 'Celková kondice',
   'onb.tgGeneralFitness': 'Obecná kondice',
   'onb.tgSportsConditioning': 'Sportovní výkon',
+  'onb.tgPlaySport': 'Hraju sport / vlastní rytmus',
   'onb.tgWalking': 'Víc chůze',
   'onb.tgCouch': 'Z gauče na 5 km',
   'onb.tgSprintTri': 'Sprint triatlon',

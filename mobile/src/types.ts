@@ -16,7 +16,7 @@ export type DietStyle = 'standardní' | 'vegetariánský' | 'veganský' | 'bezle
 export type PrimaryGoal = 'lose_fat' | 'maintain_weight' | 'gain_muscle' | 'improve_fitness' | 'improve_running' | 'improve_recovery' | 'build_consistency';
 /** @deprecated only used for storage migration from pre-taxonomy profiles */
 export type LegacyPrimaryGoal = 'lose_weight' | 'run_race' | 'triathlon' | 'hyrox_ocr' | 'get_fit' | 'sport_conditioning';
-export type TrainingGoalKind = 'none' | 'general_fitness' | 'walking_more' | 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'basic_strength' | 'sports_conditioning' | 'sport_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr';
+export type TrainingGoalKind = 'none' | 'general_fitness' | 'walking_more' | 'couch_to_5k' | 'run_5k' | 'run_10k' | 'half_marathon' | 'marathon' | 'strength_basics' | 'basic_strength' | 'sports_conditioning' | 'sport_conditioning' | 'hyrox' | 'sprint_triathlon' | 'olympic_triathlon' | 'half_ironman' | 'full_ironman' | 'ocr' | 'play_sport';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 export type TrainingExperience = 'beginner' | 'intermediate' | 'advanced';
 export type NutritionGoalKind = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';

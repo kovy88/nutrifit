@@ -507,6 +507,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'onb.tgGeneralFitnessAlt': 'Overall fitness',
   'onb.tgGeneralFitness': 'General fitness',
   'onb.tgSportsConditioning': 'Sport conditioning',
+  'onb.tgPlaySport': 'I play a sport / my own rhythm',
   'onb.tgWalking': 'More walking',
   'onb.tgCouch': 'Couch to 5K',
   'onb.tgSprintTri': 'Sprint triathlon',

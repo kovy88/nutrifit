@@ -80,4 +80,12 @@ describe('custom weekly schedule — „Můj týden"', () => {
     const res = adjustForDay(baseline, match, { weight: 80 });
     expect(res.adjustment.carbsDelta).toBeGreaterThan(0);
   });
+
+  it('play_sport aktivuje custom režim i s prázdnou šablonou', () => {
+    const profile = { trainingGoal: 'play_sport', weight: 80 } as any;
+    expect(hasCustomSchedule(profile)).toBe(true);
+    const plan = planForDate(profile, new Date('2026-01-07T12:00:00'), {}, 'cs');
+    expect(plan.sessions).toHaveLength(7);
+    expect(plan.sessions.every(x => x.kind === 'rest')).toBe(true); // prázdná šablona → samé rest, uživatel si týden postaví
+  });
 });

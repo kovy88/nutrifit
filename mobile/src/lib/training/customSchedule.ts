@@ -61,7 +61,9 @@ function pickPrimary(acts: PlannedActivity[]): PlannedActivity {
 }
 
 /** True, pokud profil má neprázdnou „Můj týden" šablonu = custom režim. */
-export function hasCustomSchedule(profile: { weeklyActivities?: WeeklyActivityTemplate } | null | undefined): boolean {
+export function hasCustomSchedule(profile: { weeklyActivities?: WeeklyActivityTemplate; trainingGoal?: string } | null | undefined): boolean {
+  // 'play_sport' = custom režim i s prázdnou šablonou (uživatel si týden teprve postaví).
+  if (profile?.trainingGoal === 'play_sport') return true;
   const tpl = profile?.weeklyActivities;
   return !!tpl && Object.values(tpl).some(list => Array.isArray(list) && list.length > 0);
 }
