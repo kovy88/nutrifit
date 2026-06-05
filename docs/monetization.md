@@ -55,6 +55,16 @@ or wire `subscriptionPackages` prices into the paywall cards (small follow-up).
 - [ ] HealthKit usage strings + entitlement if you ship Apple Health (see `settings.iosInstrMsg`).
 - [ ] Account deletion path (present: Settings → delete account) — required by Apple.
 
+## Web (Stripe) channel — built, currently dormant
+The web landing is marketing-only, but a Stripe path exists to sell on the web later
+(no Apple/Google cut): `api/create-checkout.js`, `api/create-portal.js`,
+`api/stripe-webhook.js` (the webhook writes `profiles.is_premium` in Supabase, keyed by
+`supabase_user_id`). It stays **inert until** `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID` /
+`STRIPE_WEBHOOK_SECRET` are set AND a web page calls `/api/create-checkout`. To make a
+web purchase also unlock the mobile app, have the app read `profiles.is_premium` from
+Supabase and merge it with the RevenueCat entitlement. Until then, **mobile IAP
+(RevenueCat) is the only active channel.**
+
 ## Optional hardening (post-launch)
 - Server-side entitlement sync: RevenueCat webhook → Supabase, so the backend
   also knows who's premium (e.g. for any server features). Not required — the SDK

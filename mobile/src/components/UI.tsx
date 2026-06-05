@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { MacroRing } from './MacroRing';
+import { typography } from '../constants/theme';
 export * from './premium';
 
 export function H1({ children }: PropsWithChildren) {
@@ -809,7 +810,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   label: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4 },
-  field: { minHeight: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
+  field: { minHeight: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: typography.bodyLarge },
   button: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   disabled: { opacity: 0.45 },
   buttonText: { fontSize: 15.5, letterSpacing: 0.2 },
@@ -825,8 +826,8 @@ const styles = StyleSheet.create({
   screenHeaderAction: { alignItems: 'flex-end' },
   screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
-  screenTitle: { fontSize: 30, lineHeight: 36, letterSpacing: 0 },
-  screenSubtitle: { fontSize: 14, lineHeight: 20 },
+  screenTitle: { fontSize: typography.screenTitle, lineHeight: 36, letterSpacing: 0 },
+  screenSubtitle: { fontSize: typography.body, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   sectionTitle: { fontSize: 16, lineHeight: 22 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -838,10 +839,10 @@ const styles = StyleSheet.create({
   metricValueCompact: { fontSize: 20, lineHeight: 25 },
   metricUnit: { fontSize: 11, marginBottom: 4 },
   metricDetail: { fontSize: 11, lineHeight: 15 },
-  scoreValue: { fontSize: 44, lineHeight: 48, letterSpacing: 0 },
+  scoreValue: { fontSize: typography.metric, lineHeight: 48, letterSpacing: 0 },
   scoreLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
   coachCard: { borderWidth: 1.5 },
-  coachTitle: { fontSize: 20, lineHeight: 25 },
+  coachTitle: { fontSize: typography.title, lineHeight: 25 },
   coachBody: { fontSize: 14, lineHeight: 20 },
   warningLine: { fontSize: 12, lineHeight: 17 },
   trainingMeta: { fontSize: 22, lineHeight: 28 },

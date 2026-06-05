@@ -869,6 +869,20 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'goal.build_consistency': 'Build consistency',
 
   // ── Pluralized helpers ─────────────────────────────────────────────────────────
+  // ── Profile account alerts ─────────────────────────────────────────────────────
+  'profile.loginFailed': 'Sign-in failed',
+  'profile.registerFailed': 'Sign-up failed',
+  'profile.registerDone': 'Done',
+  'profile.registerDoneMsg': 'If Supabase requires email verification, check your inbox.',
+  'profile.tryAgain': 'Please try again.',
+  'profile.exportReady': 'Export ready',
+  'profile.exportSummary': ({ profile, count }) => `Profile: ${profile}\nHistory: ${count} records`,
+  'profile.exportFailed': 'Export failed',
+  'profile.signInAgain': 'Please sign in again.',
+  'profile.deleteTitle': 'Delete account?',
+  'profile.deleteMsg': 'This deletes your account and server data. It cannot be undone.',
+  'profile.deleteFailed': 'Delete failed',
+  'profile.deleteFailedMsg': 'Use the public deletion request link.',
   'streak.daysLogged': ({ n }) => `${n} ${enDays(Number(n))} logged`,
   'streak.daysOnTarget': ({ n }) => `${n} ${enDays(Number(n))} on target`,
 };
