@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
   }
 
   const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const thinkingConfig = model.includes('gemini-3')
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
@@ -67,7 +67,7 @@ Use integers for kcal/protein/carbs/fat.
 
   const geminiRes = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       contents: [{
         role: 'user',

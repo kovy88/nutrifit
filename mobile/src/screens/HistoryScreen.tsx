@@ -95,7 +95,7 @@ export function HistoryScreen() {
         : 0;
       const completedSessions = weekDates.filter(dateKey => trainingCompletions[dateKey]?.status === 'completed').length;
       const readinessScores = weekDates
-        .map(dateKey => coachHistory[dateKey]?.recommendation.readiness.score)
+        .map(dateKey => coachHistory[dateKey]?.recommendation?.readiness?.score)
         .filter((score): score is number => typeof score === 'number');
       const weekAdherenceDays = nextAdherence.days.filter(day => weekDates.includes(day.date));
       const nutritionLoggedDays = weekAdherenceDays.filter(day => day.loggedKcal > 0).length;
