@@ -59,7 +59,7 @@ export function TodayScreen() {
   const showTraining = scopeHasTraining(scope);
   const used = sumFoodLog(currentFoodLog);
   const proteinPct = macros.protein > 0 ? Math.round(Math.min(used.protein / macros.protein, 1) * 100) : 0;
-  const suggestedDowngrade = currentSession ? applyReadinessToSession(currentSession, coaching.assessment) : null;
+  const suggestedDowngrade = currentSession ? applyReadinessToSession(currentSession, coaching.assessment, locale) : null;
   const readinessColor = rec ? bandColor(rec.readiness.band, colors) : colors.accent;
   const decision = rec ? readinessDecision(rec.readiness.recommendedIntensity, rec.readiness.band, t) : null;
   const trainingMeta = sessionMeta(currentSession, t);

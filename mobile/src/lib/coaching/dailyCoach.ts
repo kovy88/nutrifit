@@ -100,7 +100,7 @@ export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyC
     locale: loc,
   });
 
-  const downgrade = input.session ? applyReadinessToSession(input.session, assessment) : null;
+  const downgrade = input.session ? applyReadinessToSession(input.session, assessment, loc) : null;
   const adjustedSession = downgrade && downgrade.adjusted ? downgrade.session : input.session;
   const adjusted = Boolean(downgrade && downgrade.adjusted);
 

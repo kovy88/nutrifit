@@ -17,16 +17,20 @@ export type WeeklyAdjustmentInput = {
   goalKind: NutritionGoalKind;
   /** Chronologicky seřazené check-iny (oldest first), typicky 2–4. */
   recentCheckIns: WeeklyCheckIn[];
+  /** UI jazyk pro reason/warnings ('cs' | 'en'). Default 'cs'. */
+  locale?: string;
 };
 
 export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustment {
   const { goalKind, recentCheckIns } = input;
+  const en = (input.locale ?? 'cs') === 'en';
+  const L = (cs: string, enStr: string) => (en ? enStr : cs);
   const warnings: string[] = [];
 
   if (!recentCheckIns?.length) {
     return {
       kcalDelta: 0,
-      reason: 'Zatím nemáme dost dat. Drž aktuální plán a dej nám pár týdnů.',
+      reason: L('Zatím nemáme dost dat. Drž aktuální plán a dej nám pár týdnů.', 'Not enough data yet. Stick with your current plan and give us a few weeks.'),
       warnings,
     };
   }
@@ -42,40 +46,40 @@ export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustme
   }
 
   let kcalDelta = 0;
-  let reason = 'Trend odpovídá cíli, žádná změna.';
+  let reason = L('Trend odpovídá cíli, žádná změna.', 'Trend matches your goal — no change.');
   let adjustedGoalKind: NutritionGoalKind | undefined;
 
   // ── Goal-specific weight rules ────────────────────────────────────────────
   if (goalKind === 'fat_loss' && weeklyWeightKg != null) {
     if (weeklyWeightKg > -0.1) {
       kcalDelta = -150;
-      reason = 'Hubnutí stagnuje — snižujeme příjem o 150 kcal.';
+      reason = L('Hubnutí stagnuje — snižujeme příjem o 150 kcal.', 'Weight loss has stalled — lowering intake by 150 kcal.');
     } else if (weeklyWeightKg < -1.0) {
       kcalDelta = 150;
-      reason = 'Hubnutí je moc rychlé — zvyšujeme příjem o 150 kcal.';
-      warnings.push('Pozor: tempo hubnutí přes 1 kg/týden není pro většinu lidí dlouhodobě udržitelné.');
+      reason = L('Hubnutí je moc rychlé — zvyšujeme příjem o 150 kcal.', 'Weight loss is too fast — raising intake by 150 kcal.');
+      warnings.push(L('Pozor: tempo hubnutí přes 1 kg/týden není pro většinu lidí dlouhodobě udržitelné.', 'Heads up: losing over 1 kg/week is not sustainable long-term for most people.'));
     } else if (weeklyWeightKg < -0.8) {
-      warnings.push('Tempo hubnutí je na horní hranici — sleduj energii a kvalitu spánku.');
+      warnings.push(L('Tempo hubnutí je na horní hranici — sleduj energii a kvalitu spánku.', 'Your weight-loss pace is at the upper limit — watch your energy and sleep quality.'));
     }
   } else if (goalKind === 'muscle_gain' && weeklyWeightKg != null) {
     if (weeklyWeightKg < 0.1) {
       kcalDelta = 150;
-      reason = 'Váha neroste — zvyšujeme příjem o 150 kcal.';
+      reason = L('Váha neroste — zvyšujeme příjem o 150 kcal.', 'Weight is not increasing — raising intake by 150 kcal.');
     } else if (weeklyWeightKg > 0.4) {
       kcalDelta = -100;
-      reason = 'Příliš rychlé přibírání — mírná korekce dolů.';
+      reason = L('Příliš rychlé přibírání — mírná korekce dolů.', 'Gaining too fast — small correction down.');
     }
   } else if (goalKind === 'endurance' && weeklyWeightKg != null) {
     // Endurance: chceme stabilní váhu nebo mírný pokles; varuj při výrazném růstu
     if (weeklyWeightKg > 0.3) {
       kcalDelta = -100;
-      reason = 'Váha mírně roste i přes vytrvalostní cíl — drobná korekce dolů.';
+      reason = L('Váha mírně roste i přes vytrvalostní cíl — drobná korekce dolů.', 'Weight is creeping up despite an endurance goal — small correction down.');
     }
   }
 
   // ── Subjektivní signály ──────────────────────────────────────────────────
   if (latest.adherence < 0.6) {
-    warnings.push('Adherence pod 60 % — zvaž jednodušší recepty nebo méně jídel denně.');
+    warnings.push(L('Adherence pod 60 % — zvaž jednodušší recepty nebo méně jídel denně.', 'Adherence below 60% — consider simpler recipes or fewer meals per day.'));
   }
 
   const plannedSessions = latest.plannedSessions ?? 0;
@@ -86,13 +90,15 @@ export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustme
 
   if (trainingCompletionRatio != null) {
     if (trainingCompletionRatio < 0.5 && plannedSessions >= 2) {
-      warnings.push(
+      warnings.push(L(
         'Dokončil/a jsi méně než polovinu tréninků — příští týden raději drž plán jednodušší místo přidávání objemu.',
-      );
+        'You completed less than half your sessions — next week keep the plan simple instead of adding volume.',
+      ));
     } else if (trainingCompletionRatio < 0.75 && plannedSessions >= 3) {
-      warnings.push(
+      warnings.push(L(
         'Několik tréninků zůstalo nedokončených — před navýšením objemu nejdřív stabilizuj pravidelnost.',
-      );
+        'A few sessions went unfinished — stabilize consistency before increasing volume.',
+      ));
     }
   }
 
@@ -100,17 +106,17 @@ export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustme
   const lowEnergyStreak = countTrailing(recentCheckIns, c => (c.energyLevel ?? 5) <= 2);
   if (goalKind === 'fat_loss' && lowEnergyStreak >= 3) {
     adjustedGoalKind = 'maintenance';
-    reason = 'Tři týdny po sobě nízká energie při hubnutí — přepínáme dočasně na udržení váhy.';
-    warnings.push('Pokud se energie nezlepší, doporučujeme konzultaci s odborníkem.');
+    reason = L('Tři týdny po sobě nízká energie při hubnutí — přepínáme dočasně na udržení váhy.', 'Three weeks of low energy while cutting — switching temporarily to maintenance.');
+    warnings.push(L('Pokud se energie nezlepší, doporučujeme konzultaci s odborníkem.', 'If your energy does not improve, we recommend consulting a professional.'));
     kcalDelta = 0; // override goal handles it
   } else if (latest.energyLevel != null && latest.energyLevel <= 2 && goalKind === 'fat_loss') {
-    warnings.push('Velmi nízká energie — pokud trvá, dočasně přejdi na maintenance.');
+    warnings.push(L('Velmi nízká energie — pokud trvá, dočasně přejdi na maintenance.', 'Very low energy — if it persists, switch to maintenance for a while.'));
   }
 
   // Chronický hlad u fat_loss → varování (ale ne automatická akce, řeší se kvalitou jídla)
   const highHungerStreak = countTrailing(recentCheckIns, c => (c.hungerLevel ?? 1) >= 4);
   if (goalKind === 'fat_loss' && highHungerStreak >= 3) {
-    warnings.push('Tři týdny vysoký hlad — zkus přidat bílkoviny a vlákninu nebo přerozdělit jídla.');
+    warnings.push(L('Tři týdny vysoký hlad — zkus přidat bílkoviny a vlákninu nebo přerozdělit jídla.', 'Three weeks of high hunger — try adding protein and fiber or redistributing your meals.'));
   }
 
   return {

@@ -389,7 +389,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     setCheckIns(next);
     void syncNow({ checkIns: next });
     const goalKind = profile ? primaryGoalToNutritionKind(profile.primaryGoal) : 'maintenance';
-    return planWeeklyAdjustment({ goalKind, recentCheckIns: next.slice(-4) });
+    return planWeeklyAdjustment({ goalKind, recentCheckIns: next.slice(-4), locale });
   }
 
   /** Apply a PlanAdjustment: bump baseline kcal delta, set override goal if any.
