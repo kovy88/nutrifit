@@ -1,0 +1,16 @@
+# Keep the Hobby deployment focused on the website.
+mobile/
+
+# Mobile-only backend endpoints. These push the root Vercel deployment over the
+# Hobby plan function limit, but are not needed for the website deployment.
+api/garmin/
+api/oura/
+api/strava/
+api/whoop/
+api/delete-account.js
+api/export-data.js
+
+# Local/dev-only files that should not be uploaded with the website.
+.claude/
+tests/
+store-assets/
