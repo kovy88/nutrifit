@@ -271,6 +271,8 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'myweek.type.mobility': 'Mobility',
   'myweek.type.recovery': 'Recovery',
   'myweek.type.other': 'Other',
+  'myweek.tipsTitle': 'Coach tips',
+  'myweek.tipsDismiss': 'Got it',
   'workout.duration': 'Duration',
   'workout.distance': 'Distance',
   'workout.avgHr': 'Avg HR',

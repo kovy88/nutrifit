@@ -278,6 +278,8 @@ export const cs = {
   'myweek.type.mobility': 'Mobilita',
   'myweek.type.recovery': 'Regenerace',
   'myweek.type.other': 'Jiné',
+  'myweek.tipsTitle': 'Tipy kouče',
+  'myweek.tipsDismiss': 'Rozumím',
   'workout.duration': 'Délka',
   'workout.distance': 'Vzdálenost',
   'workout.avgHr': 'Avg HR',
