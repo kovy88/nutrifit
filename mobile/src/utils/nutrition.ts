@@ -509,7 +509,7 @@ export function isToday(dateKey: string): boolean {
   return dateKey === toDateKey(new Date());
 }
 
-export function formatDateLabel(dateKey: string): string {
+export function formatDateLabel(dateKey: string, locale: string = 'cs'): string {
   const today = toDateKey(new Date());
   
   const dToday = new Date();
@@ -521,9 +521,10 @@ export function formatDateLabel(dateKey: string): string {
   dTomorrow.setDate(dToday.getDate() + 1);
   const tomorrow = toDateKey(dTomorrow);
 
-  if (dateKey === today) return 'Dnes';
-  if (dateKey === yesterday) return 'Včera';
-  if (dateKey === tomorrow) return 'Zítra';
+  const en = locale === 'en';
+  if (dateKey === today) return en ? 'Today' : 'Dnes';
+  if (dateKey === yesterday) return en ? 'Yesterday' : 'Včera';
+  if (dateKey === tomorrow) return en ? 'Tomorrow' : 'Zítra';
 
   const [year, month, day] = dateKey.split('-');
   return `${parseInt(day, 10)}. ${parseInt(month, 10)}. ${year}`;

@@ -134,7 +134,7 @@ export function PlanScreen() {
       if (!confirm) return;
     }
     await addFood(mealToFoodEstimate(meal), 'planned');
-    Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate) }));
+    Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate, locale) }));
   }
 
   function isMealLogged(meal: Meal) {
@@ -184,7 +184,7 @@ export function PlanScreen() {
       <ScreenHeader
         eyebrow={t('tab.plan')}
         title={t('plan.weekTitle')}
-        subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate) })}
+        subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate, locale) })}
         action={
           <Pressable style={[styles.iconButton, { borderColor: colors.border }]} onPress={() => setPrefsOpen(true)}>
             <Ionicons name="options-outline" size={20} color={colors.accent} />
