@@ -108,7 +108,8 @@ export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' 
   return { allowed: true, level: 'ok' as const, bmi };
 }
 
-export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>): { macros: Macros; adjustment: DailyAdjustment } {
+export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'cs'): { macros: Macros; adjustment: DailyAdjustment } {
+  const en = locale === 'en';
   if (!session || session.kind === 'rest' || session.intensity === 'rest') {
     const carbs = Math.max(0, Math.round(baseline.carbs * 0.9));
     const movedKcal = (baseline.carbs - carbs) * 4;
@@ -116,7 +117,7 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     return {
       macros: { ...baseline, carbs, fat },
       adjustment: {
-        note: 'Volný den — méně sacharidů, více tuků.',
+        note: en ? 'Rest day — fewer carbs, more fat.' : 'Volný den — méně sacharidů, více tuků.',
         kcalDelta: 0,
         carbsDelta: carbs - baseline.carbs,
         fatDelta: fat - baseline.fat,
@@ -136,10 +137,16 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     macros,
     adjustment: {
       note: session.kind === 'long_run'
-        ? `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`
+        ? (en
+          ? `Long run — pre-fuel +${preFuel} g and refuel +${refuel} g carbs.`
+          : `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`)
         : isHardDay
-          ? `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`
-          : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`,
+          ? (en
+            ? `Hard session (${session.title}) — pre-workout carbs +${preFuel} g and refuel +${refuel} g.`
+            : `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`)
+          : (en
+            ? `Training day (${session.title}) — added ${addCarbs} g carbs.`
+            : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`),
       kcalDelta: macros.kcal - baseline.kcal,
       carbsDelta: macros.carbs - baseline.carbs,
       fatDelta: 0,
@@ -509,7 +516,7 @@ export function isToday(dateKey: string): boolean {
   return dateKey === toDateKey(new Date());
 }
 
-export function formatDateLabel(dateKey: string): string {
+export function formatDateLabel(dateKey: string, locale: string = 'cs'): string {
   const today = toDateKey(new Date());
   
   const dToday = new Date();
@@ -521,9 +528,10 @@ export function formatDateLabel(dateKey: string): string {
   dTomorrow.setDate(dToday.getDate() + 1);
   const tomorrow = toDateKey(dTomorrow);
 
-  if (dateKey === today) return 'Dnes';
-  if (dateKey === yesterday) return 'Včera';
-  if (dateKey === tomorrow) return 'Zítra';
+  const en = locale === 'en';
+  if (dateKey === today) return en ? 'Today' : 'Dnes';
+  if (dateKey === yesterday) return en ? 'Yesterday' : 'Včera';
+  if (dateKey === tomorrow) return en ? 'Tomorrow' : 'Zítra';
 
   const [year, month, day] = dateKey.split('-');
   return `${parseInt(day, 10)}. ${parseInt(month, 10)}. ${year}`;

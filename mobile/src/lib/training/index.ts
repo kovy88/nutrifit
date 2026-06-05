@@ -8,9 +8,22 @@ import type { TrainingSession, UserProfile } from '../../types';
 import type { TrainingCompletionRecordMap } from '../../types';
 import type { SleepSummary, WorkoutSummary } from '../../types/health';
 import { adjustTrainingAfterMissedSession, generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
+import { localizeTrainingText, localizeSessionTitles } from './localizeTitle';
 
 export * from './plan';
 export * from './feasibility';
+export { localizeTrainingText } from './localizeTitle';
+
+/** Localize a generated plan's titles + warnings for display. No-op for cs. */
+function localizePlan(plan: TrainingPlan, locale: string): TrainingPlan {
+  if (locale !== 'en') return plan;
+  return {
+    ...plan,
+    sessions: localizeSessionTitles(plan.sessions, locale),
+    warnings: (plan.warnings ?? []).map(w => localizeTrainingText(w, locale)),
+    ...(plan.safetyWarnings ? { safetyWarnings: plan.safetyWarnings.map(w => localizeTrainingText(w, locale)) } : {}),
+  };
+}
 
 /** Kontext z health providera, který planner volitelně využije. */
 export type PlanContext = {
@@ -49,7 +62,7 @@ export function weekIndexFor(programStartISO: string | undefined, weekStartISO: 
 }
 
 /** Vygeneruje týdenní plán pro týden obsahující `date`, na základě profilu. */
-export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}): TrainingPlan {
+export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'cs'): TrainingPlan {
   const weekStartISO = mondayOf(date);
   const goal: TrainingGoal = {
     kind: profile.trainingGoal,
@@ -67,7 +80,7 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
     timelineWeeks: profile.goalProfile?.timelineWeeks,
     primaryGoal: profile.primaryGoal,
   };
-  return generateTrainingPlan({
+  return localizePlan(generateTrainingPlan({
     goal,
     weekStartISO,
     weekIndex: weekIndexFor(profile.programStartISO, weekStartISO),
@@ -75,18 +88,18 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
     recentSleep: ctx.recentSleep,
     hrvLatest: ctx.hrvLatest,
     hrvBaseline: ctx.hrvBaseline,
-  });
+  }), locale);
 }
 
 /** Drop-in náhrada za buildTrainingSessionForDate — jednotka pro konkrétní den. */
-export function planSessionForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}): TrainingSession {
-  const plan = planForDate(profile, date, ctx);
+export function planSessionForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'cs'): TrainingSession {
+  const plan = planForDate(profile, date, ctx, locale);
   const key = toDateKey(date);
   return (
     plan.sessions.find(s => s.date === key) ?? {
       date: key,
       kind: 'rest',
-      title: 'Volno',
+      title: localizeTrainingText('Volno', locale),
       durationMinutes: 0,
       intensity: 'rest',
     }
@@ -102,6 +115,7 @@ export type AdjustedTrainingPlan = {
 export function adjustPlanForTrainingCompletions(
   plan: TrainingPlan,
   completions: TrainingCompletionRecordMap,
+  locale: string = 'cs',
 ): AdjustedTrainingPlan {
   const originalByDate = new Map(plan.sessions.map(session => [session.date, session]));
   const skippedDates = plan.sessions
@@ -111,7 +125,7 @@ export function adjustPlanForTrainingCompletions(
     .sort();
 
   if (!skippedDates.length) {
-    return { plan, skippedDates: [], adjustedDates: [] };
+    return { plan: localizePlan(plan, locale), skippedDates: [], adjustedDates: [] };
   }
 
   const adjusted = skippedDates.reduce(
@@ -134,7 +148,7 @@ export function adjustPlanForTrainingCompletions(
     })
     .map(session => session.date);
 
-  return { plan: adjusted, skippedDates, adjustedDates };
+  return { plan: localizePlan(adjusted, locale), skippedDates, adjustedDates };
 }
 
 export function adjustedPlanForDate(
@@ -142,8 +156,9 @@ export function adjustedPlanForDate(
   date: Date,
   completions: TrainingCompletionRecordMap,
   ctx: PlanContext = {},
+  locale: string = 'cs',
 ): AdjustedTrainingPlan {
-  return adjustPlanForTrainingCompletions(planForDate(profile, date, ctx), completions);
+  return adjustPlanForTrainingCompletions(planForDate(profile, date, ctx, locale), completions, locale);
 }
 
 export function adjustedPlanSessionForDate(
@@ -151,14 +166,15 @@ export function adjustedPlanSessionForDate(
   date: Date,
   completions: TrainingCompletionRecordMap,
   ctx: PlanContext = {},
+  locale: string = 'cs',
 ): TrainingSession {
-  const adjusted = adjustedPlanForDate(profile, date, completions, ctx);
+  const adjusted = adjustedPlanForDate(profile, date, completions, ctx, locale);
   const key = toDateKey(date);
   return (
     adjusted.plan.sessions.find(session => session.date === key) ?? {
       date: key,
       kind: 'rest',
-      title: 'Volno',
+      title: localizeTrainingText('Volno', locale),
       durationMinutes: 0,
       intensity: 'rest',
     }

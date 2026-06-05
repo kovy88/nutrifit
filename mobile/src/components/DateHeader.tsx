@@ -8,7 +8,7 @@ import { formatDateLabel, isToday, toDateKey } from '../utils/nutrition';
 
 export function DateHeader() {
   const { selectedDate, setSelectedDate } = useTrenr();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { colors } = useTheme();
 
   function adjustDate(days: number) {
@@ -31,7 +31,7 @@ export function DateHeader() {
         </Pressable>
 
         <View style={styles.dateLabelContainer}>
-          <Text style={[styles.dateText, { color: colors.ink }]}>{formatDateLabel(selectedDate)}</Text>
+          <Text style={[styles.dateText, { color: colors.ink }]}>{formatDateLabel(selectedDate, locale)}</Text>
           <Text style={[styles.dateSubText, { color: colors.faint }]}>{selectedDate}</Text>
         </View>
 

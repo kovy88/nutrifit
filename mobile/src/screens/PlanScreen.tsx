@@ -82,8 +82,8 @@ export function PlanScreen() {
   const activeProfile = profile;
   const activeMacros = currentMacros;
   const shoppingGroups = buildShoppingList(meals);
-  const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate));
-  const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate)), [activeProfile, selectedDate]);
+  const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
+  const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
 
   async function savePrefs() {
     await setProfile({ ...activeProfile, likes, dislikes });
@@ -134,7 +134,7 @@ export function PlanScreen() {
       if (!confirm) return;
     }
     await addFood(mealToFoodEstimate(meal), 'planned');
-    Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate) }));
+    Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate, locale) }));
   }
 
   function isMealLogged(meal: Meal) {
@@ -184,7 +184,7 @@ export function PlanScreen() {
       <ScreenHeader
         eyebrow={t('tab.plan')}
         title={t('plan.weekTitle')}
-        subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate) })}
+        subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate, locale) })}
         action={
           <Pressable style={[styles.iconButton, { borderColor: colors.border }]} onPress={() => setPrefsOpen(true)}>
             <Ionicons name="options-outline" size={20} color={colors.accent} />
@@ -218,7 +218,7 @@ export function PlanScreen() {
 
       <View style={styles.weekList}>
         {weekDays.map(day => {
-          const session = planSessionForDate(activeProfile, new Date(day.key));
+          const session = planSessionForDate(activeProfile, new Date(day.key), {}, locale);
           const selected = day.key === selectedDate;
           const expanded = day.key === expandedDay;
           const dayMeals = selected ? meals : plansByDate[day.key] ?? [];

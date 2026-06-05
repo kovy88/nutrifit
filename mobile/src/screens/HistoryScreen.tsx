@@ -89,7 +89,7 @@ export function HistoryScreen() {
       const hasTraining = profile ? scopeHasTraining(resolveCoachScope(profile)) : false;
       const plannedSessions = hasTraining && profile
         ? weekDates.filter(dateKey => {
-            const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`));
+            const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`), {}, locale);
             return session && session.kind !== 'rest';
           }).length
         : 0;
@@ -232,7 +232,7 @@ export function HistoryScreen() {
                 onPress={() => handleSelectDay(item.dateKey)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.dateLabel, { color: colors.ink }]}>{formatDateLabel(item.dateKey)}</Text>
+                  <Text style={[styles.dateLabel, { color: colors.ink }]}>{formatDateLabel(item.dateKey, locale)}</Text>
                   <Text style={[styles.dateSub, { color: colors.muted }]}>{item.dateKey}</Text>
                 </View>
                 <View style={styles.rightCol}>

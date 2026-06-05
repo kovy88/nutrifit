@@ -11,6 +11,8 @@
 import type { WeeklyCheckIn } from '../../types/checkin';
 
 export type WeeklySummaryInput = {
+  /** UI jazyk pro výstup AI ('cs' | 'en'). Default 'cs'. */
+  locale?: string;
   /** ISO datum začátku týdne (pondělí). */
   weekStartISO: string;
   /** ISO datum konce týdne (neděle). */
@@ -61,18 +63,19 @@ export type WeeklySummaryRequest = {
 };
 
 export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySummaryRequest {
+  const lang = (input.locale ?? 'cs') === 'en' ? 'English' : 'Czech';
   const systemPrompt = [
-    'You are Trenr AI, a Czech sport-nutrition + recovery coach.',
+    'You are Trenr AI, a sport-nutrition + recovery coach.',
     'You receive PRE-COMPUTED weekly metrics — DO NOT recompute, just INTERPRET.',
     'Return ONLY a valid JSON object — no markdown fences, no extra text.',
-    'All user-facing text MUST be in Czech.',
+    `All user-facing text MUST be in ${lang}.`,
     'Be concrete and actionable — no generic platitudes. Mention specific numbers from the input.',
     'Schema:',
     '{',
-    '  "headline": "<≤80 chars Czech, 1-line summary>",',
-    '  "highlights": ["<3-5 short Czech bullets ABOUT what went well>"],',
-    '  "concerns": ["<0-3 short Czech bullets ABOUT what to watch>"],',
-    '  "recommendation": "<1-2 Czech sentences with specific action for next week>"',
+    `  "headline": "<≤80 chars ${lang}, 1-line summary>",`,
+    `  "highlights": ["<3-5 short ${lang} bullets ABOUT what went well>"],`,
+    `  "concerns": ["<0-3 short ${lang} bullets ABOUT what to watch>"],`,
+    `  "recommendation": "<1-2 ${lang} sentences with specific action for next week>"`,
     '}',
   ].join('\n');
 
@@ -133,7 +136,7 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
   }
 
   const prompt = [
-    'Compose a weekly review in Czech for these metrics:',
+    `Compose a weekly review in ${lang} for these metrics:`,
     '',
     ...lines,
     '',

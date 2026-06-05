@@ -23,6 +23,7 @@ import { computeLogStreak, computeAdherenceStreak } from '../lib/nutrition/strea
 import { computeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
 import type { WeeklySummary, WeeklySummaryInput } from '../lib/ai/weeklySummary';
+import { useLanguage } from '../context/LanguageContext';
 
 const STORAGE_KEY = 'nutrifit.weeklySummary.v1';
 
@@ -49,6 +50,7 @@ function toDateKey(d: Date): string {
 }
 
 export function useWeeklySummary(): WeeklySummaryState {
+  const { locale } = useLanguage();
   const { profile, checkIns, ensureAiConsent, baselineMacros } = useTrenr();
   const provider = useHealthDataProvider();
   const [state, setState] = useState<WeeklySummaryState>({
@@ -180,6 +182,7 @@ export function useWeeklySummary(): WeeklySummaryState {
         : null;
 
       const input: WeeklySummaryInput = {
+        locale,
         weekStartISO,
         weekEndISO,
         goalKind: primaryGoalToNutritionKind(profile.primaryGoal),
@@ -225,7 +228,7 @@ export function useWeeklySummary(): WeeklySummaryState {
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.weight, profile?.primaryGoal, checkIns.length, baselineMacros?.tdee]);
+  }, [profile?.weight, profile?.primaryGoal, checkIns.length, baselineMacros?.tdee, locale]);
 
   useEffect(() => {
     setState(s => (s.generate === generate ? s : { ...s, generate }));

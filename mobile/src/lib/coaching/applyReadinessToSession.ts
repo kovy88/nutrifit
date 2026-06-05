@@ -31,6 +31,7 @@ export type AppliedSession = {
 export function applyReadinessToSession(
   original: TrainingSession,
   assessment: ReadinessAssessment | null,
+  locale: string = 'cs',
 ): AppliedSession {
   if (!assessment || assessment.trainingAdjustment === null) {
     return { session: original, adjusted: false };
@@ -54,10 +55,11 @@ export function applyReadinessToSession(
   const nextKind: TrainingSession['kind'] =
     target === 'easy' && isHardKind ? 'easy_run' : original.kind;
 
+  const en = locale === 'en';
   const nextTitle =
     target === 'easy' && nextKind === 'easy_run' && original.kind !== 'easy_run'
-      ? 'Lehký běh (snížená intenzita)'
-      : `${original.title} (snížená intenzita)`;
+      ? (en ? 'Easy run (reduced intensity)' : 'Lehký běh (snížená intenzita)')
+      : `${original.title} ${en ? '(reduced intensity)' : '(snížená intenzita)'}`;
 
   // Reduce duration too — red day = both intensity AND volume drop ~30 %
   const durationFactor = target === 'easy' ? 0.7 : 0.85;

@@ -28,7 +28,7 @@ export function PhotoScreen() {
   const { addFood, ensureAiConsent, selectedDate, isSubscribed } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors, fonts } = useTheme();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [estimate, setEstimate] = useState<FoodEstimate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,7 +93,7 @@ export function PhotoScreen() {
     setImage(null);
     setEstimate(null);
     setError(null);
-    Alert.alert(t('photo.savedTitle'), t('photo.savedMsg', { date: formatDateLabel(selectedDate) }));
+    Alert.alert(t('photo.savedTitle'), t('photo.savedMsg', { date: formatDateLabel(selectedDate, locale) }));
     navigation.navigate('Main', { screen: 'Dnes' });
   }
 
