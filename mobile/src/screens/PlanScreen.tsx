@@ -480,7 +480,8 @@ function shortSession(session: TrainingSession, t: ReturnType<typeof useLanguage
 function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>['t']): string {
   if (session.kind === 'rest') return t('today.restNote');
   const distance = session.distanceKm ? ` · ${session.distanceKm} km` : '';
-  return `${session.title} · ${session.durationMinutes} min${distance}`;
+  const base = `${session.title} · ${session.durationMinutes} min${distance}`;
+  return session.second ? `${base}  +  ${session.second.title} · ${session.second.durationMinutes} min` : base;
 }
 
 function planMarkers(session: TrainingSession, carbsDelta: number, t: ReturnType<typeof useLanguage>['t']): string[] {

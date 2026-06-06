@@ -127,8 +127,11 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
     };
   }
 
-  const burn = estimateSessionKcal(session, profile.weight);
-  const isHardDay = session.intensity === 'hard' || ['long_run', 'tempo', 'intervals', 'race', 'match'].includes(session.kind);
+  const secondBurn = session.second ? estimateSessionKcal({ date: session.date, ...session.second }, profile.weight) : 0;
+  const burn = estimateSessionKcal(session, profile.weight) + secondBurn;
+  const HARD_KINDS = ['long_run', 'tempo', 'intervals', 'race', 'match'];
+  const isHardDay = session.intensity === 'hard' || HARD_KINDS.includes(session.kind)
+    || (session.second ? (session.second.intensity === 'hard' || HARD_KINDS.includes(session.second.kind)) : false);
   const preFuel = isHardDay ? Math.round(profile.weight) : 0;
   const refuel = Math.round((burn * 0.6) / 4);
   const addCarbs = preFuel + refuel;
