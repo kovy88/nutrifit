@@ -23,6 +23,7 @@ function profileFor(kind: string): any {
 function assertNoCzech(plan: any) {
   for (const s of plan.sessions) {
     expect(CZECH.test(s.title), `title leaked Czech: "${s.title}"`).toBe(false);
+    if (s.second) expect(CZECH.test(s.second.title), `2nd-unit title leaked Czech: "${s.second.title}"`).toBe(false);
   }
   for (const w of plan.warnings ?? []) {
     expect(CZECH.test(w), `warning leaked Czech: "${w}"`).toBe(false);

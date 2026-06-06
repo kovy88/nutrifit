@@ -295,9 +295,19 @@ function triathlonPlan(goalKind: TrainingGoalKind, weekStartISO: string, weekInd
   const bikeBase = goal.currentWeeklyBikeKm || vol.bike.base;
   const runBase  = goal.currentWeeklyKm     || vol.run.base;
 
-  const swimKm = progressVolume(swimBase, weekIndex, vol.swim.peak);
-  const bikeKm = progressVolume(bikeBase, weekIndex, vol.bike.peak);
-  const runKm  = progressVolume(runBase,  weekIndex, vol.run.peak);
+  // Taper: v posledních týdnech před závodem (dle vzdálenosti) postupně snižuj objem.
+  const taperWeeks = goalKind === 'full_ironman' ? 3 : goalKind === 'half_ironman' ? 2 : 1;
+  const weeksToRace = weeksUntilRace(goal.raceDateISO, weekStartISO);
+  let taperFactor = 1;
+  if (weeksToRace != null && weeksToRace >= 0 && weeksToRace < taperWeeks) {
+    // čím blíž závod, tím nižší objem: ~0.7 (začátek taperu) → 0.45 (závodní týden)
+    taperFactor = 0.45 + 0.25 * (weeksToRace / Math.max(1, taperWeeks - 1));
+    warnings.push('Taper: snižujeme objem před závodem.');
+  }
+
+  const swimKm = round(progressVolume(swimBase, weekIndex, vol.swim.peak) * taperFactor);
+  const bikeKm = round(progressVolume(bikeBase, weekIndex, vol.bike.peak) * taperFactor);
+  const runKm  = round(progressVolume(runBase,  weekIndex, vol.run.peak) * taperFactor);
 
   const swimMon  = round(swimKm * 0.55);
   const swimFri  = round(swimKm - swimMon);
@@ -323,7 +333,24 @@ function triathlonPlan(goalKind: TrainingGoalKind, weekStartISO: string, weekInd
       : session(weekStartISO, 6, 'rest',     'Volno — aktivní regenerace', 0, 'rest'),
   ];
 
+  // Dvoufázové dny u dlouhých vzdáleností (ráno/odpoledne) — fueling sečte obě jednotky.
+  if (isLongDistance) {
+    const swimPmKm = round(swimKm * 0.2);
+    sessions[1].second = { kind: 'swim', title: `Regenerační plavání ${swimPmKm} km`, intensity: 'easy', durationMinutes: estimateMinutes('swim', swimPmKm), distanceKm: swimPmKm };
+    if (goalKind === 'full_ironman') {
+      const bikePmKm = round(bikeKm * 0.15);
+      sessions[3].second = { kind: 'bike', title: `Volné kolo ${bikePmKm} km (spin)`, intensity: 'easy', durationMinutes: estimateMinutes('bike', bikePmKm), distanceKm: bikePmKm };
+    }
+  }
+
   return { goalKind, weekStartISO, weekIndex, sessions, totalKm: runKm, totalSwimKm: swimKm, totalBikeKm: bikeKm, warnings };
+}
+
+function weeksUntilRace(raceDateISO: string | undefined, weekStartISO: string): number | null {
+  if (!raceDateISO || !/^\d{4}-\d{2}-\d{2}$/.test(raceDateISO)) return null;
+  const race = new Date(`${raceDateISO}T12:00:00`).getTime();
+  const wk = new Date(`${weekStartISO}T12:00:00`).getTime();
+  return Math.floor((race - wk) / (7 * 24 * 3600 * 1000));
 }
 
 // ── OCR (Spartan / Tough Mudder) ────────────────────────────────────────
