@@ -98,6 +98,7 @@ const STATIC: Record<string, string> = {
   'Vynechaný trénink': 'Missed session',
   'Běh maratonu vyžaduje stabilní základ. Začátečníkům doporučujeme nejprve půlmaraton.': 'Marathon running requires a stable base. For beginners we recommend a half marathon first.',
   'Kombinace intenzivního běžeckého tréninku a agresivního hubnutí (>0,5 kg/týden) může vést k vyčerpání. Doporučujeme zmírnit tempo hubnutí.': 'Combining intense run training with aggressive weight loss (>0.5 kg/week) can lead to burnout. We recommend easing the pace of weight loss.',
+  'Taper: snižujeme objem před závodem.': 'Taper: reducing volume before race day.',
 };
 
 type Handler = (m: RegExpMatchArray, locale: string) => string;
@@ -143,6 +144,9 @@ const PATTERNS: Array<[RegExp, Handler]> = [
   // Safety warnings (interpolated, shown in Plan)
   [/^Plán má málo dní odpočinku\. Pro tuto úroveň doporučujeme alespoň (\d+) dny volna\.$/, m => `The plan has too few rest days. For this level we recommend at least ${m[1]} days off.`],
   [/^Dlouhý běh tvoří příliš velkou část týdenního objemu \((\d+) %\)\. Zvyšuje se riziko zranění\.$/, m => `The long run is too large a share of weekly volume (${m[1]} %). Injury risk rises.`],
+  // Triatlon dvoufázové jednotky
+  [/^Regenerační plavání ([\d.]+) km$/, m => `Recovery swim ${m[1]} km`],
+  [/^Volné kolo ([\d.]+) km \(spin\)$/, m => `Easy bike ${m[1]} km (spin)`],
   // Composite suffix — recurse on the inner title (place last)
   [/^(.+) \(kontroluj intenzitu\)$/, (m, loc) => `${localizeTrainingText(m[1], loc)} (check intensity)`],
 ];
@@ -160,7 +164,11 @@ export function localizeTrainingText(text: string | undefined | null, locale: st
 }
 
 /** Localize every title in a session list (returns new objects, originals untouched). */
-export function localizeSessionTitles<T extends { title: string }>(sessions: T[], locale: string): T[] {
+export function localizeSessionTitles<T extends { title: string; second?: { title: string } }>(sessions: T[], locale: string): T[] {
   if (locale !== 'en') return sessions;
-  return sessions.map(s => ({ ...s, title: localizeTrainingText(s.title, locale) }));
+  return sessions.map(s => ({
+    ...s,
+    title: localizeTrainingText(s.title, locale),
+    ...(s.second ? { second: { ...s.second, title: localizeTrainingText(s.second.title, locale) } } : {}),
+  }));
 }
