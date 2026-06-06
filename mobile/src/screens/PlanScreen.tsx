@@ -20,8 +20,18 @@ import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
-import { planSessionForDate, planForDate } from '../lib/training';
+import { planSessionForDate, planForDate, hasCustomSchedule } from '../lib/training';
+import { trainingPhase, type TrainingPhase } from '../lib/training/phase';
 import type { Meal, TrainingSession } from '../types';
+import type { TranslationKey } from '../lib/i18n';
+
+const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
+  build: 'phase.build',
+  peak: 'phase.peak',
+  deload: 'phase.deload',
+  taper: 'phase.taper',
+  race_week: 'phase.race_week',
+};
 import { useLanguage } from '../context/LanguageContext';
 import { PaywallModal } from '../components/PaywallModal';
 import { loadPlansByDate } from '../services/storage';
@@ -84,6 +94,9 @@ export function PlanScreen() {
   const shoppingGroups = buildShoppingList(meals);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
   const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
+  const phase: TrainingPhase | null = hasCustomSchedule(activeProfile)
+    ? null
+    : trainingPhase({ weekIndex: weeklyPlan.weekIndex, weekStartISO: weeklyPlan.weekStartISO, raceDateISO: activeProfile.raceDateISO, goalKind: activeProfile.trainingGoal });
 
   async function savePrefs() {
     await setProfile({ ...activeProfile, likes, dislikes });
@@ -191,6 +204,14 @@ export function PlanScreen() {
           </Pressable>
         }
       />
+
+      {phase ? (
+        <View style={styles.phaseRow}>
+          <View style={[styles.phaseBadge, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
+            <Text style={[styles.phaseText, { color: colors.accent }]}>{t('phase.prefix')} · {t(PHASE_KEY[phase])}</Text>
+          </View>
+        </View>
+      ) : null}
 
       <QuickActionButton icon="calendar-outline" label={t('myweek.openCta')} onPress={() => navigation.navigate('MujTyden')} />
 
@@ -515,6 +536,9 @@ function nutritionNote(session: TrainingSession, carbsDelta: number, t: ReturnTy
 
 const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  phaseRow: { flexDirection: 'row', marginBottom: 4 },
+  phaseBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  phaseText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
   weekList: { gap: 10 },
   dayDetails: { gap: 12 },
   daySummaryRow: { flexDirection: 'row', gap: 10 },
