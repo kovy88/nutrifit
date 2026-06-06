@@ -172,6 +172,8 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'today.restMeta': 'Rest day · walk optional',
   'today.markDone': 'Done',
   'today.workoutDone': 'Workout done',
+  'today.amDone': 'AM done',
+  'today.pmDone': 'PM done',
   'today.completed': 'Completed',
   'today.notCompleted': 'Not marked completed yet',
   'today.completedTitle': 'Workout saved',

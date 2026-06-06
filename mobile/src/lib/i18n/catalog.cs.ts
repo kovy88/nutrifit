@@ -179,6 +179,8 @@ export const cs = {
   'today.restMeta': 'Volný den · chůze volitelná',
   'today.markDone': 'Hotovo',
   'today.workoutDone': 'Trénink hotový',
+  'today.amDone': 'Ráno hotovo',
+  'today.pmDone': 'Večer hotovo',
   'today.completed': 'Odtrénováno',
   'today.notCompleted': 'Zatím neoznačeno jako hotové',
   'today.completedTitle': 'Trénink uložen',

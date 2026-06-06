@@ -188,6 +188,8 @@ export type TrainingCompletionSource = 'manual' | 'provider_match';
 export type TrainingCompletionRecord = {
   date: DateKey;
   status: TrainingCompletionStatus;
+  /** Stav 2. denní jednotky (dvoufázový trénink) — odškrtává se nezávisle na primární. */
+  secondStatus?: TrainingCompletionStatus;
   plannedSession: TrainingSession | null;
   actualDurationMinutes?: number | null;
   actualDistanceKm?: number | null;
