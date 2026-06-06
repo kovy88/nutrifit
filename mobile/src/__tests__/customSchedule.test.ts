@@ -55,12 +55,13 @@ describe('custom weekly schedule — „Můj týden"', () => {
     expect(plan.sessions[6].kind).toBe('rest'); // Ne chybí
   });
 
-  it('víc aktivit za den → primary (vyšší intenzita) + extras v notes', () => {
+  it('víc aktivit za den → primary + druhá jednotka (second)', () => {
     const plan = materializeWeeklyTemplate(profileWith(template), WEEK, 'cs');
     const wed = plan.sessions[2];
     expect(wed.kind).toBe('strength'); // moderate > easy
     expect(wed.title).toBe('Fitko');
-    expect(wed.notes).toContain('Sauna');
+    expect(wed.second?.title).toBe('Sauna');
+    expect(wed.second?.kind).toBe('recovery');
   });
 
   it('planForDate routuje na materializer když je šablona', () => {
@@ -79,6 +80,17 @@ describe('custom weekly schedule — „Můj týden"', () => {
     const match = { date: WEEK, kind: 'match' as const, title: 'Zápas', durationMinutes: 70, intensity: 'hard' as const };
     const res = adjustForDay(baseline, match, { weight: 80 });
     expect(res.adjustment.carbsDelta).toBeGreaterThan(0);
+  });
+
+  it('dvojitý den sečte zátěž obou jednotek (víc sacharidů než jednofázový)', () => {
+    const baseline = { kcal: 2200, protein: 150, carbs: 250, fat: 70, tdee: 2200 } as any;
+    const single = adjustForDay(baseline, { date: WEEK, kind: 'easy_run', title: 'Běh', durationMinutes: 40, intensity: 'easy' }, { weight: 80 });
+    const double = adjustForDay(
+      baseline,
+      { date: WEEK, kind: 'easy_run', title: 'Běh', durationMinutes: 40, intensity: 'easy', second: { kind: 'bike', title: 'Kolo', durationMinutes: 60, intensity: 'moderate' } },
+      { weight: 80 },
+    );
+    expect(double.adjustment.carbsDelta).toBeGreaterThan(single.adjustment.carbsDelta);
   });
 
   it('play_sport aktivuje custom režim i s prázdnou šablonou', () => {

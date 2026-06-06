@@ -33,6 +33,8 @@ const ACTIVITY_TYPES: { kind: SessionKind | 'rest'; labelKey: TranslationKey; in
   { kind: 'recovery', labelKey: 'myweek.type.recovery', intensity: 'easy' },
   { kind: 'cross_training', labelKey: 'myweek.type.other', intensity: 'moderate' },
 ];
+// Druhá denní jednotka nemůže být „volno"
+const SECOND_TYPES = ACTIVITY_TYPES.filter(a => a.kind !== 'rest');
 
 const INTENSITIES: { value: Intensity; key: TranslationKey }[] = [
   { value: 'easy', key: 'myweek.intensityEasy' },
@@ -50,36 +52,53 @@ export function WeeklyScheduleScreen() {
   const [sport, setSport] = useState(profile?.mainSport?.label ?? '');
   const [saving, setSaving] = useState(false);
 
-  function dayActivity(offset: Weekday): PlannedActivity | null {
-    return tpl[offset]?.[0] ?? null;
+  function dayActs(offset: Weekday): PlannedActivity[] {
+    return tpl[offset] ?? [];
   }
 
-  function setDayType(offset: Weekday, kind: SessionKind | 'rest') {
+  function setType(offset: Weekday, index: number, kind: SessionKind | 'rest') {
     setTpl(prev => {
-      if (kind === 'rest') {
+      if (index === 0 && kind === 'rest') {
         const next = { ...prev };
         delete next[offset];
         return next;
       }
-      const existing = prev[offset]?.[0];
+      const arr = [...(prev[offset] ?? [])];
       const def = ACTIVITY_TYPES.find(a => a.kind === kind)!;
-      return {
-        ...prev,
-        [offset]: [{
-          kind,
-          title: existing?.title ?? '',
-          intensity: existing?.intensity ?? def.intensity,
-          ...(kind === 'match' ? { isMatch: true } : {}),
-        }],
+      const existing = arr[index];
+      arr[index] = {
+        kind: kind as SessionKind,
+        title: existing?.title ?? '',
+        intensity: existing?.intensity ?? def.intensity,
+        ...(kind === 'match' ? { isMatch: true } : {}),
       };
+      return { ...prev, [offset]: arr };
     });
   }
 
-  function patchDay(offset: Weekday, patch: Partial<PlannedActivity>) {
+  function patch(offset: Weekday, index: number, p: Partial<PlannedActivity>) {
     setTpl(prev => {
-      const current = prev[offset]?.[0];
-      if (!current) return prev;
-      return { ...prev, [offset]: [{ ...current, ...patch }] };
+      const arr = [...(prev[offset] ?? [])];
+      if (!arr[index]) return prev;
+      arr[index] = { ...arr[index], ...p };
+      return { ...prev, [offset]: arr };
+    });
+  }
+
+  function addSecond(offset: Weekday) {
+    setTpl(prev => {
+      const arr = [...(prev[offset] ?? [])];
+      if (!arr[0] || arr[1]) return prev;
+      arr[1] = { kind: 'easy_run', title: '', intensity: 'easy' };
+      return { ...prev, [offset]: arr };
+    });
+  }
+
+  function removeSecond(offset: Weekday) {
+    setTpl(prev => {
+      const arr = prev[offset] ?? [];
+      if (arr.length < 2) return prev;
+      return { ...prev, [offset]: [arr[0]] };
     });
   }
 
@@ -98,6 +117,33 @@ export function WeeklyScheduleScreen() {
     }
   }
 
+  function renderUnit(offset: Weekday, index: number, activity: PlannedActivity, types: typeof ACTIVITY_TYPES) {
+    return (
+      <View style={styles.detail}>
+        <View style={styles.pillWrap}>
+          {types.map(type => (
+            <Pill key={type.kind} active={activity.kind === type.kind} onPress={() => setType(offset, index, type.kind)}>
+              {t(type.labelKey)}
+            </Pill>
+          ))}
+        </View>
+        <Field
+          value={activity.title ?? ''}
+          onChangeText={text => patch(offset, index, { title: text })}
+          placeholder={t('myweek.activityPlaceholder')}
+        />
+        <Text style={[styles.hint, { color: colors.faint, fontFamily: fonts.regular }]}>{t('myweek.intensity')}</Text>
+        <View style={styles.pillWrap}>
+          {INTENSITIES.map(i => (
+            <Pill key={i.value} active={activity.intensity === i.value} onPress={() => patch(offset, index, { intensity: i.value })}>
+              {t(i.key)}
+            </Pill>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader
@@ -109,47 +155,44 @@ export function WeeklyScheduleScreen() {
 
       <Card>
         <Label>{t('myweek.mainSport')}</Label>
-        <Field
-          value={sport}
-          onChangeText={setSport}
-          placeholder={t('myweek.mainSportPlaceholder')}
-        />
-        <Text style={[styles.hint, { color: colors.faint, fontFamily: fonts.regular }]}>
-          {t('myweek.mainSportHint')}
-        </Text>
+        <Field value={sport} onChangeText={setSport} placeholder={t('myweek.mainSportPlaceholder')} />
+        <Text style={[styles.hint, { color: colors.faint, fontFamily: fonts.regular }]}>{t('myweek.mainSportHint')}</Text>
       </Card>
 
       {WEEKDAYS.map(({ offset, key }) => {
-        const activity = dayActivity(offset);
-        const activeKind: SessionKind | 'rest' = activity?.kind ?? 'rest';
+        const acts = dayActs(offset);
+        const primary = acts[0] ?? null;
+        const second = acts[1] ?? null;
+        const activeKind: SessionKind | 'rest' = primary?.kind ?? 'rest';
         return (
           <Card key={offset}>
             <Text style={[styles.dayName, { color: colors.ink, fontFamily: fonts.bold }]}>{t(key)}</Text>
             <View style={styles.pillWrap}>
               {ACTIVITY_TYPES.map(type => (
-                <Pill key={type.kind} active={activeKind === type.kind} onPress={() => setDayType(offset, type.kind)}>
+                <Pill key={type.kind} active={activeKind === type.kind} onPress={() => setType(offset, 0, type.kind)}>
                   {t(type.labelKey)}
                 </Pill>
               ))}
             </View>
 
-            {activity ? (
-              <View style={styles.detail}>
-                <Label>{t('myweek.activityLabel')}</Label>
-                <Field
-                  value={activity.title ?? ''}
-                  onChangeText={text => patchDay(offset, { title: text })}
-                  placeholder={t('myweek.activityPlaceholder')}
-                />
-                <Text style={[styles.hint, { color: colors.faint, fontFamily: fonts.regular }]}>{t('myweek.intensity')}</Text>
-                <View style={styles.pillWrap}>
-                  {INTENSITIES.map(i => (
-                    <Pill key={i.value} active={activity.intensity === i.value} onPress={() => patchDay(offset, { intensity: i.value })}>
-                      {t(i.key)}
-                    </Pill>
-                  ))}
-                </View>
-              </View>
+            {primary ? (
+              <>
+                {renderUnit(offset, 0, primary, ACTIVITY_TYPES)}
+
+                {second ? (
+                  <View style={[styles.secondBlock, { borderTopColor: colors.border }]}>
+                    <View style={styles.secondHeader}>
+                      <Text style={[styles.secondTitle, { color: colors.accent, fontFamily: fonts.bold }]}>{t('myweek.secondUnit')}</Text>
+                      <Pill onPress={() => removeSecond(offset)}>{t('myweek.removeSecond')}</Pill>
+                    </View>
+                    {renderUnit(offset, 1, second, SECOND_TYPES)}
+                  </View>
+                ) : (
+                  <View style={styles.addSecondRow}>
+                    <Pill onPress={() => addSecond(offset)}>{t('myweek.addSecond')}</Pill>
+                  </View>
+                )}
+              </>
             ) : null}
           </Card>
         );
@@ -166,4 +209,8 @@ const styles = StyleSheet.create({
   dayName: { fontSize: 16, marginBottom: 10 },
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   detail: { marginTop: 12, gap: 4 },
+  secondBlock: { marginTop: 14, paddingTop: 12, borderTopWidth: 1 },
+  secondHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  secondTitle: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
+  addSecondRow: { marginTop: 12, flexDirection: 'row' },
 });

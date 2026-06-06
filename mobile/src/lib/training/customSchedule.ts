@@ -87,7 +87,11 @@ export function materializeWeeklyTemplate(
     }
 
     const primary = pickPrimary(acts);
-    const extras = acts.filter(a => a !== primary).map(a => activityLabel(a, locale));
+    const rest = acts.filter(a => a !== primary);
+    const secondAct = rest.length
+      ? [...rest].sort((a, b) => INTENSITY_RANK[b.intensity] - INTENSITY_RANK[a.intensity])[0]
+      : null;
+    const others = rest.filter(a => a !== secondAct).map(a => activityLabel(a, locale));
     sessions.push({
       date,
       kind: primary.kind,
@@ -95,7 +99,16 @@ export function materializeWeeklyTemplate(
       durationMinutes: primary.durationMinutes ?? DEFAULT_DURATION[primary.kind] ?? 30,
       intensity: primary.intensity,
       ...(primary.distanceKm ? { distanceKm: primary.distanceKm } : {}),
-      ...(extras.length ? { notes: extras.join(' · ') } : {}),
+      ...(secondAct ? {
+        second: {
+          kind: secondAct.kind,
+          title: activityLabel(secondAct, locale),
+          intensity: secondAct.intensity,
+          durationMinutes: secondAct.durationMinutes ?? DEFAULT_DURATION[secondAct.kind] ?? 30,
+          ...(secondAct.distanceKm ? { distanceKm: secondAct.distanceKm } : {}),
+        },
+      } : {}),
+      ...(others.length ? { notes: others.join(' · ') } : {}),
     });
   }
 

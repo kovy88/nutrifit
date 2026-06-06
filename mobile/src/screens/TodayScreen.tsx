@@ -260,7 +260,12 @@ function sessionMeta(session: TrainingSession | null, t: (key: TranslationKey) =
   if (!session || session.kind === 'rest') return t('today.restMeta');
   const kindLabel = t(`wkindFull.${session.kind}` as TranslationKey) || session.kind;
   const rpe = session.intensity === 'hard' ? 'RPE 8/10' : session.intensity === 'moderate' ? 'RPE 6/10' : 'RPE 4/10';
-  return `${kindLabel} · ${session.durationMinutes} min · ${rpe}`;
+  const base = `${kindLabel} · ${session.durationMinutes} min · ${rpe}`;
+  if (session.second) {
+    const secondLabel = t(`wkindFull.${session.second.kind}` as TranslationKey) || session.second.kind;
+    return `${base}  +  ${secondLabel} · ${session.second.durationMinutes} min`;
+  }
+  return base;
 }
 
 function trainingNote(

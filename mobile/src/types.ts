@@ -167,6 +167,14 @@ export type TrainingSession = {
   distanceKm?: number;
   /** Volitelná poznámka k jednotce. */
   notes?: string;
+  /** Druhá denní jednotka (dvoufázový trénink, custom režim) — fueling sčítá obě. */
+  second?: {
+    kind: SessionKind;
+    title: string;
+    intensity: 'easy' | 'moderate' | 'hard' | 'rest';
+    durationMinutes: number;
+    distanceKm?: number;
+  };
 };
 
 export type TrainingCompletionStatus = 'completed' | 'skipped' | 'adjusted';
