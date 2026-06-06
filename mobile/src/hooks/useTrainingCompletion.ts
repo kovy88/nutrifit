@@ -11,6 +11,7 @@ export function useTrainingCompletion(date?: string) {
     mark: (
       status: TrainingCompletionStatus,
       details?: Partial<Pick<TrainingCompletionRecord, 'actualDurationMinutes' | 'actualDistanceKm' | 'rpe' | 'note' | 'pairedWorkoutId' | 'source'>>,
-    ) => markTrainingCompletion(status, details),
+      unit?: 'primary' | 'second',
+    ) => markTrainingCompletion(status, details, unit),
   };
 }

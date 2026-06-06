@@ -83,6 +83,11 @@ export function TodayScreen() {
     Alert.alert(t('today.completedTitle'), t('today.completedMsg'));
   }
 
+  async function markSecondDone() {
+    await mark('completed', {}, 'second');
+    Alert.alert(t('today.completedTitle'), t('today.completedMsg'));
+  }
+
   async function markNoTimeToday() {
     await mark('skipped', { note: t('today.noTimeMsg') });
     setMissedFeedbackVisible(true);
@@ -217,7 +222,14 @@ export function TodayScreen() {
       <View style={styles.quickGrid}>
         <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => setShowCheckIn(true)} />
         {showTraining && currentSession?.kind !== 'rest' ? (
-          <QuickActionButton icon="checkmark-circle-outline" label={t('today.workoutDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
+          currentSession?.second ? (
+            <>
+              <QuickActionButton icon="checkmark-circle-outline" label={t('today.amDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
+              <QuickActionButton icon="checkmark-done-outline" label={t('today.pmDone')} onPress={markSecondDone} disabled={completion?.secondStatus === 'completed'} />
+            </>
+          ) : (
+            <QuickActionButton icon="checkmark-circle-outline" label={t('today.workoutDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
+          )
         ) : null}
         {showTraining && currentSession?.kind !== 'rest' ? (
           <QuickActionButton icon="time-outline" label={t('today.noTime')} onPress={markNoTimeToday} disabled={completion?.status === 'completed' || completion?.status === 'skipped'} />

@@ -89,6 +89,7 @@ type TrenrContextValue = {
   markTrainingCompletion: (
     status: TrainingCompletionStatus,
     details?: Partial<Pick<TrainingCompletionRecord, 'actualDurationMinutes' | 'actualDistanceKm' | 'rpe' | 'note' | 'pairedWorkoutId' | 'source'>>,
+    unit?: 'primary' | 'second',
   ) => Promise<TrainingCompletionRecord>;
   resetLocalProfile: () => Promise<void>;
   purgeAllUserData: () => Promise<void>;
@@ -445,12 +446,14 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   async function markTrainingCompletion(
     status: TrainingCompletionStatus,
     details: Partial<Pick<TrainingCompletionRecord, 'actualDurationMinutes' | 'actualDistanceKm' | 'rpe' | 'note' | 'pairedWorkoutId' | 'source'>> = {},
+    unit: 'primary' | 'second' = 'primary',
   ): Promise<TrainingCompletionRecord> {
     const now = new Date().toISOString();
     const existing = trainingCompletionsByDate[selectedDate];
     const record: TrainingCompletionRecord = {
       date: selectedDate,
-      status,
+      status: unit === 'primary' ? status : (existing?.status ?? status),
+      secondStatus: unit === 'second' ? status : existing?.secondStatus,
       plannedSession: currentSession,
       actualDurationMinutes: details.actualDurationMinutes ?? currentSession?.durationMinutes ?? null,
       actualDistanceKm: details.actualDistanceKm ?? currentSession?.distanceKm ?? null,
