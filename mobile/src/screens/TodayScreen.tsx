@@ -71,7 +71,7 @@ export function TodayScreen() {
   const setup = profileSetupCompleteness(profile);
   const weekTips = (showTraining && hasCustomSchedule(profile))
     ? complementarySuggestions({
-        mainSport: profile.mainSport?.label,
+        mainSport: { id: profile.mainSport?.id, label: profile.mainSport?.label },
         sessions: planForDate(profile, new Date(selectedDate), {}, locale).sessions,
         todayISO: selectedDate,
         locale,
