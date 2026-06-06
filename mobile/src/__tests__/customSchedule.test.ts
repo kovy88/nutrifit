@@ -100,4 +100,10 @@ describe('custom weekly schedule — „Můj týden"', () => {
     expect(plan.sessions).toHaveLength(7);
     expect(plan.sessions.every(x => x.kind === 'rest')).toBe(true); // prázdná šablona → samé rest, uživatel si týden postaví
   });
+
+  it('sport den bez titulku → jméno sportu (locale-correct)', () => {
+    const profile = { trainingGoal: 'play_sport', weeklyActivities: { 0: [{ kind: 'sport', intensity: 'moderate' }] }, mainSport: { id: 'ice_hockey', label: 'Lední hokej' } } as any;
+    expect(materializeWeeklyTemplate(profile, WEEK, 'cs').sessions[0].title).toBe('Lední hokej');
+    expect(materializeWeeklyTemplate(profile, WEEK, 'en').sessions[0].title).toBe('Ice hockey');
+  });
 });

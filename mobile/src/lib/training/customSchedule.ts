@@ -12,6 +12,7 @@
 import type { PlannedActivity, SessionKind, TrainingSession, UserProfile, WeeklyActivityTemplate } from '../../types';
 import type { TrainingPlan } from './training-core';
 import { localizeTrainingText } from './localizeTitle';
+import { sportName } from './sports';
 
 const INTENSITY_RANK: Record<PlannedActivity['intensity'], number> = { rest: 0, easy: 1, moderate: 2, hard: 3 };
 
@@ -48,9 +49,12 @@ function defaultLabel(kind: SessionKind, locale: string): string {
   return pair ? (en ? pair[1] : pair[0]) : kind;
 }
 
-function activityLabel(a: PlannedActivity, locale: string): string {
+function activityLabel(a: PlannedActivity, locale: string, sportLbl?: string): string {
   const t = a.title?.trim();
-  return t && t.length ? t : defaultLabel(a.kind, locale);
+  if (t && t.length) return t;
+  // Dny hlavního sportu (bez vlastního titulku) pojmenuj jménem sportu.
+  if (a.kind === 'sport' && sportLbl) return sportLbl;
+  return defaultLabel(a.kind, locale);
 }
 
 /** Z aktivit dne vybere "primary" session: match > nejvyšší intenzita > první. */
@@ -75,6 +79,7 @@ export function materializeWeeklyTemplate(
   locale: string = 'cs',
 ): TrainingPlan {
   const template = profile.weeklyActivities ?? {};
+  const sportLbl = sportName(profile.mainSport?.id, profile.mainSport?.label, locale);
   const sessions: TrainingSession[] = [];
 
   for (let offset = 0; offset < 7; offset++) {
@@ -91,18 +96,18 @@ export function materializeWeeklyTemplate(
     const secondAct = rest.length
       ? [...rest].sort((a, b) => INTENSITY_RANK[b.intensity] - INTENSITY_RANK[a.intensity])[0]
       : null;
-    const others = rest.filter(a => a !== secondAct).map(a => activityLabel(a, locale));
+    const others = rest.filter(a => a !== secondAct).map(a => activityLabel(a, locale, sportLbl));
     sessions.push({
       date,
       kind: primary.kind,
-      title: activityLabel(primary, locale),
+      title: activityLabel(primary, locale, sportLbl),
       durationMinutes: primary.durationMinutes ?? DEFAULT_DURATION[primary.kind] ?? 30,
       intensity: primary.intensity,
       ...(primary.distanceKm ? { distanceKm: primary.distanceKm } : {}),
       ...(secondAct ? {
         second: {
           kind: secondAct.kind,
-          title: activityLabel(secondAct, locale),
+          title: activityLabel(secondAct, locale, sportLbl),
           intensity: secondAct.intensity,
           durationMinutes: secondAct.durationMinutes ?? DEFAULT_DURATION[secondAct.kind] ?? 30,
           ...(secondAct.distanceKm ? { distanceKm: secondAct.distanceKm } : {}),

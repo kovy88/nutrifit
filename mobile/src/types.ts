@@ -47,9 +47,14 @@ export type PlannedActivity = {
 /** Opakující se týdenní šablona: offset od pondělí (0=Po … 6=Ne) → aktivity daného dne. */
 export type WeeklyActivityTemplate = Partial<Record<0 | 1 | 2 | 3 | 4 | 5 | 6, PlannedActivity[]>>;
 
+/** Sporty s presetem v knihovně (typický týden + off-field doporučení). */
+export type SportId = 'football' | 'ice_hockey' | 'ball_hockey' | 'floorball' | 'basketball' | 'tennis';
+
 /** Hlavní sport uživatele — kontext pro relevantní doporučení kouče (custom režim). */
 export type MainSport = {
-  /** Uživatelský název, např. „Hokejbal". User content — neprochází i18n. */
+  /** Preset z knihovny sportů (pohání off-field doporučení + lokalizované jméno). */
+  id?: SportId;
+  /** Zobrazený název. U presetu se bere z knihovny; pro „Jiné" je to volný text uživatele. */
   label: string;
 };
 

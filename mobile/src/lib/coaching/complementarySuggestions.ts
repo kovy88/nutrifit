@@ -4,11 +4,12 @@
 // nevkládá nic do plánu — jen navrhuje. Cap na 2 tipy (priorita: zápas > po
 // zápase > aerobní báze > mobilita). Locale-aware (vzor L(cs, en)).
 
-import type { TrainingSession } from '../../types';
+import type { SportId, TrainingSession } from '../../types';
+import { sportName, sportTip } from '../training/sports';
 
 export type ComplementaryInput = {
-  /** Název hlavního sportu (např. „Hokejbal"). Bez něj se aerobní/mobility tip neváže na sport. */
-  mainSport?: string;
+  /** Hlavní sport: preset (id) pohání off-field tip; label je fallback pro „Jiné". */
+  mainSport?: { id?: SportId; label?: string };
   /** Materializovaný týden (custom režim). */
   sessions: TrainingSession[];
   /** Dnešní datum YYYY-MM-DD. */
@@ -28,9 +29,11 @@ const MOBILITY_KINDS = ['mobility', 'recovery'];
 /** 0–2 volitelné tipy kolem uživatelova týdne. */
 export function complementarySuggestions(input: ComplementaryInput): string[] {
   const { sessions, todayISO } = input;
-  const en = (input.locale ?? 'cs') === 'en';
+  const locale = input.locale ?? 'cs';
+  const en = locale === 'en';
   const L = (cs: string, e: string) => (en ? e : cs);
-  const sport = (input.mainSport && input.mainSport.trim()) || L('tvůj sport', 'your sport');
+  const sport = sportName(input.mainSport?.id, input.mainSport?.label, locale) || L('tvůj sport', 'your sport');
+  const hasSport = !!(input.mainSport?.id || input.mainSport?.label);
   const tips: string[] = [];
 
   const matches = sessions.filter(s => s.kind === 'match').sort((a, b) => a.date.localeCompare(b.date));
@@ -55,9 +58,13 @@ export function complementarySuggestions(input: ComplementaryInput): string[] {
                 "After yesterday's match, take it easy today — walking, mobility, protein."));
   }
 
-  // 3) Aerobní báze pro hlavní sport (jen když sport je zadaný a v týdnu chybí lehké kardio)
+  // 3) Sport-specifický off-field tip (z knihovny sportů — „mimo led/place")
+  const sTip = sportTip(input.mainSport?.id, locale);
+  if (sTip) tips.push(sTip);
+
+  // 4) Aerobní báze pro hlavní sport (jen když je sport zadaný a v týdnu chybí lehké kardio)
   const hasAerobic = sessions.some(s => AEROBIC_KINDS.includes(s.kind));
-  if (input.mainSport && !hasAerobic) {
+  if (hasSport && !hasAerobic) {
     tips.push(L(`Lehký Z2 běh 1× týdně zlepší aerobní bázi pro ${sport}.`,
                 `An easy Z2 run once a week would build the aerobic base for ${sport}.`));
   }
