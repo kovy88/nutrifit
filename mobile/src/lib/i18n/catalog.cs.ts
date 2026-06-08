@@ -637,6 +637,7 @@ export const cs = {
   'plan.markerRest': 'Volno',
   'plan.markerLongRun': 'Dlouhý běh',
   'plan.markerHard': 'Tvrdé',
+  'plan.markerMatch': 'Zápas',
   'plan.markerFuel': 'Fuel',
   'plan.lastPlan': 'Poslední plán',
   'plan.noPlan': 'Zatím nemáš uložený plán.',
