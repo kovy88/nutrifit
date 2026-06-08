@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { materializeWeeklyTemplate, hasCustomSchedule } from '../lib/training/customSchedule';
+import { materializeWeeklyTemplate, hasCustomSchedule, nextMatchInfo } from '../lib/training/customSchedule';
 import { planForDate } from '../lib/training';
 import { adjustForDay } from '../utils/nutrition';
 import type { WeeklyActivityTemplate } from '../types';
@@ -105,5 +105,17 @@ describe('custom weekly schedule — „Můj týden"', () => {
     const profile = { trainingGoal: 'play_sport', weeklyActivities: { 0: [{ kind: 'sport', intensity: 'moderate' }] }, mainSport: { id: 'ice_hockey', label: 'Lední hokej' } } as any;
     expect(materializeWeeklyTemplate(profile, WEEK, 'cs').sessions[0].title).toBe('Lední hokej');
     expect(materializeWeeklyTemplate(profile, WEEK, 'en').sessions[0].title).toBe('Ice hockey');
+  });
+});
+
+describe('nextMatchInfo — odpočet do zápasu', () => {
+  const tpl: any = { 0: [{ kind: 'sport', intensity: 'moderate' }], 5: [{ kind: 'match', intensity: 'hard', isMatch: true }] };
+  it('dny do příštího zápasu (opakující se týden)', () => {
+    expect(nextMatchInfo(tpl, '2026-01-08')).toEqual({ date: '2026-01-10', daysUntil: 2 }); // Čt → So
+    expect(nextMatchInfo(tpl, '2026-01-10')?.daysUntil).toBe(0); // zápasový den
+    expect(nextMatchInfo(tpl, '2026-01-11')?.daysUntil).toBe(6); // Ne → příští So
+  });
+  it('bez zápasu → null', () => {
+    expect(nextMatchInfo({ 0: [{ kind: 'sport', intensity: 'moderate' }] } as any, '2026-01-08')).toBeNull();
   });
 });

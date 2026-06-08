@@ -29,7 +29,7 @@ import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendatio
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { applyReadinessToSession } from '../lib/coaching/applyReadinessToSession';
 import { complementarySuggestions } from '../lib/coaching/complementarySuggestions';
-import { planForDate, hasCustomSchedule } from '../lib/training';
+import { planForDate, hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import type { TranslationKey } from '../lib/i18n';
 import { profileSetupCompleteness } from '../lib/onboarding/validation';
 
@@ -79,6 +79,7 @@ export function TodayScreen() {
       })
     : [];
   const customEmpty = !!customPlan && customPlan.sessions.every(s => s.kind === 'rest');
+  const matchInfo = customPlan ? nextMatchInfo(profile.weeklyActivities, selectedDate) : null;
 
   async function markTodayDone() {
     await mark('completed');
@@ -128,6 +129,17 @@ export function TodayScreen() {
           <Ionicons name="person-circle-outline" size={23} color={colors.accent} />
         </Pressable>
       </View>
+
+      {matchInfo && matchInfo.daysUntil <= 6 ? (
+        <View style={styles.matchRow}>
+          <View style={[styles.matchChip, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
+            <Ionicons name="flag" size={14} color={colors.accent} />
+            <Text style={[styles.matchText, { color: colors.accent }]}>
+              {matchInfo.daysUntil === 0 ? t('myweek.matchToday') : matchInfo.daysUntil === 1 ? t('myweek.matchTomorrow') : t('myweek.matchInDays', { days: matchInfo.daysUntil })}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {!setup.complete ? (
         <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
@@ -410,6 +422,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 30, lineHeight: 36, fontWeight: '900' },
   headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
   iconButton: { width: 46, height: 46, borderWidth: 1, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  matchRow: { flexDirection: 'row', marginBottom: 2 },
+  matchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  matchText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 },
   heroCard: { gap: 14 },
   heroBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   heroCopy: { flex: 1, gap: 5 },
