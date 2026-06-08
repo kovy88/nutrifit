@@ -61,4 +61,25 @@ describe('complementarySuggestions', () => {
     const en = complementarySuggestions({ mainSport: { id: 'ice_hockey' }, sessions: noMatch, todayISO: '2026-01-07', locale: 'en' });
     expect(en.some(t => t.includes('Off-ice'))).toBe(true);
   });
+
+  it('žádný rest den → bezpečnostní varování', () => {
+    const dates = ['2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09', '2026-01-10', '2026-01-11'];
+    const noRest = dates.map(d => s(d, 'sport', 'moderate'));
+    const tips = complementarySuggestions({ mainSport: { label: 'Hokejbal' }, sessions: noRest, todayISO: '2026-01-07', locale: 'cs' });
+    expect(tips.some(t => t.includes('Žádný den volna'))).toBe(true);
+  });
+
+  it('3 tvrdé dny v řadě → varování o přetížení', () => {
+    const overload: TrainingSession[] = [
+      s('2026-01-05', 'intervals', 'hard'),
+      s('2026-01-06', 'tempo', 'hard'),
+      s('2026-01-07', 'match', 'hard'),
+      s('2026-01-08', 'rest', 'rest'),
+      s('2026-01-09', 'easy_run', 'easy'),
+      s('2026-01-10', 'strength', 'moderate'),
+      s('2026-01-11', 'rest', 'rest'),
+    ];
+    const tips = complementarySuggestions({ mainSport: { label: 'Hokejbal' }, sessions: overload, todayISO: '2026-01-09', locale: 'cs' });
+    expect(tips.some(t => t.includes('přetížení'))).toBe(true);
+  });
 });

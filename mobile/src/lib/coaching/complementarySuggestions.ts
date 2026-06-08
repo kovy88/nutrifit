@@ -58,7 +58,26 @@ export function complementarySuggestions(input: ComplementaryInput): string[] {
                 "After yesterday's match, take it easy today — walking, mobility, protein."));
   }
 
-  // 3) Sport-specifický off-field tip (z knihovny sportů — „mimo led/place")
+  // 3) Bezpečnost: chybějící rest / přetížení (priorita před obecnými tipy)
+  const hasRest = sessions.some(s => s.kind === 'rest');
+  const anyActivity = sessions.some(s => s.kind !== 'rest');
+  if (anyActivity && !hasRest) {
+    tips.push(L('Žádný den volna tento týden — zařaď aspoň jeden na regeneraci.',
+                'No rest day this week — add at least one for recovery.'));
+  }
+  const isHard = (s: TrainingSession) => s.intensity === 'hard' || ['match', 'intervals', 'tempo', 'long_run', 'combat'].includes(s.kind);
+  let hardStreak = 0;
+  let maxHardStreak = 0;
+  let hardCount = 0;
+  for (const s of sessions) {
+    if (isHard(s)) { hardStreak += 1; hardCount += 1; maxHardStreak = Math.max(maxHardStreak, hardStreak); } else { hardStreak = 0; }
+  }
+  if (maxHardStreak >= 3 || hardCount >= 4) {
+    tips.push(L('Hodně náročných dní za sebou — riziko přetížení. Zvaž lehčí den nebo rest.',
+                'A lot of hard days in a row — overload risk. Consider an easier day or full rest.'));
+  }
+
+  // 4) Sport-specifický off-field tip (z knihovny sportů — „mimo led/place")
   const sTip = sportTip(input.mainSport?.id, locale);
   if (sTip) tips.push(sTip);
 
