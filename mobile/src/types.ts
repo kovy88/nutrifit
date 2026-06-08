@@ -48,7 +48,7 @@ export type PlannedActivity = {
 export type WeeklyActivityTemplate = Partial<Record<0 | 1 | 2 | 3 | 4 | 5 | 6, PlannedActivity[]>>;
 
 /** Sporty s presetem v knihovně (typický týden + off-field doporučení). */
-export type SportId = 'football' | 'ice_hockey' | 'ball_hockey' | 'floorball' | 'basketball' | 'tennis';
+export type SportId = 'football' | 'ice_hockey' | 'ball_hockey' | 'floorball' | 'basketball' | 'tennis' | 'martial_arts' | 'volleyball' | 'handball';
 
 /** Hlavní sport uživatele — kontext pro relevantní doporučení kouče (custom režim). */
 export type MainSport = {

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { SPORTS, SPORT_IDS, sportName, sportTip, cloneStarter } from '../lib/training/sports';
 
 describe('sport library', () => {
-  it('knihovna Základ = 6 sportů', () => {
-    expect(SPORT_IDS.length).toBe(6);
+  it('knihovna = 9 sportů', () => {
+    expect(SPORT_IDS.length).toBe(9);
   });
 
   for (const id of SPORT_IDS) {

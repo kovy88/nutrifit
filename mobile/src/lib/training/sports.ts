@@ -123,6 +123,30 @@ export const SPORTS: Record<SportId, SportDef> = {
     tip: l => L(l, 'Rotační síla a péče o rameno (rotátorová manžeta) drží tvůj servis silný a zdravý.',
                   'Rotational power and shoulder care (rotator cuff) keep your serve strong and healthy.'),
   },
+  martial_arts: {
+    id: 'martial_arts',
+    name: l => L(l, 'Bojové sporty', 'Martial arts'),
+    starter: teamStarter(),
+    offField: [lowerPower, hipMobility, core, sprintIntervals, rotationalPower],
+    tip: l => L(l, 'Mimo dojo: výbušnost dolních končetin, mobilita kyčlí a kondička = víc síly do úderů a lepší výdrž v dalších kolech.',
+                  'Outside the dojo: lower-body power, hip mobility and conditioning mean harder strikes and better stamina in the later rounds.'),
+  },
+  volleyball: {
+    id: 'volleyball',
+    name: l => L(l, 'Volejbal', 'Volleyball'),
+    starter: teamStarter(),
+    offField: [jumpLanding, ankle, shoulderCare, core, agility],
+    tip: l => L(l, 'Nácvik doskoků a péče o rameno chrání kolena i rotátorovou manžetu při smečích a blocích.',
+                  'Jump-landing work and shoulder care protect your knees and rotator cuff on spikes and blocks.'),
+  },
+  handball: {
+    id: 'handball',
+    name: l => L(l, 'Házená', 'Handball'),
+    starter: teamStarter(),
+    offField: [lowerPower, shoulderCare, agility, core, ankle],
+    tip: l => L(l, 'Výbušnost, péče o rameno a změny směru ti dají tvrdší střelu a rychlejší obranu.',
+                  'Power, shoulder care and change-of-direction give you a harder throw and quicker defense.'),
+  },
 };
 
 export const SPORT_IDS = Object.keys(SPORTS) as SportId[];
