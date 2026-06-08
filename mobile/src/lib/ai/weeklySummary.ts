@@ -19,6 +19,8 @@ export type WeeklySummaryInput = {
   weekEndISO: string;
   /** Primary user goal — for context. */
   goalKind: 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';
+  /** Hlavní sport (custom režim) — ať je review relevantní pro sportovce. */
+  mainSport?: string;
   /** Uživatelova váha na začátku a konci týdne (kg). */
   weightStartKg?: number;
   weightEndKg?: number;
@@ -96,6 +98,7 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     `Týden: ${input.weekStartISO} až ${input.weekEndISO}`,
     `Cíl uživatele: ${input.goalKind}`,
   ];
+  if (input.mainSport) lines.push(`Hlavní sport: ${input.mainSport}`);
   if (weightDelta != null && input.weightStartKg != null && input.weightEndKg != null) {
     lines.push(`Váha: ${input.weightStartKg.toFixed(1)} → ${input.weightEndKg.toFixed(1)} kg (${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg)`);
   }
