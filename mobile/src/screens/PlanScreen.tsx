@@ -22,6 +22,7 @@ import { generateMealPlan, regenerateMeal } from '../services/api';
 import { buildShoppingList, mealToFoodEstimate, plannedMealKey, formatDateLabel, toDateKey } from '../utils/nutrition';
 import { planSessionForDate, planForDate, hasCustomSchedule } from '../lib/training';
 import { trainingPhase, type TrainingPhase } from '../lib/training/phase';
+import { SPORTS, cloneStarter } from '../lib/training/sports';
 import type { Meal, TrainingSession } from '../types';
 import type { TranslationKey } from '../lib/i18n';
 
@@ -97,6 +98,13 @@ export function PlanScreen() {
   const phase: TrainingPhase | null = hasCustomSchedule(activeProfile)
     ? null
     : trainingPhase({ weekIndex: weeklyPlan.weekIndex, weekStartISO: weeklyPlan.weekStartISO, raceDateISO: activeProfile.raceDateISO, goalKind: activeProfile.trainingGoal });
+  const isCustomEmpty = hasCustomSchedule(activeProfile) && weeklyPlan.sessions.every(s => s.kind === 'rest');
+  const mainSportId = activeProfile.mainSport?.id;
+
+  async function loadStarterWeek() {
+    if (!mainSportId) return;
+    await setProfile({ ...activeProfile, weeklyActivities: cloneStarter(mainSportId) });
+  }
 
   async function savePrefs() {
     await setProfile({ ...activeProfile, likes, dislikes });
@@ -214,6 +222,16 @@ export function PlanScreen() {
       ) : null}
 
       <QuickActionButton icon="calendar-outline" label={t('myweek.openCta')} onPress={() => navigation.navigate('MujTyden')} />
+
+      {isCustomEmpty ? (
+        <Card>
+          <SectionHeader title={t('myweek.emptyTitle')} />
+          <Text style={[styles.fueling, { color: colors.muted }]}>{t('myweek.emptyBody')}</Text>
+          {mainSportId ? (
+            <Button onPress={loadStarterWeek}>{t('myweek.loadStarterFor', { sport: SPORTS[mainSportId].name(locale) })}</Button>
+          ) : null}
+        </Card>
+      ) : null}
 
       {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
         <Card style={{ borderColor: colors.orange, backgroundColor: colors.orange + '10', marginBottom: 12, padding: 14 }}>
