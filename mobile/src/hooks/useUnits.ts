@@ -4,7 +4,7 @@
 import { useTrenr } from '../context/TrenrContext';
 import {
   displayWeight, parseWeightToKg, displayDistance, parseDistanceToKm,
-  weightUnitLabel, distanceUnitLabel, type UnitSystem,
+  weightUnitLabel, distanceUnitLabel, convertDistanceInText, type UnitSystem,
 } from '../lib/units';
 
 export function useUnits() {
@@ -23,5 +23,7 @@ export function useUnits() {
     showDistance: (km: number, decimals = 1) => displayDistance(km, u, decimals),
     /** vstup (v jednotce uživatele) → km pro úložiště. */
     toKm: (v: number) => parseDistanceToKm(v, u),
+    /** převede „N km" v libovolném textu (názvy tréninků) na míle (imperial). */
+    showText: (s: string) => convertDistanceInText(s, u),
   };
 }

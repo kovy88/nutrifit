@@ -613,7 +613,7 @@ export const cs = {
   'plan.weekTitle': 'Týdenní plán',
   'plan.weekSubtitle': ({ date }: Record<string, string | number>) => `Vybraný den: ${date}`,
   'plan.ambitiousWarning': 'Tento plán je ambiciózní. Naslouchejte svému tělu a v případě velké únavy trénink upravte.',
-  'plan.weeklyVolume': ({ volume }: Record<string, string | number>) => `Týdenní objem: ${volume} km`,
+  'plan.weeklyVolume': ({ volume, unit }: Record<string, string | number>) => `Týdenní objem: ${volume} ${unit ?? 'km'}`,
   'plan.mealSummary': 'Jídla',
   'plan.trainingSummary': 'Trénink',
   'plan.noMealsYet': 'Jídla zatím nejsou postavená',

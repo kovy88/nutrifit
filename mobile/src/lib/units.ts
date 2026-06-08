@@ -52,3 +52,13 @@ export function formatWeight(kg: number, u: UnitSystem, decimals = 1): string {
 export function formatDistance(km: number, u: UnitSystem, decimals = 1): string {
   return `${displayDistance(km, u, decimals)} ${distanceUnitLabel(u)}`;
 }
+
+/**
+ * Převede všechny výskyty „N km" v textu na míle (jen pro imperial). Pokrývá
+ * i generované názvy tréninků („Lehký běh 5 km" → „Easy run 3.1 mi"). „800 m"
+ * a podobné se nedotkne (matchuje jen „km").
+ */
+export function convertDistanceInText(text: string, u: UnitSystem): string {
+  if (u !== 'imperial' || !text) return text;
+  return text.replace(/(\d+(?:\.\d+)?)\s*km\b/g, (_m, n: string) => `${round(kmToMi(Number(n)), 1)} mi`);
+}

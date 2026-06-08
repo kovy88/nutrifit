@@ -606,7 +606,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'plan.weekTitle': 'Weekly plan',
   'plan.weekSubtitle': ({ date }) => `Selected day: ${date}`,
   'plan.ambitiousWarning': 'This plan is ambitious. Listen to your body and adjust if you feel excessive fatigue.',
-  'plan.weeklyVolume': ({ volume }) => `Weekly volume: ${volume} km`,
+  'plan.weeklyVolume': ({ volume, unit }) => `Weekly volume: ${volume} ${unit ?? 'km'}`,
   'plan.mealSummary': 'Meals',
   'plan.trainingSummary': 'Training',
   'plan.noMealsYet': 'No meals built yet',
