@@ -44,6 +44,7 @@ export function TodayScreen() {
     selectedDate,
     setTodaySession,
     trainingCompletions,
+    logStreak,
   } = useTrenr();
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
@@ -131,6 +132,15 @@ export function TodayScreen() {
           <Ionicons name="person-circle-outline" size={23} color={colors.accent} />
         </Pressable>
       </View>
+
+      {logStreak >= 2 ? (
+        <View style={styles.matchRow}>
+          <View style={[styles.matchChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}>
+            <Ionicons name="flame" size={14} color={colors.orange} />
+            <Text style={[styles.matchText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
+          </View>
+        </View>
+      ) : null}
 
       {matchInfo && matchInfo.daysUntil <= 6 ? (
         <View style={styles.matchRow}>

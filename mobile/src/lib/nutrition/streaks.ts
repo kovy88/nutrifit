@@ -58,7 +58,7 @@ function computeStreak(daysNewestFirst: { date: string; ok: boolean }[]): Streak
  * Pokud dnešek je prázdný, počítáme od včerejška (uživatel se ráno otevře
  * appku a nemá ještě nic zalogováno — neukázat 0).
  */
-export function computeLogStreak(days: AdherenceDay[], todayDate: string = todayKey()): StreakInfo {
+export function computeLogStreak(days: Pick<AdherenceDay, 'date' | 'loggedKcal'>[], todayDate: string = todayKey()): StreakInfo {
   // Sort newest first
   const sorted = days.slice().sort((a, b) => b.date.localeCompare(a.date));
   // Pokud dnešek nemá log, začni od včerejška
