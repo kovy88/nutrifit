@@ -21,6 +21,8 @@ export type WeeklySummaryInput = {
   goalKind: 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness';
   /** Hlavní sport (custom režim) — ať je review relevantní pro sportovce. */
   mainSport?: string;
+  /** Jednotky uživatele — ať AI píše v lb/mílích nebo kg/km. */
+  units?: 'metric' | 'imperial';
   /** Uživatelova váha na začátku a konci týdne (kg). */
   weightStartKg?: number;
   weightEndKg?: number;
@@ -66,8 +68,10 @@ export type WeeklySummaryRequest = {
 
 export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySummaryRequest {
   const lang = (input.locale ?? 'cs') === 'en' ? 'English' : 'Czech';
+  const unitsHint = (input.units ?? 'metric') === 'imperial' ? 'Use imperial units (lb, miles).' : 'Use metric units (kg, km).';
   const systemPrompt = [
     'You are Trenr AI, a sport-nutrition + recovery coach.',
+    unitsHint,
     'You receive PRE-COMPUTED weekly metrics — DO NOT recompute, just INTERPRET.',
     'Return ONLY a valid JSON object — no markdown fences, no extra text.',
     `All user-facing text MUST be in ${lang}.`,

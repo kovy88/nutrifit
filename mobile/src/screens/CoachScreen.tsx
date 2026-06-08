@@ -90,6 +90,7 @@ export function CoachScreen() {
         goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
         mainSport: profile?.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : null,
         nextMatchInDays: profile?.weeklyActivities ? (nextMatchInfo(profile.weeklyActivities, selectedDate)?.daysUntil ?? null) : null,
+        units: profile?.units ?? 'metric',
       };
       const res = await askCoach({ context, history: prior, question: q, locale });
       await persist([

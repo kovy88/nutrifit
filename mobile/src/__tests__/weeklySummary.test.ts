@@ -54,6 +54,10 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
     expect(r.prompt).toContain('Ice hockey');
   });
 
+  it('passes the unit system to the model', () => {
+    expect(buildWeeklySummaryRequest({ ...baseInput, units: 'imperial' }).systemPrompt).toContain('imperial');
+  });
+
   it('embeds weight delta when both endpoints present', () => {
     const r = buildWeeklySummaryRequest({
       ...baseInput,

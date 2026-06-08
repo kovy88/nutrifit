@@ -21,6 +21,8 @@ export type CoachChatContext = {
   mainSport?: string | null;
   /** Kolik dní do příštího zápasu (custom režim), 0 = dnes. */
   nextMatchInDays?: number | null;
+  /** Jednotky uživatele — ať AI mluví v lb/mílích nebo kg/km. */
+  units?: 'metric' | 'imperial';
 };
 
 export type CoachChatRequest = {
@@ -37,10 +39,14 @@ export function buildCoachChatRequest(opts: {
 }): CoachChatRequest {
   const { context, history, question, locale } = opts;
   const lang = locale === 'en' ? 'English' : 'Czech';
+  const unitsHint = (context.units ?? 'metric') === 'imperial'
+    ? 'Use imperial units (lb, miles) for any weights or distances.'
+    : 'Use metric units (kg, km) for any weights or distances.';
 
   const systemPrompt = [
     'You are Trenr AI Coach — a calm, practical daily coach for nutrition, training and recovery.',
     `Reply in ${lang}.`,
+    unitsHint,
     'Return ONLY valid JSON: {"reply":"<answer>","followups":["<short suggested question>"],"actions":[{"type":"swap_meal|adjust_today|mark_done|change_goal|explain|weekly_review","label":"<short label>","payload":{},"requiresConfirmation":true}]}. No markdown, no extra text.',
     'Ground every answer in the DAILY PLAN CONTEXT below. NEVER invent calories, macros, readiness numbers or training volume — those are already computed deterministically; you only explain, adjust qualitatively, motivate, and answer.',
     'Not a medical device: no diagnosis, no medical claims, no extreme calorie deficits or aggressive training jumps. If asked for those, decline gently and offer a safe alternative.',
