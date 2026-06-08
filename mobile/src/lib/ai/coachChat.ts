@@ -10,6 +10,7 @@
 
 import type { CoachMessage, DailyCoachRecommendation } from '../../types/coach';
 import type { Locale } from '../i18n';
+import { convertDistanceInText, kgToLb, weightUnitLabel } from '../units';
 
 export type CoachChatContext = {
   recommendation: DailyCoachRecommendation | null;
@@ -53,10 +54,12 @@ export function buildCoachChatRequest(opts: {
     'Keep "reply" short (2–4 sentences). Provide 0–3 short "followups" and 0–2 actions. Only propose actions grounded in the DAILY PLAN CONTEXT.',
   ].join('\n');
 
+  const units = context.units ?? 'metric';
   const rec = context.recommendation;
   const ctxLines: string[] = [`Goal: ${context.goalSummary}`];
   if (context.recentWeightTrendKgPerWeek != null) {
-    ctxLines.push(`Weight trend: ${context.recentWeightTrendKgPerWeek.toFixed(2)} kg/week`);
+    const trend = units === 'imperial' ? kgToLb(context.recentWeightTrendKgPerWeek) : context.recentWeightTrendKgPerWeek;
+    ctxLines.push(`Weight trend: ${trend.toFixed(2)} ${weightUnitLabel(units)}/week`);
   }
   if (context.mainSport) ctxLines.push(`Main sport: ${context.mainSport}`);
   if (context.nextMatchInDays != null) {
@@ -68,7 +71,7 @@ export function buildCoachChatRequest(opts: {
       ctxLines.push(`Today's focus: ${rec.training.focus}`);
       ctxLines.push(
         rec.training.session
-          ? `Today's session: ${rec.training.session.title} (${rec.training.session.durationMinutes} min, ${rec.training.session.intensity})`
+          ? `Today's session: ${convertDistanceInText(rec.training.session.title, units)} (${rec.training.session.durationMinutes} min, ${rec.training.session.intensity})`
           : "Today: rest day",
       );
     }
