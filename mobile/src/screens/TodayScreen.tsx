@@ -118,6 +118,8 @@ export function TodayScreen() {
           </Text>
         </View>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.profile')}
           hitSlop={10}
           onPress={() => navigation.navigate('Profil')}
           style={({ pressed }) => [

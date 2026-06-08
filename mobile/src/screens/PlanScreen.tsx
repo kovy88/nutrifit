@@ -207,7 +207,7 @@ export function PlanScreen() {
         title={t('plan.weekTitle')}
         subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate, locale) })}
         action={
-          <Pressable style={[styles.iconButton, { borderColor: colors.border }]} onPress={() => setPrefsOpen(true)}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.settings')} style={[styles.iconButton, { borderColor: colors.border }]} onPress={() => setPrefsOpen(true)}>
             <Ionicons name="options-outline" size={20} color={colors.accent} />
           </Pressable>
         }

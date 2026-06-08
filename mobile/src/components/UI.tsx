@@ -2,6 +2,7 @@ import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { MacroRing } from './MacroRing';
 import { typography } from '../constants/theme';
 export * from './premium';
@@ -205,10 +206,11 @@ export function ScreenHeader({
   onBack?: () => void;
 }) {
   const { colors, fonts } = useTheme();
+  const { t } = useLanguage();
   return (
     <View style={styles.screenHeader}>
       {onBack ? (
-        <Pressable onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
       ) : null}
