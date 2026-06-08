@@ -132,3 +132,26 @@ function addDays(iso: string, n: number): string {
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+/** Příští zápas z opakující se šablony (kterýkoli den s isMatch/match), relativně k dnešku. */
+export function nextMatchInfo(
+  weeklyActivities: WeeklyActivityTemplate | undefined,
+  todayISO: string,
+): { date: string; daysUntil: number } | null {
+  const tpl = weeklyActivities ?? {};
+  const matchOffsets: number[] = [];
+  for (let d = 0; d < 7; d++) {
+    const acts = tpl[d as 0 | 1 | 2 | 3 | 4 | 5 | 6] ?? [];
+    if (acts.some(a => a.isMatch || a.kind === 'match')) matchOffsets.push(d);
+  }
+  if (!matchOffsets.length) return null;
+
+  const today = new Date(`${todayISO}T12:00:00`);
+  const dow = (today.getDay() + 6) % 7; // Po=0 … Ne=6
+  let best: { date: string; daysUntil: number } | null = null;
+  for (const off of matchOffsets) {
+    const delta = (off - dow + 7) % 7;
+    if (!best || delta < best.daysUntil) best = { date: addDays(todayISO, delta), daysUntil: delta };
+  }
+  return best;
+}

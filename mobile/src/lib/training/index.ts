@@ -11,7 +11,7 @@ import { adjustTrainingAfterMissedSession, generateTrainingPlan, type TrainingGo
 import { localizeTrainingText, localizeSessionTitles } from './localizeTitle';
 import { hasCustomSchedule, materializeWeeklyTemplate } from './customSchedule';
 
-export { hasCustomSchedule, materializeWeeklyTemplate } from './customSchedule';
+export { hasCustomSchedule, materializeWeeklyTemplate, nextMatchInfo } from './customSchedule';
 
 export * from './plan';
 export * from './feasibility';
