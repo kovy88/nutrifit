@@ -7,17 +7,19 @@ import { useLanguage } from '../context/LanguageContext';
 import type { PlanAdjustment } from '../types/checkin';
 import { planSessionForDate } from '../lib/training';
 import { toDateKey } from '../utils/nutrition';
+import { useUnits } from '../hooks/useUnits';
 
 export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { profile, setProfile, selectedDate, recordCheckIn, applyAdjustment, trainingCompletions } = useTrenr();
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { showWeight, toKg, weightUnit } = useUnits();
 
   const [energyLevel, setEnergyLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [hungerLevel, setHungerLevel] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [sorenessLevel, setSorenessLevel] = useState<1 | 2 | 3 | 4 | 5>(2);
   const [adherencePct, setAdherencePct] = useState<number>(80);
-  const [currentWeight, setCurrentWeight] = useState(profile ? String(profile.weight) : '');
+  const [currentWeight, setCurrentWeight] = useState(profile ? String(showWeight(profile.weight)) : '');
   const [pending, setPending] = useState<PlanAdjustment | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,7 +27,8 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
 
   async function evaluateCheckIn() {
     if (!profile || submitting) return;
-    const nextWeight = parseFloat(currentWeight.replace(',', '.'));
+    const entered = parseFloat(currentWeight.replace(',', '.'));
+    const nextWeight = toKg(entered);
     if (!nextWeight || nextWeight < 30 || nextWeight > 300) {
       Alert.alert(t('common.error'), t('checkin.weightError'));
       return;
@@ -138,7 +141,7 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
               ))}
             </View>
 
-            <Label>{t('checkin.weight')}</Label>
+            <Label>{t('checkin.weight')} ({weightUnit})</Label>
             <Field
               keyboardType="numeric"
               value={currentWeight}

@@ -1,6 +1,7 @@
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
+import { WeightInput } from '../components/WeightInput';
 import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -203,7 +204,7 @@ export function ProfileScreen() {
       <Card>
         <SectionHeader title={t('profile.nutritionPrefs')} />
         <Label>{t('profile.currentWeight')}</Label>
-        <Field keyboardType="number-pad" value={String(profile.weight)} onChangeText={weight => setProfile({ ...profile, weight: Number(weight) || profile.weight })} />
+        <WeightInput weightKg={profile.weight} onChangeKg={weight => setProfile({ ...profile, weight })} />
         <Label>{t('profile.nutritionMode')}</Label>
         <View style={styles.rowWrap}>
           {nutritionModes.map(mode => (

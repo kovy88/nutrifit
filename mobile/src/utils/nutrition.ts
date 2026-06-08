@@ -42,6 +42,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   nutritionMode: 'balanced',
   planIntensity: 'moderate',
   coachScope: 'both',
+  units: 'metric',
 };
 
 /** Human-readable Czech label for a primary goal, used for UI display. */

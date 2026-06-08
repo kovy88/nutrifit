@@ -216,6 +216,18 @@ export function SettingsScreen() {
             </View>
           </Card>
 
+          <Card>
+            <SectionHeader title={t('settings.units')} />
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.unitsDesc')}</Text>
+            <View style={styles.wrap}>
+              {(['metric', 'imperial'] as const).map(us => (
+                <Pill key={us} active={(profile?.units ?? 'metric') === us} onPress={() => profile && setProfile({ ...profile, units: us })}>
+                  {t(us === 'metric' ? 'settings.unitsMetric' : 'settings.unitsImperial')}
+                </Pill>
+              ))}
+            </View>
+          </Card>
+
           {__DEV__ && (
             <Card>
               <SectionHeader title="Vývojářská nastavení (Debug)" />
