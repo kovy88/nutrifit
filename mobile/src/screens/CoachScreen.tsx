@@ -9,7 +9,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTrenr } from '../context/TrenrContext';
 import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
-import { hasCustomSchedule } from '../lib/training';
+import { hasCustomSchedule, nextMatchInfo } from '../lib/training';
+import { sportName } from '../lib/training/sports';
 import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
 import { incrementCoachTeaserUsed, loadCoachTeaserUsed } from '../services/storage';
@@ -87,6 +88,8 @@ export function CoachScreen() {
       const context: CoachChatContext = {
         recommendation,
         goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
+        mainSport: profile?.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : null,
+        nextMatchInDays: profile?.weeklyActivities ? (nextMatchInfo(profile.weeklyActivities, selectedDate)?.daysUntil ?? null) : null,
       };
       const res = await askCoach({ context, history: prior, question: q, locale });
       await persist([

@@ -32,6 +32,18 @@ describe('buildCoachChatRequest', () => {
     expect(r.prompt).toContain('Co k obědu?');
   });
 
+  it('includes main sport + next match context when provided', () => {
+    const sportCtx: CoachChatContext = { ...context, mainSport: 'Ice hockey', nextMatchInDays: 2 };
+    const r = buildCoachChatRequest({ context: sportCtx, history: [], question: 'How do I prep?', locale: 'en' });
+    expect(r.prompt).toContain('Main sport: Ice hockey');
+    expect(r.prompt).toContain('Next match: in 2 day');
+  });
+
+  it('phrases a match today', () => {
+    const r = buildCoachChatRequest({ context: { ...context, nextMatchInDays: 0 }, history: [], question: 'x', locale: 'en' });
+    expect(r.prompt).toContain('Next match: today');
+  });
+
   it('includes recent conversation turns (trimmed)', () => {
     const history = Array.from({ length: 8 }, (_, i): CoachMessage => ({ id: `${i}`, role: i % 2 ? 'coach' : 'user', text: `msg${i}`, createdAt: '' }));
     const r = buildCoachChatRequest({ context, history, question: 'next', locale: 'en' });

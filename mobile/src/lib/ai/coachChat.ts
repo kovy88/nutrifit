@@ -17,6 +17,10 @@ export type CoachChatContext = {
   goalSummary: string;
   /** Týdenní váhový trend (kg/týden), pokud známe. */
   recentWeightTrendKgPerWeek?: number | null;
+  /** Hlavní sport uživatele (custom režim) — ať AI radí relevantně k jeho sportu. */
+  mainSport?: string | null;
+  /** Kolik dní do příštího zápasu (custom režim), 0 = dnes. */
+  nextMatchInDays?: number | null;
 };
 
 export type CoachChatRequest = {
@@ -47,6 +51,10 @@ export function buildCoachChatRequest(opts: {
   const ctxLines: string[] = [`Goal: ${context.goalSummary}`];
   if (context.recentWeightTrendKgPerWeek != null) {
     ctxLines.push(`Weight trend: ${context.recentWeightTrendKgPerWeek.toFixed(2)} kg/week`);
+  }
+  if (context.mainSport) ctxLines.push(`Main sport: ${context.mainSport}`);
+  if (context.nextMatchInDays != null) {
+    ctxLines.push(context.nextMatchInDays === 0 ? 'Next match: today' : `Next match: in ${context.nextMatchInDays} day(s)`);
   }
   if (rec) {
     ctxLines.push(`Readiness: ${rec.readiness.score}/100 (${rec.readiness.band})`);
