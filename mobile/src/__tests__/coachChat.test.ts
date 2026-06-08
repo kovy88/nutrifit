@@ -44,6 +44,11 @@ describe('buildCoachChatRequest', () => {
     expect(r.prompt).toContain('Next match: today');
   });
 
+  it('tells the model which units to use', () => {
+    expect(buildCoachChatRequest({ context: { ...context, units: 'imperial' }, history: [], question: 'x', locale: 'en' }).systemPrompt).toContain('imperial');
+    expect(buildCoachChatRequest({ context: { ...context, units: 'metric' }, history: [], question: 'x', locale: 'en' }).systemPrompt).toContain('metric');
+  });
+
   it('includes recent conversation turns (trimmed)', () => {
     const history = Array.from({ length: 8 }, (_, i): CoachMessage => ({ id: `${i}`, role: i % 2 ? 'coach' : 'user', text: `msg${i}`, createdAt: '' }));
     const r = buildCoachChatRequest({ context, history, question: 'next', locale: 'en' });

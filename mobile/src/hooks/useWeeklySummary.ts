@@ -188,6 +188,7 @@ export function useWeeklySummary(): WeeklySummaryState {
         weekEndISO,
         goalKind: primaryGoalToNutritionKind(profile.primaryGoal),
         mainSport: profile.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : undefined,
+        units: profile.units ?? 'metric',
         weightStartKg,
         weightEndKg,
         averageAdherence: adherenceTrend.averageRatio ?? latestCheckIn?.adherence,
