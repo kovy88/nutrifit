@@ -527,7 +527,8 @@ function planMarkers(session: TrainingSession, carbsDelta: number, t: ReturnType
   const markers: string[] = [];
   if (session.kind === 'rest') markers.push(t('plan.markerRest'));
   if (session.kind === 'long_run') markers.push(t('plan.markerLongRun'));
-  if (session.intensity === 'hard') markers.push(t('plan.markerHard'));
+  if (session.kind === 'match') markers.push(t('plan.markerMatch'));
+  if (session.intensity === 'hard' && session.kind !== 'match') markers.push(t('plan.markerHard'));
   if (carbsDelta > 0) markers.push(t('plan.markerFuel'));
   return markers;
 }

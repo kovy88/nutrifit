@@ -630,6 +630,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'plan.markerRest': 'Rest',
   'plan.markerLongRun': 'Long run',
   'plan.markerHard': 'Hard',
+  'plan.markerMatch': 'Match',
   'plan.markerFuel': 'Fuel',
   'plan.lastPlan': 'Latest plan',
   'plan.noPlan': "You don't have a saved plan yet.",
