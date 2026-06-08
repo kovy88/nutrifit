@@ -34,6 +34,7 @@ const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
   race_week: 'phase.race_week',
 };
 import { useLanguage } from '../context/LanguageContext';
+import { useUnits } from '../hooks/useUnits';
 import { PaywallModal } from '../components/PaywallModal';
 import { loadPlansByDate } from '../services/storage';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
@@ -55,6 +56,7 @@ export function PlanScreen() {
     isSubscribed,
   } = useTrenr();
   const { t, locale } = useLanguage();
+  const { showText, showDistance, distanceUnit } = useUnits();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
@@ -252,7 +254,7 @@ export function PlanScreen() {
       {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
         <View style={{ marginBottom: 12, paddingHorizontal: 4 }}>
           <Text style={{ fontSize: 15, fontWeight: '800', color: colors.accent }}>
-            {t('plan.weeklyVolume', { volume: Math.round(weeklyPlan.weeklyVolume) })}
+            {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
           </Text>
         </View>
       ) : null}
@@ -270,7 +272,7 @@ export function PlanScreen() {
               isRest={session.kind === 'rest'}
               isLongRun={session.kind === 'long_run'}
               title={`${day.name} ${day.num}`}
-              subtitle={sessionLine(session, t)}
+              subtitle={showText(sessionLine(session, t))}
               markers={planMarkers(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}
               onPress={() => {
                 setSelectedDate(day.key);
@@ -286,7 +288,7 @@ export function PlanScreen() {
                     </View>
                     <View style={styles.daySummaryBlock}>
                       <Text style={[styles.daySummaryLabel, { color: colors.faint }]}>{t('plan.trainingSummary')}</Text>
-                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{shortSession(session, t)}</Text>
+                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{showText(shortSession(session, t))}</Text>
                     </View>
                   </View>
                   <View style={styles.metricRow}>

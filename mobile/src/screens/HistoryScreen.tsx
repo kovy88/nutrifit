@@ -10,6 +10,7 @@ import { SimpleLineChart } from '../components/premium/SimpleLineChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useUnits } from '../hooks/useUnits';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
 import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib/nutrition/streaks';
 import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
@@ -44,6 +45,7 @@ export function HistoryScreen() {
   const isFocused = useIsFocused();
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
+  const { showWeight, weightUnit, isImperial } = useUnits();
   const [tab, setTab] = useState<ProgressTab>('overview');
   const [summaries, setSummaries] = useState<DaySummary[]>([]);
   const [adherence, setAdherence] = useState(() => computeAdherenceTrend({}, {}, 14));
@@ -150,7 +152,7 @@ export function HistoryScreen() {
               <MetricCard label={t('history.adherence14')} value={adherenceLabel} color={colors.accent} />
               <MetricCard label={t('history.logStreak')} value={logStreak.current || '-'} color={colors.orange} />
               <MetricCard label={t('history.targetStreak')} value={adherenceStreak.current || '-'} color={colors.green} />
-              <MetricCard label={t('history.weight30')} value={latestWeight ? latestWeight.toFixed(1) : '-'} unit="kg" color={colors.blue} />
+              <MetricCard label={t('history.weight30')} value={latestWeight ? String(showWeight(latestWeight)) : '-'} unit={weightUnit} color={colors.blue} />
             </View>
             <Text style={[styles.note, { color: colors.muted }]}>{describeAdherence(adherence.averageRatio, locale)}</Text>
             <Text style={[styles.meta, { color: colors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
@@ -183,7 +185,7 @@ export function HistoryScreen() {
             <Card>
               <SectionHeader title={t('history.energyBalance14')} />
               <Text style={[styles.heroValue, { color: energyBalance.theoreticalKgChange < -0.2 ? colors.green : energyBalance.theoreticalKgChange > 0.2 ? colors.orange : colors.muted }]}>
-                {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{energyBalance.theoreticalKgChange.toFixed(2)} kg
+                {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{showWeight(energyBalance.theoreticalKgChange, 2)} {weightUnit}
               </Text>
               <Text style={[styles.note, { color: colors.muted }]}>
                 {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}
@@ -197,7 +199,7 @@ export function HistoryScreen() {
         <>
           <Card>
             <SectionHeader title={t('history.weight30')} />
-            <SimpleLineChart data={weightTrend} unit="kg" color={colors.green} />
+            <SimpleLineChart data={isImperial ? weightTrend.map(p => ({ ...p, value: p.value != null ? showWeight(p.value) : p.value })) : weightTrend} unit={weightUnit} color={colors.green} />
           </Card>
           <Card>
             <SectionHeader title={t('history.sleep14')} />

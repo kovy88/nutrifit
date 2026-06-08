@@ -50,6 +50,9 @@ export type WeeklyActivityTemplate = Partial<Record<0 | 1 | 2 | 3 | 4 | 5 | 6, P
 /** Sporty s presetem v knihovně (typický týden + off-field doporučení). */
 export type SportId = 'football' | 'ice_hockey' | 'ball_hockey' | 'floorball' | 'basketball' | 'tennis' | 'martial_arts' | 'volleyball' | 'handball';
 
+/** Soustava jednotek pro zobrazení/vstup. Úložiště je vždy metrické. */
+export type UnitSystem = 'metric' | 'imperial';
+
 /** Hlavní sport uživatele — kontext pro relevantní doporučení kouče (custom režim). */
 export type MainSport = {
   /** Preset z knihovny sportů (pohání off-field doporučení + lokalizované jméno). */
@@ -79,6 +82,8 @@ export type UserProfile = {
   planIntensity?: PlanIntensity;
   /** Zaměření kouče (default 'both'). Optional kvůli migraci starších profilů. */
   coachScope?: CoachScope;
+  /** Jednotky pro zobrazení/vstup (kg/km vs lb/mi). Default 'metric'. Úložiště zůstává metrické. */
+  units?: UnitSystem;
   /** Výběr zdroje zdravotních dat (default 'auto'). */
   healthProviderMode?: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect';
   /** ISO datum (YYYY-MM-DD) startu tréninkového programu — pohání weekIndex progrese. */
