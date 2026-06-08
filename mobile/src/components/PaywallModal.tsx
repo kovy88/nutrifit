@@ -66,7 +66,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
             <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
               {t('paywall.subtitle')}
             </Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.muted} />
             </Pressable>
           </View>
