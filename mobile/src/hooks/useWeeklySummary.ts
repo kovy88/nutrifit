@@ -24,6 +24,7 @@ import { computeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { loadPlansByDate, loadFoodLogsByDate } from '../services/storage';
 import type { WeeklySummary, WeeklySummaryInput } from '../lib/ai/weeklySummary';
 import { useLanguage } from '../context/LanguageContext';
+import { sportName } from '../lib/training/sports';
 
 const STORAGE_KEY = 'nutrifit.weeklySummary.v1';
 
@@ -186,6 +187,7 @@ export function useWeeklySummary(): WeeklySummaryState {
         weekStartISO,
         weekEndISO,
         goalKind: primaryGoalToNutritionKind(profile.primaryGoal),
+        mainSport: profile.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : undefined,
         weightStartKg,
         weightEndKg,
         averageAdherence: adherenceTrend.averageRatio ?? latestCheckIn?.adherence,

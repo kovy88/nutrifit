@@ -49,6 +49,11 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
     expect(r.prompt).toContain('fat_loss');
   });
 
+  it('includes main sport when provided', () => {
+    const r = buildWeeklySummaryRequest({ ...baseInput, mainSport: 'Ice hockey' });
+    expect(r.prompt).toContain('Ice hockey');
+  });
+
   it('embeds weight delta when both endpoints present', () => {
     const r = buildWeeklySummaryRequest({
       ...baseInput,
