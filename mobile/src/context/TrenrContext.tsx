@@ -15,7 +15,8 @@ import type {
   TrainingCompletionRecordMap,
   TrainingCompletionStatus,
 } from '../types';
-import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, toDateKey } from '../utils/nutrition';
+import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, sumFoodLog, toDateKey } from '../utils/nutrition';
+import { computeLogStreak } from '../lib/nutrition/streaks';
 import { adjustedPlanSessionForDate } from '../lib/training';
 import { useLanguage } from './LanguageContext';
 import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
@@ -78,6 +79,8 @@ type TrenrContextValue = {
   setSelectedDate: (date: string) => void;
   currentMeals: Meal[];
   currentFoodLog: FoodLogItem[];
+  /** Aktuální série dní v řadě se zápisem jídla (retence). */
+  logStreak: number;
   currentSession: TrainingSession | null;
   trainingCompletions: TrainingCompletionRecordMap;
   currentTrainingCompletion: TrainingCompletionRecord | null;
@@ -237,6 +240,11 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       },
     };
   }, [baselineMacros, currentSession, profile, sessionsByDate, selectedDate, locale]);
+
+  const logStreak = useMemo(() => {
+    const days = Object.entries(foodLogsByDate).map(([date, items]) => ({ date, loggedKcal: sumFoodLog(items).kcal }));
+    return computeLogStreak(days, selectedDate).current;
+  }, [foodLogsByDate, selectedDate]);
 
   const currentMacros = daily.macros;
   const dailyAdjustment = daily.adjustment;
@@ -532,6 +540,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       currentFoodLog,
       currentSession,
       trainingCompletions: trainingCompletionsByDate,
+      logStreak,
       currentTrainingCompletion,
       weights: weightsByDate,
       logWeight,

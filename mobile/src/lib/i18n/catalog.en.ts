@@ -179,6 +179,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'today.workoutDone': 'Workout done',
   'today.amDone': 'AM done',
   'today.pmDone': 'PM done',
+  'today.streak': ({ days }: Record<string, string | number>) => `${days}-day streak`,
   'today.completed': 'Completed',
   'today.notCompleted': 'Not marked completed yet',
   'today.completedTitle': 'Workout saved',

@@ -186,6 +186,7 @@ export const cs = {
   'today.workoutDone': 'Trénink hotový',
   'today.amDone': 'Ráno hotovo',
   'today.pmDone': 'Večer hotovo',
+  'today.streak': ({ days }: Record<string, string | number>) => `${days} ${Number(days) === 1 ? 'den' : Number(days) >= 2 && Number(days) <= 4 ? 'dny' : 'dní'} v řadě`,
   'today.completed': 'Odtrénováno',
   'today.notCompleted': 'Zatím neoznačeno jako hotové',
   'today.completedTitle': 'Trénink uložen',
