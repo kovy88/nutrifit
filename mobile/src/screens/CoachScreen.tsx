@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTrenr } from '../context/TrenrContext';
 import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
+import { hasCustomSchedule } from '../lib/training';
 import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
 import { incrementCoachTeaserUsed, loadCoachTeaserUsed } from '../services/storage';
@@ -42,14 +43,29 @@ export function CoachScreen() {
   const [sending, setSending] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
-  const prompts = [
-    t('coach.promptWhy'),
-    t('coach.promptFuel'),
-    t('coach.promptBadSleep'),
-    t('coach.promptSwapDinner'),
-    t('coach.promptMissedWorkout'),
-    t('coach.promptRaceRealistic'),
-  ];
+  // Rychlé otázky podle režimu: sportovec (custom rytmus) řeší zápas/off-field,
+  // ne „co jíst před během" / „je můj závod reálný".
+  const isCustomSport = profile ? hasCustomSchedule(profile) : false;
+  const prompts = useMemo(() => {
+    if (isCustomSport) {
+      return [
+        t('coach.promptWhy'),
+        t('coach.promptBadSleep'),
+        t('coach.promptMatchPrep'),
+        t('coach.promptMatchFuel'),
+        t('coach.promptOffField'),
+        t('coach.promptMissedWorkout'),
+      ];
+    }
+    return [
+      t('coach.promptWhy'),
+      t('coach.promptFuel'),
+      t('coach.promptBadSleep'),
+      t('coach.promptSwapDinner'),
+      t('coach.promptMissedWorkout'),
+      t('coach.promptRaceRealistic'),
+    ];
+  }, [isCustomSport, t]);
 
   async function send(question: string) {
     const q = question.trim();
