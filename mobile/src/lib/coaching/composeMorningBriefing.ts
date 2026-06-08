@@ -95,6 +95,10 @@ function shortSessionName(session: TrainingSession, loc: Locale): string {
     case 'bike':           return en ? `Bike ${minutes} min` : `Kolo ${minutes} min`;
     case 'brick':          return `Brick ${minutes} min`;
     case 'functional':     return en ? `Functional ${minutes} min` : `Funkční ${minutes} min`;
+    case 'match':          return session.title || (en ? 'Match' : 'Zápas');
+    case 'sport':          return session.title || (en ? 'Training' : 'Trénink');
+    case 'combat':         return session.title || (en ? `Combat ${minutes} min` : `Bojový trénink ${minutes} min`);
+    case 'recovery':       return en ? `Recovery ${minutes} min` : `Regenerace ${minutes} min`;
     default:               return `${session.title} (${intensity})`;
   }
 }
@@ -146,6 +150,11 @@ function buildRecommendation(
   if (readiness?.dataStatus === 'missing') {
     return L(loc, 'Recovery data dnes chybí. Drž plán podle pocitu a nepřidávej intenzitu.',
                   'Recovery data is missing today. Follow the plan by feel and do not add intensity.');
+  }
+
+  if (session && session.kind === 'match') {
+    return L(loc, 'Zápas dnes — dolaď sacharidy, dobře se zahřej a hydratuj. Nech nohy odpočaté.',
+                  'Match today — top up carbs, warm up well and hydrate. Keep your legs fresh.');
   }
 
   // Macro hint pokud máme baseline porovnání

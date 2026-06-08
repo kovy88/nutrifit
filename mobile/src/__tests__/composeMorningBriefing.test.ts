@@ -25,6 +25,19 @@ const restDay: TrainingSession = {
   durationMinutes: 0, intensity: 'rest',
 };
 
+const matchDay: TrainingSession = {
+  date: '2026-05-28', kind: 'match', title: 'Zápas',
+  durationMinutes: 70, intensity: 'hard',
+};
+
+describe('composeMorningBriefing — match day', () => {
+  it('match → headline obsahuje název zápasu + match-specifické doporučení', () => {
+    const b = composeMorningBriefing({ session: matchDay, readiness: null, trainingLoad: null, macros, baselineMacros: macros });
+    expect(b.headline).toContain('Zápas');
+    expect(b.recommendation).toMatch(/[Zz]ápas/);
+  });
+});
+
 // ── Headline rules ──────────────────────────────────────────────────────────
 
 describe('composeMorningBriefing — headline shape', () => {
