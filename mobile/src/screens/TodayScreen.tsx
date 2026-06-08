@@ -69,14 +69,16 @@ export function TodayScreen() {
   const trainingDay = Boolean(currentSession && currentSession.kind !== 'rest');
   const week = weeklyCompletion(trainingCompletions, selectedDate);
   const setup = profileSetupCompleteness(profile);
-  const weekTips = (showTraining && hasCustomSchedule(profile))
+  const customPlan = (showTraining && hasCustomSchedule(profile)) ? planForDate(profile, new Date(selectedDate), {}, locale) : null;
+  const weekTips = customPlan
     ? complementarySuggestions({
         mainSport: { id: profile.mainSport?.id, label: profile.mainSport?.label },
-        sessions: planForDate(profile, new Date(selectedDate), {}, locale).sessions,
+        sessions: customPlan.sessions,
         todayISO: selectedDate,
         locale,
       })
     : [];
+  const customEmpty = !!customPlan && customPlan.sessions.every(s => s.kind === 'rest');
 
   async function markTodayDone() {
     await mark('completed');
@@ -130,6 +132,12 @@ export function TodayScreen() {
       {!setup.complete ? (
         <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
           <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
+        </CoachInsightCard>
+      ) : null}
+
+      {customEmpty ? (
+        <CoachInsightCard title={t('myweek.emptyTitle')} body={t('myweek.emptyBody')} accent={colors.accent}>
+          <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
         </CoachInsightCard>
       ) : null}
 
