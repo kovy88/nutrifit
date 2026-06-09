@@ -1,4 +1,5 @@
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { WeightInput } from '../components/WeightInput';
@@ -6,31 +7,82 @@ import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, TrainingGoalKind } from '../types';
+import type { CoachScope, DietStyle, ExperienceLevel, Gender, NutritionMode, PlanIntensity, TrainingGoalKind, UserProfile } from '../types';
 import { resolveCoachScope, scopeHasTraining } from '../types';
 import { activityFactorForSessions } from '../utils/nutrition';
-import { useWeeklySummary } from '../hooks/useWeeklySummary';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSyncStatus } from '../hooks/useSyncStatus';
-import { USER_PRIMARY_GOALS, isRunRaceGoal } from '../constants/goals';
-import type { TranslationKey } from '../lib/i18n';
-import { profileSetupCompleteness, type SetupMissingItem } from '../lib/onboarding/validation';
-import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
+import { SUPPORTED_LOCALES, LOCALE_LABELS, type TranslationKey } from '../lib/i18n';
+import { USER_PRIMARY_GOALS } from '../constants/goals';
+import { useHealthSources } from '../hooks/useHealthSources';
+import { useUnits } from '../hooks/useUnits';
+import {
+  getExperienceLabel,
+  getGoalLabel,
+  getHealthProviderLabel,
+  getHealthProviderStatus,
+  getNutritionModeLabel,
+  getRaceGoalLabel,
+  summarizeLikesDislikes,
+} from '../lib/profile/profile-labels';
+
+type EditSection = 'goal' | 'basics' | 'training' | 'nutrition' | 'settings' | 'account' | null;
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
   const navigation = useNavigation<any>();
-  const weeklySummary = useWeeklySummary();
-  const syncStatus = useSyncStatus();
-  const { t } = useLanguage();
+  const { t, locale, setLocale } = useLanguage();
   const { colors } = useTheme();
+  const { native, connectedOAuth } = useHealthSources();
+  const { showWeight, weightUnit } = useUnits();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
-  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [editing, setEditing] = useState<EditSection>(null);
 
   if (!profile) return null;
+
   const scope = resolveCoachScope(profile);
-  const setup = profileSetupCompleteness(profile);
+  const profileTitle = user?.email ?? t('profile.yourProfile');
+  const sessionsLabel = t('profile.sessionsValue', { count: profile.sessionsPerWeek });
+  const planPace = t(`planIntensity.${profile.planIntensity ?? 'moderate'}` as TranslationKey);
+  const goalRows = [
+    `${getGoalLabel(profile, t)} + ${getRaceGoalLabel(profile.trainingGoal, t)}`,
+    t('profile.planLine', { pace: planPace, sessions: sessionsLabel }),
+  ];
+  const bodyRows = [
+    [
+      profile.age ? t('profile.ageValue', { age: profile.age }) : t('profile.notSet'),
+      profile.height ? t('profile.heightValue', { height: profile.height }) : t('profile.notSet'),
+      t('profile.weightValue', { weight: showWeight(profile.weight), unit: weightUnit }),
+    ].join(' · '),
+    getExperienceLabel(profile.experience, t),
+  ];
+  const trainingRows = [
+    sessionsLabel,
+    trainingContext(profile, t),
+    restDaySummary(profile.preferredRestDays, t),
+    profile.injuryFlag ? t('profile.injuryCaution') : t('profile.noInjury'),
+  ];
+  const nutritionRows = [
+    getNutritionModeLabel(profile.nutritionMode ?? 'balanced', t),
+    `${t(`diet.${profile.diet}` as TranslationKey)} · ${t('profile.mealsValue', { count: profile.mealCount })}`,
+    summarizeLikesDislikes(profile.likes, profile.dislikes, t),
+  ];
+  const healthRows = [
+    getHealthProviderLabel(profile.healthProviderMode, t),
+    getHealthProviderStatus(profile.healthProviderMode, native, connectedOAuth.length, t),
+  ];
+  const settingsRows = [
+    t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
+    t('profile.unitsValue', { units: profile.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric') }),
+  ];
+  const accountRows = [
+    user?.email ? t('profile.accountSignedIn', { email: user.email }) : t('profile.accountSignedOut'),
+    t('profile.restartBody'),
+  ];
+
+  function toggle(section: Exclude<EditSection, null>) {
+    setEditing(current => current === section ? null : section);
+  }
 
   async function login() {
     try {
@@ -67,8 +119,6 @@ export function ProfileScreen() {
         onPress: async () => {
           try {
             await deleteAccount();
-            // Server-side deletion succeeded — now wipe all local data
-            // (profile, plans, food logs, training sessions, weights, consent).
             await purgeAllUserData();
           } catch (err) {
             Alert.alert(t('profile.deleteFailed'), err instanceof Error ? err.message : t('profile.deleteFailedMsg'));
@@ -78,257 +128,423 @@ export function ProfileScreen() {
     ]);
   }
 
+  function openUrl(url: string) {
+    Linking.openURL(url).catch(() => Alert.alert(t('settings.openLinkFailed'), url));
+  }
+
   return (
-    <Screen>
-      <ScreenHeader eyebrow={t('tab.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} />
+    <Screen contentContainerStyle={styles.screen}>
+      <ScreenHeader eyebrow={t('tab.profile')} title={profileTitle} subtitle={t('profile.personalizeSubtitle')} />
+
+      <ProfileSectionCard
+        title={t('profile.currentGoal')}
+        rows={goalRows}
+        ctaLabel={editing === 'goal' ? t('profile.closeEdit') : t('profile.editGoal')}
+        expanded={editing === 'goal'}
+        onPress={() => toggle('goal')}
+      >
+        <GoalEditor profile={profile} scope={scope} setProfile={setProfile} t={t} />
+      </ProfileSectionCard>
+
+      <ProfileSectionCard
+        title={t('profile.bodyBasics')}
+        rows={bodyRows}
+        ctaLabel={editing === 'basics' ? t('profile.closeEdit') : t('profile.editBasics')}
+        expanded={editing === 'basics'}
+        onPress={() => toggle('basics')}
+      >
+        <BasicsEditor profile={profile} setProfile={setProfile} t={t} />
+      </ProfileSectionCard>
+
+      <ProfileSectionCard
+        title={t('profile.trainingPrefs')}
+        rows={trainingRows}
+        ctaLabel={editing === 'training' ? t('profile.closeEdit') : t('profile.editTraining')}
+        expanded={editing === 'training'}
+        onPress={() => toggle('training')}
+      >
+        <TrainingEditor profile={profile} scope={scope} setProfile={setProfile} t={t} />
+      </ProfileSectionCard>
+
+      <ProfileSectionCard
+        title={t('profile.nutritionPrefs')}
+        rows={nutritionRows}
+        ctaLabel={editing === 'nutrition' ? t('profile.closeEdit') : t('profile.editNutrition')}
+        expanded={editing === 'nutrition'}
+        onPress={() => toggle('nutrition')}
+      >
+        <NutritionEditor profile={profile} setProfile={setProfile} t={t} />
+      </ProfileSectionCard>
+
+      <ProfileSectionCard
+        title={t('profile.healthData')}
+        rows={healthRows}
+        ctaLabel={t('profile.healthSettings')}
+        onPress={() => navigation.navigate('Settings')}
+      />
+
+      <ProfileSectionCard
+        title={t('profile.appSettings')}
+        rows={settingsRows}
+        ctaLabel={editing === 'settings' ? t('profile.closeEdit') : t('profile.appSettings')}
+        expanded={editing === 'settings'}
+        onPress={() => toggle('settings')}
+      >
+        <SettingsEditor profile={profile} setProfile={setProfile} locale={locale} setLocale={setLocale} t={t} />
+      </ProfileSectionCard>
+
+      <ProfileSectionCard
+        title={t('profile.accountData')}
+        rows={accountRows}
+        ctaLabel={editing === 'account' ? t('profile.closeEdit') : t('profile.manageAccount')}
+        expanded={editing === 'account'}
+        onPress={() => toggle('account')}
+      >
+        <AccountEditor
+          userEmail={user?.email}
+          auth={auth}
+          setAuth={setAuth}
+          login={login}
+          register={register}
+          signOut={signOut}
+          exportData={exportData}
+          confirmDelete={confirmDelete}
+          resetLocalProfile={resetLocalProfile}
+          t={t}
+        />
+      </ProfileSectionCard>
 
       <Card>
-        <SectionHeader title={t('profile.coachOverview')} />
-        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.coachOverviewBody')}</Text>
-        <View style={styles.summaryGrid}>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.focus')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(('scope.' + scope) as 'scope.both')}</Text>
-          </View>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.mainGoal')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(`goal.${profile.primaryGoal}` as TranslationKey)}</Text>
-          </View>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.sessionsPerWeek')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.accent }]}>{profile.sessionsPerWeek}×</Text>
-          </View>
+        <SectionHeader title={t('profile.safetyAbout')} />
+        <Text style={[styles.sectionLead, { color: colors.ink }]}>{t('profile.safetyShort')}</Text>
+        <Text style={[styles.rowText, { color: colors.muted }]}>{t('profile.safetyBodyShort')}</Text>
+        <View style={styles.linkRow}>
+          <Text style={[styles.link, { color: colors.blue }]} onPress={() => openUrl('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>{t('profile.privacyPolicy')}</Text>
+          <Text style={[styles.link, { color: colors.blue }]} onPress={() => openUrl('https://nutri-fit-omega.vercel.app/delete-account.html')}>{t('profile.publicDeleteRequest')}</Text>
         </View>
       </Card>
-
-      {!setup.complete ? (
-        <Card>
-          <SectionHeader title={t('setup.profileTitle')} />
-          <Text style={[styles.copy, { color: colors.muted }]}>{t('setup.profileBody', { count: setup.missing.length })}</Text>
-          <View style={styles.setupList}>
-            {setup.missing.slice(0, 3).map(item => (
-              <Text key={item} style={[styles.setupItem, { color: colors.ink }]}>• {t(setupMissingLabelKey(item))}</Text>
-            ))}
-          </View>
-        </Card>
-      ) : null}
-
-      <Card>
-        <SectionHeader title={t('profile.coachSetup')} />
-        <Label>{t('profile.focus')}</Label>
-        <View style={styles.rowWrap}>
-          {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
-            <Pill key={s} active={scope === s} onPress={() => setProfile({ ...profile, coachScope: s })}>
-              {t(('scope.' + s) as 'scope.both')}
-            </Pill>
-          ))}
-        </View>
-        <Label>{t('profile.mainGoal')}</Label>
-        <View style={styles.rowWrap}>
-          {USER_PRIMARY_GOALS.map(goal => (
-            <Pill
-              key={goal.value}
-              active={profile.primaryGoal === goal.value}
-              onPress={() => setProfile({ ...profile, primaryGoal: goal.value, trainingGoal: goal.trainingGoal })}
-            >
-              {t(goal.labelKey)}
-            </Pill>
-          ))}
-        </View>
-      </Card>
-
-      <Card>
-        <SectionHeader title={t('profile.trainingSchedule')} />
-        <Label>{t('profile.trainingGoal')}</Label>
-        <View style={styles.rowWrap}>
-          {trainingGoals.map(goal => (
-            <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => setProfile({ ...profile, trainingGoal: goal.value })}>{goal.label}</Pill>
-          ))}
-        </View>
-        <Label>{t('profile.sessionsPerWeek')}</Label>
-        <View style={styles.rowWrap}>
-          {[1, 2, 3, 4, 5, 6].map(count => (
-            <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>{count}×</Pill>
-          ))}
-        </View>
-        {scopeHasTraining(scope) ? (
-          <>
-            <Label>{t('profile.restDays')}</Label>
-            <View style={styles.rowWrap}>
-              {WEEKDAY_REST.map(day => (
-                <Pill
-                  key={day.value}
-                  active={(profile.preferredRestDays ?? []).includes(day.value)}
-                  onPress={() => setProfile({ ...profile, preferredRestDays: toggleRestDay(profile.preferredRestDays, day.value) })}
-                >
-                  {t(day.labelKey)}
-                </Pill>
-              ))}
-            </View>
-          </>
-        ) : null}
-        {isRunRaceGoal(profile.trainingGoal) ? (
-          <>
-            <Label>{t('onb.targetTimeOptional')}</Label>
-            <Field
-              keyboardType="number-pad"
-              value={profile.targetTimeSeconds ? String(Math.round(profile.targetTimeSeconds / 60)) : ''}
-              onChangeText={value => {
-                const minutes = parseOptionalInt(value, 24 * 60);
-                setProfile({ ...profile, targetTimeSeconds: minutes ? minutes * 60 : undefined });
-              }}
-              placeholder={t('onb.targetTimePlaceholder')}
-            />
-            <Label>{t('onb.currentPaceOptional')}</Label>
-            <Field
-              keyboardType="number-pad"
-              value={profile.currentPaceSecPerKm ? String(profile.currentPaceSecPerKm) : ''}
-              onChangeText={value => setProfile({ ...profile, currentPaceSecPerKm: parseOptionalInt(value, 900) })}
-              placeholder={t('onb.currentPacePlaceholder')}
-            />
-          </>
-        ) : null}
-        <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
-          {t('profile.weeklyCheckIn')}
-        </Button>
-        <Button
-          style={{ marginTop: 6 }}
-          variant="secondary"
-          disabled={weeklySummary.isGenerating}
-          onPress={() => weeklySummary.generate()}
-        >
-          {weeklySummary.isGenerating ? t('profile.aiSummaryGenerating') : t('profile.aiSummary')}
-        </Button>
-      </Card>
-
-      <Card>
-        <SectionHeader title={t('profile.nutritionPrefs')} />
-        <Label>{t('profile.currentWeight')}</Label>
-        <WeightInput weightKg={profile.weight} onChangeKg={weight => setProfile({ ...profile, weight })} />
-        <Label>{t('profile.nutritionMode')}</Label>
-        <View style={styles.rowWrap}>
-          {nutritionModes.map(mode => (
-            <Pill key={mode.value} active={(profile.nutritionMode ?? 'balanced') === mode.value} onPress={() => setProfile({ ...profile, nutritionMode: mode.value })}>{t(mode.labelKey)}</Pill>
-          ))}
-        </View>
-        <Label>{t('profile.planIntensity')}</Label>
-        <View style={styles.rowWrap}>
-          {planIntensities.map(intensity => (
-            <Pill key={intensity.value} active={(profile.planIntensity ?? 'moderate') === intensity.value} onPress={() => setProfile({ ...profile, planIntensity: intensity.value })}>{t(intensity.labelKey)}</Pill>
-          ))}
-        </View>
-        <Label>{t('profile.dietType')}</Label>
-        <View style={styles.rowWrap}>
-          {dietStyles.map(diet => (
-            <Pill key={diet} active={profile.diet === diet} onPress={() => setProfile({ ...profile, diet })}>{t(`diet.${diet}` as TranslationKey)}</Pill>
-          ))}
-        </View>
-        <Label>{t('profile.foodLikes')}</Label>
-        <Field value={profile.likes} onChangeText={likes => setProfile({ ...profile, likes })} placeholder={t('profile.foodLikesPlaceholder')} multiline />
-        <Label>{t('profile.foodDislikes')}</Label>
-        <Field value={profile.dislikes} onChangeText={dislikes => setProfile({ ...profile, dislikes })} placeholder={t('profile.foodDislikesPlaceholder')} multiline />
-      </Card>
-
-      <Card>
-        <SectionHeader title={t('profile.healthData')} />
-        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.healthDataBody')}</Text>
-        <Button variant="secondary" onPress={() => navigation.navigate('Settings')}>
-          {t('profile.healthSettings')}
-        </Button>
-        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
-      </Card>
-
-      {/* AI weekly summary — last generated review */}
-      {weeklySummary.summary && (
-        <Card>
-          <Label>Týdenní AI shrnutí</Label>
-          <Text style={[styles.summaryHeadline, { color: colors.ink }]}>{weeklySummary.summary.headline}</Text>
-          {weeklySummary.summary.highlights.length > 0 && (
-            <View style={{ marginTop: 8, gap: 4 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>✓ Co šlo</Text>
-              {weeklySummary.summary.highlights.map((h, i) => (
-                <Text key={`hl-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {h}</Text>
-              ))}
-            </View>
-          )}
-          {weeklySummary.summary.concerns.length > 0 && (
-            <View style={{ marginTop: 10, gap: 4 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>Hlídej</Text>
-              {weeklySummary.summary.concerns.map((c, i) => (
-                <Text key={`cn-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {c}</Text>
-              ))}
-            </View>
-          )}
-          {weeklySummary.summary.recommendation && (
-            <View style={{ marginTop: 10 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>→ Příští týden</Text>
-              <Text style={[styles.summaryRec, { color: colors.green }]}>{weeklySummary.summary.recommendation}</Text>
-            </View>
-          )}
-          {weeklySummary.generatedAt && (
-            <Text style={[styles.summaryMeta, { color: colors.faint }]}>
-              Vygenerováno {new Date(weeklySummary.generatedAt).toLocaleDateString('cs-CZ')} pro týden {weeklySummary.weekStartISO}
-            </Text>
-          )}
-        </Card>
-      )}
-      {weeklySummary.error && (
-        <Card>
-          <Text style={[styles.errorText, { color: colors.red }]}>
-            Chyba při generování AI shrnutí: {weeklySummary.error}
-          </Text>
-        </Card>
-      )}
-
-      <Card>
-        <SectionHeader title={t('profile.account')} />
-        <Text style={[styles.copy, { color: colors.muted }]}>
-          Sync: {syncStatus.status}
-          {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
-          {syncStatus.lastSyncedAt ? ` · ${new Date(syncStatus.lastSyncedAt).toLocaleString()}` : ''}
-        </Text>
-        {syncStatus.error && <Text style={[styles.errorText, { color: colors.red }]}>{syncStatus.error}</Text>}
-        {user ? (
-          <>
-            <Text style={[styles.user, { color: colors.ink }]}>{user.email}</Text>
-            <Button variant="secondary" onPress={exportData}>{t('profile.exportData')}</Button>
-            <Button variant="secondary" onPress={signOut}>{t('profile.signOut')}</Button>
-            <Button variant="danger" onPress={confirmDelete}>{t('profile.deleteAccount')}</Button>
-          </>
-        ) : (
-          <>
-            <Field value={auth.name} onChangeText={name => setAuth(v => ({ ...v, name }))} placeholder="Jméno pro registraci" />
-            <Field autoCapitalize="none" keyboardType="email-address" value={auth.email} onChangeText={email => setAuth(v => ({ ...v, email }))} placeholder="E-mail" />
-            <Field secureTextEntry value={auth.password} onChangeText={password => setAuth(v => ({ ...v, password }))} placeholder="Heslo" />
-            <View style={styles.row}>
-              <Button variant="secondary" onPress={login}>Přihlásit</Button>
-              <Button onPress={register}>Registrovat</Button>
-            </View>
-          </>
-        )}
-      </Card>
-
-      <Card>
-        <SectionHeader title={t('profile.privacySafety')} />
-        <Text style={[styles.copy, { color: colors.muted }]}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
-        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
-        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
-      </Card>
-
-      <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
     </Screen>
   );
 }
 
-const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
-  { value: 'general_fitness', label: 'Kondice' },
-  { value: 'walking_more', label: 'Chůze' },
-  { value: 'couch_to_5k', label: 'Couch→5k' },
-  { value: 'run_5k', label: '5 km' },
-  { value: 'run_10k', label: '10 km' },
-  { value: 'half_marathon', label: 'Půlmaraton' },
-  { value: 'strength_basics', label: 'Síla' },
-  { value: 'hyrox', label: 'Hyrox' },
+function ProfileSectionCard({
+  title,
+  rows,
+  ctaLabel,
+  expanded,
+  onPress,
+  children,
+}: {
+  title: string;
+  rows: string[];
+  ctaLabel?: string;
+  expanded?: boolean;
+  onPress?: () => void;
+  children?: ReactNode;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Card>
+      <SectionHeader
+        title={title}
+        action={ctaLabel && onPress ? <Button variant="secondary" onPress={onPress}>{ctaLabel}</Button> : undefined}
+      />
+      <View style={styles.sectionRows}>
+        {rows.slice(0, 4).filter(Boolean).map((row, index) => (
+          <Text key={`${title}-${index}-${row}`} style={[index === 0 ? styles.sectionLead : styles.rowText, { color: index === 0 ? colors.ink : colors.muted }]}>
+            {row}
+          </Text>
+        ))}
+      </View>
+      {expanded && children ? <View style={[styles.editor, { borderTopColor: colors.border }]}>{children}</View> : null}
+    </Card>
+  );
+}
+
+function GoalEditor({
+  profile,
+  scope,
+  setProfile,
+  t,
+}: {
+  profile: UserProfile;
+  scope: CoachScope;
+  setProfile: (profile: UserProfile) => Promise<void>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <Label>{t('profile.focus')}</Label>
+      <View style={styles.wrap}>
+        {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
+          <Pill key={s} active={scope === s} onPress={() => void setProfile({ ...profile, coachScope: s })}>
+            {t(('scope.' + s) as TranslationKey)}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('profile.mainGoal')}</Label>
+      <View style={styles.wrap}>
+        {USER_PRIMARY_GOALS.map(goal => (
+          <Pill
+            key={goal.value}
+            active={profile.primaryGoal === goal.value}
+            onPress={() => void setProfile({ ...profile, primaryGoal: goal.value, trainingGoal: goal.trainingGoal })}
+          >
+            {t(goal.labelKey)}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('profile.trainingGoal')}</Label>
+      <View style={styles.wrap}>
+        {trainingGoals.map(goal => (
+          <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => void setProfile({ ...profile, trainingGoal: goal.value })}>
+            {t(goal.labelKey)}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('profile.planIntensity')}</Label>
+      <View style={styles.wrap}>
+        {planIntensities.map(intensity => (
+          <Pill key={intensity.value} active={(profile.planIntensity ?? 'moderate') === intensity.value} onPress={() => void setProfile({ ...profile, planIntensity: intensity.value })}>
+            {t(intensity.labelKey)}
+          </Pill>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function BasicsEditor({
+  profile,
+  setProfile,
+  t,
+}: {
+  profile: UserProfile;
+  setProfile: (profile: UserProfile) => Promise<void>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <Label>{t('profile.sex')}</Label>
+      <View style={styles.wrap}>
+        {(['muz', 'zena'] as Gender[]).map(gender => (
+          <Pill key={gender} active={profile.gender === gender} onPress={() => void setProfile({ ...profile, gender })}>
+            {gender === 'muz' ? t('onb.male') : t('onb.female')}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('onb.ageField')}</Label>
+      <Field keyboardType="number-pad" value={String(profile.age || '')} onChangeText={age => void setProfile({ ...profile, age: parseOptionalInt(age, 100) ?? 0 })} />
+
+      <Label>{t('onb.heightField')}</Label>
+      <Field keyboardType="number-pad" value={String(profile.height || '')} onChangeText={height => void setProfile({ ...profile, height: parseOptionalInt(height, 250) ?? 0 })} />
+
+      <Label>{t('profile.currentWeight')}</Label>
+      <WeightInput weightKg={profile.weight} onChangeKg={weight => void setProfile({ ...profile, weight })} />
+
+      <Label>{t('onb.experienceQuestion')}</Label>
+      <View style={styles.wrap}>
+        {(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[]).map(experience => (
+          <Pill key={experience} active={profile.experience === experience} onPress={() => void setProfile({ ...profile, experience })}>
+            {getExperienceLabel(experience, t)}
+          </Pill>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function TrainingEditor({
+  profile,
+  scope,
+  setProfile,
+  t,
+}: {
+  profile: UserProfile;
+  scope: CoachScope;
+  setProfile: (profile: UserProfile) => Promise<void>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <Label>{t('profile.sessionsPerWeek')}</Label>
+      <View style={styles.wrap}>
+        {[1, 2, 3, 4, 5, 6].map(count => (
+          <Pill key={count} active={profile.sessionsPerWeek === count} onPress={() => void setProfile({ ...profile, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) })}>
+            {count}×
+          </Pill>
+        ))}
+      </View>
+
+      {scopeHasTraining(scope) ? (
+        <>
+          <Label>{t('profile.restDays')}</Label>
+          <View style={styles.wrap}>
+            {WEEKDAY_REST.map(day => (
+              <Pill
+                key={day.value}
+                active={(profile.preferredRestDays ?? []).includes(day.value)}
+                onPress={() => void setProfile({ ...profile, preferredRestDays: toggleRestDay(profile.preferredRestDays, day.value) })}
+              >
+                {t(day.labelKey)}
+              </Pill>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      <Label>{t('profile.injuryCaution')}</Label>
+      <View style={styles.wrap}>
+        <Pill active={profile.injuryFlag === false || profile.injuryFlag === undefined} onPress={() => void setProfile({ ...profile, injuryFlag: false })}>{t('profile.noInjury')}</Pill>
+        <Pill active={profile.injuryFlag === true} onPress={() => void setProfile({ ...profile, injuryFlag: true })}>{t('profile.injuryCaution')}</Pill>
+      </View>
+    </>
+  );
+}
+
+function NutritionEditor({
+  profile,
+  setProfile,
+  t,
+}: {
+  profile: UserProfile;
+  setProfile: (profile: UserProfile) => Promise<void>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <Label>{t('profile.nutritionMode')}</Label>
+      <View style={styles.wrap}>
+        {nutritionModes.map(mode => (
+          <Pill key={mode.value} active={(profile.nutritionMode ?? 'balanced') === mode.value} onPress={() => void setProfile({ ...profile, nutritionMode: mode.value })}>
+            {t(mode.labelKey)}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('profile.dietType')}</Label>
+      <View style={styles.wrap}>
+        {dietStyles.map(diet => (
+          <Pill key={diet} active={profile.diet === diet} onPress={() => void setProfile({ ...profile, diet })}>
+            {t(`diet.${diet}` as TranslationKey)}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('plan.mealCount', { n: profile.mealCount })}</Label>
+      <View style={styles.inlineActions}>
+        <Button variant="secondary" onPress={() => void setProfile({ ...profile, mealCount: Math.max(2, profile.mealCount - 1) })}>{t('plan.removeMeal')}</Button>
+        <Button variant="secondary" onPress={() => void setProfile({ ...profile, mealCount: Math.min(6, profile.mealCount + 1) })}>{t('plan.addMeal')}</Button>
+      </View>
+
+      <Label>{t('profile.foodLikes')}</Label>
+      <Field value={profile.likes} onChangeText={likes => void setProfile({ ...profile, likes })} placeholder={t('profile.foodLikesPlaceholder')} multiline />
+
+      <Label>{t('profile.foodDislikes')}</Label>
+      <Field value={profile.dislikes} onChangeText={dislikes => void setProfile({ ...profile, dislikes })} placeholder={t('profile.foodDislikesPlaceholder')} multiline />
+    </>
+  );
+}
+
+function SettingsEditor({
+  profile,
+  setProfile,
+  locale,
+  setLocale,
+  t,
+}: {
+  profile: UserProfile;
+  setProfile: (profile: UserProfile) => Promise<void>;
+  locale: 'cs' | 'en';
+  setLocale: (locale: 'cs' | 'en') => void;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <Label>{t('settings.language')}</Label>
+      <View style={styles.wrap}>
+        {SUPPORTED_LOCALES.map(loc => (
+          <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
+            {LOCALE_LABELS[loc]}
+          </Pill>
+        ))}
+      </View>
+
+      <Label>{t('settings.units')}</Label>
+      <View style={styles.wrap}>
+        {(['metric', 'imperial'] as const).map(units => (
+          <Pill key={units} active={(profile.units ?? 'metric') === units} onPress={() => void setProfile({ ...profile, units })}>
+            {t(units === 'metric' ? 'settings.unitsMetric' : 'settings.unitsImperial')}
+          </Pill>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function AccountEditor({
+  userEmail,
+  auth,
+  setAuth,
+  login,
+  register,
+  signOut,
+  exportData,
+  confirmDelete,
+  resetLocalProfile,
+  t,
+}: {
+  userEmail?: string;
+  auth: { name: string; email: string; password: string };
+  setAuth: Dispatch<SetStateAction<{ name: string; email: string; password: string }>>;
+  login: () => Promise<void>;
+  register: () => Promise<void>;
+  signOut: () => Promise<void>;
+  exportData: () => Promise<void>;
+  confirmDelete: () => Promise<void>;
+  resetLocalProfile: () => Promise<void>;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+}) {
+  if (userEmail) {
+    return (
+      <>
+        <Text style={styles.accountEmail}>{userEmail}</Text>
+        <View style={styles.inlineActions}>
+          <Button variant="secondary" onPress={exportData}>{t('profile.exportData')}</Button>
+          <Button variant="secondary" onPress={() => void signOut()}>{t('profile.signOut')}</Button>
+        </View>
+        <Button variant="secondary" onPress={() => void resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
+        <Button variant="danger" onPress={() => void confirmDelete()}>{t('profile.deleteAccount')}</Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <Field value={auth.name} onChangeText={name => setAuth(v => ({ ...v, name }))} placeholder={t('profile.namePlaceholder')} />
+      <Field autoCapitalize="none" keyboardType="email-address" value={auth.email} onChangeText={email => setAuth(v => ({ ...v, email }))} placeholder={t('profile.emailPlaceholder')} />
+      <Field secureTextEntry value={auth.password} onChangeText={password => setAuth(v => ({ ...v, password }))} placeholder={t('profile.passwordPlaceholder')} />
+      <View style={styles.inlineActions}>
+        <Button variant="secondary" onPress={() => void login()}>{t('profile.signIn')}</Button>
+        <Button onPress={() => void register()}>{t('profile.register')}</Button>
+      </View>
+      <Button variant="secondary" onPress={() => void resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
+    </>
+  );
+}
+
+const trainingGoals: Array<{ value: TrainingGoalKind; labelKey: TranslationKey }> = [
+  { value: 'general_fitness', labelKey: 'trainingGoal.general_fitness' },
+  { value: 'walking_more', labelKey: 'trainingGoal.walking_more' },
+  { value: 'couch_to_5k', labelKey: 'trainingGoal.couch_to_5k' },
+  { value: 'run_5k', labelKey: 'trainingGoal.run_5k' },
+  { value: 'run_10k', labelKey: 'trainingGoal.run_10k' },
+  { value: 'half_marathon', labelKey: 'trainingGoal.half_marathon' },
+  { value: 'strength_basics', labelKey: 'trainingGoal.strength_basics' },
+  { value: 'hyrox', labelKey: 'trainingGoal.hyrox' },
 ];
 
 const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
@@ -366,6 +582,20 @@ const WEEKDAY_REST = [
   { value: 0, labelKey: 'weekday.sun' as TranslationKey },
 ];
 
+function trainingContext(profile: UserProfile, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
+  const environment = profile.goalProfile?.trainingEnvironment;
+  if (environment === 'gym') return t('profile.gymTraining');
+  if (environment === 'home') return t('profile.homeTraining');
+  if (environment === 'mixed') return t('profile.mixedTraining');
+  if (profile.goalProfile?.gymStrengthAvailable) return t('profile.gymTraining');
+  return profile.mainSport?.label ?? t('profile.trainingContextDefault');
+}
+
+function restDaySummary(days: number[] | undefined, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
+  if (!days?.length) return t('profile.noRestDays');
+  return days.map(day => t(WEEKDAY_REST.find(item => item.value === day)?.labelKey ?? 'profile.notSet')).join(' · ');
+}
+
 function toggleRestDay(current: number[] | undefined, day: number): number[] {
   const set = new Set(current ?? []);
   if (set.has(day)) set.delete(day);
@@ -378,26 +608,15 @@ function parseOptionalInt(value: string, max: number): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, max) : undefined;
 }
 
-function setupMissingLabelKey(item: SetupMissingItem): TranslationKey {
-  return `setup.missing.${item}` as TranslationKey;
-}
-
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
-  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  summaryTile: { flex: 1, minWidth: '30%', borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
-  summaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
-  summaryValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
-  setupList: { gap: 5, marginTop: 8 },
-  setupItem: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  user: { fontWeight: '900' },
-  copy: { lineHeight: 20 },
-  link: { fontWeight: '900' },
-  summaryHeadline: { fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 6 },
-  summarySectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
-  summaryBullet: { fontSize: 13, lineHeight: 19 },
-  summaryRec: { fontSize: 14, lineHeight: 20, fontWeight: '700', marginTop: 4 },
-  summaryMeta: { fontSize: 11, marginTop: 10 },
-  errorText: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
+  screen: { gap: 14 },
+  sectionRows: { gap: 5 },
+  sectionLead: { fontSize: 16, lineHeight: 22, fontWeight: '900' },
+  rowText: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  editor: { borderTopWidth: 1, marginTop: 12, paddingTop: 12, gap: 10 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  inlineActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  linkRow: { gap: 8, marginTop: 10 },
+  link: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
+  accountEmail: { fontSize: 14, lineHeight: 20, fontWeight: '900' },
 });

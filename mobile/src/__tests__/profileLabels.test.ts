@@ -1,0 +1,38 @@
+import { describe, expect, it } from 'vitest';
+import { createTranslator } from '../lib/i18n';
+import {
+  formatProfileValue,
+  getExperienceLabel,
+  getGoalLabel,
+  getHealthProviderLabel,
+  getHealthProviderStatus,
+  getNutritionModeLabel,
+  getRaceGoalLabel,
+  summarizeLikesDislikes,
+} from '../lib/profile/profile-labels';
+
+const t = createTranslator('en');
+
+describe('profile label helpers', () => {
+  it('maps profile goal fields to user-facing labels', () => {
+    expect(getGoalLabel({ primaryGoal: 'lose_fat' }, t)).toBe('Fat loss');
+    expect(getRaceGoalLabel('run_10k', t)).toBe('10 km');
+    expect(getNutritionModeLabel('fat_loss_friendly', t)).toBe('Fat-loss friendly');
+    expect(getExperienceLabel('intermediate', t)).toBe('Intermediate');
+  });
+
+  it('summarizes health provider state without pretending native health is connected', () => {
+    expect(getHealthProviderLabel('manual', t)).toBe('Manual check-ins');
+    expect(getHealthProviderStatus('auto', { available: false, platform: 'ios' }, 0, t)).toBe('Health data is not connected. You can use manual check-ins.');
+    expect(getHealthProviderStatus('auto', { available: true, platform: 'ios' }, 0, t)).toBe('Apple Health is available.');
+    expect(getHealthProviderStatus('auto', { available: false, platform: 'unsupported' }, 2, t)).toBe('2 connected health sources');
+  });
+
+  it('summarizes food preferences and missing values', () => {
+    expect(summarizeLikesDislikes('rice, eggs, yogurt', '', t)).toBe('Likes: rice, eggs, yogurt');
+    expect(summarizeLikesDislikes('', '', t)).toBe('No food preferences yet');
+    expect(summarizeLikesDislikes('a very long preference string that should be shortened', 'fish', t, 24)).toContain('…');
+    expect(formatProfileValue(undefined, t, ' kg')).toBe('Not set');
+    expect(formatProfileValue(76, t, ' kg')).toBe('76 kg');
+  });
+});
