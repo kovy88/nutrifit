@@ -58,6 +58,15 @@ export function formatDistance(km: number, u: UnitSystem, decimals = 1): string 
  * i generované názvy tréninků („Lehký běh 5 km" → „Easy run 3.1 mi"). „800 m"
  * a podobné se nedotkne (matchuje jen „km").
  */
+/** Tempo: sekundy/km (úložiště) → „m:ss/km" nebo „m:ss/mi". */
+export function formatPace(secPerKm: number, u: UnitSystem): string {
+  const secPerUnit = u === 'imperial' ? secPerKm / MI_PER_KM : secPerKm; // míle je delší → víc s/mi
+  let m = Math.floor(secPerUnit / 60);
+  let s = Math.round(secPerUnit % 60);
+  if (s === 60) { m += 1; s = 0; }
+  return `${m}:${String(s).padStart(2, '0')}/${u === 'imperial' ? 'mi' : 'km'}`;
+}
+
 export function convertDistanceInText(text: string, u: UnitSystem): string {
   if (u !== 'imperial' || !text) return text;
   return text.replace(/(\d+(?:\.\d+)?)\s*km\b/g, (_m, n: string) => `${round(kmToMi(Number(n)), 1)} mi`);

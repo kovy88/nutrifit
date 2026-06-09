@@ -11,6 +11,7 @@ import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
+import { formatPace } from '../lib/units';
 import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
 
 const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
@@ -53,7 +54,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
   const sourceLabel = workout.source === 'manual' ? t('workout.srcManual') : (SOURCE_LABEL[workout.source] || workout.source);
   const startedAt = formatFullDateTime(workout.startedAt, t);
   const endedAt = formatTime(workout.endedAt);
-  const pace = workout.avgPaceSecPerKm ? formatPace(workout.avgPaceSecPerKm) : null;
+  const pace = workout.avgPaceSecPerKm ? formatPace(workout.avgPaceSecPerKm, profile?.units ?? 'metric') : null;
 
   function openSource() {
     if (workout?.source === 'strava' && workout.externalId) {
@@ -196,12 +197,6 @@ function formatFullDateTime(iso: string, t: Translate): string {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function formatPace(secondsPerKm: number): string {
-  const m = Math.floor(secondsPerKm / 60);
-  const s = Math.round(secondsPerKm % 60);
-  return `${m}:${String(s).padStart(2, '0')}/km`;
 }
 
 const styles = StyleSheet.create({
