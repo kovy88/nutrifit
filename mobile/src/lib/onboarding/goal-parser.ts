@@ -1,4 +1,5 @@
 import type { GoalParseResult, GoalProfile, GoalQuickStart, NutritionMode, PrimaryGoal, RaceGoal } from '../../types/goal-types';
+import type { CoachScope } from '../../types';
 import { withGoalProfileDefaults } from './goal-schema';
 
 type GoalSignal = {
@@ -10,14 +11,25 @@ type GoalSignal = {
 };
 
 export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
-  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.' },
-  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.' },
-  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.' },
-  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.' },
-  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.' },
-  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.' },
-  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.' },
+  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', scopes: ['both', 'nutrition'] },
+  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', scopes: ['both', 'training'] },
+  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'build_consistency', labelKey: 'onb.quickBuildConsistency', subtitleKey: 'onb.quickBuildConsistencySub', text: 'I want to train consistently.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', scopes: ['both', 'nutrition'] },
 ];
+
+/**
+ * Rychlé starty relevantní pro daný režim kouče. Training-only nezobrazuje čistě
+ * nutriční cíle (jíst zdravěji, zhubnout tuk) — appka tam nemá jídelníček — a
+ * nutrition-only nezobrazuje čistě tréninkové (běžecké závody, kondice). 'both'
+ * vrací vše, protože každý cíl obsahuje scope 'both'.
+ */
+export function quickStartsForScope(scope: CoachScope): GoalQuickStart[] {
+  return GOAL_QUICK_STARTS.filter(q => q.scopes.includes(scope));
+}
 
 export function parseGoalText(rawText: string): GoalParseResult {
   const text = normalize(rawText);

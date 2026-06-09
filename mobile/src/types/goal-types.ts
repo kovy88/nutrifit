@@ -62,6 +62,8 @@ export type GoalQuickStart = {
   labelKey: string;
   subtitleKey: string;
   text: string;
+  /** Ve kterých režimech kouče dává cíl smysl jako rychlý start. 'both' = vždy. */
+  scopes: ('both' | 'training' | 'nutrition')[];
 };
 
 export type GoalParseResult = {

@@ -187,6 +187,7 @@ export function OnboardingScreen() {
           <GoalInputStep
             value={goalInput}
             goalProfile={draft.goalProfile}
+            scope={scope}
             onTextChange={setGoalInput}
             onGoalProfileChange={setGoalProfile}
             t={t}
