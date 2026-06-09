@@ -1,32 +1,34 @@
 import type { GoalProfile, NutritionMode as OnboardingNutritionMode, RaceGoal } from '../../types/goal-types';
 import type { NutritionMode, PrimaryGoal, TrainingGoalKind, UserProfile } from '../../types';
 import { activityFactorForSessions } from '../../utils/nutrition';
+import { normalizeGoalProfile } from '../goals/goal-model';
 
 export function applyGoalProfileToUserProfile(profile: UserProfile, goalProfile: GoalProfile): UserProfile {
-  const sessions = goalProfile.availableTrainingDays ?? profile.sessionsPerWeek;
+  const normalizedGoal = normalizeGoalProfile(goalProfile, profile);
+  const sessions = normalizedGoal.availableTrainingDays ?? profile.sessionsPerWeek;
   const next: UserProfile = {
     ...profile,
-    goalProfile,
-    primaryGoal: mapPrimaryGoal(goalProfile),
-    trainingGoal: mapTrainingGoal(goalProfile.raceGoal, goalProfile.primaryGoal),
-    nutritionMode: mapNutritionMode(goalProfile.nutritionMode),
-    planIntensity: goalProfile.planIntensity,
-    experience: goalProfile.experienceLevel,
+    goalProfile: normalizedGoal,
+    primaryGoal: mapPrimaryGoal(normalizedGoal),
+    trainingGoal: mapTrainingGoal(normalizedGoal.raceGoal, normalizedGoal.primaryGoal),
+    nutritionMode: mapNutritionMode(normalizedGoal.nutritionMode),
+    planIntensity: normalizedGoal.planIntensity,
+    experience: normalizedGoal.experienceLevel,
     sessionsPerWeek: sessions,
     activityFactor: activityFactorForSessions(sessions),
   };
 
-  if (goalProfile.raceDateISO) next.raceDateISO = goalProfile.raceDateISO;
-  if (goalProfile.currentWeeklyKm) next.currentWeeklyKm = goalProfile.currentWeeklyKm;
-  if (goalProfile.longestRecentRunKm) next.longestRecentRunKm = goalProfile.longestRecentRunKm;
-  if (goalProfile.availableTrainingDays) next.availableTrainingDays = goalProfile.availableTrainingDays;
-  if (goalProfile.runsPerWeek) next.runsPerWeek = goalProfile.runsPerWeek;
-  if (goalProfile.currentWeightKg) next.weight = goalProfile.currentWeightKg;
-  if (goalProfile.dietPreferences) next.likes = mergePreference(next.likes, goalProfile.dietPreferences);
-  if (goalProfile.targetTimeSeconds) next.targetTimeSeconds = goalProfile.targetTimeSeconds;
-  if (goalProfile.preferredRestDays) next.preferredRestDays = goalProfile.preferredRestDays;
-  if (goalProfile.injuryFlag !== undefined) next.injuryFlag = goalProfile.injuryFlag;
-  if (goalProfile.runWalkPreferred !== undefined) next.runWalkPreferred = goalProfile.runWalkPreferred;
+  if (normalizedGoal.raceDateISO) next.raceDateISO = normalizedGoal.raceDateISO;
+  if (normalizedGoal.currentWeeklyKm) next.currentWeeklyKm = normalizedGoal.currentWeeklyKm;
+  if (normalizedGoal.longestRecentRunKm) next.longestRecentRunKm = normalizedGoal.longestRecentRunKm;
+  if (normalizedGoal.availableTrainingDays) next.availableTrainingDays = normalizedGoal.availableTrainingDays;
+  if (normalizedGoal.runsPerWeek) next.runsPerWeek = normalizedGoal.runsPerWeek;
+  if (normalizedGoal.currentWeightKg) next.weight = normalizedGoal.currentWeightKg;
+  if (normalizedGoal.dietPreferences) next.likes = mergePreference(next.likes, normalizedGoal.dietPreferences);
+  if (normalizedGoal.targetTimeSeconds) next.targetTimeSeconds = normalizedGoal.targetTimeSeconds;
+  if (normalizedGoal.preferredRestDays) next.preferredRestDays = normalizedGoal.preferredRestDays;
+  if (normalizedGoal.injuryFlag !== undefined) next.injuryFlag = normalizedGoal.injuryFlag;
+  if (normalizedGoal.runWalkPreferred !== undefined) next.runWalkPreferred = normalizedGoal.runWalkPreferred;
 
   return next;
 }

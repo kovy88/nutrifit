@@ -1,5 +1,6 @@
 import type { GoalParseResult, GoalProfile, GoalQuickStart, NutritionMode, PrimaryGoal, RaceGoal } from '../../types/goal-types';
 import type { CoachScope } from '../../types';
+import { normalizeGoalProfile } from '../goals/goal-model';
 import { withGoalProfileDefaults } from './goal-schema';
 
 type GoalSignal = {
@@ -64,10 +65,10 @@ export function updateGoalProfile(current: GoalProfile, patch: Partial<GoalProfi
     summary: buildSummary({ ...current, ...patch }),
     confidence: patch.confidence ?? current.confidence,
   } as GoalProfile;
-  return {
+  return normalizeGoalProfile({
     ...next,
     needsFollowUp: hasMissingCoreFollowUp(next),
-  };
+  });
 }
 
 function detectGoalSignal(text: string): GoalSignal | null {
@@ -125,10 +126,10 @@ function buildGoalProfile(signal: GoalSignal & { rawText?: string }): GoalProfil
     summary: signal.summary || buildSummary({ primaryGoal: signal.primaryGoal, raceGoal: signal.raceGoal ?? 'none' }),
     confidence: signal.matched.length > 1 ? 'high' : 'medium',
   });
-  return {
+  return normalizeGoalProfile({
     ...goalProfile,
     needsFollowUp: hasMissingCoreFollowUp(goalProfile),
-  };
+  });
 }
 
 function detectRaceGoal(text: string): RaceGoal {
@@ -175,16 +176,7 @@ function raceLabel(raceGoal: RaceGoal): string {
 function hasMissingCoreFollowUp(goal: GoalProfile): boolean {
   if (goal.primaryGoal === 'run_race' && goal.raceGoal === 'none') return true;
   if (goal.raceGoal !== 'none') {
-    return !goal.raceDateISO || !goal.currentWeeklyKm || !goal.longestRecentRunKm || !goal.availableTrainingDays || !goal.experienceLevel || !goal.runsPerWeek || goal.injuryFlag === undefined || goal.gymStrengthAvailable === undefined || goal.runWalkPreferred === undefined;
-  }
-  if (goal.primaryGoal === 'lose_fat') {
-    return !goal.currentWeightKg || (!goal.targetWeightKg && !goal.desiredWeightChangeKg);
-  }
-  if (goal.primaryGoal === 'build_muscle') {
-    return !goal.trainingEnvironment || !goal.availableTrainingDays;
-  }
-  if (goal.primaryGoal === 'build_consistency' || goal.primaryGoal === 'improve_fitness' || goal.primaryGoal === 'recover_better') {
-    return !goal.mainWellbeingBlocker;
+    return !goal.raceDateISO;
   }
   return false;
 }

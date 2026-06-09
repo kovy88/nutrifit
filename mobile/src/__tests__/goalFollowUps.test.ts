@@ -10,60 +10,37 @@ describe('goal follow-up generation', () => {
     expect(hasRequiredGoalFollowUps(goal)).toBe(false);
   });
 
-  it('asks only missing race planning details for half marathon and marathon goals', () => {
+  it('asks only the race date for explicit race goals during MVP onboarding', () => {
     const goal = parseGoalText('I want to run a half marathon').goalProfile!;
 
-    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([
-      'raceDateISO',
-      'currentWeeklyKm',
-      'longestRecentRunKm',
-      'runsPerWeek',
-      'availableTrainingDays',
-      'targetTimeSeconds',
-      'injuryFlag',
-      'gymStrengthAvailable',
-      'runWalkPreferred',
-    ]);
+    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual(['raceDateISO']);
 
     const complete = updateGoalProfile(goal, {
       raceDateISO: '2026-10-01',
-      currentWeeklyKm: 25,
-      longestRecentRunKm: 14,
-      runsPerWeek: 3,
-      availableTrainingDays: 4,
-      targetTimeSeconds: 7200,
-      injuryFlag: false,
-      gymStrengthAvailable: true,
-      runWalkPreferred: false,
     });
 
     expect(generateGoalFollowUps(complete)).toEqual([]);
     expect(hasRequiredGoalFollowUps(complete)).toBe(true);
   });
 
-  it('asks fat-loss goal details without forcing maintenance as a primary goal', () => {
+  it('does not ask fat-loss details before the first usable plan', () => {
     const goal = parseGoalText('I want to lose fat').goalProfile!;
 
-    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([
-      'currentWeightKg',
-      'desiredWeightChangeKg',
-      'timelineWeeks',
-      'dietPreferences',
-    ]);
+    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([]);
+    expect(hasRequiredGoalFollowUps(goal)).toBe(true);
   });
 
-  it('asks build muscle training context', () => {
+  it('defers build muscle training context until after quick start', () => {
     const goal = parseGoalText('I want to build muscle but not gain too much fat').goalProfile!;
 
-    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([
-      'trainingEnvironment',
-      'availableTrainingDays',
-    ]);
+    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([]);
+    expect(hasRequiredGoalFollowUps(goal)).toBe(true);
   });
 
-  it('asks the main blocker for feel-better goals', () => {
+  it('defers the main blocker for feel-better goals', () => {
     const goal = parseGoalText('I just want to feel better and be consistent').goalProfile!;
 
-    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual(['mainWellbeingBlocker']);
+    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual([]);
+    expect(hasRequiredGoalFollowUps(goal)).toBe(true);
   });
 });
