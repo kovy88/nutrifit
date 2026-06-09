@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   displayWeight, parseWeightToKg, displayDistance, parseDistanceToKm,
-  formatWeight, formatDistance, weightUnitLabel, distanceUnitLabel, convertDistanceInText,
+  formatWeight, formatDistance, weightUnitLabel, distanceUnitLabel, convertDistanceInText, formatPace,
 } from '../lib/units';
 
 describe('units', () => {
@@ -34,6 +34,11 @@ describe('units', () => {
     expect(convertDistanceInText('Long run 12.3 km', 'imperial')).toBe('Long run 7.6 mi');
     expect(convertDistanceInText('Intervaly 6 km (6×800 m)', 'imperial')).toBe('Intervaly 3.7 mi (6×800 m)');
     expect(convertDistanceInText('Lehký běh 5 km', 'metric')).toBe('Lehký běh 5 km');
+  });
+
+  it('formatPace: /km vs /mi', () => {
+    expect(formatPace(300, 'metric')).toBe('5:00/km');
+    expect(formatPace(300, 'imperial')).toBe('8:03/mi'); // 5:00/km ≈ 8:03/mi
   });
 
   it('formáty + labely', () => {
