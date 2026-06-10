@@ -96,11 +96,11 @@ export function PhotoScreen() {
 
   return (
     <Screen contentContainerStyle={styles.screen}>
-      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('photo.eyebrow')} title={t('photo.title')} subtitle={t('photo.cleanSubtitle')} />
+      <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('photo.eyebrow')} title={t('photo.title')} subtitle={photoHeaderCopy(locale)} />
 
       <SectionCard
         title={image ? t('photo.previewTitle') : t('photo.startTitle')}
-        body={image ? t('photo.cleanSubtitle') : t('photo.emptyBody')}
+        body={image ? photoPreviewCopy(locale) : photoEmptyCopy(locale)}
         statusLabel={estimate ? t('photo.reviewReady') : image ? t('photo.readyToAnalyze') : t('photo.emptyStatus')}
         statusTone={estimate ? 'ready' : image ? 'info' : 'neutral'}
       >
@@ -115,7 +115,7 @@ export function PhotoScreen() {
             { icon: 'images-outline', label: t('photo.gallery'), onPress: pickImage },
             ...(image ? [{
               icon: 'sparkles-outline' as const,
-              label: loading ? t('photo.analyzing') : estimate ? t('photo.reanalyze') : t('photo.estimateMacros'),
+              label: loading ? t('photo.analyzing') : estimate ? photoRecheckLabel(locale) : photoEstimateLabel(locale),
               onPress: analyze,
               disabled: loading,
               primary: !estimate,
@@ -124,7 +124,7 @@ export function PhotoScreen() {
         />
       </SectionCard>
 
-      {loading ? <LoadingState title={t('photo.loadingTitle')} body={t('photo.loadingBody')} /> : null}
+      {loading ? <LoadingState title={t('photo.loadingTitle')} body={photoLoadingCopy(locale)} /> : null}
 
       {error ? (
         <SectionCard title={t('photo.errorTitle')} statusLabel={t('common.error')} statusTone="risk">
@@ -136,11 +136,11 @@ export function PhotoScreen() {
       {estimate ? (
         <SectionCard
           title={estimate.foodName || t('photo.reviewTitle')}
-          body={estimate.portionGuess ? [estimate.portionGuess, t('photo.reviewBody')] : t('photo.reviewBody')}
+          body={estimate.portionGuess ? [estimate.portionGuess, photoReviewCopy(locale)] : photoReviewCopy(locale)}
         >
-          <InfoRow label={t('workout.kcal')} value={estimate.kcal} />
+          <InfoRow label={photoEnergyLabel(locale)} value={estimate.kcal} />
           <InfoRow label={t('home.protein')} value={`${estimate.protein} g`} />
-          <CollapsibleDetails label={t('photo.editEstimate')}>
+          <CollapsibleDetails label={photoEditLabel(locale)}>
             <Label>{t('photo.foodName')}</Label>
             <Field value={estimate.foodName} onChangeText={foodName => setEstimate(value => value && ({ ...value, foodName }))} />
             <Label>{t('photo.portion')}</Label>
@@ -161,6 +161,52 @@ export function PhotoScreen() {
       <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </Screen>
   );
+}
+
+function photoHeaderCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Pick a photo, check the estimate, then add it to today.'
+    : 'Vyber fotku, zkontroluj odhad a přidej ho do dne.';
+}
+
+function photoEmptyCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Start with one clear photo. You can adjust the estimate before saving.'
+    : 'Začni jednou jasnou fotkou. Odhad můžeš před uložením upravit.';
+}
+
+function photoPreviewCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Check that this is the meal you want to log.'
+    : 'Zkontroluj, že je to jídlo, které chceš zapsat.';
+}
+
+function photoLoadingCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Looking for the meal and a practical portion estimate.'
+    : 'Hledám jídlo a praktický odhad porce.';
+}
+
+function photoReviewCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'If the portion looks close, add it. Edit details only when needed.'
+    : 'Pokud porce sedí, přidej ji. Detaily uprav jen když je potřeba.';
+}
+
+function photoEstimateLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Estimate meal' : 'Odhadnout jídlo';
+}
+
+function photoRecheckLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Recheck' : 'Zkontrolovat znovu';
+}
+
+function photoEditLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Edit details' : 'Upravit detaily';
+}
+
+function photoEnergyLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Energy' : 'Energie';
 }
 
 function MetricInput({
