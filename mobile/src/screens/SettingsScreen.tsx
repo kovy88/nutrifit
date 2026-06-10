@@ -307,7 +307,7 @@ export function SettingsScreen() {
       />
 
       <SectionCard
-        title={t('settings.healthSourceTitle')}
+        title={settingsHealthTitle(locale)}
         body={[
           healthSourceSummary(profile?.healthProviderMode ?? 'auto', connectedOAuth.length, native.available, locale),
           healthSourceState(profile?.healthProviderMode ?? 'auto', connectedOAuth.length, native.available, native.permission, t, locale),
@@ -462,6 +462,10 @@ function formatPermission(p: string, t: Translate): string {
     case 'unavailable': return t('settings.permUnavailable');
     default: return p;
   }
+}
+
+function settingsHealthTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Health data' : 'Zdravotní data';
 }
 
 function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect', t: Translate): string {
