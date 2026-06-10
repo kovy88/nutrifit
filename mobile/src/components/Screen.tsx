@@ -15,7 +15,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
   const content = (
     <>
       {children}
-      <View style={{ height: footer ? 8 : 20 }} />
+      <View style={{ height: footer ? 28 : 96 }} />
     </>
   );
 
@@ -33,7 +33,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
       )}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         {scroll ? (
-          <ScrollView contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">
             {content}
           </ScrollView>
         ) : (
@@ -48,6 +48,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
+  scroll: { flex: 1, overflow: 'hidden' },
   content: { padding: 20, gap: 16 },
   footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },

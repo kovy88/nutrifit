@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
 import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
 import { EmptyState, LoadingState } from '../components/UI';
-import { ActionStrip, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
+import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -85,7 +85,7 @@ export function TodayScreen() {
           <HeroDecisionCard
             eyebrow={decision?.label ?? t('today.oneThing')}
             title={decision?.title ?? rec.headline}
-            body={rec.coachNote}
+            body={todayHeroBody(rec, locale)}
             accent={readinessColor}
             statusLabel={bandLabel(rec.readiness.band, t)}
             statusTone={rec.readiness.band === 'high' ? 'ready' : rec.readiness.band === 'medium' ? 'caution' : 'risk'}
@@ -116,21 +116,29 @@ export function TodayScreen() {
           {showNutrition && rec.nutrition ? (
             <SectionCard
               title={t('today.nutritionTitle')}
-              body={nutritionMessage(rec, locale)}
+              body={nutritionGuidance(rec, trainingDay, locale)}
               ctaLabel={t('today.meals')}
               onPress={() => navigation.navigate('Jídelníček')}
             >
-              <InfoRow label="kcal" value={rec.nutrition.targets.kcal} />
-              <InfoRow label={t('home.protein')} value={`${rec.nutrition.targets.protein} g`} />
+              <CollapsibleDetails label={t('plan.detail')}>
+                <InfoRow label="kcal" value={rec.nutrition.targets.kcal} />
+                <InfoRow label={t('home.protein')} value={`${rec.nutrition.targets.protein} g`} />
+              </CollapsibleDetails>
             </SectionCard>
           ) : null}
 
           <SectionCard
             title={t('today.focus')}
-            body={whyLines(rec, locale)}
+            body={todayWhyLines(rec, locale)}
             ctaLabel={t('tab.coach')}
             onPress={() => navigation.navigate('Coach')}
-          />
+          >
+            <CollapsibleDetails label={t('plan.detail')}>
+              {whyLines(rec, locale).map((line, index) => (
+                <Text key={`${index}-${line}`} style={[styles.smallNote, { color: colors.faint }]}>{line}</Text>
+              ))}
+            </CollapsibleDetails>
+          </SectionCard>
 
           <SectionCard title={t('today.weekTitle')} body={[tomorrow.title, tomorrow.body]}>
             {logStreak >= 2 ? (
@@ -169,7 +177,7 @@ function TodayActionCard({
   const primaryAction = trainingDay ? onDone : onCheckIn;
 
   return (
-    <SectionCard title={t('today.oneThing')} body={t('today.readinessNote')}>
+    <SectionCard title={t('today.oneThing')} body={todayActionBody(trainingDay, completed, t)}>
       <ActionStrip
         actions={[
           { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
@@ -269,14 +277,59 @@ function trainingDetail(
   return whatNotToDo ? `${detail} ${whatNotToDo}`.trim() : detail;
 }
 
-function nutritionMessage(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+function todayHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en'
+      ? 'Keep today calm and let recovery make tomorrow easier.'
+      : 'Dnes to drž v klidu, ať zítra půjde plán líp.';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard') {
+    return locale === 'en'
+      ? 'Do the planned quality work, but do not add extra volume.'
+      : 'Odtrénuj plánovanou kvalitu, ale nepřidávej objem navíc.';
+  }
+  if (rec.readiness.recommendedIntensity === 'easy') {
+    return locale === 'en'
+      ? 'Move lightly and keep the session conversational.'
+      : 'Hýbej se lehce a drž trénink konverzační.';
+  }
+  return locale === 'en'
+    ? 'Follow the plan and keep the rest of the day steady.'
+    : 'Drž se plánu a zbytek dne nech stabilní.';
+}
+
+function todayActionBody(
+  trainingDay: boolean,
+  completed: boolean,
+  t: (key: TranslationKey) => string,
+): string {
+  if (trainingDay && completed) return t('today.completedMsg');
+  if (trainingDay) return t('today.decisionHoldHint');
+  return t('today.restNote');
+}
+
+function nutritionGuidance(rec: DailyCoachRecommendation, trainingDay: boolean, locale: 'cs' | 'en'): string {
   const reason = rec.nutrition?.reason ?? '';
   const delta = rec.nutrition?.deltaVsBaselineKcal ?? 0;
-  if (!delta) return reason;
-  const prefix = delta > 0
-    ? (locale === 'en' ? `Eat about +${delta} kcal today.` : `Dnes jez zhruba +${delta} kcal.`)
-    : (locale === 'en' ? `Keep today lighter by ${Math.abs(delta)} kcal.` : `Dnes drž lehčí den o ${Math.abs(delta)} kcal.`);
-  return `${prefix} ${reason}`.trim();
+  if (trainingDay && delta > 0) {
+    return locale === 'en'
+      ? 'Fuel around the workout and keep the rest of the day simple.'
+      : 'Dej víc energie kolem tréninku a zbytek dne nech jednoduchý.';
+  }
+  if (delta < 0) {
+    return locale === 'en'
+      ? 'Keep meals a little lighter today without cutting protein.'
+      : 'Dnes drž jídlo o něco lehčí, ale neubírej protein.';
+  }
+  if (reason.toLowerCase().includes('training')) {
+    return locale === 'en'
+      ? 'Keep food steady and place carbs near training.'
+      : 'Jídlo drž stabilní a sacharidy dej blíž k tréninku.';
+  }
+  return locale === 'en'
+    ? 'Keep meals steady and make protein the anchor.'
+    : 'Jídlo drž stabilní a opři ho o protein.';
 }
 
 function whyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
@@ -285,6 +338,30 @@ function whyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] 
     lines.push(locale === 'en' ? `Watch: ${rec.warnings[0]}` : `Pozor: ${rec.warnings[0]}`);
   }
   return lines.length ? lines : [rec.coachNote];
+}
+
+function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
+  const session = rec.training?.session;
+  const lines: string[] = [];
+  if (session && session.kind !== 'rest') {
+    lines.push(locale === 'en'
+      ? 'Your plan has training today, so the recommendation protects quality without adding extra load.'
+      : 'Dnes máš v plánu trénink, takže doporučení hlídá kvalitu bez zbytečného přidávání.');
+  } else {
+    lines.push(locale === 'en'
+      ? 'A calmer day helps the next planned session land better.'
+      : 'Klidnější den pomůže, aby další plánovaný trénink sedl líp.');
+  }
+  if (rec.warnings[0]) {
+    lines.push(locale === 'en'
+      ? 'If something feels off, choose the easier version.'
+      : 'Když se nebudeš cítit dobře, zvol lehčí variantu.');
+  } else if (rec.readiness.band === 'high') {
+    lines.push(locale === 'en'
+      ? 'You can follow the plan, but there is no need to chase more.'
+      : 'Můžeš držet plán, ale není potřeba honit něco navíc.');
+  }
+  return lines.slice(0, 2);
 }
 
 function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs' | 'en') {

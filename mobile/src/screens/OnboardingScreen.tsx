@@ -31,7 +31,7 @@ import {
 
 export function OnboardingScreen() {
   const { setProfile } = useTrenr();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { colors } = useTheme();
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<UserProfile>(() => ({ ...DEFAULT_PROFILE, age: 0, height: 0, weight: 0 }));
@@ -81,6 +81,9 @@ export function OnboardingScreen() {
     : shouldShowRequired
       ? stepValidation.messageKey
       : helpKeyFor(step);
+  const footerMessage = step === 'body' && !shouldShowRequired
+    ? bodyHelpCopy(locale)
+    : t(footerMessageKey, stepValidation.params);
 
   function markTouched(field: OnboardingField) {
     setTouchedFields(current => ({ ...current, [field]: true }));
@@ -145,7 +148,7 @@ export function OnboardingScreen() {
         )}
       </View>
       <Text style={[styles.validationText, { color: shouldShowRequired ? colors.orange : colors.muted }]}>
-        {t(footerMessageKey, stepValidation.params)}
+        {footerMessage}
       </Text>
     </View>
   );
@@ -155,7 +158,7 @@ export function OnboardingScreen() {
       <OnboardingProgress current={idx + 1} total={total} />
 
       <H1>{questionFor(step, t)}</H1>
-      <Subtitle>{t(helpKeyFor(step))}</Subtitle>
+      <Subtitle>{step === 'body' ? bodyHelpCopy(locale) : t(helpKeyFor(step))}</Subtitle>
       {step === 'focus' && (
         <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
@@ -205,20 +208,29 @@ export function OnboardingScreen() {
         ))}
 
         {step === 'sessions' && (
-          <View style={styles.wrap}>
+          <View style={styles.sessionGrid}>
             {[1, 2, 3, 4, 5, 6].map(count => (
-              <Pill
+              <Pressable
                 key={count}
-                active={Boolean(touchedFields.sessionsPerWeek) && draft.sessionsPerWeek === count}
+                accessibilityRole="button"
                 onPress={() => {
                   completeChoice(
                     { ...draft, sessionsPerWeek: count, activityFactor: activityFactorForSessions(count) },
                     { ...touchedFields, sessionsPerWeek: true },
                   );
                 }}
+                style={({ pressed }) => [
+                  styles.sessionChoice,
+                  {
+                    borderColor: Boolean(touchedFields.sessionsPerWeek) && draft.sessionsPerWeek === count ? colors.accent : colors.border,
+                    backgroundColor: Boolean(touchedFields.sessionsPerWeek) && draft.sessionsPerWeek === count ? colors.accent + '1F' : colors.bgElev,
+                  },
+                  pressed && { opacity: 0.88 },
+                ]}
               >
-                {count}×
-              </Pill>
+                <Text style={[styles.sessionNumber, { color: colors.ink }]}>{count}×</Text>
+                <Text style={[styles.sessionLabel, { color: colors.muted }]}>{sessionOptionLabel(count, locale)}</Text>
+              </Pressable>
             ))}
           </View>
         )}
@@ -446,6 +458,17 @@ function questionFor(step: StepId, t: (k: TranslationKey) => string): string {
   }
 }
 
+function bodyHelpCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'A few basics let Trenr make your first food recommendation useful.'
+    : 'Pár základních údajů stačí, aby první jídelní doporučení dávalo smysl.';
+}
+
+function sessionOptionLabel(count: number, locale: 'cs' | 'en'): string {
+  if (locale === 'en') return count === 1 ? 'day/week' : 'days/week';
+  return count === 1 ? 'den týdně' : 'dny týdně';
+}
+
 const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }> = [
   { value: 'both', titleKey: 'scope.both', subKey: 'scope.bothSub' },
   { value: 'training', titleKey: 'scope.training', subKey: 'scope.trainingSub' },
@@ -534,6 +557,10 @@ const styles = StyleSheet.create({
   modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
   options: { gap: 10, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  sessionChoice: { width: '30%', flexGrow: 1, minHeight: 68, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 10 },
+  sessionNumber: { fontSize: 20, lineHeight: 24, fontWeight: '900' },
+  sessionLabel: { fontSize: 11, lineHeight: 14, fontWeight: '800', textAlign: 'center' },
   bodyWrap: { gap: 12 },
   footer: { gap: 8 },
   actions: { flexDirection: 'row', gap: 10 },

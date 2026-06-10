@@ -309,13 +309,11 @@ export function SettingsScreen() {
       <SectionCard
         title={t('settings.healthSourceTitle')}
         body={[
-          healthModeLabel(profile?.healthProviderMode ?? 'auto', t),
-          native.available
-            ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
-            : t('settings.healthSourceExplain'),
+          healthSourceSummary(profile?.healthProviderMode ?? 'auto', connectedOAuth.length, native.available, locale),
+          healthSourceState(profile?.healthProviderMode ?? 'auto', connectedOAuth.length, native.available, native.permission, t, locale),
         ]}
-        statusLabel={connectedOAuth.length ? t('settings.connectedShort') : native.available ? t('settings.available') : t('settings.pending')}
-        statusTone={connectedOAuth.length || native.available ? 'ready' : 'caution'}
+        statusLabel={healthSourceStatus(profile?.healthProviderMode ?? 'auto', connectedOAuth.length, native.available, t, locale)}
+        statusTone={connectedOAuth.length || native.available || profile?.healthProviderMode === 'manual' ? 'ready' : 'caution'}
         detailLabel={t('plan.detail')}
         detailChildren={(
           <>
@@ -471,7 +469,55 @@ function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'he
   if (mode === 'mock') return t('profile.healthMock');
   if (mode === 'apple_health') return t('settings.nativeIos');
   if (mode === 'health_connect') return t('settings.nativeAndroid');
-  return t('settings.healthSourceTitle');
+  return t('settings.nativeGeneric');
+}
+
+function healthSourceSummary(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeAvailable: boolean,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0 || nativeAvailable || mode === 'apple_health' || mode === 'health_connect') {
+    return locale === 'en' ? 'Health data' : 'Zdravotní data';
+  }
+  if (mode === 'mock') return locale === 'en' ? 'Demo data' : 'Demo data';
+  if (mode === 'manual') return locale === 'en' ? 'Manual check-ins' : 'Ruční check-iny';
+  return locale === 'en' ? 'Health data is not connected' : 'Zdravotní data nejsou připojená';
+}
+
+function healthSourceState(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeAvailable: boolean,
+  permission: string,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0) {
+    return locale === 'en' ? 'Connected sources can support sleep, recovery and workouts.' : 'Připojené zdroje pomáhají se spánkem, regenerací a tréninky.';
+  }
+  if (nativeAvailable) return t('settings.nativeStatus', { status: formatPermission(permission, t) });
+  if (mode === 'mock') {
+    return locale === 'en' ? 'Useful for trying the app without real health data.' : 'Hodí se na vyzkoušení appky bez reálných zdravotních dat.';
+  }
+  return locale === 'en'
+    ? 'You can keep using manual check-ins and connect sources later.'
+    : 'Můžeš používat ruční check-iny a zdroje připojit později.';
+}
+
+function healthSourceStatus(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeAvailable: boolean,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0) return t('settings.connectedShort');
+  if (nativeAvailable || mode === 'apple_health' || mode === 'health_connect') return t('settings.available');
+  if (mode === 'mock') return locale === 'en' ? 'Demo' : 'Demo';
+  if (mode === 'manual') return locale === 'en' ? 'Manual' : 'Ručně';
+  return t('settings.notConnected');
 }
 
 const styles = StyleSheet.create({

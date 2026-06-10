@@ -20,8 +20,6 @@ import { useUnits } from '../hooks/useUnits';
 import {
   getExperienceLabel,
   getGoalLabel,
-  getHealthProviderLabel,
-  getHealthProviderStatus,
   getNutritionModeLabel,
   getRaceGoalLabel,
   summarizeLikesDislikes,
@@ -69,8 +67,8 @@ export function ProfileScreen() {
     summarizeLikesDislikes(profile.likes, profile.dislikes, t),
   ];
   const healthRows = [
-    getHealthProviderLabel(profile.healthProviderMode, t),
-    getHealthProviderStatus(profile.healthProviderMode, native, connectedOAuth.length, t),
+    profileHealthModeLabel(profile.healthProviderMode, connectedOAuth.length, native.available, locale),
+    profileHealthState(profile.healthProviderMode, connectedOAuth.length, native.available, locale),
   ];
   const settingsRows = [
     t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
@@ -580,6 +578,46 @@ function trainingContext(profile: UserProfile, t: (key: TranslationKey, params?:
 function restDaySummary(days: number[] | undefined, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
   if (!days?.length) return t('profile.noRestDays');
   return days.map(day => t(WEEKDAY_REST.find(item => item.value === day)?.labelKey ?? 'profile.notSet')).join(' · ');
+}
+
+function profileHealthModeLabel(
+  mode: UserProfile['healthProviderMode'],
+  connectedCount: number,
+  nativeAvailable: boolean,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0 || nativeAvailable || mode === 'apple_health' || mode === 'health_connect') {
+    return locale === 'en' ? 'Health data' : 'Zdravotní data';
+  }
+  if (mode === 'mock') return locale === 'en' ? 'Demo data' : 'Demo data';
+  if (mode === 'manual') return locale === 'en' ? 'Manual check-ins' : 'Ruční check-iny';
+  return locale === 'en' ? 'Health data not connected' : 'Zdravotní data nejsou připojená';
+}
+
+function profileHealthState(
+  mode: UserProfile['healthProviderMode'],
+  connectedCount: number,
+  nativeAvailable: boolean,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0) {
+    return locale === 'en'
+      ? 'Connected sources can support your daily recommendation.'
+      : 'Připojené zdroje pomáhají dennímu doporučení.';
+  }
+  if (nativeAvailable) {
+    return locale === 'en'
+      ? 'Native health data is available for setup.'
+      : 'Nativní zdravotní data jsou dostupná k nastavení.';
+  }
+  if (mode === 'mock') {
+    return locale === 'en'
+      ? 'Demo values are only for trying the app.'
+      : 'Demo hodnoty slouží jen na vyzkoušení appky.';
+  }
+  return locale === 'en'
+    ? 'Manual check-ins work now; sources can be connected later.'
+    : 'Ruční check-iny fungují hned, zdroje můžeš připojit později.';
 }
 
 function toggleRestDay(current: number[] | undefined, day: number): number[] {

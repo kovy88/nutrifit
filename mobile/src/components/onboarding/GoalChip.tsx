@@ -25,12 +25,14 @@ export function GoalChip({ active, children, onPress }: PropsWithChildren<{ acti
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 42,
+    width: '47%',
+    flexGrow: 1,
+    minHeight: 54,
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     justifyContent: 'center',
   },
-  text: { fontSize: 13, lineHeight: 16 },
+  text: { fontSize: 14, lineHeight: 18, textAlign: 'center' },
 });

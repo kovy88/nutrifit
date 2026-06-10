@@ -79,8 +79,8 @@ export function SectionCard({
         title={title}
         action={statusLabel ? <StatusPill label={statusLabel} tone={statusTone} /> : undefined}
       />
-      {bodyRows.slice(0, 2).map(row => (
-        <Text key={row} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
+      {bodyRows.slice(0, 2).map((row, index) => (
+        <Text key={`${index}-${row}`} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
       ))}
       {children}
       <View style={styles.cardActions}>
@@ -115,9 +115,9 @@ export function ActionStrip({
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.actionStrip}>
-      {actions.slice(0, 3).map(action => (
+      {actions.slice(0, 3).map((action, index) => (
         <Pressable
-          key={action.label}
+          key={`${index}-${action.label}`}
           disabled={action.disabled}
           onPress={action.onPress}
           style={({ pressed }) => [

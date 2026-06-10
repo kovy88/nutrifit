@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, EmptyState, Field, ScreenHeader } from '../components/UI';
+import { Button, Field, ScreenHeader } from '../components/UI';
 import { HeroDecisionCard, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTrenr } from '../context/TrenrContext';
-import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import { sportName } from '../lib/training/sports';
@@ -16,7 +14,7 @@ import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
 import { incrementCoachTeaserUsed, loadCoachTeaserUsed } from '../services/storage';
 import type { CoachChatContext } from '../lib/ai/coachChat';
-import type { CoachMessage } from '../types/coach';
+import type { CoachMessage, DailyCoachRecommendation } from '../types/coach';
 import { PaywallModal } from '../components/PaywallModal';
 
 function uid(): string {
@@ -30,8 +28,6 @@ export function CoachScreen() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
   const { profile, selectedDate, ensureAiConsent, isSubscribed } = useTrenr();
-  const navigation = useNavigation<any>();
-  const showNutrition = profile ? scopeHasNutrition(resolveCoachScope(profile)) : false;
   const [freeUsed, setFreeUsed] = useState(0);
   useEffect(() => { loadCoachTeaserUsed().then(setFreeUsed).catch(() => {}); }, []);
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
@@ -54,18 +50,12 @@ export function CoachScreen() {
         t('coach.promptWhy'),
         t('coach.promptBadSleep'),
         t('coach.promptMatchPrep'),
-        t('coach.promptMatchFuel'),
-        t('coach.promptOffField'),
-        t('coach.promptMissedWorkout'),
       ];
     }
     return [
       t('coach.promptWhy'),
       t('coach.promptFuel'),
       t('coach.promptBadSleep'),
-      t('coach.promptSwapDinner'),
-      t('coach.promptMissedWorkout'),
-      t('coach.promptRaceRealistic'),
     ];
   }, [isCustomSport, t]);
 
@@ -113,10 +103,12 @@ export function CoachScreen() {
 
   return (
     <Screen
+      contentContainerStyle={styles.screen}
       footer={
         <View style={styles.composer}>
           <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline />
           <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{sending ? t('coach.thinking') : t('coach.send')}</Button>
+          <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
         </View>
       }
     >
@@ -125,7 +117,7 @@ export function CoachScreen() {
       <HeroDecisionCard
         eyebrow={t('coach.todayContext')}
         title={recommendation?.headline ?? t('coach.title')}
-        body={recommendation?.coachNote ?? t('coach.todayContextEmpty')}
+        body={recommendation ? coachHeroBody(recommendation, locale) : t('coach.todayContextEmpty')}
         accent={readinessColor(recommendation?.readiness.band, colors)}
         statusLabel={recommendation ? coachIntensityLabel(recommendation.readiness.recommendedIntensity, locale) : undefined}
         statusTone={recommendation?.readiness.band === 'low' ? 'risk' : recommendation?.readiness.band === 'medium' ? 'caution' : 'ready'}
@@ -133,20 +125,16 @@ export function CoachScreen() {
 
       <SectionCard
         title={t('coach.suggestedTitle')}
-        body={showNutrition ? t('coach.subtitle') : undefined}
-        ctaLabel={showNutrition ? t('today.meals') : undefined}
-        onPress={showNutrition ? () => navigation.navigate('Jídelníček') : undefined}
+        body={coachQuestionsBody(locale)}
       >
-        <View style={styles.promptGrid}>
-          {prompts.slice(0, 3).map(prompt => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptGrid}>
+          {prompts.map(prompt => (
             <PromptChip key={prompt} label={prompt} onPress={() => send(prompt)} />
           ))}
-        </View>
+        </ScrollView>
       </SectionCard>
 
-      {messages.length === 0 ? (
-        <EmptyState title={t('coach.emptyTitle')} body={t('coach.empty')} />
-      ) : (
+      {messages.length > 0 ? (
         <View style={styles.thread}>
           {messages.map(m => (
             <View
@@ -164,17 +152,16 @@ export function CoachScreen() {
             </View>
           ))}
         </View>
-      )}
+      ) : null}
 
       {followups.length > 0 && !sending ? (
         <SectionCard title={t('coach.followups')}>
-          <View style={styles.promptGrid}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptGrid}>
             {followups.map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
-          </View>
+          </ScrollView>
         </SectionCard>
       ) : null}
 
-      <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
       <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </Screen>
   );
@@ -220,8 +207,32 @@ function coachIntensityLabel(intensity: string, locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Today' : 'Dnes';
 }
 
+function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en'
+      ? 'Ask why today should stay easy, or what to do if you still want to move.'
+      : 'Zeptej se, proč má být dnešek lehčí, nebo co dělat, když se chceš hýbat.';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard') {
+    return locale === 'en'
+      ? 'Ask how to execute the planned work without adding unnecessary load.'
+      : 'Zeptej se, jak odtrénovat plán bez zbytečného přidávání zátěže.';
+  }
+  return locale === 'en'
+    ? 'Ask what matters most today and how to adjust if the day changes.'
+    : 'Zeptej se, co je dnes nejdůležitější a jak upravit den, když se něco změní.';
+}
+
+function coachQuestionsBody(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Pick one question or type your own. The coach explains the plan; it does not invent new targets.'
+    : 'Vyber otázku nebo napiš vlastní. Kouč vysvětluje plán, nevymýšlí nová cílová čísla.';
+}
+
 const styles = StyleSheet.create({
-  promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  screen: { paddingBottom: 8 },
+  promptGrid: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   promptChip: { minHeight: 42, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
   promptText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
   thread: { gap: 10 },

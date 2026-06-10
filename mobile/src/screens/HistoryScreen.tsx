@@ -125,13 +125,13 @@ export function HistoryScreen() {
 
   return (
     <Screen>
-      <ScreenHeader eyebrow={t('tab.history')} title={t('history.title')} subtitle={t('history.cleanSubtitle')} />
+      <ScreenHeader eyebrow={t('tab.history')} title={progressTitle(locale)} subtitle={progressSubtitle(locale)} />
       <HeroDecisionCard
         eyebrow={t('tab.history')}
         title={t('history.weeklyReview')}
         body={t(weeklyReview.recommendationKey)}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
-        statusLabel={adherenceLabel}
+        statusLabel={adherence.averageRatio == null ? undefined : adherenceLabel}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
       />
       <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
@@ -151,8 +151,16 @@ export function HistoryScreen() {
       {tab === 'overview' ? (
         <>
           <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
-            <InfoRow label={t('history.weeklyTraining')} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
-            <InfoRow label={t('history.weeklyNutrition')} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
+            {weeklyReview.plannedSessions > 0 ? (
+              <InfoRow label={progressTrainingLabel(locale)} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
+            ) : (
+              <Text style={[styles.meta, { color: colors.faint }]}>{progressNoTrainingCopy(locale)}</Text>
+            )}
+            {weeklyReview.nutritionLoggedDays > 0 ? (
+              <InfoRow label={progressFoodLabel(locale)} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
+            ) : (
+              <Text style={[styles.meta, { color: colors.faint }]}>{progressNoFoodCopy(locale)}</Text>
+            )}
             <CollapsibleDetails label={t('plan.detail')}>
               <InfoRow label={t('history.weeklyReadiness')} value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness} />
               <InfoRow label={t('history.adherence14')} value={adherenceLabel} />
@@ -192,9 +200,9 @@ export function HistoryScreen() {
             />
           </Card>
           <Card>
-            <SectionHeader title={t('history.strain14')} />
+            <SectionHeader title={trainingLoadTitle(locale)} />
             <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => `${v.toFixed(1)} / 21`} />
-            <Text style={[styles.meta, { color: colors.faint }]}>{t('history.strainMeta')}</Text>
+            <Text style={[styles.meta, { color: colors.faint }]}>{trainingLoadMeta(locale)}</Text>
           </Card>
           <Card>
             <SectionHeader title={t('history.adherence14')} />
@@ -246,6 +254,46 @@ const styles = StyleSheet.create({
   rightCol: { alignItems: 'flex-end' },
   kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });
+
+function progressTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'This week' : 'Tento týden';
+}
+
+function progressSubtitle(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'A calm review of consistency, trends and saved days.'
+    : 'Klidný přehled konzistence, trendů a uložených dní.';
+}
+
+function progressTrainingLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Training rhythm' : 'Tréninkový rytmus';
+}
+
+function progressFoodLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Food rhythm' : 'Jídelní rytmus';
+}
+
+function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'No planned workouts are visible for this week yet.'
+    : 'Tenhle týden zatím nemá viditelné plánované tréninky.';
+}
+
+function progressNoFoodCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Log a meal or follow a meal day to unlock food consistency.'
+    : 'Zaloguj jídlo nebo drž jídelní den a odemkne se konzistence.';
+}
+
+function trainingLoadTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Training load (14 days)' : 'Tréninková zátěž (14 dní)';
+}
+
+function trainingLoadMeta(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'A simple view of how heavy recent training days felt in the plan.'
+    : 'Jednoduchý pohled na to, jak těžké byly poslední tréninkové dny v plánu.';
+}
 
 function currentWeekDates(selectedDate: string): string[] {
   const base = new Date(`${selectedDate}T12:00:00`);
