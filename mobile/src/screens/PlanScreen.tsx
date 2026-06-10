@@ -86,7 +86,7 @@ export function PlanScreen() {
   const isCustomEmpty = customSchedule && weeklyPlan.sessions.every(s => s.kind === 'rest');
   const mainSportId = activeProfile.mainSport?.id;
   const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(sessionLine(selectedSession, t));
-  const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, t);
+  const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, locale);
   const heroAction = meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
     ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
     : undefined;
@@ -197,7 +197,7 @@ export function PlanScreen() {
       />
 
       <HeroDecisionCard
-        eyebrow={phase ? `${t('phase.prefix')} · ${t(PHASE_KEY[phase])}` : t('tab.plan')}
+        eyebrow={planHeroEyebrow(phase, locale, t)}
         title={selectedDayTitle}
         body={selectedDayBody}
         statusLabel={formatDateLabel(selectedDate, locale)}
@@ -246,7 +246,7 @@ export function PlanScreen() {
 
       <SectionCard
         title={t('plan.todayMeals')}
-        body={meals.length ? mealOverviewRows(meals, t) : t('plan.emptyBody')}
+        body={meals.length ? mealOverviewRows(meals, locale) : t('plan.emptyBody')}
         ctaLabel={!meals.length ? t('plan.generate') : undefined}
         onPress={!meals.length ? generate : undefined}
         detailLabel={meals.length ? t('plan.detail') : undefined}
@@ -488,6 +488,13 @@ function shortSession(session: TrainingSession, t: ReturnType<typeof useLanguage
   return session.durationMinutes ? `${session.durationMinutes}m` : session.title;
 }
 
+function planHeroEyebrow(phase: TrainingPhase | null, locale: 'cs' | 'en', t: ReturnType<typeof useLanguage>['t']): string {
+  if (!phase) return t('tab.plan');
+  return locale === 'en'
+    ? `This week · ${t(PHASE_KEY[phase])}`
+    : `Tento týden · ${t(PHASE_KEY[phase])}`;
+}
+
 function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>['t']): string {
   if (session.kind === 'rest') return t('today.restNote');
   const distance = session.distanceKm ? ` · ${session.distanceKm} km` : '';
@@ -495,25 +502,39 @@ function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>
   return session.second ? `${base}  +  ${session.second.title} · ${session.second.durationMinutes} min` : base;
 }
 
-function mealSummary(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string {
-  if (!meals.length) return t('plan.noMealsYet');
-  return t('plan.mealSummaryValue', { count: meals.length, kcal: totalMealKcal(meals) });
+function mealSummary(meals: Meal[], locale: 'cs' | 'en'): string {
+  if (!meals.length) {
+    return locale === 'en' ? 'No meals planned yet.' : 'Jídla zatím nejsou připravená.';
+  }
+  return locale === 'en'
+    ? `${meals.length} meals are ready for this day.`
+    : `${meals.length} jídel je připravených pro tenhle den.`;
 }
 
-function mealOverviewRows(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string[] {
+function mealOverviewRows(meals: Meal[], locale: 'cs' | 'en'): string[] {
   const names = meals.slice(0, 2).map(meal => `${meal.mealType}: ${meal.name}`);
-  return [mealSummary(meals, t), ...names].slice(0, 2);
+  return [mealSummary(meals, locale), ...names].slice(0, 2);
 }
 
-function totalMealKcal(meals: Meal[]): number {
-  return meals.reduce((sum, meal) => sum + meal.kcal, 0);
-}
-
-function nutritionNote(session: TrainingSession, carbsDelta: number, t: ReturnType<typeof useLanguage>['t']): string {
-  if (carbsDelta > 0) return t('plan.fuelAdjustmentShort', { carbs: Math.round(carbsDelta) });
-  if (session.kind === 'rest') return t('plan.restAdjustmentShort');
-  if (session.intensity === 'hard' || session.kind === 'long_run') return t('plan.hardDayAdjustmentShort');
-  return t('plan.easyDayAdjustmentShort');
+function nutritionNote(session: TrainingSession, carbsDelta: number, locale: 'cs' | 'en'): string {
+  if (carbsDelta > 0) {
+    return locale === 'en'
+      ? 'Eat a little more around the workout and keep the rest simple.'
+      : 'Kolem tréninku se najez trochu víc a zbytek dne drž jednoduše.';
+  }
+  if (session.kind === 'rest') {
+    return locale === 'en'
+      ? 'Keep meals steady and let recovery do the work.'
+      : 'Drž jídlo stabilní a nech regeneraci udělat svou práci.';
+  }
+  if (session.intensity === 'hard' || session.kind === 'long_run') {
+    return locale === 'en'
+      ? 'Fuel the quality work, then return to a simple day.'
+      : 'Doplň energii na kvalitní práci a pak se vrať k jednoduchému dni.';
+  }
+  return locale === 'en'
+    ? 'Eat normally and keep the day easy to follow.'
+    : 'Jez normálně a drž den snadno splnitelný.';
 }
 
 function trainingCardBody(session: TrainingSession, locale: 'cs' | 'en', line: string): string[] {
