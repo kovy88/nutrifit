@@ -137,8 +137,6 @@ export function PhotoScreen() {
         <SectionCard
           title={estimate.foodName || t('photo.reviewTitle')}
           body={estimate.portionGuess ? [estimate.portionGuess, t('photo.reviewBody')] : t('photo.reviewBody')}
-          statusLabel={estimate.confidence || t('photo.confidenceUnknown')}
-          statusTone="caution"
         >
           <InfoRow label={t('workout.kcal')} value={estimate.kcal} />
           <InfoRow label={t('home.protein')} value={`${estimate.protein} g`} />
@@ -153,6 +151,7 @@ export function PhotoScreen() {
               <MetricInput label={t('home.macroCarbsShort')} value={estimate.carbs} onChange={carbs => setEstimate(value => value && ({ ...value, carbs }))} color={colors.blue} />
               <MetricInput label={t('home.macroFatShort')} value={estimate.fat} onChange={fat => setEstimate(value => value && ({ ...value, fat }))} color={colors.orange} />
             </View>
+            {estimate.confidence ? <Text style={[styles.note, { color: colors.faint, fontFamily: fonts.regular }]}>{estimate.confidence}</Text> : null}
             {estimate.note ? <Text style={[styles.note, { color: colors.faint, fontFamily: fonts.regular }]}>{estimate.note}</Text> : null}
           </CollapsibleDetails>
           <Text style={[styles.disclaimer, { color: colors.faint, fontFamily: fonts.regular }]}>{t('photo.disclaimer')}</Text>
@@ -189,7 +188,7 @@ function MetricInput({
 
 const styles = StyleSheet.create({
   screen: { gap: 18 },
-  image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 18 },
+  image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 8 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricInput: { width: '47%', flexGrow: 1, gap: 6 },
   note: { fontSize: 14, lineHeight: 20 },

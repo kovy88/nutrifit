@@ -6,7 +6,6 @@ import { Screen } from '../components/Screen';
 import {
   Button,
   Card,
-  EmptyState,
   Field,
   Label,
   LoadingState,
@@ -55,7 +54,7 @@ export function PlanScreen() {
     isSubscribed,
   } = useTrenr();
   const { t, locale } = useLanguage();
-  const { showText, showDistance, distanceUnit } = useUnits();
+  const { showText } = useUnits();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
@@ -239,9 +238,15 @@ export function PlanScreen() {
               onPress: markWorkoutDoneForSelectedDay,
               disabled: selectedSession.kind === 'rest' || completion?.status === 'completed',
             },
-            { icon: 'camera-outline', label: t('plan.openPhoto'), onPress: () => navigation.navigate('Foto') },
           ]}
         />
+        {weeklyPlan.safetyWarnings?.length ? (
+          <CollapsibleDetails label={t('plan.ambitiousWarning')}>
+            {weeklyPlan.safetyWarnings.map((warning, index) => (
+              <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
+            ))}
+          </CollapsibleDetails>
+        ) : null}
       </HeroDecisionCard>
 
       {customSchedule ? (
@@ -261,25 +266,6 @@ export function PlanScreen() {
             <Button onPress={loadStarterWeek}>{t('myweek.loadStarterFor', { sport: SPORTS[mainSportId].name(locale) })}</Button>
           ) : null}
         </Card>
-      ) : null}
-
-      {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
-        <SectionCard
-          title={t('plan.ambitiousWarning')}
-          body={weeklyPlan.safetyWarnings[0]}
-          statusLabel={t('settings.info')}
-          statusTone="caution"
-          detailLabel={t('plan.detail')}
-          detailChildren={weeklyPlan.safetyWarnings.slice(1).map((warning, index) => (
-            <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
-          ))}
-        />
-      ) : null}
-
-      {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
-        <Text style={[styles.weeklyVolume, { color: colors.accent }]}>
-          {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
-        </Text>
       ) : null}
 
       <View style={styles.weekList}>
@@ -328,66 +314,58 @@ export function PlanScreen() {
 
       {loading ? <LoadingState title={t('plan.generating')} body={t('plan.loadingSub')} /> : null}
 
-      {meals.length === 0 && !loading ? (
-        <EmptyState
-          title={t('plan.emptyTitle')}
-          body={t('plan.emptyBody')}
-          cta={t('plan.buildCoachPlan')}
-          onPress={generate}
-        />
-      ) : null}
-
-      {meals.length > 0 ? (
-        <Card>
-          <SectionHeader title={t('plan.todayMeals')} />
-          {meals.map((meal, index) => (
-            <View key={`${meal.mealType}-${index}`} style={[styles.mealRow, { borderTopColor: colors.border }]}>
-              <View style={styles.mealTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.mealType, { color: colors.accent }]}>{meal.mealType}</Text>
-                  <Text style={[styles.mealName, { color: colors.ink }]}>{meal.name}</Text>
+      <SectionCard
+        title={t('plan.todayMeals')}
+        body={meals.length ? mealOverviewRows(meals, t) : t('plan.emptyBody')}
+        ctaLabel={meals.length ? t('today.swapMeal') : t('plan.buildCoachPlan')}
+        onPress={generate}
+        detailLabel={meals.length ? t('plan.detail') : undefined}
+        detailChildren={meals.length ? (
+          <>
+            {meals.map((meal, index) => (
+              <View key={`${meal.mealType}-${index}`} style={[styles.mealRow, { borderTopColor: colors.border }]}>
+                <View style={styles.mealTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.mealType, { color: colors.accent }]}>{meal.mealType}</Text>
+                    <Text style={[styles.mealName, { color: colors.ink }]}>{meal.name}</Text>
+                  </View>
+                  <Text style={[styles.mealKcal, { color: colors.ink }]}>{meal.kcal} kcal</Text>
                 </View>
-                <Text style={[styles.mealKcal, { color: colors.ink }]}>{meal.kcal} kcal</Text>
+                <Text style={[styles.mealMeta, { color: colors.muted }]}>
+                  {t('plan.mealDetailMacros', { kcal: meal.kcal, p: meal.protein, c: meal.carbs, f: meal.fat, prep: meal.prepTime })}
+                </Text>
+                <View style={styles.mealActions}>
+                  <IconAction icon="document-text-outline" label={t('plan.detail')} onPress={() => setSelectedMeal(meal)} />
+                  <IconAction
+                    icon="refresh-outline"
+                    label={regeneratingIndex === index ? t('plan.regenerating') : t('plan.regenerate')}
+                    disabled={regeneratingIndex !== null}
+                    onPress={() => handleRegenerate(meal, index)}
+                  />
+                  <IconAction
+                    icon={isMealLogged(meal) ? 'checkmark-circle-outline' : 'add-circle-outline'}
+                    label={isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}
+                    disabled={isMealLogged(meal)}
+                    onPress={() => logPlannedMeal(meal)}
+                  />
+                </View>
               </View>
-              <Text style={[styles.mealMeta, { color: colors.muted }]}>
-                {t('plan.mealDetailMacros', { kcal: meal.kcal, p: meal.protein, c: meal.carbs, f: meal.fat, prep: meal.prepTime })}
-              </Text>
-              <View style={styles.mealActions}>
-                <IconAction icon="document-text-outline" label={t('plan.detail')} onPress={() => setSelectedMeal(meal)} />
-                <IconAction
-                  icon="refresh-outline"
-                  label={regeneratingIndex === index ? t('plan.regenerating') : t('plan.regenerate')}
-                  disabled={regeneratingIndex !== null}
-                  onPress={() => handleRegenerate(meal, index)}
-                />
-                <IconAction
-                  icon={isMealLogged(meal) ? 'checkmark-circle-outline' : 'add-circle-outline'}
-                  label={isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}
-                  disabled={isMealLogged(meal)}
-                  onPress={() => logPlannedMeal(meal)}
-                />
-              </View>
-            </View>
-          ))}
-          <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
-        </Card>
-      ) : null}
-
-      {shoppingGroups.length > 0 ? (
-        <SectionCard
-          title={t('plan.shoppingList')}
-          body={shoppingGroups.slice(0, 2).map(group => `${group.category}: ${group.items.slice(0, 4).join(', ')}`)}
-          ctaLabel={t('plan.share')}
-          onPress={shareShoppingList}
-          detailLabel={t('plan.detail')}
-          detailChildren={shoppingGroups.map(group => (
-            <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
-              <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
-              <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
-            </View>
-          ))}
-        />
-      ) : null}
+            ))}
+            {shoppingGroups.length > 0 ? (
+              <CollapsibleDetails label={t('plan.shoppingList')}>
+                {shoppingGroups.map(group => (
+                  <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
+                    <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
+                  </View>
+                ))}
+                <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
+              </CollapsibleDetails>
+            ) : null}
+            <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
+          </>
+        ) : undefined}
+      />
 
       <PreferencesSheet
         visible={prefsOpen}
@@ -545,6 +523,11 @@ function planMarkers(session: TrainingSession, carbsDelta: number, t: ReturnType
 function mealSummary(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string {
   if (!meals.length) return t('plan.noMealsYet');
   return t('plan.mealSummaryValue', { count: meals.length, kcal: totalMealKcal(meals) });
+}
+
+function mealOverviewRows(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string[] {
+  const names = meals.slice(0, 2).map(meal => `${meal.mealType}: ${meal.name}`);
+  return [mealSummary(meals, t), ...names].slice(0, 2);
 }
 
 function totalMealKcal(meals: Meal[]): number {

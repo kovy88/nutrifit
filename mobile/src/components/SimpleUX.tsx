@@ -35,8 +35,8 @@ export function HeroDecisionCard({
       <View style={styles.heroTop}>
         <View style={styles.heroCopy}>
           {eyebrow ? <Text style={[styles.eyebrow, { color: tone, fontFamily: fonts.bold }]}>{eyebrow}</Text> : null}
-          <Text style={[styles.heroTitle, { color: colors.ink, fontFamily: fonts.display }]}>{title}</Text>
-          {body ? <Text style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{body}</Text> : null}
+          <Text numberOfLines={2} style={[styles.heroTitle, { color: colors.ink, fontFamily: fonts.display }]}>{title}</Text>
+          {body ? <Text numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{body}</Text> : null}
         </View>
         {statusLabel ? <StatusPill label={statusLabel} tone={statusTone} /> : null}
       </View>
@@ -79,8 +79,8 @@ export function SectionCard({
         title={title}
         action={statusLabel ? <StatusPill label={statusLabel} tone={statusTone} /> : undefined}
       />
-      {bodyRows.map(row => (
-        <Text key={row} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
+      {bodyRows.slice(0, 2).map(row => (
+        <Text key={row} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
       ))}
       {children}
       <View style={styles.cardActions}>
@@ -92,7 +92,7 @@ export function SectionCard({
             style={({ pressed }) => [styles.detailToggle, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}
           >
             <Ionicons name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={16} color={colors.accent} />
-            <Text style={[styles.detailToggleText, { color: colors.ink, fontFamily: fonts.bold }]}>{detailLabel}</Text>
+            <Text numberOfLines={1} style={[styles.detailToggleText, { color: colors.ink, fontFamily: fonts.bold }]}>{detailLabel}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -180,18 +180,18 @@ export function CollapsibleDetails({
 }
 
 const styles = StyleSheet.create({
-  hero: { borderRadius: 8, padding: 18, gap: 14 },
+  hero: { borderRadius: 8, padding: 18, gap: 14, minHeight: 132 },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  heroCopy: { flex: 1, gap: 6 },
-  eyebrow: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.8 },
+  heroCopy: { flex: 1, gap: 6, minWidth: 0 },
+  eyebrow: { fontSize: 11, lineHeight: 15, letterSpacing: 0.3 },
   heroTitle: { fontSize: 24, lineHeight: 30, letterSpacing: 0 },
   body: { fontSize: 14, lineHeight: 20 },
   sectionCard: { borderRadius: 8, padding: 15, gap: 10 },
   cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cardButton: { minHeight: 46, flexGrow: 1 },
-  actionStrip: { flexDirection: 'row', gap: 8 },
-  actionButton: { flex: 1, minHeight: 54, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 8 },
-  actionText: { fontSize: 12.5, lineHeight: 16, textAlign: 'center' },
+  actionStrip: { flexDirection: 'row', gap: 8, width: '100%' },
+  actionButton: { flex: 1, minWidth: 0, minHeight: 56, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 8 },
+  actionText: { fontSize: 12, lineHeight: 15, textAlign: 'center' },
   detailToggle: { minHeight: 42, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11 },
   detailToggleText: { fontSize: 13, lineHeight: 17 },
   detailBody: { gap: 8, paddingTop: 2 },

@@ -128,8 +128,8 @@ export function HistoryScreen() {
       <ScreenHeader eyebrow={t('tab.history')} title={t('history.title')} subtitle={t('history.cleanSubtitle')} />
       <HeroDecisionCard
         eyebrow={t('tab.history')}
-        title={t('history.coachSnapshot')}
-        body={describeAdherence(adherence.averageRatio, locale)}
+        title={t('history.weeklyReview')}
+        body={t(weeklyReview.recommendationKey)}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
         statusLabel={adherenceLabel}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
@@ -150,7 +150,7 @@ export function HistoryScreen() {
 
       {tab === 'overview' ? (
         <>
-          <SectionCard title={t('history.weeklyReview')} body={t(weeklyReview.recommendationKey)}>
+          <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
             <InfoRow label={t('history.weeklyTraining')} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
             <InfoRow label={t('history.weeklyNutrition')} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
             <CollapsibleDetails label={t('plan.detail')}>
@@ -161,7 +161,7 @@ export function HistoryScreen() {
             </CollapsibleDetails>
           </SectionCard>
 
-          <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
+          <SectionCard title={t('history.targetStreak')} body={describeStreak(logStreak, 'log', locale)}>
             <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current || '-'} />
             <InfoRow label={t('history.weight30')} value={latestWeight ? `${showWeight(latestWeight)} ${weightUnit}` : '-'} />
           </SectionCard>

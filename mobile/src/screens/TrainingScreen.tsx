@@ -62,6 +62,33 @@ export function TrainingScreen() {
         subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
       />
 
+      <HeroDecisionCard
+        eyebrow={selectedDay.isToday ? t('common.today') : selectedDay.dayTitle}
+        title={selectedDay.isRest ? t('training.restTitle') : selectedDay.session.title}
+        body={selectedDay.isRest ? t('training.restSub') : selectedDay.session.notes}
+        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : intensityLabel(selectedDay.session.intensity, locale)}
+        statusTone={selectedDone ? 'ready' : selectedSkipped ? 'caution' : intensityTone}
+      >
+        {selectedDay.isRest ? (
+          <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.dateLabel}</Text>
+        ) : (
+          <CollapsibleDetails label={t('plan.detail')}>
+            <InfoRow label={t('training.duration')} value={`${selectedDay.session.durationMinutes} min`} />
+            <InfoRow label={t('training.distance')} value={selectedDay.session.distanceKm ? `${selectedDay.session.distanceKm} km` : '-'} />
+            {selectedDay.adjustedAfterMissed ? (
+              <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
+            ) : null}
+          </CollapsibleDetails>
+        )}
+        <ActionStrip
+          actions={[
+            { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone || selectedDay.isRest, primary: true },
+            { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped'), disabled: selectedDay.isRest },
+            { icon: 'today-outline', label: t('training.openToday'), onPress: openSelectedDayToday },
+          ]}
+        />
+      </HeroDecisionCard>
+
       <SectionCard
         title={t('training.weekOverview')}
         body={t('training.weekStatus', { done: completedCount, total: plannedSessions })}
@@ -97,34 +124,7 @@ export function TrainingScreen() {
         </CollapsibleDetails>
       </SectionCard>
 
-      <HeroDecisionCard
-        eyebrow={selectedDay.isToday ? t('common.today') : selectedDay.dayTitle}
-        title={selectedDay.isRest ? t('training.restTitle') : selectedDay.session.title}
-        body={selectedDay.isRest ? t('training.restSub') : selectedDay.session.notes}
-        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : t('training.intensityValue', { value: selectedDay.session.intensity })}
-        statusTone={selectedDone ? 'ready' : selectedSkipped ? 'caution' : intensityTone}
-      >
-        {selectedDay.isRest ? (
-          <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.dateLabel}</Text>
-        ) : (
-          <CollapsibleDetails label={t('plan.detail')}>
-            <InfoRow label={t('training.duration')} value={`${selectedDay.session.durationMinutes} min`} />
-            <InfoRow label={t('training.distance')} value={selectedDay.session.distanceKm ? `${selectedDay.session.distanceKm} km` : '-'} />
-            {selectedDay.adjustedAfterMissed ? (
-              <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
-            ) : null}
-          </CollapsibleDetails>
-        )}
-        <ActionStrip
-          actions={[
-            { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone || selectedDay.isRest, primary: true },
-            { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped'), disabled: selectedDay.isRest },
-            { icon: 'today-outline', label: t('training.openToday'), onPress: openSelectedDayToday },
-          ]}
-        />
-      </HeroDecisionCard>
-
-      <SectionCard title={t('training.recentTitle')} body={recent.isLoading ? t('training.loadingWorkouts') : recent.workouts.length ? t('training.recentTitle') : t('training.noWorkouts')}>
+      <SectionCard title={t('training.recentTitle')} body={recent.isLoading ? t('training.loadingWorkouts') : recent.workouts.length ? undefined : t('training.noWorkouts')}>
         <CollapsibleDetails label={t('plan.detail')}>
           {recent.isLoading ? (
             <LoadingState title={t('training.loadingWorkouts')} />
@@ -206,11 +206,19 @@ function formatGoal(goal: string) {
   return goal.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
+function intensityLabel(intensity: string, locale: string): string {
+  if (intensity === 'rest') return locale === 'en' ? 'Rest' : 'Volno';
+  if (intensity === 'easy') return locale === 'en' ? 'Easy' : 'Lehce';
+  if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
+  if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
+  return locale === 'en' ? 'Training' : 'Trénink';
+}
+
 const styles = StyleSheet.create({
   screen: { gap: 18 },
   weekMetrics: { flexDirection: 'row', gap: 8 },
   weekStrip: { gap: 8, paddingTop: 2 },
-  dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 4 },
   dayDow: { fontSize: 11, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.6 },
   dayNumber: { fontSize: 24, lineHeight: 28 },
   dayDot: { width: 7, height: 7, borderRadius: 4 },

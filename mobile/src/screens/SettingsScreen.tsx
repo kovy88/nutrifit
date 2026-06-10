@@ -467,11 +467,11 @@ function formatPermission(p: string, t: Translate): string {
 }
 
 function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect', t: Translate): string {
-  if (mode === 'manual') return t('settings.healthModeManual');
-  if (mode === 'mock') return t('settings.healthModeMock');
+  if (mode === 'manual') return t('profile.healthManual');
+  if (mode === 'mock') return t('profile.healthMock');
   if (mode === 'apple_health') return t('settings.nativeIos');
   if (mode === 'health_connect') return t('settings.nativeAndroid');
-  return t('settings.healthModeAuto');
+  return t('settings.healthSourceTitle');
 }
 
 const styles = StyleSheet.create({
