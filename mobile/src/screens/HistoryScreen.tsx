@@ -154,12 +154,12 @@ export function HistoryScreen() {
             {weeklyReview.plannedSessions > 0 ? (
               <InfoRow label={progressTrainingLabel(locale)} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
             ) : (
-              <Text style={[styles.meta, { color: colors.faint }]}>{progressNoTrainingCopy(locale)}</Text>
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTrainingCopy(locale)}</Text>
             )}
             {weeklyReview.nutritionLoggedDays > 0 ? (
               <InfoRow label={progressFoodLabel(locale)} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
             ) : (
-              <Text style={[styles.meta, { color: colors.faint }]}>{progressNoFoodCopy(locale)}</Text>
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoFoodCopy(locale)}</Text>
             )}
             <CollapsibleDetails label={t('plan.detail')}>
               <InfoRow label={t('history.weeklyReadiness')} value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness} />
@@ -170,8 +170,12 @@ export function HistoryScreen() {
           </SectionCard>
 
           <SectionCard title={t('history.targetStreak')} body={describeStreak(logStreak, 'log', locale)}>
-            <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current || '-'} />
-            <InfoRow label={t('history.weight30')} value={latestWeight ? `${showWeight(latestWeight)} ${weightUnit}` : '-'} />
+            {adherenceStreak.current > 0 ? (
+              <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current} />
+            ) : (
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTargetCopy(locale)}</Text>
+            )}
+            {latestWeight ? <InfoRow label={t('history.weight30')} value={`${showWeight(latestWeight)} ${weightUnit}`} /> : null}
           </SectionCard>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
@@ -246,6 +250,7 @@ const styles = StyleSheet.create({
   segmentText: { fontSize: 13, fontWeight: '900' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
+  emptyCopy: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   meta: { fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
@@ -283,6 +288,12 @@ function progressNoFoodCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'Log a meal or follow a meal day to unlock food consistency.'
     : 'Zaloguj jídlo nebo drž jídelní den a odemkne se konzistence.';
+}
+
+function progressNoTargetCopy(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Your first on-target day will show here after you log a meal.'
+    : 'První den v cíli se ukáže po zalogování jídla.';
 }
 
 function trainingLoadTitle(locale: 'cs' | 'en'): string {

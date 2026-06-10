@@ -84,7 +84,7 @@ export function TrainingScreen() {
           actions={[
             { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone || selectedDay.isRest, primary: true },
             { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped'), disabled: selectedDay.isRest },
-            { icon: 'today-outline', label: t('training.openToday'), onPress: openSelectedDayToday },
+            { icon: 'today-outline', label: t('common.today'), onPress: openSelectedDayToday },
           ]}
         />
       </HeroDecisionCard>
