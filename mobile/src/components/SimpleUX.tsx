@@ -133,6 +133,8 @@ export function ActionStrip({
           <Ionicons name={action.icon} size={18} color={action.primary ? colors.accentText : colors.accent} />
           <Text
             numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.88}
             style={[styles.actionText, { color: action.primary ? colors.accentText : colors.ink, fontFamily: fonts.bold }]}
           >
             {action.label}
@@ -147,8 +149,8 @@ export function InfoRow({ label, value }: { label: string; value: string | numbe
   const { colors, fonts } = useTheme();
   return (
     <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-      <Text style={[styles.infoLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color: colors.ink, fontFamily: fonts.extraBold }]}>{value}</Text>
+      <Text numberOfLines={1} style={[styles.infoLabel, { color: colors.muted, fontFamily: fonts.bold }]}>{label}</Text>
+      <Text numberOfLines={2} style={[styles.infoValue, { color: colors.ink, fontFamily: fonts.extraBold }]}>{value}</Text>
     </View>
   );
 }
@@ -172,7 +174,7 @@ export function CollapsibleDetails({
         style={({ pressed }) => [styles.detailToggle, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}
       >
         <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={16} color={colors.accent} />
-        <Text style={[styles.detailToggleText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
+        <Text numberOfLines={1} style={[styles.detailToggleText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
       </Pressable>
       {open ? <View style={styles.detailBody}>{children}</View> : null}
     </View>
@@ -192,11 +194,11 @@ const styles = StyleSheet.create({
   actionStrip: { flexDirection: 'row', gap: 8, width: '100%' },
   actionButton: { flex: 1, minWidth: 0, minHeight: 56, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 8 },
   actionText: { fontSize: 12, lineHeight: 15, textAlign: 'center' },
-  detailToggle: { minHeight: 42, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11 },
-  detailToggleText: { fontSize: 13, lineHeight: 17 },
+  detailToggle: { minHeight: 42, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11, minWidth: 0 },
+  detailToggleText: { fontSize: 13, lineHeight: 17, flexShrink: 1 },
   detailBody: { gap: 8, paddingTop: 2 },
   infoRow: { borderBottomWidth: 1, paddingVertical: 10, gap: 4 },
-  infoLabel: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
-  infoValue: { fontSize: 14, lineHeight: 19 },
+  infoLabel: { fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  infoValue: { fontSize: 14, lineHeight: 19, minWidth: 0 },
   collapsible: { gap: 8 },
 });
