@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
+import { Card, EmptyState, ScreenHeader, SectionHeader } from '../components/UI';
+import { CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadDailyCoachHistory, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
@@ -125,10 +126,13 @@ export function HistoryScreen() {
   return (
     <Screen>
       <ScreenHeader eyebrow={t('tab.history')} title={t('history.title')} subtitle={t('history.cleanSubtitle')} />
-      <CoachInsightCard
+      <HeroDecisionCard
+        eyebrow={t('tab.history')}
         title={t('history.coachSnapshot')}
         body={describeAdherence(adherence.averageRatio, locale)}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
+        statusLabel={adherenceLabel}
+        statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
       />
       <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
         {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
@@ -146,51 +150,29 @@ export function HistoryScreen() {
 
       {tab === 'overview' ? (
         <>
-          <Card>
-            <SectionHeader title={t('history.weeklyConsistency')} />
-            <View style={styles.metricGrid}>
-              <MetricCard label={t('history.adherence14')} value={adherenceLabel} color={colors.accent} />
-              <MetricCard label={t('history.logStreak')} value={logStreak.current || '-'} color={colors.orange} />
-              <MetricCard label={t('history.targetStreak')} value={adherenceStreak.current || '-'} color={colors.green} />
-              <MetricCard label={t('history.weight30')} value={latestWeight ? String(showWeight(latestWeight)) : '-'} unit={weightUnit} color={colors.blue} />
-            </View>
-            <Text style={[styles.note, { color: colors.muted }]}>{describeAdherence(adherence.averageRatio, locale)}</Text>
-            <Text style={[styles.meta, { color: colors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
-          </Card>
+          <SectionCard title={t('history.weeklyReview')} body={t(weeklyReview.recommendationKey)}>
+            <InfoRow label={t('history.weeklyTraining')} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
+            <InfoRow label={t('history.weeklyNutrition')} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
+            <CollapsibleDetails label={t('plan.detail')}>
+              <InfoRow label={t('history.weeklyReadiness')} value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness} />
+              <InfoRow label={t('history.adherence14')} value={adherenceLabel} />
+              <InfoRow label={t('history.logStreak')} value={logStreak.current || '-'} />
+              <Text style={[styles.meta, { color: colors.faint }]}>{describeStreak(logStreak, 'log', locale)}</Text>
+            </CollapsibleDetails>
+          </SectionCard>
 
-          <Card>
-            <SectionHeader title={t('history.weeklyReview')} />
-            <View style={styles.metricGrid}>
-              <MetricCard
-                label={t('history.weeklyTraining')}
-                value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`}
-                color={weeklyReview.trainingAdherencePct == null || weeklyReview.trainingAdherencePct >= 70 ? colors.accent : colors.orange}
-              />
-              <MetricCard
-                label={t('history.weeklyReadiness')}
-                value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness}
-                color={weeklyReview.averageReadiness == null || weeklyReview.averageReadiness >= 55 ? colors.blue : colors.orange}
-              />
-              <MetricCard
-                label={t('history.weeklyNutrition')}
-                value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`}
-                color={weeklyReview.nutritionAdherencePct == null || weeklyReview.nutritionAdherencePct >= 70 ? colors.green : colors.orange}
-              />
-            </View>
-            <Text style={[styles.meta, { color: colors.faint }]}>{t('history.weeklyRecommendation')}</Text>
-            <Text style={[styles.note, { color: colors.muted }]}>{t(weeklyReview.recommendationKey)}</Text>
-          </Card>
+          <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
+            <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current || '-'} />
+            <InfoRow label={t('history.weight30')} value={latestWeight ? `${showWeight(latestWeight)} ${weightUnit}` : '-'} />
+          </SectionCard>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
-            <Card>
-              <SectionHeader title={t('history.energyBalance14')} />
-              <Text style={[styles.heroValue, { color: energyBalance.theoreticalKgChange < -0.2 ? colors.green : energyBalance.theoreticalKgChange > 0.2 ? colors.orange : colors.muted }]}>
-                {energyBalance.theoreticalKgChange > 0 ? '+' : ''}{showWeight(energyBalance.theoreticalKgChange, 2)} {weightUnit}
-              </Text>
-              <Text style={[styles.note, { color: colors.muted }]}>
-                {describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}
-              </Text>
-            </Card>
+            <SectionCard title={t('history.energyBalance14')} body={describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}>
+              <InfoRow
+                label={t('history.energyBalance14')}
+                value={`${energyBalance.theoreticalKgChange > 0 ? '+' : ''}${showWeight(energyBalance.theoreticalKgChange, 2)} ${weightUnit}`}
+              />
+            </SectionCard>
           ) : null}
         </>
       ) : null}

@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import {
-  Button,
-  Card,
-  EmptyState,
-  LoadingState,
-  MetricCard,
-  PlanDayCard,
-  ScreenHeader,
-  SectionHeader,
-  StatusPill,
-} from '../components/UI';
+import { EmptyState, LoadingState, ScreenHeader } from '../components/UI';
+import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { WorkoutCard } from '../components/WorkoutCard';
 import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
@@ -71,15 +62,12 @@ export function TrainingScreen() {
         subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
       />
 
-      <Card>
-        <SectionHeader
-          title={t('training.weekOverview')}
-          action={<StatusPill label={t('training.weekStatus', { done: completedCount, total: plannedSessions })} tone={completedCount ? 'ready' : 'neutral'} />}
-        />
-        <View style={styles.weekMetrics}>
-          <MetricCard label={t('training.planned')} value={plannedSessions} detail={t('training.sessions')} color={colors.accent} />
-          <MetricCard label={t('training.done')} value={completedCount} detail={t('training.thisWeek')} color={colors.green} />
-        </View>
+      <SectionCard
+        title={t('training.weekOverview')}
+        body={t('training.weekStatus', { done: completedCount, total: plannedSessions })}
+        statusLabel={completedCount ? t('today.completed') : t('training.planned')}
+        statusTone={completedCount ? 'ready' : 'neutral'}
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
           {weekList.map(item => (
             <Pressable
@@ -103,71 +91,54 @@ export function TrainingScreen() {
             </Pressable>
           ))}
         </ScrollView>
-      </Card>
+        <CollapsibleDetails label={t('plan.detail')}>
+          <InfoRow label={t('training.planned')} value={plannedSessions} />
+          <InfoRow label={t('training.done')} value={completedCount} />
+        </CollapsibleDetails>
+      </SectionCard>
 
-      <PlanDayCard
-        title={selectedDay.dayTitle}
-        subtitle={selectedDay.dateLabel}
-        selected
-        markers={[
-          selectedDay.isToday ? t('common.today') : '',
-          selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : '',
-          selectedDay.adjustedAfterMissed ? t('training.adjustedAfterMissed') : '',
-        ].filter((marker): marker is string => Boolean(marker))}
+      <HeroDecisionCard
+        eyebrow={selectedDay.isToday ? t('common.today') : selectedDay.dayTitle}
+        title={selectedDay.isRest ? t('training.restTitle') : selectedDay.session.title}
+        body={selectedDay.isRest ? t('training.restSub') : selectedDay.session.notes}
+        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : t('training.intensityValue', { value: selectedDay.session.intensity })}
+        statusTone={selectedDone ? 'ready' : selectedSkipped ? 'caution' : intensityTone}
       >
         {selectedDay.isRest ? (
-          <View style={styles.selectedBody}>
-            <Text style={[styles.selectedTitle, { color: colors.orange, fontFamily: fonts.extraBold }]}>{t('training.restTitle')}</Text>
-            <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{t('training.restSub')}</Text>
-          </View>
+          <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.dateLabel}</Text>
         ) : (
-          <View style={styles.selectedBody}>
-            <View style={styles.selectedTitleRow}>
-              <Text style={[styles.selectedTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{selectedDay.session.title}</Text>
-              <StatusPill label={t('training.intensityValue', { value: selectedDay.session.intensity })} tone={intensityTone} />
-            </View>
-            <View style={styles.weekMetrics}>
-              <MetricCard label={t('training.duration')} value={selectedDay.session.durationMinutes} unit="min" color={colors.accent} />
-              <MetricCard
-                label={t('training.distance')}
-                value={selectedDay.session.distanceKm ? selectedDay.session.distanceKm : '-'}
-                unit={selectedDay.session.distanceKm ? 'km' : undefined}
-                color={colors.blue}
-              />
-            </View>
-            {selectedDay.session.notes ? (
-              <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.session.notes}</Text>
-            ) : null}
+          <CollapsibleDetails label={t('plan.detail')}>
+            <InfoRow label={t('training.duration')} value={`${selectedDay.session.durationMinutes} min`} />
+            <InfoRow label={t('training.distance')} value={selectedDay.session.distanceKm ? `${selectedDay.session.distanceKm} km` : '-'} />
             {selectedDay.adjustedAfterMissed ? (
               <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
             ) : null}
-          </View>
+          </CollapsibleDetails>
         )}
-        <View style={styles.actions}>
-          <Button style={styles.actionButton} disabled={selectedDone || selectedDay.isRest} onPress={() => mark('completed')}>
-            {selectedDone ? t('today.completed') : t('today.markDone')}
-          </Button>
-          <Button style={styles.actionButton} variant="secondary" disabled={selectedDay.isRest} onPress={() => mark('skipped')}>
-            {t('training.markSkipped')}
-          </Button>
-        </View>
-        <Button variant="secondary" onPress={openSelectedDayToday}>
-          {t('training.openToday')}
-        </Button>
-      </PlanDayCard>
+        <ActionStrip
+          actions={[
+            { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone || selectedDay.isRest, primary: true },
+            { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped'), disabled: selectedDay.isRest },
+            { icon: 'today-outline', label: t('training.openToday'), onPress: openSelectedDayToday },
+          ]}
+        />
+      </HeroDecisionCard>
 
-      <SectionHeader title={t('training.recentTitle')} />
-      {recent.isLoading ? (
-        <LoadingState title={t('training.loadingWorkouts')} />
-      ) : recent.workouts.length === 0 ? (
-        <EmptyState title={t('training.noWorkoutsTitle')} body={t('training.noWorkouts')} />
-      ) : (
-        <View style={styles.workoutsList}>
-          {recent.workouts.slice(0, 6).map((workout, index) => (
-            <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
-          ))}
-        </View>
-      )}
+      <SectionCard title={t('training.recentTitle')} body={recent.isLoading ? t('training.loadingWorkouts') : recent.workouts.length ? t('training.recentTitle') : t('training.noWorkouts')}>
+        <CollapsibleDetails label={t('plan.detail')}>
+          {recent.isLoading ? (
+            <LoadingState title={t('training.loadingWorkouts')} />
+          ) : recent.workouts.length === 0 ? (
+            <EmptyState title={t('training.noWorkoutsTitle')} body={t('training.noWorkouts')} />
+          ) : (
+            <View style={styles.workoutsList}>
+              {recent.workouts.slice(0, 6).map((workout, index) => (
+                <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
+              ))}
+            </View>
+          )}
+        </CollapsibleDetails>
+      </SectionCard>
 
       <WorkoutDetailModal workout={selectedWorkout} onClose={() => setSelectedWorkout(null)} />
     </Screen>

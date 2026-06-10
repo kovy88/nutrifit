@@ -4,15 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
 import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
-import {
-  Button,
-  Card,
-  EmptyState,
-  LoadingState,
-  MetricCard,
-  QuickActionButton,
-  SectionHeader,
-} from '../components/UI';
+import { EmptyState, LoadingState } from '../components/UI';
+import { ActionStrip, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -89,20 +82,16 @@ export function TodayScreen() {
 
       {rec ? (
         <>
-          <Card style={[styles.decisionCard, { borderColor: readinessColor }]}>
-            <View style={styles.decisionTop}>
-              <View style={styles.decisionCopy}>
-                <Text style={[styles.kicker, { color: readinessColor }]}>{decision?.label ?? t('today.oneThing')}</Text>
-                <Text style={[styles.decisionTitle, { color: colors.ink }]}>{decision?.title ?? rec.headline}</Text>
-                <Text style={[styles.bodyText, { color: colors.muted }]}>{rec.coachNote}</Text>
-              </View>
-              <View style={[styles.readinessBadge, { borderColor: readinessColor, backgroundColor: readinessColor + '14' }]}>
-                <Text style={[styles.readinessValue, { color: readinessColor }]}>{bandLabel(rec.readiness.band, t)}</Text>
-                <Text style={[styles.readinessLabel, { color: colors.faint }]}>{t('home.readiness')}</Text>
-              </View>
-            </View>
+          <HeroDecisionCard
+            eyebrow={decision?.label ?? t('today.oneThing')}
+            title={decision?.title ?? rec.headline}
+            body={rec.coachNote}
+            accent={readinessColor}
+            statusLabel={bandLabel(rec.readiness.band, t)}
+            statusTone={rec.readiness.band === 'high' ? 'ready' : rec.readiness.band === 'medium' ? 'caution' : 'risk'}
+          >
             {decision?.hint ? <Text style={[styles.smallNote, { color: colors.faint }]}>{decision.hint}</Text> : null}
-          </Card>
+          </HeroDecisionCard>
 
           <TodayActionCard
             rec={rec}
@@ -126,42 +115,32 @@ export function TodayScreen() {
           ) : null}
 
           {showNutrition && rec.nutrition ? (
-            <Card>
-              <View style={styles.cardHeader}>
-                <SectionHeader title={t('today.nutritionTitle')} />
-                <Button variant="secondary" onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
-              </View>
-              <View style={styles.twoMetrics}>
-                <MetricCard compact label="kcal" value={rec.nutrition.targets.kcal} color={colors.accent} />
-                <MetricCard compact label={t('home.protein')} value={rec.nutrition.targets.protein} unit="g" color={colors.green} />
-              </View>
-              <Text style={[styles.bodyText, { color: colors.muted }]}>{nutritionMessage(rec, locale)}</Text>
-            </Card>
+            <SectionCard
+              title={t('today.nutritionTitle')}
+              body={nutritionMessage(rec, locale)}
+              ctaLabel={t('today.meals')}
+              onPress={() => navigation.navigate('Jídelníček')}
+            >
+              <InfoRow label="kcal" value={rec.nutrition.targets.kcal} />
+              <InfoRow label={t('home.protein')} value={`${rec.nutrition.targets.protein} g`} />
+            </SectionCard>
           ) : null}
 
-          <Card>
-            <View style={styles.cardHeader}>
-              <SectionHeader title={t('today.focus')} />
-              <Button variant="secondary" onPress={() => navigation.navigate('Coach')}>{t('tab.coach')}</Button>
-            </View>
-            <View style={styles.reasonList}>
-              {whyLines(rec, locale).map(line => (
-                <Text key={line} style={[styles.reasonLine, { color: colors.muted }]}>{line}</Text>
-              ))}
-            </View>
-          </Card>
+          <SectionCard
+            title={t('today.focus')}
+            body={whyLines(rec, locale)}
+            ctaLabel={t('tab.coach')}
+            onPress={() => navigation.navigate('Coach')}
+          />
 
-          <Card>
-            <SectionHeader title={t('today.weekTitle')} />
-            <Text style={[styles.decisionTitleSmall, { color: colors.ink }]}>{tomorrow.title}</Text>
-            <Text style={[styles.bodyText, { color: colors.muted }]}>{tomorrow.body}</Text>
+          <SectionCard title={t('today.weekTitle')} body={[tomorrow.title, tomorrow.body]}>
             {logStreak >= 2 ? (
               <View style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '16' }]}>
                 <Ionicons name="flame" size={14} color={colors.orange} />
                 <Text style={[styles.streakText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
               </View>
             ) : null}
-          </Card>
+          </SectionCard>
         </>
       ) : null}
 
@@ -186,21 +165,20 @@ function TodayActionCard({
   onAdjust: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
-  const { colors } = useTheme();
   const primaryLabel = trainingDay ? (completed ? t('today.completed') : t('today.markDone')) : t('today.checkIn');
   const primaryIcon = trainingDay ? 'checkmark-circle-outline' : 'pulse-outline';
   const primaryAction = trainingDay ? onDone : onCheckIn;
 
   return (
-    <Card>
-      <SectionHeader title={t('today.oneThing')} />
-      <View style={styles.quickGrid}>
-        <QuickActionButton icon={primaryIcon} label={primaryLabel} onPress={primaryAction} disabled={trainingDay && completed} />
-        <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={onCheckIn} />
-        <QuickActionButton icon="options-outline" label={t('today.adjustToday')} onPress={onAdjust} />
-      </View>
-      <Text style={[styles.smallNote, { color: colors.faint }]}>{t('today.readinessNote')}</Text>
-    </Card>
+    <SectionCard title={t('today.oneThing')} body={t('today.readinessNote')}>
+      <ActionStrip
+        actions={[
+          { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
+          { icon: 'pulse-outline', label: t('today.checkIn'), onPress: onCheckIn },
+          { icon: 'options-outline', label: t('today.adjustToday'), onPress: onAdjust },
+        ]}
+      />
+    </SectionCard>
   );
 }
 
@@ -219,16 +197,8 @@ function SimpleSection({
   cta: string;
   onPress: () => void;
 }) {
-  const { colors } = useTheme();
   return (
-    <Card>
-      <View style={styles.cardHeader}>
-        <SectionHeader title={title} />
-        <Button variant="secondary" onPress={onPress}>{cta}</Button>
-      </View>
-      <Text style={[styles.decisionTitleSmall, { color: tone }]}>{primary}</Text>
-      <Text style={[styles.bodyText, { color: colors.muted }]}>{secondary}</Text>
-    </Card>
+    <SectionCard title={title} body={[primary, secondary]} ctaLabel={cta} onPress={onPress} statusLabel={primary} statusTone={tone ? 'info' : 'neutral'} />
   );
 }
 
@@ -359,11 +329,6 @@ const styles = StyleSheet.create({
   readinessBadge: { minWidth: 92, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, alignItems: 'center' },
   readinessValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   readinessLabel: { fontSize: 10, lineHeight: 13, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  twoMetrics: { flexDirection: 'row', gap: 8 },
-  reasonList: { gap: 8 },
-  reasonLine: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
   streakChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginTop: 2 },
   streakText: { fontSize: 12.5, fontWeight: '900' },
 });

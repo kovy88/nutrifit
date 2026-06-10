@@ -461,10 +461,7 @@ const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> 
   { value: 'balanced', labelKey: 'nutritionMode.balanced' },
   { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
   { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
-  { value: 'high_protein', labelKey: 'nutritionMode.high_protein' },
-  { value: 'budget_friendly', labelKey: 'nutritionMode.budget_friendly' },
   { value: 'simple_meal_prep', labelKey: 'nutritionMode.simple_meal_prep' },
-  { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
 ];
 
 const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [

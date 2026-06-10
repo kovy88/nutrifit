@@ -2,18 +2,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 import {
-  ActionIconButton,
   Button,
-  Card,
   EmptyState,
   Field,
   Label,
   LoadingState,
   MetricCard,
   ScreenHeader,
-  SectionHeader,
-  StatusPill,
 } from '../components/UI';
+import { ActionStrip, CollapsibleDetails, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { analyzeFoodPhoto } from '../services/api';
@@ -101,65 +98,66 @@ export function PhotoScreen() {
     <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('photo.eyebrow')} title={t('photo.title')} subtitle={t('photo.cleanSubtitle')} />
 
-      <Card>
-        <SectionHeader
-          title={image ? t('photo.previewTitle') : t('photo.startTitle')}
-          action={<StatusPill label={estimate ? t('photo.reviewReady') : image ? t('photo.readyToAnalyze') : t('photo.emptyStatus')} tone={estimate ? 'ready' : image ? 'info' : 'neutral'} />}
-        />
+      <SectionCard
+        title={image ? t('photo.previewTitle') : t('photo.startTitle')}
+        body={image ? t('photo.cleanSubtitle') : t('photo.emptyBody')}
+        statusLabel={estimate ? t('photo.reviewReady') : image ? t('photo.readyToAnalyze') : t('photo.emptyStatus')}
+        statusTone={estimate ? 'ready' : image ? 'info' : 'neutral'}
+      >
         {image ? (
           <Image source={{ uri: image.uri }} resizeMode="cover" style={[styles.image, { backgroundColor: colors.border }]} />
         ) : (
-          <EmptyState title={t('photo.emptyTitle')} body={t('photo.emptyBody')} />
+          <EmptyState title={t('photo.emptyTitle')} />
         )}
-        <View style={styles.actionRow}>
-          <ActionIconButton icon="camera-outline" label={t('photo.takePhoto')} onPress={takePhoto} />
-          <ActionIconButton icon="images-outline" label={t('photo.gallery')} onPress={pickImage} />
-        </View>
-        {image ? (
-          <ActionIconButton
-            icon="sparkles-outline"
-            label={loading ? t('photo.analyzing') : estimate ? t('photo.reanalyze') : t('photo.estimateMacros')}
-            variant={estimate ? 'secondary' : 'primary'}
-            disabled={loading}
-            onPress={analyze}
-          />
-        ) : null}
-      </Card>
+        <ActionStrip
+          actions={[
+            { icon: 'camera-outline', label: t('photo.takePhoto'), onPress: takePhoto },
+            { icon: 'images-outline', label: t('photo.gallery'), onPress: pickImage },
+            ...(image ? [{
+              icon: 'sparkles-outline' as const,
+              label: loading ? t('photo.analyzing') : estimate ? t('photo.reanalyze') : t('photo.estimateMacros'),
+              onPress: analyze,
+              disabled: loading,
+              primary: !estimate,
+            }] : []),
+          ]}
+        />
+      </SectionCard>
 
       {loading ? <LoadingState title={t('photo.loadingTitle')} body={t('photo.loadingBody')} /> : null}
 
       {error ? (
-        <Card style={{ borderColor: colors.red }}>
-          <SectionHeader title={t('photo.errorTitle')} />
+        <SectionCard title={t('photo.errorTitle')} statusLabel={t('common.error')} statusTone="risk">
           <Text style={[styles.note, { color: colors.muted, fontFamily: fonts.regular }]}>{error}</Text>
           <Button variant="secondary" onPress={analyze} disabled={!image || loading}>{t('common.tryAgain')}</Button>
-        </Card>
+        </SectionCard>
       ) : null}
 
       {estimate ? (
-        <Card>
-          <SectionHeader
-            title={t('photo.reviewTitle')}
-            action={<StatusPill label={estimate.confidence || t('photo.confidenceUnknown')} tone="caution" />}
-          />
-          <Text style={[styles.note, { color: colors.muted, fontFamily: fonts.regular }]}>{t('photo.reviewBody')}</Text>
-
-          <Label>{t('photo.foodName')}</Label>
-          <Field value={estimate.foodName} onChangeText={foodName => setEstimate(value => value && ({ ...value, foodName }))} />
-          <Label>{t('photo.portion')}</Label>
-          <Field value={estimate.portionGuess} onChangeText={portionGuess => setEstimate(value => value && ({ ...value, portionGuess }))} />
-
-          <View style={styles.metricGrid}>
-            <MetricInput label={t('workout.kcal')} value={estimate.kcal} onChange={kcal => setEstimate(value => value && ({ ...value, kcal }))} color={colors.accent} />
-            <MetricInput label={t('home.macroProteinShort')} value={estimate.protein} onChange={protein => setEstimate(value => value && ({ ...value, protein }))} color={colors.green} />
-            <MetricInput label={t('home.macroCarbsShort')} value={estimate.carbs} onChange={carbs => setEstimate(value => value && ({ ...value, carbs }))} color={colors.blue} />
-            <MetricInput label={t('home.macroFatShort')} value={estimate.fat} onChange={fat => setEstimate(value => value && ({ ...value, fat }))} color={colors.orange} />
-          </View>
-
-          {estimate.note ? <Text style={[styles.note, { color: colors.faint, fontFamily: fonts.regular }]}>{estimate.note}</Text> : null}
+        <SectionCard
+          title={estimate.foodName || t('photo.reviewTitle')}
+          body={estimate.portionGuess ? [estimate.portionGuess, t('photo.reviewBody')] : t('photo.reviewBody')}
+          statusLabel={estimate.confidence || t('photo.confidenceUnknown')}
+          statusTone="caution"
+        >
+          <InfoRow label={t('workout.kcal')} value={estimate.kcal} />
+          <InfoRow label={t('home.protein')} value={`${estimate.protein} g`} />
+          <CollapsibleDetails label={t('photo.editEstimate')}>
+            <Label>{t('photo.foodName')}</Label>
+            <Field value={estimate.foodName} onChangeText={foodName => setEstimate(value => value && ({ ...value, foodName }))} />
+            <Label>{t('photo.portion')}</Label>
+            <Field value={estimate.portionGuess} onChangeText={portionGuess => setEstimate(value => value && ({ ...value, portionGuess }))} />
+            <View style={styles.metricGrid}>
+              <MetricInput label={t('workout.kcal')} value={estimate.kcal} onChange={kcal => setEstimate(value => value && ({ ...value, kcal }))} color={colors.accent} />
+              <MetricInput label={t('home.macroProteinShort')} value={estimate.protein} onChange={protein => setEstimate(value => value && ({ ...value, protein }))} color={colors.green} />
+              <MetricInput label={t('home.macroCarbsShort')} value={estimate.carbs} onChange={carbs => setEstimate(value => value && ({ ...value, carbs }))} color={colors.blue} />
+              <MetricInput label={t('home.macroFatShort')} value={estimate.fat} onChange={fat => setEstimate(value => value && ({ ...value, fat }))} color={colors.orange} />
+            </View>
+            {estimate.note ? <Text style={[styles.note, { color: colors.faint, fontFamily: fonts.regular }]}>{estimate.note}</Text> : null}
+          </CollapsibleDetails>
           <Text style={[styles.disclaimer, { color: colors.faint, fontFamily: fonts.regular }]}>{t('photo.disclaimer')}</Text>
           <Button onPress={save}>{t('photo.addToDay')}</Button>
-        </Card>
+        </SectionCard>
       ) : null}
       <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </Screen>
@@ -192,7 +190,6 @@ function MetricInput({
 const styles = StyleSheet.create({
   screen: { gap: 18 },
   image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 18 },
-  actionRow: { flexDirection: 'row', gap: 10 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricInput: { width: '47%', flexGrow: 1, gap: 6 },
   note: { fontSize: 14, lineHeight: 20 },

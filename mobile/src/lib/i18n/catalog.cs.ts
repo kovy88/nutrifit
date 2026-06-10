@@ -873,6 +873,10 @@ export const cs = {
   'settings.permDenied': 'odmítnuto',
   'settings.permNotDetermined': 'čeká na povolení',
   'settings.permUnavailable': 'nedostupné',
+  'settings.debugTitle': 'Vývojářská nastavení (Debug)',
+  'settings.debugPremiumBody': 'Přepnutím nasimuluješ, že má uživatel koupené Premium. Jen ve vývoji — v produkci se nezobrazuje.',
+  'settings.debugPremiumOn': 'Premium: AKTIVNÍ',
+  'settings.debugPremiumOff': 'Premium: NEAKTIVNÍ',
 
   // ── Profile ─────────────────────────────────────────────────────────────────
   'profile.title': 'Profil',

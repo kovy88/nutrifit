@@ -4,15 +4,12 @@ import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   Button,
-  Card,
   Pill,
   ScreenHeader,
-  SectionHeader,
-  SegmentedControl,
   SettingRow,
   SourceStatusCard,
-  StatusPill,
 } from '../components/UI';
+import { CollapsibleDetails, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -33,8 +30,6 @@ import type { OAuthService } from '../lib/health';
 
 const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
 const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
-
-type SettingsTab = 'coach' | 'data' | 'privacy';
 
 type OAuthSourceMeta = {
   service: OAuthService;
@@ -65,7 +60,6 @@ export function SettingsScreen() {
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
   const { user, profile, setProfile, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
-  const [tab, setTab] = useState<SettingsTab>('coach');
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -192,21 +186,17 @@ export function SettingsScreen() {
   return (
     <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
-      <SegmentedControl
-        value={tab}
-        options={[
-          { value: 'coach', label: t('settings.tabCoach') },
-          { value: 'data', label: t('settings.tabData') },
-          { value: 'privacy', label: t('settings.tabPrivacy') },
-        ]}
-        onChange={setTab}
-      />
 
-      {tab === 'coach' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.language')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.languageDesc')}</Text>
+      <SectionCard
+        title={t('settings.tabCoach')}
+        body={[
+          t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
+          t('profile.unitsValue', { units: profile?.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric') }),
+        ]}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
+            <InfoRow label={t('settings.language')} value={LOCALE_LABELS[locale]} />
             <View style={styles.wrap}>
               {SUPPORTED_LOCALES.map(loc => (
                 <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
@@ -214,11 +204,8 @@ export function SettingsScreen() {
                 </Pill>
               ))}
             </View>
-          </Card>
 
-          <Card>
-            <SectionHeader title={t('settings.units')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.unitsDesc')}</Text>
+            <InfoRow label={t('settings.units')} value={profile?.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric')} />
             <View style={styles.wrap}>
               {(['metric', 'imperial'] as const).map(us => (
                 <Pill key={us} active={(profile?.units ?? 'metric') === us} onPress={() => profile && setProfile({ ...profile, units: us })}>
@@ -226,20 +213,30 @@ export function SettingsScreen() {
                 </Pill>
               ))}
             </View>
-          </Card>
 
-          {__DEV__ && (
-            <Card>
-              <SectionHeader title="Vývojářská nastavení (Debug)" />
-              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium. Jen ve vývoji — v produkci se nezobrazuje.</Text>
+            {__DEV__ ? (
+              <CollapsibleDetails label={t('settings.debugTitle')}>
+              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.debugPremiumBody')}</Text>
               <View style={styles.wrap}>
                 <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
-                  {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
+                  {isSubscribed ? t('settings.debugPremiumOn') : t('settings.debugPremiumOff')}
                 </Pill>
               </View>
-            </Card>
-          )}
+              </CollapsibleDetails>
+            ) : null}
+          </>
+        )}
+      />
 
+      <SectionCard
+        title={t('settings.morningCoaching')}
+        body={[
+          briefing.settings.enabled ? `${String(briefing.settings.hour).padStart(2, '0')}:${String(briefing.settings.minute).padStart(2, '0')}` : t('settings.off'),
+          preWorkout.settings.enabled || postWorkout.settings.enabled ? t('settings.on') : t('settings.off'),
+        ]}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
           <ReminderRow
             title={t('settings.morningCoaching')}
             body={t('settings.morningBodyShort')}
@@ -305,21 +302,29 @@ export function SettingsScreen() {
               </>
             ) : null}
           </ReminderRow>
-        </>
-      )}
+          </>
+        )}
+      />
 
-      {tab === 'data' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.healthSourceTitle')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular, marginBottom: 12 }]}>
+      <SectionCard
+        title={t('settings.healthSourceTitle')}
+        body={[
+          healthModeLabel(profile?.healthProviderMode ?? 'auto', t),
+          native.available
+            ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
+            : t('settings.healthSourceExplain'),
+        ]}
+        statusLabel={connectedOAuth.length ? t('settings.connectedShort') : native.available ? t('settings.available') : t('settings.pending')}
+        statusTone={connectedOAuth.length || native.available ? 'ready' : 'caution'}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>
               {t('settings.healthSourceDesc')}
             </Text>
             <View style={styles.wrap}>
               {(['manual', 'mock', 'auto'] as const).map(mode => {
-                const label = mode === 'manual' ? t('settings.healthModeManual') 
-                            : mode === 'mock' ? t('settings.healthModeMock') 
-                            : t('settings.healthModeAuto');
+                const label = healthModeLabel(mode, t);
                 const isSelected = (profile?.healthProviderMode || 'auto') === mode;
                 return (
                   <Pill key={mode} active={isSelected} onPress={() => handleSelectMode(mode)}>
@@ -328,10 +333,6 @@ export function SettingsScreen() {
                 );
               })}
             </View>
-            <Text style={[styles.note, { color: colors.faint, marginTop: 10 }]}>
-              {t('settings.healthSourceExplain')}
-            </Text>
-          </Card>
 
           <SourceStatusCard
             title={native.platform === 'ios' ? t('settings.nativeIos') : native.platform === 'android' ? t('settings.nativeAndroid') : t('settings.nativeGeneric')}
@@ -348,8 +349,7 @@ export function SettingsScreen() {
             action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
           />
 
-          <Card>
-            <SectionHeader title={t('settings.oauthTitle')} action={isLoading ? <StatusPill label={t('settings.loadingSources')} tone="info" /> : null} />
+          <CollapsibleDetails label={isLoading ? t('settings.loadingSources') : t('settings.oauthTitle')}>
             <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.oauthBodyShort')}</Text>
             <View style={styles.sourceList}>
               {OAUTH_SOURCES.map(src => {
@@ -379,7 +379,7 @@ export function SettingsScreen() {
                 );
               })}
             </View>
-          </Card>
+          </CollapsibleDetails>
 
           <SourceStatusCard
             title={t('settings.noApiTitle')}
@@ -387,13 +387,16 @@ export function SettingsScreen() {
             status={t('settings.info')}
             statusTone="info"
           />
-        </>
-      )}
+          </>
+        )}
+      />
 
-      {tab === 'privacy' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.privacyTitle')} />
+      <SectionCard
+        title={t('settings.privacyTitle')}
+        body={t('settings.privacyBodyShort')}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
             <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.privacyBodyShort')}</Text>
             <View style={styles.privacyActions}>
               <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>{t('settings.privacyPolicy')}</Button>
@@ -406,9 +409,9 @@ export function SettingsScreen() {
               </Button>
             </View>
             {!user ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.notSignedInNote')}</Text> : null}
-          </Card>
-        </>
-      )}
+          </>
+        )}
+      />
     </Screen>
   );
 }
@@ -461,6 +464,14 @@ function formatPermission(p: string, t: Translate): string {
     case 'unavailable': return t('settings.permUnavailable');
     default: return p;
   }
+}
+
+function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect', t: Translate): string {
+  if (mode === 'manual') return t('settings.healthModeManual');
+  if (mode === 'mock') return t('settings.healthModeMock');
+  if (mode === 'apple_health') return t('settings.nativeIos');
+  if (mode === 'health_connect') return t('settings.nativeAndroid');
+  return t('settings.healthModeAuto');
 }
 
 const styles = StyleSheet.create({

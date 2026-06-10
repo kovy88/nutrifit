@@ -10,12 +10,11 @@ import {
   Field,
   Label,
   LoadingState,
-  MetricCard,
   PlanDayCard,
-  QuickActionButton,
   ScreenHeader,
   SectionHeader,
 } from '../components/UI';
+import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
@@ -97,11 +96,14 @@ export function PlanScreen() {
   const shoppingGroups = buildShoppingList(meals);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
   const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
-  const phase: TrainingPhase | null = hasCustomSchedule(activeProfile)
+  const customSchedule = hasCustomSchedule(activeProfile);
+  const phase: TrainingPhase | null = customSchedule
     ? null
     : trainingPhase({ weekIndex: weeklyPlan.weekIndex, weekStartISO: weeklyPlan.weekStartISO, raceDateISO: activeProfile.raceDateISO, goalKind: activeProfile.trainingGoal });
-  const isCustomEmpty = hasCustomSchedule(activeProfile) && weeklyPlan.sessions.every(s => s.kind === 'rest');
+  const isCustomEmpty = customSchedule && weeklyPlan.sessions.every(s => s.kind === 'rest');
   const mainSportId = activeProfile.mainSport?.id;
+  const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(shortSession(selectedSession, t));
+  const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, t);
 
   async function loadStarterWeek() {
     if (!mainSportId) return;
@@ -215,15 +217,41 @@ export function PlanScreen() {
         }
       />
 
-      {phase ? (
-        <View style={styles.phaseRow}>
-          <View style={[styles.phaseBadge, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
-            <Text style={[styles.phaseText, { color: colors.accent }]}>{t('phase.prefix')} · {t(PHASE_KEY[phase])}</Text>
-          </View>
-        </View>
-      ) : null}
+      <HeroDecisionCard
+        eyebrow={phase ? `${t('phase.prefix')} · ${t(PHASE_KEY[phase])}` : t('tab.plan')}
+        title={selectedDayTitle}
+        body={selectedDayBody}
+        statusLabel={formatDateLabel(selectedDate, locale)}
+        statusTone={selectedSession.kind === 'rest' ? 'info' : 'ready'}
+      >
+        <ActionStrip
+          actions={[
+            {
+              icon: meals.length ? 'restaurant-outline' : 'sparkles-outline',
+              label: meals.length ? t('today.swapMeal') : t('plan.generate'),
+              onPress: generate,
+              disabled: loading,
+              primary: meals.length === 0,
+            },
+            {
+              icon: selectedSession.kind === 'rest' ? 'walk-outline' : 'checkmark-circle-outline',
+              label: selectedSession.kind === 'rest' ? t('today.restDayLabel') : completion?.status === 'completed' ? t('today.completed') : t('today.markDone'),
+              onPress: markWorkoutDoneForSelectedDay,
+              disabled: selectedSession.kind === 'rest' || completion?.status === 'completed',
+            },
+            { icon: 'camera-outline', label: t('plan.openPhoto'), onPress: () => navigation.navigate('Foto') },
+          ]}
+        />
+      </HeroDecisionCard>
 
-      <QuickActionButton icon="calendar-outline" label={t('myweek.openCta')} onPress={() => navigation.navigate('MujTyden')} />
+      {customSchedule ? (
+        <SectionCard
+          title={t('myweek.openCta')}
+          body={mainSportId ? SPORTS[mainSportId].name(locale) : t('profile.trainingContextDefault')}
+          ctaLabel={t('myweek.openCta')}
+          onPress={() => navigation.navigate('MujTyden')}
+        />
+      ) : null}
 
       {isCustomEmpty ? (
         <Card>
@@ -236,27 +264,22 @@ export function PlanScreen() {
       ) : null}
 
       {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
-        <Card style={{ borderColor: colors.orange, backgroundColor: colors.orange + '10', marginBottom: 12, padding: 14 }}>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-            <Ionicons name="warning-outline" size={20} color={colors.orange} />
-            <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.ink, flex: 1 }}>
-              {t('plan.ambitiousWarning')}
-            </Text>
-          </View>
-          {weeklyPlan.safetyWarnings.map((warning, index) => (
-            <Text key={index} style={{ fontSize: 13, color: colors.muted, lineHeight: 18, marginTop: 2 }}>
-              • {warning}
-            </Text>
+        <SectionCard
+          title={t('plan.ambitiousWarning')}
+          body={weeklyPlan.safetyWarnings[0]}
+          statusLabel={t('settings.info')}
+          statusTone="caution"
+          detailLabel={t('plan.detail')}
+          detailChildren={weeklyPlan.safetyWarnings.slice(1).map((warning, index) => (
+            <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
           ))}
-        </Card>
+        />
       ) : null}
 
       {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
-        <View style={{ marginBottom: 12, paddingHorizontal: 4 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: colors.accent }}>
-            {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
-          </Text>
-        </View>
+        <Text style={[styles.weeklyVolume, { color: colors.accent }]}>
+          {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
+        </Text>
       ) : null}
 
       <View style={styles.weekList}>
@@ -291,33 +314,16 @@ export function PlanScreen() {
                       <Text style={[styles.daySummaryText, { color: colors.ink }]}>{showText(shortSession(session, t))}</Text>
                     </View>
                   </View>
-                  <View style={styles.metricRow}>
-                    <MetricCard compact label="kcal" value={selected ? activeMacros.kcal : totalMealKcal(dayMeals) || '-'} color={colors.accent} />
-                    <MetricCard compact label={t('home.protein')} value={selected ? activeMacros.protein : totalMealProtein(dayMeals) || '-'} unit={selected || totalMealProtein(dayMeals) ? 'g' : undefined} color={colors.green} />
-                  </View>
-                  <Text style={[styles.fueling, { color: colors.muted }]}>{nutritionNote(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}</Text>
-                  <View style={styles.dayActions}>
-                    <QuickActionButton icon="restaurant-outline" label={dayMeals.length ? t('today.swapMeal') : t('plan.generate')} onPress={generate} disabled={loading || !selected} />
-                    <QuickActionButton icon="options-outline" label={t('today.adjustToday')} onPress={() => navigation.navigate('Trénink')} />
-                    {session.kind !== 'rest' ? (
-                      <QuickActionButton
-                        icon="checkmark-circle-outline"
-                        label={completion?.status === 'completed' && selected ? t('today.completed') : t('today.markDone')}
-                        onPress={markWorkoutDoneForSelectedDay}
-                        disabled={!selected || completion?.status === 'completed'}
-                      />
-                    ) : null}
-                  </View>
+                  <CollapsibleDetails label={t('plan.detail')}>
+                    <InfoRow label="kcal" value={selected ? activeMacros.kcal : totalMealKcal(dayMeals) || '-'} />
+                    <InfoRow label={t('home.protein')} value={selected ? `${activeMacros.protein} g` : totalMealProtein(dayMeals) ? `${totalMealProtein(dayMeals)} g` : '-'} />
+                    <Text style={[styles.fueling, { color: colors.muted }]}>{nutritionNote(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}</Text>
+                  </CollapsibleDetails>
                 </View>
               ) : null}
             </PlanDayCard>
           );
         })}
-      </View>
-
-      <View style={styles.quickGrid}>
-        <QuickActionButton icon="sparkles-outline" label={t('plan.generate')} onPress={generate} disabled={loading} />
-        <QuickActionButton icon="camera-outline" label={t('plan.openPhoto')} onPress={() => navigation.navigate('Foto')} />
       </View>
 
       {loading ? <LoadingState title={t('plan.generating')} body={t('plan.loadingSub')} /> : null}
@@ -368,18 +374,19 @@ export function PlanScreen() {
       ) : null}
 
       {shoppingGroups.length > 0 ? (
-        <Card>
-          <SectionHeader
-            title={t('plan.shoppingList')}
-            action={<Text style={[styles.link, { color: colors.accent }]} onPress={shareShoppingList}>{t('plan.share')}</Text>}
-          />
-          {shoppingGroups.map(group => (
+        <SectionCard
+          title={t('plan.shoppingList')}
+          body={shoppingGroups.slice(0, 2).map(group => `${group.category}: ${group.items.slice(0, 4).join(', ')}`)}
+          ctaLabel={t('plan.share')}
+          onPress={shareShoppingList}
+          detailLabel={t('plan.detail')}
+          detailChildren={shoppingGroups.map(group => (
             <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
               <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
               <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
             </View>
           ))}
-        </Card>
+        />
       ) : null}
 
       <PreferencesSheet
@@ -560,15 +567,14 @@ const styles = StyleSheet.create({
   phaseRow: { flexDirection: 'row', marginBottom: 4 },
   phaseBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
   phaseText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  weeklyVolume: { fontSize: 13, fontWeight: '900', paddingHorizontal: 4 },
   weekList: { gap: 10 },
   dayDetails: { gap: 12 },
   daySummaryRow: { flexDirection: 'row', gap: 10 },
   daySummaryBlock: { flex: 1, gap: 3 },
   daySummaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
   daySummaryText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  metricRow: { flexDirection: 'row', gap: 8 },
   fueling: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
-  quickGrid: { flexDirection: 'row', gap: 8 },
   dayActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   mealRow: { borderTopWidth: 1, paddingTop: 14, gap: 9 },
   mealTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

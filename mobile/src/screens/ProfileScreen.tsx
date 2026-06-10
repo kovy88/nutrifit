@@ -1,6 +1,7 @@
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
+import { Button, Field, Label, Pill, ScreenHeader } from '../components/UI';
+import { SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { WeightInput } from '../components/WeightInput';
 import { useTrenr } from '../context/TrenrContext';
@@ -214,15 +215,12 @@ export function ProfileScreen() {
         />
       </ProfileSectionCard>
 
-      <Card>
-        <SectionHeader title={t('profile.safetyAbout')} />
-        <Text style={[styles.sectionLead, { color: colors.ink }]}>{t('profile.safetyShort')}</Text>
-        <Text style={[styles.rowText, { color: colors.muted }]}>{t('profile.safetyBodyShort')}</Text>
+      <SectionCard title={t('profile.safetyAbout')} body={[t('profile.safetyShort'), t('profile.safetyBodyShort')]}>
         <View style={styles.linkRow}>
           <Text style={[styles.link, { color: colors.blue }]} onPress={() => openUrl('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>{t('profile.privacyPolicy')}</Text>
           <Text style={[styles.link, { color: colors.blue }]} onPress={() => openUrl('https://nutri-fit-omega.vercel.app/delete-account.html')}>{t('profile.publicDeleteRequest')}</Text>
         </View>
-      </Card>
+      </SectionCard>
     </Screen>
   );
 }
@@ -242,22 +240,10 @@ function ProfileSectionCard({
   onPress?: () => void;
   children?: ReactNode;
 }) {
-  const { colors } = useTheme();
   return (
-    <Card>
-      <SectionHeader
-        title={title}
-        action={ctaLabel && onPress ? <Button variant="secondary" onPress={onPress}>{ctaLabel}</Button> : undefined}
-      />
-      <View style={styles.sectionRows}>
-        {rows.slice(0, 4).filter(Boolean).map((row, index) => (
-          <Text key={`${title}-${index}-${row}`} style={[index === 0 ? styles.sectionLead : styles.rowText, { color: index === 0 ? colors.ink : colors.muted }]}>
-            {row}
-          </Text>
-        ))}
-      </View>
-      {expanded && children ? <View style={[styles.editor, { borderTopColor: colors.border }]}>{children}</View> : null}
-    </Card>
+    <SectionCard title={title} body={rows.slice(0, 4).filter(Boolean)} ctaLabel={ctaLabel} onPress={onPress}>
+      {expanded && children ? <View style={styles.editor}>{children}</View> : null}
+    </SectionCard>
   );
 }
 

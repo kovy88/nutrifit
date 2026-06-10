@@ -866,6 +866,10 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'settings.permDenied': 'denied',
   'settings.permNotDetermined': 'awaiting permission',
   'settings.permUnavailable': 'unavailable',
+  'settings.debugTitle': 'Developer settings (Debug)',
+  'settings.debugPremiumBody': 'Toggle this to simulate that the user has Premium. Development only — hidden in production.',
+  'settings.debugPremiumOn': 'Premium: ACTIVE',
+  'settings.debugPremiumOff': 'Premium: INACTIVE',
 
   // ── Profile ─────────────────────────────────────────────────────────────────
   'profile.title': 'Profile',
