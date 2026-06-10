@@ -16,7 +16,12 @@ export function GoalChip({ active, children, onPress }: PropsWithChildren<{ acti
         pressed && { opacity: 0.88 },
       ]}
     >
-      <Text style={[styles.text, { color: active ? colors.accent : colors.ink, fontFamily: fonts.bold }]}>
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.9}
+        style={[styles.text, { color: active ? colors.accent : colors.ink, fontFamily: fonts.bold }]}
+      >
         {children}
       </Text>
     </Pressable>
@@ -27,12 +32,12 @@ const styles = StyleSheet.create({
   chip: {
     width: '47%',
     flexGrow: 1,
-    minHeight: 54,
+    minHeight: 64,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     justifyContent: 'center',
   },
-  text: { fontSize: 14, lineHeight: 18, textAlign: 'center' },
+  text: { fontSize: 15, lineHeight: 19, textAlign: 'center' },
 });

@@ -15,7 +15,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
   const content = (
     <>
       {children}
-      <View style={{ height: footer ? 28 : 96 }} />
+      <View style={{ height: footer ? 124 : 96 }} />
     </>
   );
 

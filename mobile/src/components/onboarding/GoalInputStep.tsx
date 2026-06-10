@@ -62,6 +62,6 @@ export function GoalInputStep({
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
   coachLine: { gap: 4 },
-  coachKicker: { fontSize: 12, lineHeight: 16, textTransform: 'uppercase', letterSpacing: 0.4 },
+  coachKicker: { fontSize: 13, lineHeight: 18, letterSpacing: 0 },
   coachCopy: { fontSize: 14, lineHeight: 20 },
 });

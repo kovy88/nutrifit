@@ -76,14 +76,12 @@ export function OnboardingScreen() {
   const stepValidation = validateOnboardingStep(step, draft, scope, touchedFields, feasibility?.verdict);
   const touchedCurrentStep = isStepTouched(step, touchedFields);
   const shouldShowRequired = !stepValidation.valid && !autoStep && touchedCurrentStep;
-  const footerMessageKey = autoStep && !stepValidation.valid
-    ? 'onb.tapToContinue'
+  const stepHelp = subtitleFor(step, locale, t);
+  const footerMessage = autoStep && !stepValidation.valid
+    ? t('onb.tapToContinue')
     : shouldShowRequired
-      ? stepValidation.messageKey
-      : helpKeyFor(step);
-  const footerMessage = step === 'body' && !shouldShowRequired
-    ? bodyHelpCopy(locale)
-    : t(footerMessageKey, stepValidation.params);
+      ? t(stepValidation.messageKey, stepValidation.params)
+      : stepHelp;
 
   function markTouched(field: OnboardingField) {
     setTouchedFields(current => ({ ...current, [field]: true }));
@@ -158,7 +156,7 @@ export function OnboardingScreen() {
       <OnboardingProgress current={idx + 1} total={total} />
 
       <H1>{questionFor(step, t)}</H1>
-      <Subtitle>{step === 'body' ? bodyHelpCopy(locale) : t(helpKeyFor(step))}</Subtitle>
+      <Subtitle>{stepHelp}</Subtitle>
       {step === 'focus' && (
         <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
@@ -464,9 +462,50 @@ function bodyHelpCopy(locale: 'cs' | 'en'): string {
     : 'Pár základních údajů stačí, aby první jídelní doporučení dávalo smysl.';
 }
 
+function subtitleFor(step: StepId, locale: 'cs' | 'en', t: (k: TranslationKey) => string): string {
+  if (step === 'body') return bodyHelpCopy(locale);
+  if (step === 'sessions') {
+    return locale === 'en'
+      ? 'Pick the rhythm you can repeat on a normal busy week.'
+      : 'Vyber rytmus, který zvládneš opakovat i v běžném týdnu.';
+  }
+  if (step === 'nutritionGoal') {
+    return locale === 'en'
+      ? 'This only sets the direction of your first food plan.'
+      : 'Tohle jen nastaví směr prvního jídelního plánu.';
+  }
+  if (step === 'nutritionMode') {
+    return locale === 'en'
+      ? 'Keep it simple now; food preferences can be tuned later.'
+      : 'Teď to nech jednoduché; preference jídla doladíš později.';
+  }
+  if (step === 'planIntensity') {
+    return locale === 'en'
+      ? 'Choose the pace you can sustain next week too.'
+      : 'Vyber tempo, které zvládneš držet i příští týden.';
+  }
+  return t(helpKeyFor(step));
+}
+
 function sessionOptionLabel(count: number, locale: 'cs' | 'en'): string {
-  if (locale === 'en') return count === 1 ? 'day/week' : 'days/week';
-  return count === 1 ? 'den týdně' : 'dny týdně';
+  if (locale === 'en') {
+    return ({
+      1: 'easy start',
+      2: 'light rhythm',
+      3: 'balanced week',
+      4: 'steady plan',
+      5: 'high commitment',
+      6: 'advanced',
+    } as const)[count] ?? 'days/week';
+  }
+  return ({
+    1: 'lehký start',
+    2: 'klidný rytmus',
+    3: 'vyvážený týden',
+    4: 'pevný plán',
+    5: 'vyšší závazek',
+    6: 'pokročilé',
+  } as const)[count] ?? 'dny týdně';
 }
 
 const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }> = [
@@ -550,7 +589,7 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 
 const styles = StyleSheet.create({
   screenContent: { paddingBottom: 8 },
-  welcomeBox: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
+  welcomeBox: { borderWidth: 1, borderRadius: 8, padding: 16, gap: 10 },
   brand: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
   welcomeCopy: { fontSize: 15, lineHeight: 21, fontWeight: '800' },
   modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -558,15 +597,15 @@ const styles = StyleSheet.create({
   options: { gap: 10, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  sessionChoice: { width: '30%', flexGrow: 1, minHeight: 68, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 10 },
-  sessionNumber: { fontSize: 20, lineHeight: 24, fontWeight: '900' },
-  sessionLabel: { fontSize: 11, lineHeight: 14, fontWeight: '800', textAlign: 'center' },
+  sessionChoice: { width: '47%', flexGrow: 1, minHeight: 78, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 12 },
+  sessionNumber: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
+  sessionLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'center' },
   bodyWrap: { gap: 12 },
   footer: { gap: 8 },
   actions: { flexDirection: 'row', gap: 10 },
   footerButton: { flex: 1 },
   disclaimer: { fontSize: 12, lineHeight: 18, marginTop: 12 },
-  fieldLabel: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  fieldLabel: { fontSize: 13, lineHeight: 18, fontWeight: '800', letterSpacing: 0, marginTop: 4 },
   validationText: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
   datePreview: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
   feasibilityBox: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
