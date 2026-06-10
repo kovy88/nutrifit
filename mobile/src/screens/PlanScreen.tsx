@@ -9,11 +9,10 @@ import {
   Field,
   Label,
   LoadingState,
-  PlanDayCard,
   ScreenHeader,
   SectionHeader,
 } from '../components/UI';
-import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
+import { CollapsibleDetails, HeroDecisionCard, SectionCard } from '../components/SimpleUX';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { generateMealPlan, regenerateMeal } from '../services/api';
@@ -34,7 +33,6 @@ const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
 import { useLanguage } from '../context/LanguageContext';
 import { useUnits } from '../hooks/useUnits';
 import { PaywallModal } from '../components/PaywallModal';
-import { loadPlansByDate } from '../services/storage';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 export function PlanScreen() {
@@ -64,8 +62,6 @@ export function PlanScreen() {
   const [likes, setLikes] = useState(profile?.likes || '');
   const [dislikes, setDislikes] = useState(profile?.dislikes || '');
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [expandedDay, setExpandedDay] = useState(selectedDate);
-  const [plansByDate, setPlansByDate] = useState<Record<string, Meal[]>>({});
   const { completion, mark } = useTrainingCompletion();
 
   useEffect(() => {
@@ -73,18 +69,6 @@ export function PlanScreen() {
     setLikes(profile.likes);
     setDislikes(profile.dislikes);
   }, [profile?.likes, profile?.dislikes]);
-
-  useEffect(() => {
-    setExpandedDay(selectedDate);
-  }, [selectedDate]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadPlansByDate().then(plans => {
-      if (!cancelled) setPlansByDate(plans);
-    });
-    return () => { cancelled = true; };
-  }, [selectedDate, meals.length]);
 
   const weekDays = useMemo(() => buildWeek(selectedDate, locale), [selectedDate, locale]);
 
@@ -101,8 +85,11 @@ export function PlanScreen() {
     : trainingPhase({ weekIndex: weeklyPlan.weekIndex, weekStartISO: weeklyPlan.weekStartISO, raceDateISO: activeProfile.raceDateISO, goalKind: activeProfile.trainingGoal });
   const isCustomEmpty = customSchedule && weeklyPlan.sessions.every(s => s.kind === 'rest');
   const mainSportId = activeProfile.mainSport?.id;
-  const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(shortSession(selectedSession, t));
+  const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(sessionLine(selectedSession, t));
   const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, t);
+  const heroAction = meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
+    ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
+    : undefined;
 
   async function loadStarterWeek() {
     if (!mainSportId) return;
@@ -137,7 +124,6 @@ export function PlanScreen() {
     try {
       const next = await generateMealPlan(activeProfile, activeMacros, selectedSession);
       await setMeals(next);
-      setPlansByDate(current => ({ ...current, [selectedDate]: next }));
     } catch (err) {
       Alert.alert(t('plan.generateFailed'), err instanceof Error ? err.message : t('plan.tryAgain'));
     } finally {
@@ -183,7 +169,6 @@ export function PlanScreen() {
       const nextMeals = meals.slice();
       nextMeals[index] = next;
       await setMeals(nextMeals);
-      setPlansByDate(current => ({ ...current, [selectedDate]: nextMeals }));
     } catch (err) {
       Alert.alert(t('plan.regenFailed'), err instanceof Error ? err.message : t('plan.tryAgainShort'));
     } finally {
@@ -209,11 +194,6 @@ export function PlanScreen() {
         eyebrow={t('tab.plan')}
         title={t('plan.weekTitle')}
         subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate, locale) })}
-        action={
-          <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.settings')} style={[styles.iconButton, { borderColor: colors.border }]} onPress={() => setPrefsOpen(true)}>
-            <Ionicons name="options-outline" size={20} color={colors.accent} />
-          </Pressable>
-        }
       />
 
       <HeroDecisionCard
@@ -222,41 +202,9 @@ export function PlanScreen() {
         body={selectedDayBody}
         statusLabel={formatDateLabel(selectedDate, locale)}
         statusTone={selectedSession.kind === 'rest' ? 'info' : 'ready'}
-      >
-        <ActionStrip
-          actions={[
-            {
-              icon: meals.length ? 'restaurant-outline' : 'sparkles-outline',
-              label: meals.length ? t('today.swapMeal') : t('plan.generate'),
-              onPress: generate,
-              disabled: loading,
-              primary: meals.length === 0,
-            },
-            {
-              icon: selectedSession.kind === 'rest' ? 'walk-outline' : 'checkmark-circle-outline',
-              label: selectedSession.kind === 'rest' ? t('today.restDayLabel') : completion?.status === 'completed' ? t('today.completed') : t('today.markDone'),
-              onPress: markWorkoutDoneForSelectedDay,
-              disabled: selectedSession.kind === 'rest' || completion?.status === 'completed',
-            },
-          ]}
-        />
-        {weeklyPlan.safetyWarnings?.length ? (
-          <CollapsibleDetails label={t('plan.ambitiousWarning')}>
-            {weeklyPlan.safetyWarnings.map((warning, index) => (
-              <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
-            ))}
-          </CollapsibleDetails>
-        ) : null}
-      </HeroDecisionCard>
-
-      {customSchedule ? (
-        <SectionCard
-          title={t('myweek.openCta')}
-          body={mainSportId ? SPORTS[mainSportId].name(locale) : t('profile.trainingContextDefault')}
-          ctaLabel={t('myweek.openCta')}
-          onPress={() => navigation.navigate('MujTyden')}
-        />
-      ) : null}
+        actionLabel={heroAction?.label}
+        onAction={heroAction?.onPress}
+      />
 
       {isCustomEmpty ? (
         <Card>
@@ -268,57 +216,39 @@ export function PlanScreen() {
         </Card>
       ) : null}
 
-      <View style={styles.weekList}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
         {weekDays.map(day => {
           const session = planSessionForDate(activeProfile, new Date(day.key), {}, locale);
           const selected = day.key === selectedDate;
-          const expanded = day.key === expandedDay;
-          const dayMeals = selected ? meals : plansByDate[day.key] ?? [];
           return (
-            <PlanDayCard
+            <WeekDayChip
               key={day.key}
+              day={day}
+              session={session}
               selected={selected}
-              isRest={session.kind === 'rest'}
-              isLongRun={session.kind === 'long_run'}
-              title={`${day.name} ${day.num}`}
-              subtitle={showText(sessionLine(session, t))}
-              markers={planMarkers(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}
               onPress={() => {
                 setSelectedDate(day.key);
-                setExpandedDay(expanded ? day.key : day.key);
               }}
-            >
-              {expanded ? (
-                <View style={styles.dayDetails}>
-                  <View style={styles.daySummaryRow}>
-                    <View style={styles.daySummaryBlock}>
-                      <Text style={[styles.daySummaryLabel, { color: colors.faint }]}>{t('plan.mealSummary')}</Text>
-                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{mealSummary(dayMeals, t)}</Text>
-                    </View>
-                    <View style={styles.daySummaryBlock}>
-                      <Text style={[styles.daySummaryLabel, { color: colors.faint }]}>{t('plan.trainingSummary')}</Text>
-                      <Text style={[styles.daySummaryText, { color: colors.ink }]}>{showText(shortSession(session, t))}</Text>
-                    </View>
-                  </View>
-                  <CollapsibleDetails label={t('plan.detail')}>
-                    <InfoRow label="kcal" value={selected ? activeMacros.kcal : totalMealKcal(dayMeals) || '-'} />
-                    <InfoRow label={t('home.protein')} value={selected ? `${activeMacros.protein} g` : totalMealProtein(dayMeals) ? `${totalMealProtein(dayMeals)} g` : '-'} />
-                    <Text style={[styles.fueling, { color: colors.muted }]}>{nutritionNote(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}</Text>
-                  </CollapsibleDetails>
-                </View>
-              ) : null}
-            </PlanDayCard>
+              t={t}
+            />
           );
         })}
-      </View>
+      </ScrollView>
 
       {loading ? <LoadingState title={t('plan.generating')} body={t('plan.loadingSub')} /> : null}
 
       <SectionCard
+        title={t('today.trainingTitle')}
+        body={trainingCardBody(selectedSession, locale, showText(sessionLine(selectedSession, t)))}
+        ctaLabel={t('today.adjustToday')}
+        onPress={() => navigation.navigate('Trénink')}
+      />
+
+      <SectionCard
         title={t('plan.todayMeals')}
         body={meals.length ? mealOverviewRows(meals, t) : t('plan.emptyBody')}
-        ctaLabel={meals.length ? t('today.swapMeal') : t('plan.buildCoachPlan')}
-        onPress={generate}
+        ctaLabel={!meals.length ? t('plan.generate') : undefined}
+        onPress={!meals.length ? generate : undefined}
         detailLabel={meals.length ? t('plan.detail') : undefined}
         detailChildren={meals.length ? (
           <>
@@ -351,6 +281,28 @@ export function PlanScreen() {
                 </View>
               </View>
             ))}
+            <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
+          </>
+        ) : undefined}
+      />
+
+      <SectionCard
+        title={moreOptionsTitle(locale)}
+        body={moreOptionsBody(locale)}
+        detailLabel={t('plan.detail')}
+        detailChildren={
+          <View style={styles.moreOptions}>
+            <Button variant="secondary" onPress={() => setPrefsOpen(true)}>{t('plan.prefsTitle')}</Button>
+            {customSchedule ? (
+              <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
+            ) : null}
+            {weeklyPlan.safetyWarnings?.length ? (
+              <CollapsibleDetails label={t('plan.ambitiousWarning')}>
+                {weeklyPlan.safetyWarnings.map((warning, index) => (
+                  <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
+                ))}
+              </CollapsibleDetails>
+            ) : null}
             {shoppingGroups.length > 0 ? (
               <CollapsibleDetails label={t('plan.shoppingList')}>
                 {shoppingGroups.map(group => (
@@ -362,9 +314,8 @@ export function PlanScreen() {
                 <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
               </CollapsibleDetails>
             ) : null}
-            <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
-          </>
-        ) : undefined}
+          </View>
+        }
       />
 
       <PreferencesSheet
@@ -479,6 +430,40 @@ function IconAction({
   );
 }
 
+function WeekDayChip({
+  day,
+  session,
+  selected,
+  onPress,
+  t,
+}: {
+  day: ReturnType<typeof buildWeek>[number];
+  session: TrainingSession;
+  selected: boolean;
+  onPress: () => void;
+  t: ReturnType<typeof useLanguage>['t'];
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.dayChip,
+        {
+          borderColor: selected ? colors.accent : colors.border,
+          backgroundColor: selected ? colors.accent + '18' : colors.bgElev,
+        },
+        pressed && { opacity: 0.82, transform: [{ scale: 0.98 }] },
+      ]}
+    >
+      <Text numberOfLines={1} style={[styles.dayName, { color: selected ? colors.accent : colors.faint }]}>{day.name}</Text>
+      <Text style={[styles.dayNum, { color: colors.ink }]}>{day.num}</Text>
+      <Text numberOfLines={1} style={[styles.daySession, { color: colors.muted }]}>{shortSession(session, t)}</Text>
+    </Pressable>
+  );
+}
+
 function buildWeek(selectedDate: string, locale: 'cs' | 'en') {
   const base = new Date(selectedDate);
   const day = base.getDay() || 7;
@@ -510,16 +495,6 @@ function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>
   return session.second ? `${base}  +  ${session.second.title} · ${session.second.durationMinutes} min` : base;
 }
 
-function planMarkers(session: TrainingSession, carbsDelta: number, t: ReturnType<typeof useLanguage>['t']): string[] {
-  const markers: string[] = [];
-  if (session.kind === 'rest') markers.push(t('plan.markerRest'));
-  if (session.kind === 'long_run') markers.push(t('plan.markerLongRun'));
-  if (session.kind === 'match') markers.push(t('plan.markerMatch'));
-  if (session.intensity === 'hard' && session.kind !== 'match') markers.push(t('plan.markerHard'));
-  if (carbsDelta > 0) markers.push(t('plan.markerFuel'));
-  return markers;
-}
-
 function mealSummary(meals: Meal[], t: ReturnType<typeof useLanguage>['t']): string {
   if (!meals.length) return t('plan.noMealsYet');
   return t('plan.mealSummaryValue', { count: meals.length, kcal: totalMealKcal(meals) });
@@ -534,10 +509,6 @@ function totalMealKcal(meals: Meal[]): number {
   return meals.reduce((sum, meal) => sum + meal.kcal, 0);
 }
 
-function totalMealProtein(meals: Meal[]): number {
-  return meals.reduce((sum, meal) => sum + meal.protein, 0);
-}
-
 function nutritionNote(session: TrainingSession, carbsDelta: number, t: ReturnType<typeof useLanguage>['t']): string {
   if (carbsDelta > 0) return t('plan.fuelAdjustmentShort', { carbs: Math.round(carbsDelta) });
   if (session.kind === 'rest') return t('plan.restAdjustmentShort');
@@ -545,20 +516,39 @@ function nutritionNote(session: TrainingSession, carbsDelta: number, t: ReturnTy
   return t('plan.easyDayAdjustmentShort');
 }
 
+function trainingCardBody(session: TrainingSession, locale: 'cs' | 'en', line: string): string[] {
+  if (session.kind === 'rest') {
+    return [
+      locale === 'en' ? 'No workout planned today.' : 'Dnes není plánovaný trénink.',
+      locale === 'en' ? 'Keep it light and do not add intensity.' : 'Drž den lehký a nepřidávej intenzitu.',
+    ];
+  }
+  const note = session.intensity === 'hard'
+    ? (locale === 'en' ? 'Protect the hard work: warm up well and do not add extra volume.' : 'Tvrdý den: dobře se zahřej a nepřidávej objem navíc.')
+    : session.intensity === 'moderate'
+      ? (locale === 'en' ? 'Stay steady and finish with energy left.' : 'Drž stabilní tempo a konči s rezervou.')
+      : (locale === 'en' ? 'Keep it easy and conversational.' : 'Drž to lehce a v klidném tempu.');
+  return [line, note];
+}
+
+function moreOptionsTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'More options' : 'Další možnosti';
+}
+
+function moreOptionsBody(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Preferences, safety notes and shopping stay here so the daily plan stays focused.'
+    : 'Preference, bezpečnost a nákup nechávám tady, aby denní plán zůstal čistý.';
+}
+
 const styles = StyleSheet.create({
-  iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  phaseRow: { flexDirection: 'row', marginBottom: 4 },
-  phaseBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  phaseText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  weeklyVolume: { fontSize: 13, fontWeight: '900', paddingHorizontal: 4 },
-  weekList: { gap: 10 },
-  dayDetails: { gap: 12 },
-  daySummaryRow: { flexDirection: 'row', gap: 10 },
-  daySummaryBlock: { flex: 1, gap: 3 },
-  daySummaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
-  daySummaryText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  weekStrip: { gap: 8, paddingRight: 4 },
+  dayChip: { width: 76, minHeight: 82, borderWidth: 1, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 9, justifyContent: 'space-between' },
+  dayName: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  dayNum: { fontSize: 22, lineHeight: 26, fontWeight: '900' },
+  daySession: { fontSize: 12, lineHeight: 15, fontWeight: '800' },
   fueling: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
-  dayActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  moreOptions: { gap: 9 },
   mealRow: { borderTopWidth: 1, paddingTop: 14, gap: 9 },
   mealTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   mealType: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
@@ -566,7 +556,7 @@ const styles = StyleSheet.create({
   mealKcal: { fontSize: 15, fontWeight: '900' },
   mealMeta: { fontSize: 13, lineHeight: 18 },
   mealActions: { flexDirection: 'row', gap: 8 },
-  mealAction: { flex: 1, minHeight: 42, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 8 },
+  mealAction: { flex: 1, minHeight: 42, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 8 },
   mealActionText: { fontSize: 12, fontWeight: '800' },
   disclaimer: { fontSize: 12, lineHeight: 17, fontStyle: 'italic', marginTop: 4 },
   link: { fontSize: 13, fontWeight: '900' },

@@ -108,7 +108,6 @@ export function TodayScreen() {
               title={t('today.trainingTitle')}
               primary={trainingSummary(rec.training?.session ?? currentSession, t)}
               secondary={trainingDetail(rec.training?.session ?? currentSession, rec.training?.focus, rec.training?.whatNotToDo, t)}
-              tone={rec.training?.adjusted ? colors.orange : colors.accent}
               cta={t('today.adjustToday')}
               onPress={() => navigation.navigate('Trénink')}
             />
@@ -186,19 +185,17 @@ function SimpleSection({
   title,
   primary,
   secondary,
-  tone,
   cta,
   onPress,
 }: {
   title: string;
   primary: string;
   secondary: string;
-  tone: string;
   cta: string;
   onPress: () => void;
 }) {
   return (
-    <SectionCard title={title} body={[primary, secondary]} ctaLabel={cta} onPress={onPress} statusLabel={primary} statusTone={tone ? 'info' : 'neutral'} />
+    <SectionCard title={title} body={[primary, secondary]} ctaLabel={cta} onPress={onPress} />
   );
 }
 

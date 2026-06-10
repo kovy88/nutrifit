@@ -127,7 +127,7 @@ export function CoachScreen() {
         title={recommendation?.headline ?? t('coach.title')}
         body={recommendation?.coachNote ?? t('coach.todayContextEmpty')}
         accent={readinessColor(recommendation?.readiness.band, colors)}
-        statusLabel={recommendation?.readiness.recommendedIntensity}
+        statusLabel={recommendation ? coachIntensityLabel(recommendation.readiness.recommendedIntensity, locale) : undefined}
         statusTone={recommendation?.readiness.band === 'low' ? 'risk' : recommendation?.readiness.band === 'medium' ? 'caution' : 'ready'}
       />
 
@@ -210,6 +210,14 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
   if (band === 'medium') return colors.orange;
   if (band === 'low') return colors.red;
   return colors.muted;
+}
+
+function coachIntensityLabel(intensity: string, locale: 'cs' | 'en'): string {
+  if (intensity === 'rest') return locale === 'en' ? 'Rest' : 'Volno';
+  if (intensity === 'easy') return locale === 'en' ? 'Easy' : 'Lehce';
+  if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
+  if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
+  return locale === 'en' ? 'Today' : 'Dnes';
 }
 
 const styles = StyleSheet.create({
