@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
 import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
-import { EmptyState, LoadingState } from '../components/UI';
+import { Button, EmptyState, LoadingState } from '../components/UI';
 import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
@@ -123,6 +123,7 @@ export function TodayScreen() {
               <CollapsibleDetails label={t('plan.detail')}>
                 <InfoRow label="kcal" value={rec.nutrition.targets.kcal} />
                 <InfoRow label={t('home.protein')} value={`${rec.nutrition.targets.protein} g`} />
+                <Button variant="secondary" onPress={() => navigation.navigate('Foto')}>{t('plan.openPhoto')}</Button>
               </CollapsibleDetails>
             </SectionCard>
           ) : null}
