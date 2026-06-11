@@ -229,10 +229,10 @@ export function SettingsScreen() {
       />
 
       <SectionCard
-        title={t('settings.morningCoaching')}
+        title={settingsNotificationsTitle(locale)}
         body={[
-          briefing.settings.enabled ? `${String(briefing.settings.hour).padStart(2, '0')}:${String(briefing.settings.minute).padStart(2, '0')}` : t('settings.off'),
-          preWorkout.settings.enabled || postWorkout.settings.enabled ? t('settings.on') : t('settings.off'),
+          morningReminderSummary(briefing.settings.enabled, briefing.settings.hour, briefing.settings.minute, locale),
+          workoutReminderSummary(preWorkout.settings.enabled, postWorkout.settings.enabled, locale),
         ]}
         detailLabel={t('plan.detail')}
         detailChildren={(
@@ -466,6 +466,25 @@ function formatPermission(p: string, t: Translate): string {
 
 function settingsHealthTitle(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Health data' : 'Zdravotní data';
+}
+
+function settingsNotificationsTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Notifications' : 'Připomínky';
+}
+
+function morningReminderSummary(enabled: boolean, hour: number, minute: number, locale: 'cs' | 'en'): string {
+  if (!enabled) return locale === 'en' ? 'Morning reminder off' : 'Ranní připomínka vypnutá';
+  const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return locale === 'en' ? `Morning reminder at ${time}` : `Ranní připomínka v ${time}`;
+}
+
+function workoutReminderSummary(preEnabled: boolean, postEnabled: boolean, locale: 'cs' | 'en'): string {
+  if (preEnabled && postEnabled) {
+    return locale === 'en' ? 'Workout reminders before and after' : 'Připomínky před i po tréninku';
+  }
+  if (preEnabled) return locale === 'en' ? 'Pre-workout reminder on' : 'Připomínka před tréninkem zapnutá';
+  if (postEnabled) return locale === 'en' ? 'Post-workout reminder on' : 'Připomínka po tréninku zapnutá';
+  return locale === 'en' ? 'Workout reminders off' : 'Tréninkové připomínky vypnuté';
 }
 
 function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect', t: Translate): string {
