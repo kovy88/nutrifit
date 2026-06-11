@@ -428,7 +428,9 @@ export function OnboardingScreen() {
         )}
       </View>
 
-      <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('onb.disclaimer')}</Text>
+      {step === 'focus' ? (
+        <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('onb.disclaimer')}</Text>
+      ) : null}
     </Screen>
   );
 }

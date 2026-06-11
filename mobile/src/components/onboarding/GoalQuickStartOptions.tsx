@@ -16,9 +16,10 @@ export function GoalQuickStartOptions({
   onSelect: (quickStart: GoalQuickStart) => void;
   t: (key: TranslationKey) => string;
 }) {
+  const options = visibleQuickStartsForScope(scope);
   return (
     <View style={styles.wrap}>
-      {quickStartsForScope(scope).map(item => (
+      {options.map(item => (
         <GoalChip
           key={`${item.id}-${item.text}`}
           active={activeText === item.text}
@@ -30,6 +31,21 @@ export function GoalQuickStartOptions({
       ))}
     </View>
   );
+}
+
+const BOTH_SCOPE_MVP_LABELS = new Set<TranslationKey>([
+  'onb.quickLoseFat',
+  'onb.quickImproveFitness',
+  'onb.quickRun5k',
+  'onb.quickRun10k',
+  'onb.quickBuildMuscle',
+  'onb.quickEatHealthier',
+]);
+
+function visibleQuickStartsForScope(scope: CoachScope): GoalQuickStart[] {
+  const options = quickStartsForScope(scope);
+  if (scope !== 'both') return options;
+  return options.filter(item => BOTH_SCOPE_MVP_LABELS.has(item.labelKey as TranslationKey));
 }
 
 const styles = StyleSheet.create({
