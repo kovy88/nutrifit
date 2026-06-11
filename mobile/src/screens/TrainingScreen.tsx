@@ -13,6 +13,7 @@ import { adjustedPlanForDate } from '../lib/training';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
+import { getRaceGoalLabel } from '../lib/profile/profile-labels';
 import type { WorkoutSummary } from '../lib/health';
 
 type WeekItem = ReturnType<typeof buildWeekList>[number];
@@ -59,7 +60,7 @@ export function TrainingScreen() {
         onBack={() => navigation.goBack()}
         eyebrow={t('training.eyebrow')}
         title={t('training.title')}
-        subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
+        subtitle={t('training.cleanSubtitle', { goal: getRaceGoalLabel(profile.trainingGoal, t) })}
       />
 
       <HeroDecisionCard
@@ -196,10 +197,6 @@ function dayDotColor(
   if (item.done) return colors.green;
   if (item.adjustedAfterMissed) return colors.blue;
   return colors.accent;
-}
-
-function formatGoal(goal: string) {
-  return goal.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
 function intensityLabel(intensity: string, locale: string): string {
