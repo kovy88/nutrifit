@@ -28,7 +28,7 @@ export function getHealthProviderLabel(mode: UserProfile['healthProviderMode'] |
     case 'apple_health': return t('settings.nativeIos');
     case 'health_connect': return t('settings.nativeAndroid');
     case 'auto':
-    default: return t('profile.healthAuto');
+    default: return t('profile.healthData');
   }
 }
 

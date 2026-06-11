@@ -22,6 +22,7 @@ describe('profile label helpers', () => {
   });
 
   it('summarizes health provider state without pretending native health is connected', () => {
+    expect(getHealthProviderLabel('auto', t)).toBe('Health data');
     expect(getHealthProviderLabel('manual', t)).toBe('Manual check-ins');
     expect(getHealthProviderStatus('auto', { available: false, platform: 'ios' }, 0, t)).toBe('Health data is not connected. You can use manual check-ins.');
     expect(getHealthProviderStatus('auto', { available: true, platform: 'ios' }, 0, t)).toBe('Apple Health is available.');
