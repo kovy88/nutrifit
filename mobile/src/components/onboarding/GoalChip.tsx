@@ -2,7 +2,12 @@ import { PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
-export function GoalChip({ active, children, onPress }: PropsWithChildren<{ active?: boolean; onPress?: () => void }>) {
+export function GoalChip({
+  active,
+  children,
+  subtitle,
+  onPress,
+}: PropsWithChildren<{ active?: boolean; subtitle?: string; onPress?: () => void }>) {
   const { colors, fonts } = useTheme();
   return (
     <Pressable
@@ -24,6 +29,11 @@ export function GoalChip({ active, children, onPress }: PropsWithChildren<{ acti
       >
         {children}
       </Text>
+      {subtitle ? (
+        <Text numberOfLines={2} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
+          {subtitle}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -32,12 +42,14 @@ const styles = StyleSheet.create({
   chip: {
     width: '47%',
     flexGrow: 1,
-    minHeight: 64,
+    minHeight: 88,
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 13,
     justifyContent: 'center',
+    gap: 5,
   },
   text: { fontSize: 15, lineHeight: 19, textAlign: 'center' },
+  subtitle: { fontSize: 12, lineHeight: 16, textAlign: 'center' },
 });

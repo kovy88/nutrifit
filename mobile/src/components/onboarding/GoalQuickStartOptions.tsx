@@ -19,7 +19,12 @@ export function GoalQuickStartOptions({
   return (
     <View style={styles.wrap}>
       {quickStartsForScope(scope).map(item => (
-        <GoalChip key={`${item.id}-${item.text}`} active={activeText === item.text} onPress={() => onSelect(item)}>
+        <GoalChip
+          key={`${item.id}-${item.text}`}
+          active={activeText === item.text}
+          subtitle={t(item.subtitleKey as TranslationKey)}
+          onPress={() => onSelect(item)}
+        >
           {t(item.labelKey as TranslationKey)}
         </GoalChip>
       ))}
@@ -28,5 +33,5 @@ export function GoalQuickStartOptions({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });
