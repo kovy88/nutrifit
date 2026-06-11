@@ -39,7 +39,7 @@ export function TodayScreen() {
   const showTraining = scopeHasTraining(scope);
   const trainingDay = Boolean(currentSession && currentSession.kind !== 'rest');
   const readinessColor = rec ? bandColor(rec.readiness.band, colors) : colors.accent;
-  const decision = rec ? readinessDecision(rec.readiness.recommendedIntensity, rec.readiness.band, t) : null;
+  const decision = rec ? dailyDecision(rec.readiness.recommendedIntensity, rec.readiness.band, locale) : null;
   const tomorrow = tomorrowSession(profile, selectedDate, locale);
 
   async function markTodayDone() {
@@ -73,7 +73,7 @@ export function TodayScreen() {
       </View>
 
       {coaching.isLoading && !rec ? (
-        <LoadingState title={t('today.loadingCoachTitle')} body={t('today.loadingCoachBody')} />
+        <LoadingState title={t('today.loadingCoachTitle')} body={todayLoadingBody(locale)} />
       ) : null}
 
       {!coaching.isLoading && !rec ? (
@@ -87,7 +87,7 @@ export function TodayScreen() {
             title={decision?.title ?? rec.headline}
             body={todayHeroBody(rec, locale)}
             accent={readinessColor}
-            statusLabel={bandLabel(rec.readiness.band, t)}
+            statusLabel={dailyStatusLabel(rec.readiness.band, locale)}
             statusTone={rec.readiness.band === 'high' ? 'ready' : rec.readiness.band === 'medium' ? 'caution' : 'risk'}
           >
             {decision?.hint ? <Text style={[styles.smallNote, { color: colors.faint }]}>{decision.hint}</Text> : null}
@@ -101,13 +101,14 @@ export function TodayScreen() {
             onDone={markTodayDone}
             onAdjust={() => navigation.navigate('Trénink')}
             t={t}
+            locale={locale}
           />
 
           {showTraining ? (
             <SimpleSection
               title={t('today.trainingTitle')}
               primary={trainingSummary(rec.training?.session ?? currentSession, t)}
-              secondary={trainingDetail(rec.training?.session ?? currentSession, rec.training?.focus, rec.training?.whatNotToDo, t)}
+              secondary={trainingDetail(rec.training?.session ?? currentSession, rec.training?.focus, rec.training?.whatNotToDo, t, locale)}
               cta={t('today.adjustToday')}
               onPress={() => navigation.navigate('Trénink')}
             />
@@ -164,6 +165,7 @@ function TodayActionCard({
   onDone,
   onAdjust,
   t,
+  locale,
 }: {
   rec: DailyCoachRecommendation;
   trainingDay: boolean;
@@ -172,13 +174,14 @@ function TodayActionCard({
   onDone: () => void;
   onAdjust: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+  locale: 'cs' | 'en';
 }) {
   const primaryLabel = trainingDay ? (completed ? t('today.completed') : t('today.markDone')) : t('today.checkIn');
   const primaryIcon = trainingDay ? 'checkmark-circle-outline' : 'pulse-outline';
   const primaryAction = trainingDay ? onDone : onCheckIn;
 
   return (
-    <SectionCard title={t('today.oneThing')} body={todayActionBody(trainingDay, completed, t)}>
+    <SectionCard title={t('today.oneThing')} body={todayActionBody(trainingDay, completed, locale)}>
       <ActionStrip
         actions={[
           { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
@@ -212,33 +215,41 @@ function bandColor(band: 'low' | 'medium' | 'high', palette: { accent: string; o
   return band === 'high' ? palette.accent : band === 'medium' ? palette.orange : palette.red;
 }
 
-function bandLabel(band: 'low' | 'medium' | 'high', t: (key: TranslationKey) => string): string {
-  return band === 'high' ? t('readiness.high') : band === 'medium' ? t('readiness.medium') : t('readiness.low');
+function dailyStatusLabel(band: 'low' | 'medium' | 'high', locale: 'cs' | 'en'): string {
+  if (band === 'high') return locale === 'en' ? 'Good day' : 'Dobrý den';
+  if (band === 'medium') return locale === 'en' ? 'Steady' : 'Stabilně';
+  return locale === 'en' ? 'Go easy' : 'Uber';
 }
 
-function readinessDecision(
+function dailyDecision(
   intensity: 'rest' | 'easy' | 'moderate' | 'hard',
   band: 'low' | 'medium' | 'high',
-  t: (key: TranslationKey) => string,
+  locale: 'cs' | 'en',
 ) {
   if (intensity === 'rest' || band === 'low') {
     return {
-      title: t('today.decisionRecover'),
-      label: t('today.decisionRecoverLabel'),
-      hint: t('today.decisionRecoverHint'),
+      title: locale === 'en' ? 'Make today easier' : 'Dnes uber',
+      label: locale === 'en' ? 'Take it easy' : 'Lehčí den',
+      hint: locale === 'en'
+        ? 'Light movement, food, and sleep are enough.'
+        : 'Stačí lehký pohyb, jídlo a spánek.',
     };
   }
   if (intensity === 'hard' && band === 'high') {
     return {
-      title: t('today.decisionPush'),
-      label: t('today.decisionPushLabel'),
-      hint: t('today.decisionPushHint'),
+      title: locale === 'en' ? 'Do the planned workout' : 'Odtrénuj dnešní plán',
+      label: locale === 'en' ? 'Go for it' : 'Jdi na to',
+      hint: locale === 'en'
+        ? 'Finish with energy left; no bonus volume.'
+        : 'Dokonči s rezervou; nepřidávej objem navíc.',
     };
   }
   return {
-    title: t('today.decisionHold'),
-    label: t('today.decisionHoldLabel'),
-    hint: t('today.decisionHoldHint'),
+    title: locale === 'en' ? 'Follow the plan calmly' : 'Drž plán v klidu',
+    label: locale === 'en' ? 'Steady day' : 'Stabilní den',
+    hint: locale === 'en'
+      ? 'Do the work, skip the records.'
+      : 'Odtrénuj, ale nelámej rekordy.',
   };
 }
 
@@ -272,10 +283,26 @@ function trainingDetail(
   focus: string | undefined,
   whatNotToDo: string | undefined,
   t: (key: TranslationKey) => string,
+  locale: 'cs' | 'en',
 ): string {
   if (!session || session.kind === 'rest') return t('today.restNote');
-  const detail = focus ? `${focus}.` : session.notes ?? '';
-  return whatNotToDo ? `${detail} ${whatNotToDo}`.trim() : detail;
+  const simpleFocus = focus && focus.length > 18 ? focus : undefined;
+  const detail = simpleFocus ?? session.notes;
+  if (detail) return detail;
+  if (whatNotToDo) {
+    return locale === 'en'
+      ? 'Keep the session clean and skip anything extra.'
+      : 'Drž trénink čistý a nepřidávej nic navíc.';
+  }
+  return locale === 'en'
+    ? 'Do the planned work and stop with energy left.'
+    : 'Odtrénuj plán a skonči s rezervou.';
+}
+
+function todayLoadingBody(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? "Preparing today's training, food, and one next action."
+    : 'Připravuju dnešní trénink, jídlo a jeden další krok.';
 }
 
 function todayHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
@@ -287,8 +314,8 @@ function todayHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
   }
   if (rec.readiness.recommendedIntensity === 'hard') {
     return locale === 'en'
-      ? 'Do the planned quality work, but do not add extra volume.'
-      : 'Odtrénuj plánovanou kvalitu, ale nepřidávej objem navíc.';
+      ? 'Today is good for the planned session, not for improvising more.'
+      : 'Dnes se hodí plánovaný trénink, ne vymýšlení něčeho navíc.';
   }
   if (rec.readiness.recommendedIntensity === 'easy') {
     return locale === 'en'
@@ -303,11 +330,21 @@ function todayHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
 function todayActionBody(
   trainingDay: boolean,
   completed: boolean,
-  t: (key: TranslationKey) => string,
+  locale: 'cs' | 'en',
 ): string {
-  if (trainingDay && completed) return t('today.completedMsg');
-  if (trainingDay) return t('today.decisionHoldHint');
-  return t('today.restNote');
+  if (trainingDay && completed) {
+    return locale === 'en'
+      ? 'Done. Add a quick check-in if anything felt off.'
+      : 'Hotovo. Pokud něco nesedělo, přidej krátký check-in.';
+  }
+  if (trainingDay) {
+    return locale === 'en'
+      ? 'After the session, mark it done or check in if you need an adjustment.'
+      : 'Po tréninku ho odškrtni, nebo udělej check-in, pokud potřebuješ úpravu.';
+  }
+  return locale === 'en'
+    ? 'Do a short check-in so tomorrow can adapt.'
+    : 'Udělej krátký check-in, ať se zítřek může upravit.';
 }
 
 function nutritionGuidance(rec: DailyCoachRecommendation, trainingDay: boolean, locale: 'cs' | 'en'): string {
@@ -354,8 +391,8 @@ function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
   const lines: string[] = [];
   if (session && session.kind !== 'rest') {
     lines.push(locale === 'en'
-      ? 'Your plan has training today, so the recommendation protects quality without adding extra load.'
-      : 'Dnes máš v plánu trénink, takže doporučení hlídá kvalitu bez zbytečného přidávání.');
+      ? 'Today already has a clear workout; the goal is to complete it cleanly.'
+      : 'Dnešek už má jasný trénink; cílem je odtrénovat ho čistě.');
   } else {
     lines.push(locale === 'en'
       ? 'A calmer day helps the next planned session land better.'
@@ -367,8 +404,8 @@ function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
       : 'Když se nebudeš cítit dobře, zvol lehčí variantu.');
   } else if (rec.readiness.band === 'high') {
     lines.push(locale === 'en'
-      ? 'You can follow the plan, but there is no need to chase more.'
-      : 'Můžeš držet plán, ale není potřeba honit něco navíc.');
+      ? 'Feeling good is useful. It is not a reason to add more.'
+      : 'Dobrý pocit se hodí. Není to důvod přidávat víc.');
   }
   return lines.slice(0, 2);
 }
