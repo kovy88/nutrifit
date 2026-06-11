@@ -91,7 +91,7 @@ export function TrainingScreen() {
 
       <SectionCard
         title={t('training.weekOverview')}
-        body={t('training.weekStatus', { done: completedCount, total: plannedSessions })}
+        body={trainingWeekStatus(completedCount, plannedSessions, locale)}
         statusLabel={completedCount ? t('today.completed') : t('training.planned')}
         statusTone={completedCount ? 'ready' : 'neutral'}
       >
@@ -212,6 +212,27 @@ function intensityLabel(intensity: string, locale: string): string {
   if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
   if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
   return locale === 'en' ? 'Training' : 'Trénink';
+}
+
+function trainingWeekStatus(done: number, planned: number, locale: string): string {
+  if (planned <= 0) {
+    return locale === 'en'
+      ? 'No workouts are planned for this week.'
+      : 'Na tento týden nejsou plánované tréninky.';
+  }
+  if (done <= 0) {
+    return locale === 'en'
+      ? `${planned} planned this week, none done yet.`
+      : `${planned} v plánu tento týden, zatím nic hotovo.`;
+  }
+  if (done >= planned) {
+    return locale === 'en'
+      ? `All ${planned} planned workouts are done.`
+      : `Všech ${planned} plánovaných tréninků je hotovo.`;
+  }
+  return locale === 'en'
+    ? `${done} of ${planned} planned workouts are done.`
+    : `${done} z ${planned} plánovaných tréninků je hotovo.`;
 }
 
 const styles = StyleSheet.create({

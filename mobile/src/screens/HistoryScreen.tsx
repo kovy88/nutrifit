@@ -151,12 +151,12 @@ export function HistoryScreen() {
         <>
           <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
             {weeklyReview.plannedSessions > 0 ? (
-              <InfoRow label={progressTrainingLabel(locale)} value={`${weeklyReview.completedSessions}/${weeklyReview.plannedSessions}`} />
+              <InfoRow label={progressTrainingLabel(locale)} value={progressTrainingValue(weeklyReview.completedSessions, weeklyReview.plannedSessions, locale)} />
             ) : (
               <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTrainingCopy(locale)}</Text>
             )}
             {weeklyReview.nutritionLoggedDays > 0 ? (
-              <InfoRow label={progressFoodLabel(locale)} value={`${weeklyReview.nutritionTargetDays}/${weeklyReview.nutritionLoggedDays}`} />
+              <InfoRow label={progressFoodLabel(locale)} value={progressFoodValue(weeklyReview.nutritionTargetDays, weeklyReview.nutritionLoggedDays, locale)} />
             ) : (
               <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoFoodCopy(locale)}</Text>
             )}
@@ -275,6 +275,38 @@ function progressTrainingLabel(locale: 'cs' | 'en'): string {
 
 function progressFoodLabel(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Food rhythm' : 'Jídelní rytmus';
+}
+
+function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en'): string {
+  if (done <= 0) {
+    return locale === 'en'
+      ? `${planned} planned, none done yet`
+      : `${planned} v plánu, zatím nic hotovo`;
+  }
+  if (done >= planned) {
+    return locale === 'en'
+      ? `All ${planned} planned workouts done`
+      : `Všech ${planned} plánovaných tréninků hotovo`;
+  }
+  return locale === 'en'
+    ? `${done} of ${planned} planned workouts done`
+    : `${done} z ${planned} plánovaných tréninků hotovo`;
+}
+
+function progressFoodValue(onTarget: number, logged: number, locale: 'cs' | 'en'): string {
+  if (onTarget <= 0) {
+    return locale === 'en'
+      ? `${logged} logged, none on target yet`
+      : `${logged} zapsáno, zatím mimo cíl`;
+  }
+  if (onTarget >= logged) {
+    return locale === 'en'
+      ? `All ${logged} logged days on target`
+      : `Všech ${logged} zapsaných dní v cíli`;
+  }
+  return locale === 'en'
+    ? `${onTarget} of ${logged} logged days on target`
+    : `${onTarget} z ${logged} zapsaných dní v cíli`;
 }
 
 function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
