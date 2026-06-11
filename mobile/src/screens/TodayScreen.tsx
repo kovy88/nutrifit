@@ -121,9 +121,9 @@ export function TodayScreen() {
               onPress={() => navigation.navigate('Jídelníček')}
             >
               <CollapsibleDetails label={t('plan.detail')}>
-                <InfoRow label="kcal" value={rec.nutrition.targets.kcal} />
+                <InfoRow label={nutritionEnergyLabel(locale)} value={rec.nutrition.targets.kcal} />
                 <InfoRow label={t('home.protein')} value={`${rec.nutrition.targets.protein} g`} />
-                <Button variant="secondary" onPress={() => navigation.navigate('Foto')}>{t('plan.openPhoto')}</Button>
+                <Button variant="secondary" onPress={() => navigation.navigate('Foto')}>{foodPhotoCta(locale)}</Button>
               </CollapsibleDetails>
             </SectionCard>
           ) : null}
@@ -333,6 +333,14 @@ function nutritionGuidance(rec: DailyCoachRecommendation, trainingDay: boolean, 
     : 'Jídlo drž stabilní a opři ho o protein.';
 }
 
+function nutritionEnergyLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Energy' : 'Energie';
+}
+
+function foodPhotoCta(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Log meal photo' : 'Zapsat fotkou';
+}
+
 function whyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
   const lines = [...(rec.explanation ?? [])].slice(0, 2);
   if (rec.warnings[0]) {
@@ -389,21 +397,21 @@ const styles = StyleSheet.create({
   screen: { gap: 14 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 3 },
-  greeting: { fontSize: 12, lineHeight: 16, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  greeting: { fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 0 },
   headerTitle: { fontSize: 30, lineHeight: 36, fontWeight: '900' },
   headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  iconButton: { width: 46, height: 46, borderWidth: 1, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 46, height: 46, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   decisionCard: { gap: 12 },
   decisionTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   decisionCopy: { flex: 1, gap: 5 },
-  kicker: { fontSize: 11, lineHeight: 15, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  kicker: { fontSize: 11, lineHeight: 15, fontWeight: '900', letterSpacing: 0 },
   decisionTitle: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
   decisionTitleSmall: { fontSize: 18, lineHeight: 23, fontWeight: '900' },
   bodyText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
   smallNote: { fontSize: 11, lineHeight: 16, fontWeight: '700' },
-  readinessBadge: { minWidth: 92, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 9, alignItems: 'center' },
+  readinessBadge: { minWidth: 92, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, alignItems: 'center' },
   readinessValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
-  readinessLabel: { fontSize: 10, lineHeight: 13, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
+  readinessLabel: { fontSize: 10, lineHeight: 13, fontWeight: '900', letterSpacing: 0 },
   streakChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginTop: 2 },
   streakText: { fontSize: 12.5, fontWeight: '900' },
 });
