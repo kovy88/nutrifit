@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { EmptyState, LoadingState, ScreenHeader } from '../components/UI';
+import { ScreenHeader } from '../components/UI';
 import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { WorkoutCard } from '../components/WorkoutCard';
@@ -124,20 +124,16 @@ export function TrainingScreen() {
         </CollapsibleDetails>
       </SectionCard>
 
-      <SectionCard title={t('training.recentTitle')} body={recent.isLoading ? t('training.loadingWorkouts') : recent.workouts.length ? undefined : t('training.noWorkouts')}>
-        <CollapsibleDetails label={t('plan.detail')}>
-          {recent.isLoading ? (
-            <LoadingState title={t('training.loadingWorkouts')} />
-          ) : recent.workouts.length === 0 ? (
-            <EmptyState title={t('training.noWorkoutsTitle')} body={t('training.noWorkouts')} />
-          ) : (
+      <SectionCard title={t('training.recentTitle')} body={recentWorkoutBody(recent.isLoading, recent.workouts, locale)}>
+        {recent.workouts.length ? (
+          <CollapsibleDetails label={t('plan.detail')}>
             <View style={styles.workoutsList}>
               {recent.workouts.slice(0, 6).map((workout, index) => (
                 <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
               ))}
             </View>
-          )}
-        </CollapsibleDetails>
+          </CollapsibleDetails>
+        ) : null}
       </SectionCard>
 
       <WorkoutDetailModal workout={selectedWorkout} onClose={() => setSelectedWorkout(null)} />
@@ -233,6 +229,23 @@ function trainingWeekStatus(done: number, planned: number, locale: string): stri
   return locale === 'en'
     ? `${done} of ${planned} planned workouts are done.`
     : `${done} z ${planned} plánovaných tréninků je hotovo.`;
+}
+
+function recentWorkoutBody(isLoading: boolean, workouts: WorkoutSummary[], locale: string): string {
+  if (isLoading) {
+    return locale === 'en'
+      ? 'Checking recent training history.'
+      : 'Kontroluji nedávnou tréninkovou historii.';
+  }
+  if (!workouts.length) {
+    return locale === 'en'
+      ? 'Completed workouts will show here after you mark a session done or connect a source.'
+      : 'Hotové tréninky se tady objeví po odkliknutí tréninku nebo připojení zdroje.';
+  }
+  const count = workouts.length;
+  return locale === 'en'
+    ? `${count} recent ${count === 1 ? 'workout' : 'workouts'} found. Latest session is logged.`
+    : `${count} nedávných tréninků. Poslední je zapsaný.`;
 }
 
 const styles = StyleSheet.create({
