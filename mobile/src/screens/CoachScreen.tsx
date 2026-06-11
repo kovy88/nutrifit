@@ -157,7 +157,7 @@ export function CoachScreen() {
       {followups.length > 0 && !sending ? (
         <SectionCard title={t('coach.followups')}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptGrid}>
-            {followups.map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
+            {followups.slice(0, 3).map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
           </ScrollView>
         </SectionCard>
       ) : null}
@@ -172,7 +172,7 @@ function PromptChip({ label, onPress }: { label: string; onPress: () => void }) 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.promptChip, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
       <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
-      <Text style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
+      <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9} style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -233,10 +233,10 @@ function coachQuestionsBody(locale: 'cs' | 'en'): string {
 const styles = StyleSheet.create({
   screen: { paddingBottom: 8 },
   promptGrid: { flexDirection: 'row', gap: 8, paddingRight: 4 },
-  promptChip: { minHeight: 42, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
-  promptText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  promptChip: { minHeight: 46, maxWidth: 240, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
+  promptText: { flexShrink: 1, fontSize: 13, lineHeight: 17, fontWeight: '800' },
   thread: { gap: 10 },
-  bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
+  bubble: { maxWidth: '90%', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11 },
   bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
   structured: { gap: 6 },
   coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '900' },
