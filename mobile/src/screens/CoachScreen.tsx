@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Field, ScreenHeader } from '../components/UI';
+import { Field, ScreenHeader } from '../components/UI';
 import { HeroDecisionCard, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
@@ -106,8 +106,29 @@ export function CoachScreen() {
       contentContainerStyle={styles.screen}
       footer={
         <View style={styles.composer}>
-          <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline />
-          <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{sending ? t('coach.thinking') : t('coach.send')}</Button>
+          <View style={styles.composerRow}>
+            <Field
+              value={input}
+              onChangeText={setInput}
+              placeholder={t('coach.inputPlaceholder')}
+              multiline
+              style={styles.composerField}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={sending ? t('coach.thinking') : t('coach.send')}
+              disabled={sending || !input.trim()}
+              onPress={() => send(input)}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { backgroundColor: colors.accent },
+                (sending || !input.trim()) && styles.sendDisabled,
+                pressed && input.trim() && !sending && { opacity: 0.86, transform: [{ scale: 0.97 }] },
+              ]}
+            >
+              <Ionicons name={sending ? 'hourglass-outline' : 'send'} size={18} color={colors.accentText} />
+            </Pressable>
+          </View>
           <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
         </View>
       }
@@ -241,6 +262,10 @@ const styles = StyleSheet.create({
   structured: { gap: 6 },
   coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '900' },
   coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
-  composer: { gap: 10 },
+  composer: { gap: 6 },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  composerField: { flex: 1, maxHeight: 92 },
+  sendButton: { width: 50, height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  sendDisabled: { opacity: 0.45 },
   disclaimer: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' },
 });
