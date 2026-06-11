@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Children, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, SectionHeader, StatusPill } from './UI';
@@ -29,6 +29,7 @@ export function HeroDecisionCard({
 }) {
   const { colors, fonts } = useTheme();
   const tone = accent ?? colors.accent;
+  const safeChildren = Children.toArray(children);
 
   return (
     <Card style={[styles.hero, { borderColor: tone, backgroundColor: colors.card }]}>
@@ -40,7 +41,7 @@ export function HeroDecisionCard({
         </View>
         {statusLabel ? <StatusPill label={statusLabel} tone={statusTone} /> : null}
       </View>
-      {children}
+      {safeChildren.length ? safeChildren : null}
       {actionLabel && onAction ? <Button onPress={onAction}>{actionLabel}</Button> : null}
     </Card>
   );
@@ -72,6 +73,9 @@ export function SectionCard({
   const { colors, fonts } = useTheme();
   const [expanded, setExpanded] = useState(initiallyExpanded);
   const bodyRows = Array.isArray(body) ? body : body ? [body] : [];
+  const safeChildren = Children.toArray(children);
+  const safeDetailChildren = Children.toArray(detailChildren);
+  const hasDetail = Boolean(detailLabel && safeDetailChildren.length);
 
   return (
     <Card style={styles.sectionCard}>
@@ -82,10 +86,10 @@ export function SectionCard({
       {bodyRows.slice(0, 2).map((row, index) => (
         <Text key={`${index}-${row}`} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
       ))}
-      {children}
+      {safeChildren.length ? safeChildren : null}
       <View style={styles.cardActions}>
         {ctaLabel && onPress ? <Button style={styles.cardButton} variant="secondary" onPress={onPress}>{ctaLabel}</Button> : null}
-        {detailLabel && detailChildren ? (
+        {hasDetail ? (
           <Pressable
             accessibilityRole="button"
             onPress={() => setExpanded(value => !value)}
@@ -96,7 +100,7 @@ export function SectionCard({
           </Pressable>
         ) : null}
       </View>
-      {expanded && detailChildren ? <View style={styles.detailBody}>{detailChildren}</View> : null}
+      {expanded && hasDetail ? <View style={styles.detailBody}>{safeDetailChildren}</View> : null}
     </Card>
   );
 }
@@ -166,6 +170,7 @@ export function CollapsibleDetails({
 }) {
   const { colors, fonts } = useTheme();
   const [open, setOpen] = useState(initiallyOpen);
+  const safeChildren = Children.toArray(children);
   return (
     <View style={styles.collapsible}>
       <Pressable
@@ -176,7 +181,7 @@ export function CollapsibleDetails({
         <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={16} color={colors.accent} />
         <Text numberOfLines={1} style={[styles.detailToggleText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
       </Pressable>
-      {open ? <View style={styles.detailBody}>{children}</View> : null}
+      {open ? <View style={styles.detailBody}>{safeChildren}</View> : null}
     </View>
   );
 }
