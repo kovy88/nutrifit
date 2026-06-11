@@ -14,8 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useUnits } from '../hooks/useUnits';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
 import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib/nutrition/streaks';
-import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
-import { primaryGoalToNutritionKind } from '../utils/nutrition';
+import { computeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { useStrainTrend } from '../hooks/useStrainTrend';
 import { generateWeeklyMiniReview } from '../lib/coaching/weekly-review';
 import { planSessionForDate } from '../lib/training';
@@ -179,9 +178,9 @@ export function HistoryScreen() {
           </SectionCard>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
-            <SectionCard title={t('history.energyBalance14')} body={describeEnergyBalance(energyBalance, primaryGoalToNutritionKind(profile.primaryGoal), locale)}>
+            <SectionCard title={progressFoodTrendTitle(locale)} body={progressFoodTrendCopy(energyBalance.theoreticalKgChange, locale)}>
               <InfoRow
-                label={t('history.energyBalance14')}
+                label={progressFoodTrendMetricLabel(locale)}
                 value={`${energyBalance.theoreticalKgChange > 0 ? '+' : ''}${showWeight(energyBalance.theoreticalKgChange, 2)} ${weightUnit}`}
               />
             </SectionCard>
@@ -245,13 +244,13 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 4, gap: 4 },
-  segmentItem: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, padding: 4, gap: 4 },
+  segmentItem: { flex: 1, minHeight: 40, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   segmentText: { fontSize: 13, fontWeight: '900' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
   emptyCopy: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  meta: { fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  meta: { fontSize: 12, lineHeight: 16, fontWeight: '800', marginTop: 6, letterSpacing: 0 },
   heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
   dateLabel: { fontSize: 15, fontWeight: '900' },
@@ -294,6 +293,30 @@ function progressNoTargetCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'Your first on-target day will show here after you log a meal.'
     : 'První den v cíli se ukáže po zalogování jídla.';
+}
+
+function progressFoodTrendTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Food trend' : 'Trend jídla';
+}
+
+function progressFoodTrendCopy(changeKg: number, locale: 'cs' | 'en'): string {
+  if (Math.abs(changeKg) < 0.1) {
+    return locale === 'en'
+      ? 'Your recent logs point to a mostly steady weight trend.'
+      : 'Poslední zápisy ukazují spíš stabilní trend váhy.';
+  }
+  if (changeKg < 0) {
+    return locale === 'en'
+      ? 'Your recent logs point toward gradual weight loss.'
+      : 'Poslední zápisy směřují k postupnému úbytku váhy.';
+  }
+  return locale === 'en'
+    ? 'Your recent logs point toward gradual weight gain.'
+    : 'Poslední zápisy směřují k postupnému nárůstu váhy.';
+}
+
+function progressFoodTrendMetricLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Estimated change' : 'Odhad změny';
 }
 
 function trainingLoadTitle(locale: 'cs' | 'en'): string {
