@@ -497,9 +497,19 @@ function planHeroEyebrow(phase: TrainingPhase | null, locale: 'cs' | 'en', t: Re
 
 function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>['t']): string {
   if (session.kind === 'rest') return t('today.restNote');
+  const base = sessionLinePart(session);
+  return session.second ? `${base}  +  ${sessionLinePart(session.second)}` : base;
+}
+
+function sessionLinePart(session: Pick<TrainingSession, 'title' | 'durationMinutes' | 'distanceKm'>): string {
+  const title = session.title.trim();
+  const duration = titleIncludesDuration(title) ? '' : ` · ${session.durationMinutes} min`;
   const distance = session.distanceKm ? ` · ${session.distanceKm} km` : '';
-  const base = `${session.title} · ${session.durationMinutes} min${distance}`;
-  return session.second ? `${base}  +  ${session.second.title} · ${session.second.durationMinutes} min` : base;
+  return `${title}${duration}${distance}`;
+}
+
+function titleIncludesDuration(title: string): boolean {
+  return /\b\d+\s*(min|mins|minute|minutes|minut|m)\b/i.test(title);
 }
 
 function mealSummary(meals: Meal[], locale: 'cs' | 'en'): string {
