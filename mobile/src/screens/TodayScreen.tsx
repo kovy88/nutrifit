@@ -389,26 +389,24 @@ function whyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] 
 
 function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
   const session = rec.training?.session;
-  const lines: string[] = [];
-  if (session && session.kind !== 'rest') {
-    lines.push(locale === 'en'
-      ? 'Today already has a clear workout; the goal is to complete it cleanly.'
-      : 'Dnešek už má jasný trénink; cílem je odtrénovat ho čistě.');
-  } else {
-    lines.push(locale === 'en'
-      ? 'A calmer day helps the next planned session land better.'
-      : 'Klidnější den pomůže, aby další plánovaný trénink sedl líp.');
-  }
   if (rec.warnings[0]) {
-    lines.push(locale === 'en'
+    return [locale === 'en'
       ? 'If something feels off, choose the easier version.'
-      : 'Když se nebudeš cítit dobře, zvol lehčí variantu.');
-  } else if (rec.readiness.band === 'high') {
-    lines.push(locale === 'en'
-      ? 'Feeling good is useful. It is not a reason to add more.'
-      : 'Dobrý pocit se hodí. Není to důvod přidávat víc.');
+      : 'Když se nebudeš cítit dobře, zvol lehčí variantu.'];
   }
-  return lines.slice(0, 2);
+  if (!session || session.kind === 'rest') {
+    return [locale === 'en'
+      ? 'A calmer day makes the next planned session easier.'
+      : 'Klidnější den pomůže dalšímu tréninku.'];
+  }
+  if (rec.readiness.band === 'high') {
+    return [locale === 'en'
+      ? 'Do the plan well; do not add extra.'
+      : 'Odtrénuj plán dobře; nepřidávej navíc.'];
+  }
+  return [locale === 'en'
+    ? 'Complete the work and stop with energy left.'
+    : 'Splň práci a skonči s rezervou.'];
 }
 
 function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs' | 'en') {
