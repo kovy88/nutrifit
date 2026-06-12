@@ -130,17 +130,9 @@ export function TodayScreen() {
           ) : null}
 
           <SectionCard
-            title={t('today.focus')}
+            title={todayWhyTitle(locale)}
             body={todayWhyLines(rec, locale)}
-            ctaLabel={t('tab.coach')}
-            onPress={() => navigation.navigate('Coach')}
-          >
-            <CollapsibleDetails label={t('plan.detail')}>
-              {whyLines(rec, locale).map((line, index) => (
-                <Text key={`${index}-${line}`} style={[styles.smallNote, { color: colors.faint }]}>{line}</Text>
-              ))}
-            </CollapsibleDetails>
-          </SectionCard>
+          />
 
           <SectionCard title={t('today.weekTitle')} body={[tomorrow.title, tomorrow.body]}>
             {logStreak >= 2 ? (
@@ -379,14 +371,6 @@ function foodPhotoCta(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Log meal photo' : 'Zapsat fotkou';
 }
 
-function whyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
-  const lines = [...(rec.explanation ?? [])].slice(0, 2);
-  if (rec.warnings[0]) {
-    lines.push(locale === 'en' ? `Watch: ${rec.warnings[0]}` : `Pozor: ${rec.warnings[0]}`);
-  }
-  return lines.length ? lines : [rec.coachNote];
-}
-
 function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string[] {
   const session = rec.training?.session;
   if (rec.warnings[0]) {
@@ -407,6 +391,10 @@ function todayWhyLines(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
   return [locale === 'en'
     ? 'Complete the work and stop with energy left.'
     : 'Splň práci a skonči s rezervou.'];
+}
+
+function todayWhyTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Why' : 'Proč';
 }
 
 function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs' | 'en') {
