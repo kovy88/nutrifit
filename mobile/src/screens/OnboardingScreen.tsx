@@ -177,6 +177,7 @@ export function OnboardingScreen() {
         {step === 'focus' && SCOPE_OPTIONS.map(o => (
           <Choice
             key={o.value}
+            compact
             active={Boolean(touchedFields.coachScope) && scope === o.value}
             title={t(o.titleKey)}
             subtitle={t(o.subKey)}
@@ -626,12 +627,12 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 
 const styles = StyleSheet.create({
   screenContent: { paddingBottom: 8 },
-  welcomeBox: { borderWidth: 1, borderRadius: 8, padding: 16, gap: 10 },
-  brand: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
-  welcomeCopy: { fontSize: 15, lineHeight: 21, fontWeight: '800' },
+  welcomeBox: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 8 },
+  brand: { fontSize: 26, lineHeight: 30, fontWeight: '900' },
+  welcomeCopy: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
-  options: { gap: 10, marginTop: 4 },
+  options: { gap: 9, marginTop: 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   sessionChoice: { width: '47%', flexGrow: 1, minHeight: 98, borderWidth: 1, borderRadius: 8, alignItems: 'flex-start', justifyContent: 'flex-start', gap: 8, paddingHorizontal: 14, paddingVertical: 14 },

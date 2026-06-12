@@ -157,11 +157,13 @@ export function Choice({
   title,
   subtitle,
   onPress,
+  compact,
 }: {
   active?: boolean;
   title: string;
   subtitle?: string;
   onPress?: () => void;
+  compact?: boolean;
 }) {
   const { colors, fonts } = useTheme();
   return (
@@ -169,6 +171,7 @@ export function Choice({
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
+        compact && styles.choiceCompact,
         {
           borderColor: active ? colors.accent : colors.border,
           backgroundColor: active ? colors.accent + '14' : colors.bgElev,
@@ -177,9 +180,9 @@ export function Choice({
       ]}
     >
       <View style={styles.choiceBody}>
-        <Text style={[styles.choiceTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
+        <Text style={[styles.choiceTitle, compact && styles.choiceTitleCompact, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
         {subtitle ? (
-          <Text style={[styles.choiceSub, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
+          <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
         ) : null}
       </View>
       <View
@@ -819,9 +822,12 @@ const styles = StyleSheet.create({
   pill: { minHeight: 42, borderRadius: 999, borderWidth: 1.5, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 14 },
   choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 8, paddingVertical: 16, paddingHorizontal: 16 },
+  choiceCompact: { gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
   choiceBody: { flex: 1, gap: 2 },
   choiceTitle: { fontSize: 16.5, letterSpacing: 0 },
+  choiceTitleCompact: { fontSize: 15.5, lineHeight: 20 },
   choiceSub: { fontSize: 13, lineHeight: 18 },
+  choiceSubCompact: { fontSize: 12.5, lineHeight: 17 },
   choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   screenHeaderText: { flex: 1, gap: 3 },
