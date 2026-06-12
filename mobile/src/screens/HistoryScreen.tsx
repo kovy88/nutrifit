@@ -149,7 +149,7 @@ export function HistoryScreen() {
 
       {tab === 'overview' ? (
         <>
-          <SectionCard title={t('history.weeklyConsistency')} body={describeAdherence(adherence.averageRatio, locale)}>
+          <SectionCard title={t('history.weeklyConsistency')} body={progressConsistencyBody(adherence.averageRatio, locale)}>
             {weeklyReview.plannedSessions > 0 ? (
               <InfoRow label={progressTrainingLabel(locale)} value={progressTrainingValue(weeklyReview.completedSessions, weeklyReview.plannedSessions, locale)} />
             ) : (
@@ -277,6 +277,15 @@ function progressFoodLabel(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Food rhythm' : 'Jídelní rytmus';
 }
 
+function progressConsistencyBody(averageRatio: number | null, locale: 'cs' | 'en'): string {
+  if (averageRatio == null) {
+    return locale === 'en'
+      ? 'Log one planned day and this weekly review will start to fill in.'
+      : 'Zapiš jeden plánovaný den a týdenní přehled se začne plnit.';
+  }
+  return describeAdherence(averageRatio, locale);
+}
+
 function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en'): string {
   if (done <= 0) {
     return locale === 'en'
@@ -317,8 +326,8 @@ function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
 
 function progressNoFoodCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? 'Log a meal or follow a meal day to unlock food consistency.'
-    : 'Zaloguj jídlo nebo drž jídelní den a odemkne se konzistence.';
+    ? 'After one logged meal day, your food rhythm will show here.'
+    : 'Po jednom zapsaném jídelním dni se tady ukáže jídelní rytmus.';
 }
 
 function progressNoTargetCopy(locale: 'cs' | 'en'): string {
