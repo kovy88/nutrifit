@@ -190,7 +190,7 @@ export function SettingsScreen() {
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
 
       <SectionCard
-        title={t('settings.tabCoach')}
+        title={t('settings.eyebrow')}
         body={[
           t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
           t('profile.unitsValue', { units: profile?.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric') }),
