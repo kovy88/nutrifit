@@ -240,7 +240,7 @@ export function PlanScreen() {
       {loading ? <LoadingState title={t('plan.generating')} body={t('plan.loadingSub')} /> : null}
 
       <SectionCard
-        title={t('today.trainingTitle')}
+        title={selectedTrainingTitle(locale)}
         body={trainingCardBody(selectedSession, locale, showText(sessionLine(selectedSession, t)))}
         ctaLabel={t('today.adjustToday')}
         onPress={() => navigation.navigate('Trénink')}
@@ -249,72 +249,68 @@ export function PlanScreen() {
       <SectionCard
         title={t('plan.todayMeals')}
         body={meals.length ? mealOverviewRows(meals, locale) : t('plan.emptyBody')}
-        detailLabel={meals.length ? t('plan.detail') : undefined}
-        detailChildren={meals.length ? (
-          <>
-            {meals.map((meal, index) => (
-              <View key={`${meal.mealType}-${index}`} style={[styles.mealRow, { borderTopColor: colors.border }]}>
-                <View style={styles.mealTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.mealType, { color: colors.accent }]}>{meal.mealType}</Text>
-                    <Text style={[styles.mealName, { color: colors.ink }]}>{meal.name}</Text>
-                  </View>
-                  <Text style={[styles.mealKcal, { color: colors.ink }]}>{meal.kcal} kcal</Text>
-                </View>
-                <Text style={[styles.mealMeta, { color: colors.muted }]}>
-                  {t('plan.mealDetailMacros', { kcal: meal.kcal, p: meal.protein, c: meal.carbs, f: meal.fat, prep: meal.prepTime })}
-                </Text>
-                <View style={styles.mealActions}>
-                  <IconAction icon="document-text-outline" label={t('plan.detail')} onPress={() => setSelectedMeal(meal)} />
-                  <IconAction
-                    icon="refresh-outline"
-                    label={regeneratingIndex === index ? t('plan.regenerating') : t('plan.regenerate')}
-                    disabled={regeneratingIndex !== null}
-                    onPress={() => handleRegenerate(meal, index)}
-                  />
-                  <IconAction
-                    icon={isMealLogged(meal) ? 'checkmark-circle-outline' : 'add-circle-outline'}
-                    label={isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}
-                    disabled={isMealLogged(meal)}
-                    onPress={() => logPlannedMeal(meal)}
-                  />
-                </View>
-              </View>
-            ))}
-            <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
-          </>
-        ) : undefined}
-      />
-
-      <SectionCard
-        title={moreOptionsTitle(locale)}
-        body={moreOptionsBody(locale)}
-        detailLabel={t('plan.detail')}
+        detailLabel={meals.length ? t('plan.detail') : moreOptionsTitle(locale)}
         detailChildren={
-          <View style={styles.moreOptions}>
-            <Button variant="secondary" onPress={() => setPrefsOpen(true)}>{t('plan.prefsTitle')}</Button>
-            {customSchedule ? (
-              <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
-            ) : null}
-            {weeklyPlan.safetyWarnings?.length ? (
-              <CollapsibleDetails label={t('plan.ambitiousWarning')}>
-                {weeklyPlan.safetyWarnings.map((warning, index) => (
-                  <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
-                ))}
-              </CollapsibleDetails>
-            ) : null}
-            {shoppingGroups.length > 0 ? (
-              <CollapsibleDetails label={t('plan.shoppingList')}>
-                {shoppingGroups.map(group => (
-                  <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
-                    <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
-                    <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
+          <>
+            {meals.length ? (
+              <>
+                {meals.map((meal, index) => (
+                  <View key={`${meal.mealType}-${index}`} style={[styles.mealRow, { borderTopColor: colors.border }]}>
+                    <View style={styles.mealTop}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.mealType, { color: colors.accent }]}>{meal.mealType}</Text>
+                        <Text style={[styles.mealName, { color: colors.ink }]}>{meal.name}</Text>
+                      </View>
+                      <Text style={[styles.mealKcal, { color: colors.ink }]}>{meal.kcal} kcal</Text>
+                    </View>
+                    <Text style={[styles.mealMeta, { color: colors.muted }]}>
+                      {t('plan.mealDetailMacros', { kcal: meal.kcal, p: meal.protein, c: meal.carbs, f: meal.fat, prep: meal.prepTime })}
+                    </Text>
+                    <View style={styles.mealActions}>
+                      <IconAction icon="document-text-outline" label={t('plan.detail')} onPress={() => setSelectedMeal(meal)} />
+                      <IconAction
+                        icon="refresh-outline"
+                        label={regeneratingIndex === index ? t('plan.regenerating') : t('plan.regenerate')}
+                        disabled={regeneratingIndex !== null}
+                        onPress={() => handleRegenerate(meal, index)}
+                      />
+                      <IconAction
+                        icon={isMealLogged(meal) ? 'checkmark-circle-outline' : 'add-circle-outline'}
+                        label={isMealLogged(meal) ? t('plan.logged') : t('plan.eat')}
+                        disabled={isMealLogged(meal)}
+                        onPress={() => logPlannedMeal(meal)}
+                      />
+                    </View>
                   </View>
                 ))}
-                <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
-              </CollapsibleDetails>
+                <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
+              </>
             ) : null}
-          </View>
+            <View style={styles.moreOptions}>
+              <Button variant="secondary" onPress={() => setPrefsOpen(true)}>{t('plan.prefsTitle')}</Button>
+              {customSchedule ? (
+                <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
+              ) : null}
+              {weeklyPlan.safetyWarnings?.length ? (
+                <CollapsibleDetails label={t('plan.ambitiousWarning')}>
+                  {weeklyPlan.safetyWarnings.map((warning, index) => (
+                    <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
+                  ))}
+                </CollapsibleDetails>
+              ) : null}
+              {shoppingGroups.length > 0 ? (
+                <CollapsibleDetails label={t('plan.shoppingList')}>
+                  {shoppingGroups.map(group => (
+                    <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
+                      <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
+                    </View>
+                  ))}
+                  <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
+                </CollapsibleDetails>
+              ) : null}
+            </View>
+          </>
         }
       />
 
@@ -554,7 +550,7 @@ function nutritionNote(session: TrainingSession, carbsDelta: number, locale: 'cs
 function trainingCardBody(session: TrainingSession, locale: 'cs' | 'en', line: string): string[] {
   if (session.kind === 'rest') {
     return [
-      locale === 'en' ? 'No workout planned today.' : 'Dnes není plánovaný trénink.',
+      locale === 'en' ? 'No workout planned for this day.' : 'Pro tenhle den není plánovaný trénink.',
       locale === 'en' ? 'Keep it light and do not add intensity.' : 'Drž den lehký a nepřidávej intenzitu.',
     ];
   }
@@ -570,10 +566,8 @@ function moreOptionsTitle(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'More options' : 'Další možnosti';
 }
 
-function moreOptionsBody(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'Preferences, safety notes and shopping stay here so the daily plan stays focused.'
-    : 'Preference, bezpečnost a nákup nechávám tady, aby denní plán zůstal čistý.';
+function selectedTrainingTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Training for this day' : 'Trénink pro tenhle den';
 }
 
 const styles = StyleSheet.create({
