@@ -204,7 +204,7 @@ export function HistoryScreen() {
           </Card>
           <Card>
             <SectionHeader title={trainingLoadTitle(locale)} />
-            <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => `${v.toFixed(1)} / 21`} />
+            <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => trainingLoadValueLabel(v, locale)} />
             <Text style={[styles.meta, { color: colors.faint }]}>{trainingLoadMeta(locale)}</Text>
           </Card>
           <Card>
@@ -359,6 +359,13 @@ function trainingLoadMeta(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'A simple view of how heavy recent training days felt in the plan.'
     : 'Jednoduchý pohled na to, jak těžké byly poslední tréninkové dny v plánu.';
+}
+
+function trainingLoadValueLabel(value: number, locale: 'cs' | 'en'): string {
+  if (value < 5) return locale === 'en' ? 'Light' : 'Lehce';
+  if (value < 11) return locale === 'en' ? 'Steady' : 'Středně';
+  if (value < 16) return locale === 'en' ? 'Heavy' : 'Těžší';
+  return locale === 'en' ? 'Very heavy' : 'Hodně těžké';
 }
 
 function currentWeekDates(selectedDate: string): string[] {
