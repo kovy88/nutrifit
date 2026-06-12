@@ -45,19 +45,8 @@ export function CoachScreen() {
   // ne „co jíst před během" / „je můj závod reálný".
   const isCustomSport = profile ? hasCustomSchedule(profile) : false;
   const prompts = useMemo(() => {
-    if (isCustomSport) {
-      return [
-        t('coach.promptWhy'),
-        t('coach.promptBadSleep'),
-        t('coach.promptMatchPrep'),
-      ];
-    }
-    return [
-      t('coach.promptWhy'),
-      t('coach.promptFuel'),
-      t('coach.promptBadSleep'),
-    ];
-  }, [isCustomSport, t]);
+    return coachPromptLabels(isCustomSport, locale);
+  }, [isCustomSport, locale]);
 
   async function send(question: string) {
     const q = question.trim();
@@ -133,14 +122,14 @@ export function CoachScreen() {
         </View>
       }
     >
-      <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
+      <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={coachScreenSubtitle(locale)} />
 
       <HeroDecisionCard
         eyebrow={t('coach.todayContext')}
-        title={recommendation?.headline ?? t('coach.title')}
+        title={recommendation ? coachHeroTitle(recommendation, locale) : t('coach.title')}
         body={recommendation ? coachHeroBody(recommendation, locale) : t('coach.todayContextEmpty')}
         accent={readinessColor(recommendation?.readiness.band, colors)}
-        statusLabel={recommendation ? coachIntensityLabel(recommendation.readiness.recommendedIntensity, locale) : undefined}
+        statusLabel={recommendation ? coachStatusLabel(recommendation, locale) : undefined}
         statusTone={recommendation?.readiness.band === 'low' ? 'risk' : recommendation?.readiness.band === 'medium' ? 'caution' : 'ready'}
       />
 
@@ -220,35 +209,83 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
   return colors.muted;
 }
 
-function coachIntensityLabel(intensity: string, locale: 'cs' | 'en'): string {
-  if (intensity === 'rest') return locale === 'en' ? 'Rest' : 'Volno';
-  if (intensity === 'easy') return locale === 'en' ? 'Easy' : 'Lehce';
-  if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
-  if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
-  return locale === 'en' ? 'Today' : 'Dnes';
+function coachScreenSubtitle(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? "Ask about today's plan, food and adjustments."
+    : 'Zeptej se na dnešní plán, jídlo a úpravy.';
+}
+
+function coachPromptLabels(isCustomSport: boolean, locale: 'cs' | 'en'): string[] {
+  if (isCustomSport) {
+    return locale === 'en'
+      ? ['Why this plan today?', 'What if I slept badly?', 'How should I prep for the match?']
+      : ['Proč dnes tenhle plán?', 'Co když jsem špatně spal/a?', 'Jak se připravit na zápas?'];
+  }
+  return locale === 'en'
+    ? ['Why this plan today?', 'How should I fuel today?', 'What if I slept badly?']
+    : ['Proč dnes tenhle plán?', 'Jak dnes načasovat jídlo?', 'Co když jsem špatně spal/a?'];
+}
+
+function coachHeroTitle(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en' ? 'Keep today light' : 'Dnes to drž lehce';
+  }
+  const title = sessionTitle(session.title, session.durationMinutes);
+  if (rec.training?.adjusted || rec.readiness.band === 'low' || isEasySessionTitle(session.title)) {
+    return locale === 'en' ? `${title} is enough` : `${title} stačí`;
+  }
+  return locale === 'en' ? `Focus on ${title}` : `Soustřeď se na ${title}`;
+}
+
+function coachStatusLabel(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en' ? 'Rest' : 'Volno';
+  }
+  if (rec.training?.adjusted || rec.readiness.band === 'low' || isEasySessionTitle(session.title)) {
+    return locale === 'en' ? 'Easy today' : 'Lehce';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard' && rec.readiness.band === 'high') {
+    return locale === 'en' ? 'Green light' : 'Jdi na to';
+  }
+  return locale === 'en' ? 'Steady' : 'Normálně';
 }
 
 function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
   const session = rec.training?.session;
   if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
     return locale === 'en'
-      ? 'Ask why today should stay easy, or what to do if you still want to move.'
-      : 'Zeptej se, proč má být dnešek lehčí, nebo co dělat, když se chceš hýbat.';
+      ? 'I can explain what still counts today and what to leave for tomorrow.'
+      : 'Vysvětlím, co se dnes počítá a co nechat na zítra.';
   }
   if (rec.readiness.recommendedIntensity === 'hard') {
     return locale === 'en'
-      ? 'Ask how to execute the planned work without adding unnecessary load.'
-      : 'Zeptej se, jak odtrénovat plán bez zbytečného přidávání zátěže.';
+      ? 'Ask how to do the work well without adding extra.'
+      : 'Zeptej se, jak to odtrénovat dobře bez přidávání navíc.';
   }
   return locale === 'en'
-    ? 'Ask what matters most today and how to adjust if the day changes.'
-    : 'Zeptej se, co je dnes nejdůležitější a jak upravit den, když se něco změní.';
+    ? 'Ask what matters most, how to fuel it, or how to adjust.'
+    : 'Zeptej se, co je nejdůležitější, jak jíst, nebo jak den upravit.';
 }
 
 function coachQuestionsBody(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? 'Pick one question or type your own. The coach explains the plan; it does not invent new targets.'
-    : 'Vyber otázku nebo napiš vlastní. Kouč vysvětluje plán, nevymýšlí nová cílová čísla.';
+    ? "Pick one question or type your own. I'll keep it tied to today's plan."
+    : 'Vyber otázku nebo napiš vlastní. Odpověď se bude držet dnešního plánu.';
+}
+
+function sessionTitle(title: string, durationMinutes: number): string {
+  const clean = title.trim();
+  return titleHasDuration(clean) ? clean : `${clean} ${durationMinutes} min`;
+}
+
+function titleHasDuration(title: string): boolean {
+  return /\b\d+\s*(min|mins|minutes|minut|m)\b/i.test(title);
+}
+
+function isEasySessionTitle(title: string): boolean {
+  return /\b(easy|light|recovery|leh|regener|voln)\b/i.test(title);
 }
 
 const styles = StyleSheet.create({
