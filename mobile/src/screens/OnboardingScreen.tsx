@@ -471,11 +471,26 @@ function bodyHelpCopy(locale: 'cs' | 'en'): string {
 }
 
 function subtitleFor(step: StepId, locale: 'cs' | 'en', t: (k: TranslationKey) => string): string {
+  if (step === 'focus') {
+    return locale === 'en'
+      ? 'Pick what you want help with first. You can change it later.'
+      : 'Vyber, s čím chceš pomoct jako první. Později to můžeš změnit.';
+  }
   if (step === 'body') return bodyHelpCopy(locale);
+  if (step === 'trainingGoal') {
+    return locale === 'en'
+      ? 'Choose the plan that matches what you actually want to do.'
+      : 'Vyber plán, který odpovídá tomu, co chceš opravdu dělat.';
+  }
   if (step === 'sessions') {
     return locale === 'en'
       ? 'Pick the rhythm you can repeat on a normal busy week.'
       : 'Vyber rytmus, který zvládneš opakovat i v běžném týdnu.';
+  }
+  if (step === 'experience') {
+    return locale === 'en'
+      ? 'Be honest. This keeps the first plan realistic.'
+      : 'Vyber upřímně. Díky tomu bude první plán realistický.';
   }
   if (step === 'nutritionGoal') {
     return locale === 'en'
