@@ -13,7 +13,7 @@ import { resolveCoachScope, scopeHasTraining } from '../types';
 import { activityFactorForSessions } from '../utils/nutrition';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { SUPPORTED_LOCALES, LOCALE_LABELS, type TranslationKey } from '../lib/i18n';
+import { LOCALE_LABELS, type TranslationKey } from '../lib/i18n';
 import { USER_PRIMARY_GOALS } from '../constants/goals';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useUnits } from '../hooks/useUnits';
@@ -25,12 +25,12 @@ import {
   summarizeLikesDislikes,
 } from '../lib/profile/profile-labels';
 
-type EditSection = 'goal' | 'basics' | 'training' | 'nutrition' | 'settings' | 'account' | null;
+type EditSection = 'goal' | 'basics' | 'training' | 'nutrition' | 'account' | null;
 
 export function ProfileScreen() {
   const { profile, setProfile, resetLocalProfile, purgeAllUserData, user, signIn, signOut, signUp } = useTrenr();
   const navigation = useNavigation<any>();
-  const { t, locale, setLocale } = useLanguage();
+  const { t, locale } = useLanguage();
   const { colors } = useTheme();
   const { native, connectedOAuth } = useHealthSources();
   const { showWeight, weightUnit } = useUnits();
@@ -185,12 +185,9 @@ export function ProfileScreen() {
       <ProfileSectionCard
         title={t('profile.appSettings')}
         rows={settingsRows}
-        ctaLabel={editing === 'settings' ? t('profile.closeEdit') : t('profile.appSettings')}
-        expanded={editing === 'settings'}
-        onPress={() => toggle('settings')}
-      >
-        <SettingsEditor profile={profile} setProfile={setProfile} locale={locale} setLocale={setLocale} t={t} />
-      </ProfileSectionCard>
+        ctaLabel={t('settings.title')}
+        onPress={() => navigation.navigate('Settings')}
+      />
 
       <ProfileSectionCard
         title={t('profile.accountData')}
@@ -430,42 +427,6 @@ function NutritionEditor({
 
       <Label>{t('profile.foodDislikes')}</Label>
       <Field value={profile.dislikes} onChangeText={dislikes => void setProfile({ ...profile, dislikes })} placeholder={t('profile.foodDislikesPlaceholder')} multiline />
-    </>
-  );
-}
-
-function SettingsEditor({
-  profile,
-  setProfile,
-  locale,
-  setLocale,
-  t,
-}: {
-  profile: UserProfile;
-  setProfile: (profile: UserProfile) => Promise<void>;
-  locale: 'cs' | 'en';
-  setLocale: (locale: 'cs' | 'en') => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
-}) {
-  return (
-    <>
-      <Label>{t('settings.language')}</Label>
-      <View style={styles.wrap}>
-        {SUPPORTED_LOCALES.map(loc => (
-          <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
-            {LOCALE_LABELS[loc]}
-          </Pill>
-        ))}
-      </View>
-
-      <Label>{t('settings.units')}</Label>
-      <View style={styles.wrap}>
-        {(['metric', 'imperial'] as const).map(units => (
-          <Pill key={units} active={(profile.units ?? 'metric') === units} onPress={() => void setProfile({ ...profile, units })}>
-            {t(units === 'metric' ? 'settings.unitsMetric' : 'settings.unitsImperial')}
-          </Pill>
-        ))}
-      </View>
     </>
   );
 }
