@@ -122,7 +122,7 @@ export function CoachScreen() {
         </View>
       }
     >
-      <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={coachScreenSubtitle(locale)} />
+      <ScreenHeader eyebrow={t('tab.coach')} title={coachScreenTitle(locale)} subtitle={coachScreenSubtitle(locale)} />
 
       <HeroDecisionCard
         eyebrow={t('coach.todayContext')}
@@ -211,8 +211,12 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
 
 function coachScreenSubtitle(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? "Ask about today's plan, food and adjustments."
-    : 'Zeptej se na dnešní plán, jídlo a úpravy.';
+    ? 'Get a short explanation of the plan, food, or adjustment.'
+    : 'Dostaň krátké vysvětlení plánu, jídla nebo úpravy.';
+}
+
+function coachScreenTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Ask about today' : 'Zeptej se na dnešek';
 }
 
 function coachPromptLabels(isCustomSport: boolean, locale: 'cs' | 'en'): string[] {
@@ -271,8 +275,8 @@ function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
 
 function coachQuestionsBody(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? "Pick one question or type your own. I'll keep it tied to today's plan."
-    : 'Vyber otázku nebo napiš vlastní. Odpověď se bude držet dnešního plánu.';
+    ? 'Choose one prompt or type your own.'
+    : 'Vyber otázku nebo napiš vlastní.';
 }
 
 function sessionTitle(title: string, durationMinutes: number): string {
