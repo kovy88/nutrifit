@@ -67,14 +67,13 @@ export function buildOnboardingSteps(
 ): StepId[] {
   const race = isRunRaceGoal(trainingGoal);
   const hasDays = Boolean(goalProfile?.availableTrainingDays);
-  const hasExperience = Boolean(goalProfile?.experienceLevel);
   const hasRaceDate = Boolean(goalProfile?.raceDateISO && /^\d{4}-\d{2}-\d{2}$/.test(goalProfile.raceDateISO));
 
   const training: StepId[] = [
     'focus',
     'goal',
     ...(!hasDays ? ['sessions' as StepId] : []),
-    ...(!hasExperience ? ['experience' as StepId] : []),
+    'experience',
     ...(race && !hasRaceDate ? ['raceDate' as StepId] : []),
   ];
   if (scope === 'training') return training;

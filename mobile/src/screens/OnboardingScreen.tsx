@@ -234,11 +234,17 @@ export function OnboardingScreen() {
         )}
 
         {step === 'experience' && (
-          <View style={styles.wrap}>
+          <>
             {(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[]).map(exp => (
-              <Pill key={exp} active={Boolean(touchedFields.experience) && draft.experience === exp} onPress={() => chooseField('experience', exp)}>{t(experienceLabelKey(exp))}</Pill>
+              <Choice
+                key={exp}
+                active={Boolean(touchedFields.experience) && draft.experience === exp}
+                title={t(experienceLabelKey(exp))}
+                subtitle={experienceSubtitle(exp, locale)}
+                onPress={() => chooseField('experience', exp)}
+              />
             ))}
-          </View>
+          </>
         )}
 
         {step === 'weeklyKm' && (
@@ -508,6 +514,20 @@ function sessionOptionLabel(count: number, locale: 'cs' | 'en'): string {
     5: 'vyšší závazek',
     6: 'pokročilé',
   } as const)[count] ?? 'dny týdně';
+}
+
+function experienceSubtitle(value: ExperienceLevel, locale: 'cs' | 'en'): string {
+  const en: Record<ExperienceLevel, string> = {
+    beginner: 'Start conservative and keep the plan easy to repeat.',
+    intermediate: 'A normal progression with room for busy weeks.',
+    advanced: 'More structure, still with guardrails.',
+  };
+  const cs: Record<ExperienceLevel, string> = {
+    beginner: 'Začni konzervativně a drž plán snadno opakovatelný.',
+    intermediate: 'Běžná progrese s rezervou pro rušné týdny.',
+    advanced: 'Více struktury, pořád s bezpečnostní rezervou.',
+  };
+  return locale === 'en' ? en[value] : cs[value];
 }
 
 const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }> = [
