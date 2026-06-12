@@ -140,6 +140,7 @@ export function PhotoScreen() {
         >
           <InfoRow label={photoEnergyLabel(locale)} value={estimate.kcal} />
           <InfoRow label={t('home.protein')} value={`${estimate.protein} g`} />
+          <Button onPress={save}>{t('photo.addToDay')}</Button>
           <CollapsibleDetails label={photoEditLabel(locale)}>
             <Label>{t('photo.foodName')}</Label>
             <Field value={estimate.foodName} onChangeText={foodName => setEstimate(value => value && ({ ...value, foodName }))} />
@@ -155,7 +156,6 @@ export function PhotoScreen() {
             {estimate.note ? <Text style={[styles.note, { color: colors.faint, fontFamily: fonts.regular }]}>{estimate.note}</Text> : null}
           </CollapsibleDetails>
           <Text style={[styles.disclaimer, { color: colors.faint, fontFamily: fonts.regular }]}>{t('photo.disclaimer')}</Text>
-          <Button onPress={save}>{t('photo.addToDay')}</Button>
         </SectionCard>
       ) : null}
       <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
