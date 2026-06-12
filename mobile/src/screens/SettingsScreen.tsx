@@ -514,7 +514,7 @@ function healthSourceSummary(
   }
   if (mode === 'mock') return locale === 'en' ? 'Demo data' : 'Demo data';
   if (mode === 'manual') return locale === 'en' ? 'Manual data' : 'Ruční data';
-  return locale === 'en' ? 'Health data is not connected' : 'Zdravotní data nejsou připojená';
+  return locale === 'en' ? 'Manual check-ins are active' : 'Ruční check-iny jsou aktivní';
 }
 
 function healthSourceState(
@@ -542,8 +542,8 @@ function healthSourceState(
     return locale === 'en' ? 'Useful for trying the app without real health data.' : 'Hodí se na vyzkoušení appky bez reálných zdravotních dat.';
   }
   return locale === 'en'
-    ? 'You can keep using manual check-ins and connect sources later.'
-    : 'Můžeš používat ruční check-iny a zdroje připojit později.';
+    ? 'Connect a source later if you want sleep, recovery, and workout imports.'
+    : 'Zdroj připoj později, pokud chceš import spánku, regenerace a tréninků.';
 }
 
 function healthSourceStatus(
