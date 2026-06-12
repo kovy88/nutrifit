@@ -269,13 +269,14 @@ function greeting(date: Date, t: (key: TranslationKey) => string): string {
 }
 
 function goalSummary(profile: UserProfile, t: (key: TranslationKey) => string): string {
-  if (profile.goalProfile?.summary) return profile.goalProfile.summary;
+  const summary = profile.goalProfile?.summary?.trim();
+  if (summary && !isRawGoalSummary(summary)) return sentenceCase(summary);
   return t(`goal.${profile.primaryGoal}` as TranslationKey);
 }
 
 function trainingSummary(session: TrainingSession | null | undefined, t: (key: TranslationKey) => string): string {
   if (!session || session.kind === 'rest') return t('today.restDayLabel');
-  return `${session.title} · ${session.durationMinutes} min`;
+  return titleWithOptionalDuration(session);
 }
 
 function trainingDetail(
@@ -422,12 +423,44 @@ function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs
         : 'Otevři Today znovu a kouč upraví další krok podle check-inu a plánu.',
     };
   }
+  const title = titleWithOptionalDuration(session);
+  const body = titleHasDuration(session.title)
+    ? (locale === 'en'
+        ? 'Check in tomorrow so the recommendation can stay practical.'
+        : 'Zítra udělej check-in, ať doporučení zůstane praktické.')
+    : (locale === 'en'
+        ? `${session.durationMinutes} min planned. Check in tomorrow so the recommendation can stay practical.`
+        : `V plánu je ${session.durationMinutes} min. Zítra udělej check-in, ať doporučení zůstane praktické.`);
   return {
-    title: locale === 'en' ? `Tomorrow: ${session.title}` : `Zítra: ${session.title}`,
-    body: locale === 'en'
-      ? `${session.durationMinutes} min planned. Check in tomorrow so the recommendation can stay practical.`
-      : `V plánu je ${session.durationMinutes} min. Zítra udělej check-in, ať doporučení zůstane praktické.`,
+    title: locale === 'en' ? `Tomorrow: ${title}` : `Zítra: ${title}`,
+    body,
   };
+}
+
+function isRawGoalSummary(summary: string): boolean {
+  const normalized = summary.trim().toLowerCase();
+  return normalized.includes('_') || [
+    'consistency',
+    'fitness',
+    'fat loss',
+    'muscle gain',
+    'healthy eating',
+    'better recovery',
+    'race prep',
+  ].includes(normalized);
+}
+
+function sentenceCase(value: string): string {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+function titleWithOptionalDuration(session: TrainingSession): string {
+  const title = session.title.trim();
+  return titleHasDuration(title) ? title : `${title} · ${session.durationMinutes} min`;
+}
+
+function titleHasDuration(title: string): boolean {
+  return /\b\d+\s*(min|mins|minutes|minut|m)\b/i.test(title);
 }
 
 const styles = StyleSheet.create({
