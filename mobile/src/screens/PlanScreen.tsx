@@ -87,9 +87,11 @@ export function PlanScreen() {
   const mainSportId = activeProfile.mainSport?.id;
   const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(sessionLine(selectedSession, t));
   const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, locale);
-  const heroAction = meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
-    ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
-    : undefined;
+  const heroAction = !meals.length && !loading
+    ? { label: generateMealsLabel(locale), onPress: generate }
+    : meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
+      ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
+      : undefined;
 
   async function loadStarterWeek() {
     if (!mainSportId) return;
@@ -189,7 +191,7 @@ export function PlanScreen() {
   }
 
   return (
-    <Screen>
+    <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader
         eyebrow={t('tab.plan')}
         title={t('plan.weekTitle')}
@@ -247,8 +249,6 @@ export function PlanScreen() {
       <SectionCard
         title={t('plan.todayMeals')}
         body={meals.length ? mealOverviewRows(meals, locale) : t('plan.emptyBody')}
-        ctaLabel={!meals.length ? t('plan.generate') : undefined}
-        onPress={!meals.length ? generate : undefined}
         detailLabel={meals.length ? t('plan.detail') : undefined}
         detailChildren={meals.length ? (
           <>
@@ -526,6 +526,10 @@ function mealOverviewRows(meals: Meal[], locale: 'cs' | 'en'): string[] {
   return [mealSummary(meals, locale), ...names].slice(0, 2);
 }
 
+function generateMealsLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Generate meals' : 'Vygenerovat jídla';
+}
+
 function nutritionNote(session: TrainingSession, carbsDelta: number, locale: 'cs' | 'en'): string {
   if (carbsDelta > 0) {
     return locale === 'en'
@@ -573,11 +577,12 @@ function moreOptionsBody(locale: 'cs' | 'en'): string {
 }
 
 const styles = StyleSheet.create({
-  weekStrip: { gap: 8, paddingRight: 4 },
-  dayChip: { width: 76, minHeight: 82, borderWidth: 1, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 9, justifyContent: 'space-between' },
-  dayName: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
-  dayNum: { fontSize: 22, lineHeight: 26, fontWeight: '900' },
-  daySession: { fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  screen: { gap: 12 },
+  weekStrip: { gap: 7, paddingRight: 4 },
+  dayChip: { width: 70, minHeight: 68, borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 8, justifyContent: 'space-between' },
+  dayName: { fontSize: 10.5, lineHeight: 13, fontWeight: '900' },
+  dayNum: { fontSize: 20, lineHeight: 23, fontWeight: '900' },
+  daySession: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
   fueling: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   moreOptions: { gap: 9 },
   mealRow: { borderTopWidth: 1, paddingTop: 14, gap: 9 },
