@@ -14,6 +14,7 @@ type ScreenProps = PropsWithChildren<{
 export function Screen({ children, footer, contentContainerStyle, scroll = true }: ScreenProps) {
   const { colors, isDark } = useTheme();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const tabBarPadding = footer ? 0 : tabBarHeight;
   const content = (
     <>
       {children}
@@ -34,7 +35,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
       )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.flex, tabBarHeight ? { paddingBottom: tabBarHeight } : null]}
+        style={[styles.flex, tabBarPadding ? { paddingBottom: tabBarPadding } : null]}
       >
         {scroll ? (
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Field, ScreenHeader } from '../components/UI';
 import { HeroDecisionCard, SectionCard } from '../components/SimpleUX';
@@ -137,11 +137,11 @@ export function CoachScreen() {
         title={t('coach.suggestedTitle')}
         body={coachQuestionsBody(locale)}
       >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptGrid}>
+        <View style={styles.promptList}>
           {prompts.map(prompt => (
             <PromptChip key={prompt} label={prompt} onPress={() => send(prompt)} />
           ))}
-        </ScrollView>
+        </View>
       </SectionCard>
 
       {messages.length > 0 ? (
@@ -166,9 +166,9 @@ export function CoachScreen() {
 
       {followups.length > 0 && !sending ? (
         <SectionCard title={t('coach.followups')}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptGrid}>
+          <View style={styles.promptList}>
             {followups.slice(0, 3).map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
-          </ScrollView>
+          </View>
         </SectionCard>
       ) : null}
 
@@ -290,9 +290,9 @@ function isEasySessionTitle(title: string): boolean {
 
 const styles = StyleSheet.create({
   screen: { paddingBottom: 8 },
-  promptGrid: { flexDirection: 'row', gap: 8, paddingRight: 4 },
-  promptChip: { minHeight: 46, maxWidth: 240, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
-  promptText: { flexShrink: 1, fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  promptList: { flexDirection: 'row', gap: 8 },
+  promptChip: { flex: 1, minWidth: 0, minHeight: 64, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6, paddingVertical: 8 },
+  promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '800', textAlign: 'center' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11 },
   bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
