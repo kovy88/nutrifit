@@ -18,8 +18,8 @@ export function GoalTextInput({ value, onChangeText, placeholder }: { value: str
 
 const styles = StyleSheet.create({
   input: {
-    minHeight: 92,
-    paddingTop: 14,
+    minHeight: 80,
+    paddingTop: 12,
     lineHeight: 21,
   },
 });

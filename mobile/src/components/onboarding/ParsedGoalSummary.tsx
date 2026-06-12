@@ -20,6 +20,6 @@ export function ParsedGoalSummary({ goalProfile, t }: { goalProfile: GoalProfile
 }
 
 const styles = StyleSheet.create({
-  box: { borderWidth: 1, borderRadius: 8, padding: 13, gap: 4 },
-  text: { fontSize: 14, lineHeight: 20 },
+  box: { borderWidth: 1, borderRadius: 8, padding: 10, gap: 4 },
+  text: { fontSize: 13, lineHeight: 18 },
 });

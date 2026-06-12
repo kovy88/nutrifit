@@ -37,8 +37,6 @@ const BOTH_SCOPE_MVP_LABELS = new Set<TranslationKey>([
   'onb.quickLoseFat',
   'onb.quickImproveFitness',
   'onb.quickRun5k',
-  'onb.quickRun10k',
-  'onb.quickBuildMuscle',
   'onb.quickEatHealthier',
 ]);
 
@@ -49,5 +47,5 @@ function visibleQuickStartsForScope(scope: CoachScope): GoalQuickStart[] {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });

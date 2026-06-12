@@ -228,7 +228,7 @@ export function OnboardingScreen() {
                 ]}
               >
                 <Text style={[styles.sessionNumber, { color: colors.ink }]}>{count}×</Text>
-                <Text style={[styles.sessionLabel, { color: colors.muted }]}>{sessionOptionLabel(count, locale)}</Text>
+                <Text numberOfLines={1} style={[styles.sessionLabel, { color: colors.muted }]}>{sessionOptionLabel(count, locale)}</Text>
               </Pressable>
             ))}
           </View>
@@ -634,10 +634,10 @@ const styles = StyleSheet.create({
   modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
   options: { gap: 9, marginTop: 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  sessionChoice: { width: '47%', flexGrow: 1, minHeight: 98, borderWidth: 1, borderRadius: 8, alignItems: 'flex-start', justifyContent: 'flex-start', gap: 8, paddingHorizontal: 14, paddingVertical: 14 },
-  sessionNumber: { fontSize: 26, lineHeight: 30, fontWeight: '900' },
-  sessionLabel: { fontSize: 13, lineHeight: 17, fontWeight: '800', textAlign: 'left' },
+  sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  sessionChoice: { flexBasis: '47%', flexGrow: 1, minHeight: 84, borderWidth: 1, borderRadius: 8, alignItems: 'flex-start', justifyContent: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 12 },
+  sessionNumber: { fontSize: 25, lineHeight: 29, fontWeight: '900' },
+  sessionLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'left' },
   bodyWrap: { gap: 12 },
   footer: { gap: 8 },
   actions: { flexDirection: 'row', gap: 10 },

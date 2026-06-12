@@ -30,7 +30,7 @@ export function GoalChip({
         {children}
       </Text>
       {subtitle ? (
-        <Text numberOfLines={2} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
+        <Text numberOfLines={1} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
           {subtitle}
         </Text>
       ) : null}
@@ -40,16 +40,16 @@ export function GoalChip({
 
 const styles = StyleSheet.create({
   chip: {
-    width: '47%',
+    flexBasis: '47%',
     flexGrow: 1,
-    minHeight: 100,
+    minHeight: 80,
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     justifyContent: 'flex-start',
-    gap: 7,
+    gap: 6,
   },
   text: { fontSize: 15, lineHeight: 19, textAlign: 'left' },
-  subtitle: { fontSize: 12, lineHeight: 16, textAlign: 'left' },
+  subtitle: { fontSize: 12, lineHeight: 15, textAlign: 'left' },
 });
