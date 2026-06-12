@@ -13,7 +13,6 @@ import { adjustedPlanForDate } from '../lib/training';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
-import { getRaceGoalLabel } from '../lib/profile/profile-labels';
 import type { WorkoutSummary } from '../lib/health';
 
 type WeekItem = ReturnType<typeof buildWeekList>[number];
@@ -41,10 +40,6 @@ export function TrainingScreen() {
     setSelectedDate(dateKey);
   }
 
-  function openSelectedDayToday() {
-    navigation.navigate('Main', { screen: 'Dnes' });
-  }
-
   const selectedCompletion = selectedDay.completionStatus ?? completion?.status;
   const selectedDone = selectedCompletion === 'completed';
   const selectedSkipped = selectedCompletion === 'skipped';
@@ -60,7 +55,7 @@ export function TrainingScreen() {
         onBack={() => navigation.goBack()}
         eyebrow={t('training.eyebrow')}
         title={t('training.title')}
-        subtitle={t('training.cleanSubtitle', { goal: getRaceGoalLabel(profile.trainingGoal, t) })}
+        subtitle={trainingScreenSubtitle(locale)}
       />
 
       <HeroDecisionCard
@@ -81,13 +76,14 @@ export function TrainingScreen() {
             ) : null}
           </CollapsibleDetails>
         )}
-        <ActionStrip
-          actions={[
-            { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone || selectedDay.isRest, primary: true },
-            { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped'), disabled: selectedDay.isRest },
-            { icon: 'today-outline', label: t('common.today'), onPress: openSelectedDayToday },
-          ]}
-        />
+        {selectedDay.isRest ? null : (
+          <ActionStrip
+            actions={[
+              { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone, primary: true },
+              { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped') },
+            ]}
+          />
+        )}
       </HeroDecisionCard>
 
       <SectionCard
@@ -205,6 +201,12 @@ function intensityLabel(intensity: string, locale: string): string {
   if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
   if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
   return locale === 'en' ? 'Training' : 'Trénink';
+}
+
+function trainingScreenSubtitle(locale: string): string {
+  return locale === 'en'
+    ? 'Pick a day and see what to do, what to skip, and why.'
+    : 'Vyber den a uvidíš, co odtrénovat, co vynechat a proč.';
 }
 
 function trainingWeekStatus(done: number, planned: number, locale: string): string {
