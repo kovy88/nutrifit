@@ -1,5 +1,6 @@
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, useContext } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -12,6 +13,7 @@ type ScreenProps = PropsWithChildren<{
 
 export function Screen({ children, footer, contentContainerStyle, scroll = true }: ScreenProps) {
   const { colors, isDark } = useTheme();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const content = (
     <>
       {children}
@@ -25,13 +27,15 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
           canvas depth instead of a flat fill. Dark mode only; non-interactive. */}
       {isDark && (
         <LinearGradient
-          pointerEvents="none"
           colors={[colors.accent + '1f', colors.accent + '08', 'transparent']}
           locations={[0, 0.45, 1]}
-          style={styles.glow}
+          style={[styles.glow, styles.nonInteractive]}
         />
       )}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[styles.flex, tabBarHeight ? { paddingBottom: tabBarHeight } : null]}
+      >
         {scroll ? (
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">
             {content}
@@ -52,4 +56,5 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 16 },
   footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
+  nonInteractive: { pointerEvents: 'none' },
 });
