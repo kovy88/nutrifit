@@ -166,17 +166,16 @@ function TodayActionCard({
   locale: 'cs' | 'en';
 }) {
   const primaryLabel = trainingDay ? (completed ? t('today.completed') : t('today.markDone')) : t('today.checkIn');
-  const primaryIcon = trainingDay ? 'checkmark-circle-outline' : 'pulse-outline';
+  const primaryIcon: keyof typeof Ionicons.glyphMap = trainingDay ? 'checkmark-circle-outline' : 'pulse-outline';
   const primaryAction = trainingDay ? onDone : onCheckIn;
+  const actions = [
+    { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
+    ...(trainingDay ? [{ icon: 'pulse-outline' as const, label: t('today.checkIn'), onPress: onCheckIn }] : []),
+  ];
 
   return (
     <SectionCard title={t('today.oneThing')} body={todayActionBody(trainingDay, completed, locale)}>
-      <ActionStrip
-        actions={[
-          { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
-          { icon: 'pulse-outline', label: t('today.checkIn'), onPress: onCheckIn },
-        ]}
-      />
+      <ActionStrip actions={actions} />
     </SectionCard>
   );
 }
