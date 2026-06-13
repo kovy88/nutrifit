@@ -14,7 +14,8 @@ import type { TrainingSession, UserProfile } from '../types';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 import { planSessionForDate } from '../lib/training';
-import type { TranslationKey } from '../lib/i18n';
+import { formatGoalProfileSummary } from '../lib/onboarding/goal-summary-labels';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import type { DailyCoachRecommendation } from '../types/coach';
 
 export function TodayScreen() {
@@ -255,9 +256,8 @@ function greeting(date: Date, t: (key: TranslationKey) => string): string {
   return t('today.greetingEvening');
 }
 
-function goalSummary(profile: UserProfile, t: (key: TranslationKey) => string): string {
-  const summary = profile.goalProfile?.summary?.trim();
-  if (summary && !isRawGoalSummary(summary)) return sentenceCase(summary);
+function goalSummary(profile: UserProfile, t: Translate): string {
+  if (profile.goalProfile) return formatGoalProfileSummary(profile.goalProfile, t);
   return t(`goal.${profile.primaryGoal}` as TranslationKey);
 }
 
@@ -416,23 +416,6 @@ function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs
     title: locale === 'en' ? `Tomorrow: ${title}` : `Zítra: ${title}`,
     body,
   };
-}
-
-function isRawGoalSummary(summary: string): boolean {
-  const normalized = summary.trim().toLowerCase();
-  return normalized.includes('_') || [
-    'consistency',
-    'fitness',
-    'fat loss',
-    'muscle gain',
-    'healthy eating',
-    'better recovery',
-    'race prep',
-  ].includes(normalized);
-}
-
-function sentenceCase(value: string): string {
-  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 function titleWithOptionalDuration(session: TrainingSession): string {
