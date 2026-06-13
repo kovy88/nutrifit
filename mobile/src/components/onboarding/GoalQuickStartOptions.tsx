@@ -23,7 +23,6 @@ export function GoalQuickStartOptions({
         <GoalChip
           key={`${item.id}-${item.text}`}
           active={activeText === item.text}
-          subtitle={t(item.subtitleKey as TranslationKey)}
           onPress={() => onSelect(item)}
         >
           {t(item.labelKey as TranslationKey)}

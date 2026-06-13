@@ -78,7 +78,8 @@ export function OnboardingScreen() {
   const shouldShowRequired = !stepValidation.valid && !autoStep && touchedCurrentStep;
   const stepHelp = subtitleFor(step, locale, t);
   const footerMessage = shouldShowRequired ? t(stepValidation.messageKey, stepValidation.params) : undefined;
-  const showFooterActions = idx > 0 || !autoStep || isLast;
+  const showPrimaryFooterAction = isLast || (!autoStep && (stepValidation.valid || shouldShowRequired));
+  const showFooterActions = idx > 0 || showPrimaryFooterAction;
   const showFooter = showFooterActions || Boolean(footerMessage);
 
   function markTouched(field: OnboardingField) {
@@ -139,8 +140,16 @@ export function OnboardingScreen() {
     <View style={styles.footer}>
       {showFooterActions ? (
         <View style={styles.actions}>
-          {idx > 0 && <Button style={styles.footerButton} variant="secondary" onPress={() => setStepIndex(s => s - 1)}>{t('common.back')}</Button>}
-          {(!autoStep || isLast) && (
+          {idx > 0 && (
+            <Button
+              style={showPrimaryFooterAction ? styles.footerButton : styles.footerBackOnlyButton}
+              variant="secondary"
+              onPress={() => setStepIndex(s => s - 1)}
+            >
+              {t('common.back')}
+            </Button>
+          )}
+          {showPrimaryFooterAction && (
             <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? () => finish() : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
           )}
         </View>
@@ -437,7 +446,7 @@ export function OnboardingScreen() {
 function questionFor(step: StepId, t: (k: TranslationKey) => string, locale: 'cs' | 'en'): string {
   switch (step) {
     case 'focus':         return locale === 'en' ? 'Start with what?' : 'Čím začneme?';
-    case 'goal':          return t('onb.goalHybridTitle');
+    case 'goal':          return locale === 'en' ? 'What is the goal?' : 'Jaký je cíl?';
     case 'nutritionGoal': return t('onb.nutritionGoalQuestion');
     case 'trainingGoal':  return t('onb.trainingGoalQuestion');
     case 'sessions':      return t('onb.sessionsQuestion');
@@ -468,6 +477,11 @@ function subtitleFor(step: StepId, locale: 'cs' | 'en', t: (k: TranslationKey) =
     return locale === 'en'
       ? 'Pick one daily answer. You can add the rest later.'
       : 'Vyber jednu denní odpověď. Zbytek můžeš přidat později.';
+  }
+  if (step === 'goal') {
+    return locale === 'en'
+      ? 'Pick a quick start or write one sentence.'
+      : 'Vyber rychlý start nebo napiš jednu větu.';
   }
   if (step === 'body') return bodyHelpCopy(locale);
   if (step === 'trainingGoal') {
@@ -632,6 +646,7 @@ const styles = StyleSheet.create({
   footer: { gap: 8 },
   actions: { flexDirection: 'row', gap: 10 },
   footerButton: { flex: 1 },
+  footerBackOnlyButton: { minWidth: 112 },
   disclaimer: { fontSize: 12, lineHeight: 18, marginTop: 12 },
   fieldLabel: { fontSize: 13, lineHeight: 18, fontWeight: '800', letterSpacing: 0, marginTop: 4 },
   validationText: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
