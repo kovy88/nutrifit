@@ -8,13 +8,13 @@
 // a smí ho jen VYSVĚTLOVAT / přizpůsobovat kvalitativně. Nesmí vymýšlet kalorie,
 // makra, readiness skóre ani tréninkový objem.
 
-import type { CoachMessage, DailyCoachRecommendation } from '../../types/coach';
+import type { CoachMessage, DailyCoachRecommendation, ReadinessBand, RecommendedIntensity } from '../../types/coach';
 import type { Locale } from '../i18n';
 import { convertDistanceInText, kgToLb, weightUnitLabel } from '../units';
 
 export type CoachChatContext = {
   recommendation: DailyCoachRecommendation | null;
-  /** Stručné shrnutí cíle, např. "lose_fat + run_10k". */
+  /** User-facing goal summary, e.g. "Fat loss + 10K run". */
   goalSummary: string;
   /** Týdenní váhový trend (kg/týden), pokud známe. */
   recentWeightTrendKgPerWeek?: number | null;
@@ -50,6 +50,7 @@ export function buildCoachChatRequest(opts: {
     unitsHint,
     'Return ONLY valid JSON: {"reply":"<answer>","followups":["<short suggested question>"],"actions":[{"type":"swap_meal|adjust_today|mark_done|change_goal|explain|weekly_review","label":"<short label>","payload":{},"requiresConfirmation":true}]}. No markdown, no extra text.',
     'Ground every answer in the DAILY PLAN CONTEXT below. NEVER invent calories, macros, readiness numbers or training volume — those are already computed deterministically; you only explain, adjust qualitatively, motivate, and answer.',
+    'Use user-facing wording. Do not repeat stored enum ids or raw labels such as low, medium, high, easy, moderate, hard, trainingGoal, nutritionMode, or planIntensity.',
     'Not a medical device: no diagnosis, no medical claims, no extreme calorie deficits or aggressive training jumps. If asked for those, decline gently and offer a safe alternative.',
     'Keep "reply" short (2–4 sentences). Provide 0–3 short "followups" and 0–2 actions. Only propose actions grounded in the DAILY PLAN CONTEXT.',
   ].join('\n');
@@ -66,12 +67,12 @@ export function buildCoachChatRequest(opts: {
     ctxLines.push(context.nextMatchInDays === 0 ? 'Next match: today' : `Next match: in ${context.nextMatchInDays} day(s)`);
   }
   if (rec) {
-    ctxLines.push(`Readiness: ${rec.readiness.score}/100 (${rec.readiness.band})`);
+    ctxLines.push(`Readiness: ${rec.readiness.score}/100 (${formatReadinessBand(rec.readiness.band)})`);
     if (rec.training) {
       ctxLines.push(`Today's focus: ${rec.training.focus}`);
       ctxLines.push(
         rec.training.session
-          ? `Today's session: ${convertDistanceInText(rec.training.session.title, units)} (${rec.training.session.durationMinutes} min, ${rec.training.session.intensity})`
+          ? `Today's session: ${convertDistanceInText(rec.training.session.title, units)} (${rec.training.session.durationMinutes} min, ${formatIntensity(rec.training.session.intensity)})`
           : "Today: rest day",
       );
     }
@@ -102,4 +103,30 @@ export function buildExplainRequest(opts: { context: CoachChatContext; locale: L
     ? 'Why is this my recommendation today? Explain briefly based on my readiness and plan.'
     : 'Proč mám dnes právě tohle doporučení? Vysvětli stručně podle mé připravenosti a plánu.';
   return buildCoachChatRequest({ context: opts.context, history: [], question, locale: opts.locale });
+}
+
+function formatReadinessBand(band: ReadinessBand): string {
+  switch (band) {
+    case 'low':
+      return 'go easy';
+    case 'high':
+      return 'good day';
+    case 'medium':
+    default:
+      return 'steady';
+  }
+}
+
+function formatIntensity(intensity: RecommendedIntensity): string {
+  switch (intensity) {
+    case 'rest':
+      return 'rest';
+    case 'hard':
+      return 'challenging';
+    case 'moderate':
+      return 'steady';
+    case 'easy':
+    default:
+      return 'light';
+  }
 }
