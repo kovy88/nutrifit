@@ -126,7 +126,14 @@ export function HistoryScreen() {
       <HeroDecisionCard
         eyebrow={t('tab.history')}
         title={t('history.weeklyReview')}
-        body={t(weeklyReview.recommendationKey)}
+        body={progressHeroBody(
+          adherence.averageRatio,
+          weeklyReview.completedSessions,
+          weeklyReview.plannedSessions,
+          weeklyReview.nutritionLoggedDays,
+          locale,
+          t(weeklyReview.recommendationKey),
+        )}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
         statusLabel={adherence.averageRatio == null ? undefined : adherenceLabel}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
@@ -264,6 +271,27 @@ function progressSubtitle(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'A calm review of consistency, trends and saved days.'
     : 'Klidný přehled konzistence, trendů a uložených dní.';
+}
+
+function progressHeroBody(
+  averageRatio: number | null,
+  completedSessions: number,
+  plannedSessions: number,
+  nutritionLoggedDays: number,
+  locale: 'cs' | 'en',
+  fallback: string,
+): string {
+  if (averageRatio == null && completedSessions === 0 && nutritionLoggedDays === 0) {
+    if (plannedSessions > 0) {
+      return locale === 'en'
+        ? 'Mark one planned workout or log one meal today; tomorrow this review will have a real signal.'
+        : 'Dnes odškrtni jeden trénink nebo zapiš jídlo; zítra už tady bude skutečný signál.';
+    }
+    return locale === 'en'
+      ? 'Log one useful action today and this review will start guiding the week.'
+      : 'Zapiš dnes jednu užitečnou akci a přehled začne vést týden.';
+  }
+  return fallback;
 }
 
 function progressTrainingLabel(locale: 'cs' | 'en'): string {
