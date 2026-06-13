@@ -48,6 +48,20 @@ export function TrainingScreen() {
     selectedDay.session.intensity === 'moderate' ? 'caution' :
     selectedDay.session.intensity === 'easy' ? 'ready' :
     'neutral';
+  const trainingActions = selectedDay.isRest ? [] : [
+    {
+      icon: 'checkmark-circle-outline' as const,
+      label: selectedDone ? t('today.completed') : t('today.markDone'),
+      onPress: () => mark('completed'),
+      disabled: selectedDone,
+      primary: true,
+    },
+    ...(!selectedDone && !selectedSkipped ? [{
+      icon: 'close-circle-outline' as const,
+      label: t('training.markSkipped'),
+      onPress: () => mark('skipped'),
+    }] : []),
+  ];
 
   return (
     <Screen contentContainerStyle={styles.screen}>
@@ -77,12 +91,7 @@ export function TrainingScreen() {
           </CollapsibleDetails>
         )}
         {selectedDay.isRest ? null : (
-          <ActionStrip
-            actions={[
-              { icon: 'checkmark-circle-outline', label: selectedDone ? t('today.completed') : t('today.markDone'), onPress: () => mark('completed'), disabled: selectedDone, primary: true },
-              { icon: 'close-circle-outline', label: t('training.markSkipped'), onPress: () => mark('skipped') },
-            ]}
-          />
+          <ActionStrip actions={trainingActions} />
         )}
       </HeroDecisionCard>
 
