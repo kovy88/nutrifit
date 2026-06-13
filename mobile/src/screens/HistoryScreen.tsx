@@ -120,8 +120,6 @@ export function HistoryScreen() {
   }
 
   const adherenceLabel = adherence.averageRatio == null ? '-' : `${Math.round(adherence.averageRatio * 100)}%`;
-  const latestWeight = [...weightTrend].reverse().find(point => point.value != null)?.value;
-
   return (
     <Screen>
       <ScreenHeader eyebrow={t('tab.history')} title={progressTitle(locale)} subtitle={progressSubtitle(locale)} />
@@ -168,13 +166,12 @@ export function HistoryScreen() {
             </CollapsibleDetails>
           </SectionCard>
 
-          <SectionCard title={t('history.targetStreak')} body={describeStreak(logStreak, 'log', locale)}>
+          <SectionCard title={progressNextSignalTitle(locale)} body={progressNextSignalBody(logStreak.current, locale)}>
             {adherenceStreak.current > 0 ? (
               <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current} />
             ) : (
               <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTargetCopy(locale)}</Text>
             )}
-            {latestWeight ? <InfoRow label={t('history.weight30')} value={`${showWeight(latestWeight)} ${weightUnit}`} /> : null}
           </SectionCard>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
@@ -334,6 +331,21 @@ function progressNoTargetCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'Your first on-target day will show here after you log a meal.'
     : 'První den v cíli se ukáže po zalogování jídla.';
+}
+
+function progressNextSignalTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Next signal' : 'Další signál';
+}
+
+function progressNextSignalBody(currentLogStreak: number, locale: 'cs' | 'en'): string {
+  if (currentLogStreak > 0) {
+    return locale === 'en'
+      ? 'Keep the streak simple and repeat one useful check-in tomorrow.'
+      : 'Drž streak jednoduše a zítra zopakuj jeden užitečný check-in.';
+  }
+  return locale === 'en'
+    ? 'Start logging today and this review will get useful fast.'
+    : 'Začni dnešním zápisem a přehled rychle začne dávat smysl.';
 }
 
 function progressFoodTrendTitle(locale: 'cs' | 'en'): string {
