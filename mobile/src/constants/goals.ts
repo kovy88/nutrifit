@@ -78,8 +78,6 @@ export function trainingGoalsFor(primaryGoal: PrimaryGoal): TrainingGoalOption[]
   if (primaryGoal === 'improve_fitness') return [
     { value: 'play_sport', labelKey: 'onb.tgPlaySport' },
     { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
-    { value: 'hyrox', labelKey: 'onb.tgHyrox' },
-    { value: 'sprint_triathlon', labelKey: 'onb.tgSprintTri' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
   ];
   return [
