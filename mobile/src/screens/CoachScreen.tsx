@@ -294,8 +294,8 @@ function isEasySessionTitle(title: string): boolean {
 
 const styles = StyleSheet.create({
   screen: { paddingBottom: 8 },
-  promptList: { flexDirection: 'row', gap: 8 },
-  promptChip: { flex: 1, minWidth: 0, minHeight: 64, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6, paddingVertical: 8 },
+  promptList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 96, minHeight: 64, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6, paddingVertical: 8 },
   promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '800', textAlign: 'center' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11 },
