@@ -87,9 +87,7 @@ export function PlanScreen() {
   const mainSportId = activeProfile.mainSport?.id;
   const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(sessionLine(selectedSession, t));
   const selectedDayBody = nutritionNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, locale);
-  const heroAction = !meals.length && !loading
-    ? { label: generateMealsLabel(locale), onPress: generate }
-    : meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
+  const heroAction = meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
       ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
       : undefined;
 
@@ -249,6 +247,8 @@ export function PlanScreen() {
       <SectionCard
         title={t('plan.todayMeals')}
         body={meals.length ? mealOverviewRows(meals, locale) : t('plan.emptyBody')}
+        ctaLabel={!meals.length && !loading ? generateMealsLabel(locale) : undefined}
+        onPress={!meals.length && !loading ? generate : undefined}
         detailLabel={meals.length ? t('plan.detail') : moreOptionsTitle(locale)}
         detailChildren={
           <>
