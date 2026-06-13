@@ -82,6 +82,8 @@ export function OnboardingScreen() {
     : shouldShowRequired
       ? t(stepValidation.messageKey, stepValidation.params)
       : stepHelp;
+  const showFooterActions = idx > 0 || !autoStep || isLast;
+  const showFooter = showFooterActions || shouldShowRequired;
 
   function markTouched(field: OnboardingField) {
     setTouchedFields(current => ({ ...current, [field]: true }));
@@ -137,39 +139,32 @@ export function OnboardingScreen() {
     await clearOnboardingDraft();
   }
 
-  const footer = (
+  const footer = showFooter ? (
     <View style={styles.footer}>
-      <View style={styles.actions}>
-        {idx > 0 && <Button style={styles.footerButton} variant="secondary" onPress={() => setStepIndex(s => s - 1)}>{t('common.back')}</Button>}
-        {(!autoStep || isLast) && (
-          <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? () => finish() : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
-        )}
-      </View>
+      {showFooterActions ? (
+        <View style={styles.actions}>
+          {idx > 0 && <Button style={styles.footerButton} variant="secondary" onPress={() => setStepIndex(s => s - 1)}>{t('common.back')}</Button>}
+          {(!autoStep || isLast) && (
+            <Button style={styles.footerButton} disabled={!stepValidation.valid} onPress={isLast ? () => finish() : nextStep}>{isLast ? t('onb.finish') : t('common.continue')}</Button>
+          )}
+        </View>
+      ) : null}
       <Text style={[styles.validationText, { color: shouldShowRequired ? colors.orange : colors.muted }]}>
         {footerMessage}
       </Text>
     </View>
-  );
+  ) : undefined;
 
   return (
     <Screen footer={footer} contentContainerStyle={styles.screenContent}>
       <OnboardingProgress current={idx + 1} total={total} />
 
-      <H1>{questionFor(step, t)}</H1>
+      <H1>{questionFor(step, t, locale)}</H1>
       <Subtitle>{stepHelp}</Subtitle>
       {step === 'focus' && (
         <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
           <Text style={[styles.welcomeCopy, { color: colors.ink }]}>{t('onb.welcomePromise')}</Text>
-          <View style={styles.modeRow}>
-            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeManual')}</Text>
-            <Pressable onPress={async () => {
-              await setProfile(DEFAULT_PROFILE);
-            }}>
-              <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeDemo')}</Text>
-            </Pressable>
-            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeHealth')}</Text>
-          </View>
         </View>
       )}
 
@@ -177,7 +172,6 @@ export function OnboardingScreen() {
         {step === 'focus' && SCOPE_OPTIONS.map(o => (
           <Choice
             key={o.value}
-            compact
             active={Boolean(touchedFields.coachScope) && scope === o.value}
             title={t(o.titleKey)}
             subtitle={t(o.subKey)}
@@ -442,9 +436,9 @@ export function OnboardingScreen() {
   );
 }
 
-function questionFor(step: StepId, t: (k: TranslationKey) => string): string {
+function questionFor(step: StepId, t: (k: TranslationKey) => string, locale: 'cs' | 'en'): string {
   switch (step) {
-    case 'focus':         return t('onb.focusQuestion');
+    case 'focus':         return locale === 'en' ? 'Start with what?' : 'Čím začneme?';
     case 'goal':          return t('onb.goalHybridTitle');
     case 'nutritionGoal': return t('onb.nutritionGoalQuestion');
     case 'trainingGoal':  return t('onb.trainingGoalQuestion');
@@ -474,8 +468,8 @@ function bodyHelpCopy(locale: 'cs' | 'en'): string {
 function subtitleFor(step: StepId, locale: 'cs' | 'en', t: (k: TranslationKey) => string): string {
   if (step === 'focus') {
     return locale === 'en'
-      ? 'Pick what you want help with first. You can change it later.'
-      : 'Vyber, s čím chceš pomoct jako první. Později to můžeš změnit.';
+      ? 'Pick one daily answer. You can add the rest later.'
+      : 'Vyber jednu denní odpověď. Zbytek můžeš přidat později.';
   }
   if (step === 'body') return bodyHelpCopy(locale);
   if (step === 'trainingGoal') {
@@ -630,8 +624,6 @@ const styles = StyleSheet.create({
   welcomeBox: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 8 },
   brand: { fontSize: 26, lineHeight: 30, fontWeight: '900' },
   welcomeCopy: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
-  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
   options: { gap: 9, marginTop: 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
