@@ -84,7 +84,7 @@ export function SectionCard({
         action={statusLabel ? <StatusPill label={statusLabel} tone={statusTone} /> : undefined}
       />
       {bodyRows.slice(0, 2).map((row, index) => (
-        <Text key={`${index}-${row}`} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
+        <Text key={`body-row-${index}`} numberOfLines={2} style={[styles.body, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
       ))}
       {safeChildren.length ? safeChildren : null}
       <View style={styles.cardActions}>
