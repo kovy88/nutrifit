@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   hero: { borderRadius: 8, padding: 18, gap: 14, minHeight: 132 },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   heroCopy: { flex: 1, gap: 6, minWidth: 0 },
-  eyebrow: { fontSize: 11, lineHeight: 15, letterSpacing: 0.3 },
+  eyebrow: { fontSize: 11, lineHeight: 15, letterSpacing: 0 },
   heroTitle: { fontSize: 24, lineHeight: 30, letterSpacing: 0 },
   body: { fontSize: 14, lineHeight: 20 },
   sectionCard: { borderRadius: 8, padding: 15, gap: 10 },

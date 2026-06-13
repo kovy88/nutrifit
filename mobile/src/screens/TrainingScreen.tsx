@@ -114,7 +114,7 @@ export function TrainingScreen() {
                 },
               ]}
             >
-              <Text style={[styles.dayDow, { color: item.isSelected ? colors.accent : colors.faint, fontFamily: fonts.bold }]}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.dayDow, { color: item.isSelected ? colors.accent : colors.faint, fontFamily: fonts.bold }]}>
                 {item.shortLabel}
               </Text>
               <Text style={[styles.dayNumber, { color: colors.ink, fontFamily: fonts.number }]}>
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   weekMetrics: { flexDirection: 'row', gap: 8 },
   weekStrip: { gap: 8, paddingTop: 2 },
   dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  dayDow: { fontSize: 11, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.6 },
+  dayDow: { maxWidth: 48, fontSize: 11, lineHeight: 14, letterSpacing: 0 },
   dayNumber: { fontSize: 24, lineHeight: 28 },
   dayDot: { width: 7, height: 7, borderRadius: 4 },
   selectedBody: { gap: 10 },
