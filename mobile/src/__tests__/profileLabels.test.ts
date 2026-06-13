@@ -6,10 +6,12 @@ import {
   getGoalLabel,
   getHealthProviderLabel,
   getHealthProviderStatus,
+  getProfileGoalSummary,
   getNutritionModeLabel,
   getRaceGoalLabel,
   summarizeLikesDislikes,
 } from '../lib/profile/profile-labels';
+import { parseGoalText } from '../lib/onboarding/goal-parser';
 
 const t = createTranslator('en');
 
@@ -30,6 +32,15 @@ describe('profile label helpers', () => {
     expect(getRaceGoalLabel('sprint_triathlon', t)).toBe('Sprint triathlon');
     expect(getRaceGoalLabel('ocr', cs)).toBe('OCR závod');
     expect(getRaceGoalLabel('basic_strength', cs)).toBe('Síla');
+  });
+
+  it('formats profile goal summaries for user-facing and AI context', () => {
+    const cs = createTranslator('cs');
+    const goalProfile = parseGoalText('I want to lose fat and run a half marathon').goalProfile!;
+
+    expect(getProfileGoalSummary({ primaryGoal: 'lose_fat', trainingGoal: 'run_10k' }, t)).toBe('Fat loss + 10 km');
+    expect(getProfileGoalSummary({ primaryGoal: 'improve_fitness', trainingGoal: 'play_sport' }, t)).toBe('Improve fitness + I play a sport / my own rhythm');
+    expect(getProfileGoalSummary({ primaryGoal: 'lose_fat', trainingGoal: 'run_10k', goalProfile }, cs)).toBe('Hubnutí tuku + Půlmaraton');
   });
 
   it('summarizes health provider state without pretending native health is connected', () => {

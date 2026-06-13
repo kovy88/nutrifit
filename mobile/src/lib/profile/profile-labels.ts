@@ -2,6 +2,7 @@ import type { NativeSourceState } from '../../hooks/useHealthSources';
 import type { Translate } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import type { ExperienceLevel, NutritionMode, TrainingGoalKind, UserProfile } from '../../types';
+import { formatGoalProfileSummary } from '../onboarding/goal-summary-labels';
 
 const TRAINING_GOAL_LABELS: Record<Exclude<TrainingGoalKind, 'none'>, TranslationKey> = {
   general_fitness: 'trainingGoal.general_fitness',
@@ -31,6 +32,16 @@ export function getGoalLabel(profile: Pick<UserProfile, 'primaryGoal'>, t: Trans
 export function getRaceGoalLabel(goal: TrainingGoalKind | undefined, t: Translate): string {
   if (!goal || goal === 'none') return t('profile.notSet');
   return t(TRAINING_GOAL_LABELS[goal]);
+}
+
+export function getProfileGoalSummary(
+  profile: Pick<UserProfile, 'primaryGoal' | 'trainingGoal' | 'goalProfile'>,
+  t: Translate,
+): string {
+  if (profile.goalProfile) return formatGoalProfileSummary(profile.goalProfile, t);
+  const primary = getGoalLabel(profile, t);
+  if (!profile.trainingGoal || profile.trainingGoal === 'none') return primary;
+  return `${primary} + ${getRaceGoalLabel(profile.trainingGoal, t)}`;
 }
 
 export function getNutritionModeLabel(mode: NutritionMode | undefined, t: Translate): string {

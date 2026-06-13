@@ -16,6 +16,7 @@ import { incrementCoachTeaserUsed, loadCoachTeaserUsed } from '../services/stora
 import type { CoachChatContext } from '../lib/ai/coachChat';
 import type { CoachMessage, DailyCoachRecommendation } from '../types/coach';
 import { PaywallModal } from '../components/PaywallModal';
+import { getProfileGoalSummary } from '../lib/profile/profile-labels';
 
 function uid(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -31,10 +32,13 @@ export function CoachScreen() {
   const [freeUsed, setFreeUsed] = useState(0);
   useEffect(() => { loadCoachTeaserUsed().then(setFreeUsed).catch(() => {}); }, []);
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
+  const goalSummary = useMemo(() => (
+    profile ? getProfileGoalSummary(profile, t) : t('trainingGoal.general_fitness')
+  ), [profile, t]);
   const threadMemory = useMemo(() => ({
-    goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
+    goalSummary,
     updatedAt: new Date().toISOString(),
-  }), [profile?.primaryGoal, profile?.trainingGoal]);
+  }), [goalSummary]);
   const { messages, persist } = useCoachThread(selectedDate, threadMemory);
   const [followups, setFollowups] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -67,7 +71,7 @@ export function CoachScreen() {
     try {
       const context: CoachChatContext = {
         recommendation,
-        goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
+        goalSummary,
         mainSport: profile?.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : null,
         nextMatchInDays: profile?.weeklyActivities ? (nextMatchInfo(profile.weeklyActivities, selectedDate)?.daysUntil ?? null) : null,
         units: profile?.units ?? 'metric',
