@@ -1,7 +1,7 @@
 // ── WORKOUT DETAIL MODAL
 //
 // Otevírá se po klepnutí na WorkoutCard v Trénink screen / HomeScreen
-// (recent workouts). Plná breakdown a deep-link na source provider.
+// (recent workouts). User-facing workout detail with optional source deep-link.
 
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,13 +150,6 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
               </View>
             )}
 
-            {/* External ID footer (debug-ish, useful for support) */}
-            {workout.externalId && (
-              <Text style={[styles.externalId, { color: colors.faint }]}>
-                ID: {workout.externalId}
-              </Text>
-            )}
-
             {/* Source action */}
             {workout.source === 'strava' && workout.externalId && (
               <Button variant="primary" onPress={openSource}>
@@ -248,7 +241,6 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
   metricValue: { fontSize: 17, fontWeight: '900' },
   metricValueBig: { fontSize: 28, fontWeight: '900' },
-  externalId: { fontSize: 11, fontFamily: 'System', marginTop: 8 },
   fuelingBox: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
   fuelingTitle: { fontSize: 15, fontWeight: '900' },
   fuelingSummary: { fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
