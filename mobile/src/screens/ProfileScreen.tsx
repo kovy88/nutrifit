@@ -8,7 +8,7 @@ import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { CoachScope, DietStyle, ExperienceLevel, Gender, NutritionMode, PlanIntensity, TrainingGoalKind, UserProfile } from '../types';
+import type { CoachScope, DietStyle, ExperienceLevel, Gender, PlanIntensity, UserProfile } from '../types';
 import { resolveCoachScope, scopeHasTraining } from '../types';
 import { activityFactorForSessions } from '../utils/nutrition';
 import { useTheme } from '../context/ThemeContext';
@@ -24,6 +24,7 @@ import {
   getRaceGoalLabel,
   summarizeLikesDislikes,
 } from '../lib/profile/profile-labels';
+import { PROFILE_NUTRITION_MODES, PROFILE_TRAINING_GOALS } from '../lib/profile/profile-options';
 
 type EditSection = 'goal' | 'basics' | 'training' | 'nutrition' | 'account' | null;
 
@@ -304,7 +305,7 @@ function GoalEditor({
 
       <Label>{t('profile.trainingGoal')}</Label>
       <View style={styles.wrap}>
-        {trainingGoals.map(goal => (
+        {PROFILE_TRAINING_GOALS.map(goal => (
           <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => void setProfile({ ...profile, trainingGoal: goal.value })}>
             {t(goal.labelKey)}
           </Pill>
@@ -425,7 +426,7 @@ function NutritionEditor({
     <>
       <Label>{t('profile.nutritionMode')}</Label>
       <View style={styles.wrap}>
-        {nutritionModes.map(mode => (
+        {PROFILE_NUTRITION_MODES.map(mode => (
           <Pill key={mode.value} active={(profile.nutritionMode ?? 'balanced') === mode.value} onPress={() => void setProfile({ ...profile, nutritionMode: mode.value })}>
             {t(mode.labelKey)}
           </Pill>
@@ -505,27 +506,6 @@ function AccountEditor({
     </>
   );
 }
-
-const trainingGoals: Array<{ value: TrainingGoalKind; labelKey: TranslationKey }> = [
-  { value: 'general_fitness', labelKey: 'trainingGoal.general_fitness' },
-  { value: 'walking_more', labelKey: 'trainingGoal.walking_more' },
-  { value: 'couch_to_5k', labelKey: 'trainingGoal.couch_to_5k' },
-  { value: 'run_5k', labelKey: 'trainingGoal.run_5k' },
-  { value: 'run_10k', labelKey: 'trainingGoal.run_10k' },
-  { value: 'half_marathon', labelKey: 'trainingGoal.half_marathon' },
-  { value: 'strength_basics', labelKey: 'trainingGoal.strength_basics' },
-  { value: 'hyrox', labelKey: 'trainingGoal.hyrox' },
-];
-
-const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
-  { value: 'balanced', labelKey: 'nutritionMode.balanced' },
-  { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
-  { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
-  { value: 'high_protein', labelKey: 'nutritionMode.high_protein' },
-  { value: 'budget_friendly', labelKey: 'nutritionMode.budget_friendly' },
-  { value: 'simple_meal_prep', labelKey: 'nutritionMode.simple_meal_prep' },
-  { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
-];
 
 const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
   { value: 'easy', labelKey: 'planIntensity.easy' },
