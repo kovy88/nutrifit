@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 import {
   Button,
-  EmptyState,
   Field,
   Label,
   LoadingState,
@@ -101,13 +100,15 @@ export function PhotoScreen() {
       <SectionCard
         title={image ? t('photo.previewTitle') : t('photo.startTitle')}
         body={image ? photoPreviewCopy(locale) : photoEmptyCopy(locale)}
-        statusLabel={estimate ? t('photo.reviewReady') : image ? t('photo.readyToAnalyze') : t('photo.emptyStatus')}
+        statusLabel={estimate ? t('photo.reviewReady') : image ? t('photo.readyToAnalyze') : undefined}
         statusTone={estimate ? 'ready' : image ? 'info' : 'neutral'}
       >
         {image ? (
           <Image source={{ uri: image.uri }} resizeMode="cover" style={[styles.image, { backgroundColor: colors.border }]} />
         ) : (
-          <EmptyState title={t('photo.emptyTitle')} />
+          <View style={[styles.emptyPreview, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.emptyPreviewTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{t('photo.emptyTitle')}</Text>
+          </View>
         )}
         <ActionStrip
           actions={[
@@ -233,8 +234,10 @@ function MetricInput({
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 18 },
+  screen: { gap: 14 },
   image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 8 },
+  emptyPreview: { minHeight: 132, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  emptyPreviewTitle: { fontSize: 15, lineHeight: 20, textAlign: 'center' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricInput: { width: '47%', flexGrow: 1, gap: 6 },
   note: { fontSize: 14, lineHeight: 20 },
