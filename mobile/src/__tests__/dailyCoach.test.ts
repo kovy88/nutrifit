@@ -48,6 +48,16 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.nutrition!.deltaVsBaselineKcal).toBe(100);
   });
 
+  it('uses product language in explanation instead of raw readiness/intensity enums', () => {
+    const rec = generateDailyCoachRecommendation(baseInput());
+    const firstReason = rec.explanation?.[0] ?? '';
+    expect(firstReason).toContain('Připravenost');
+    expect(firstReason).toMatch(/dobrý den|drž plán|radši uber/);
+    expect(firstReason).not.toMatch(/\((low|medium|high)\)/);
+    expect(firstReason).not.toMatch(/\b(rest|easy|moderate|hard)\b/);
+    expect(rec.trainingRecommendation?.intensity).not.toMatch(/\b(rest|easy|moderate|hard)\b/);
+  });
+
   it('downgrades a hard session and sets whatNotToDo when readiness is poor', () => {
     const rec = generateDailyCoachRecommendation(baseInput({
       session: session('intervals', 'hard', 50),

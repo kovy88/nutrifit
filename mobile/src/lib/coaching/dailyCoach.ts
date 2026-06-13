@@ -17,6 +17,7 @@ import { resolveCoachScope, scopeHasNutrition, scopeHasTraining } from '../../ty
 import type {
   CoachAction,
   DailyCoachRecommendation,
+  ReadinessBand,
   RecommendedIntensity,
   RecoveryInputs,
 } from '../../types/coach';
@@ -145,7 +146,7 @@ export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyC
       type: adjustedSession ? adjustedSession.kind : 'rest',
       title: adjustedSession ? adjustedSession.title : L(loc, 'Volno', 'Rest'),
       durationMinutes: adjustedSession ? adjustedSession.durationMinutes : 0,
-      intensity: adjustedSession ? `RPE ${adjustedSession.intensity}` : 'rest',
+      intensity: adjustedSession ? intensityLabel(adjustedSession.intensity, loc) : intensityLabel('rest', loc),
     } : null,
     nutritionRecommendation: hasNutrition ? {
       calories: input.todayMacros.kcal,
@@ -252,8 +253,8 @@ function buildExplanation({
   const out: string[] = [];
   out.push(L(
     locale,
-    `Readiness ${readiness.score}/100 (${readiness.band}) nastavuje dnešní strop intenzity na ${readiness.recommendedIntensity}.`,
-    `Readiness ${readiness.score}/100 (${readiness.band}) sets today's intensity ceiling to ${readiness.recommendedIntensity}.`,
+    `Připravenost ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Dnes drž strop ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
+    `Readiness ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Keep today's ceiling ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
   ));
   if (readiness.drivers.length) out.push(readiness.drivers.slice(0, 2).join(' · '));
   if (hasTraining) {
@@ -270,6 +271,32 @@ function buildExplanation({
     out.push(trainingLoad.recommendation || trainingLoad.message);
   }
   return out;
+}
+
+function readinessBandLabel(band: ReadinessBand, loc: Locale): string {
+  switch (band) {
+    case 'low':
+      return L(loc, 'radši uber', 'go easier');
+    case 'high':
+      return L(loc, 'dobrý den držet plán', 'a good day to follow the plan');
+    case 'medium':
+    default:
+      return L(loc, 'drž plán rozumně', 'keep the plan steady');
+  }
+}
+
+function intensityLabel(intensity: RecommendedIntensity, loc: Locale): string {
+  switch (intensity) {
+    case 'rest':
+      return L(loc, 'volno nebo regenerace', 'rest or recovery');
+    case 'easy':
+      return L(loc, 'lehce', 'light');
+    case 'hard':
+      return L(loc, 'náročně', 'challenging');
+    case 'moderate':
+    default:
+      return L(loc, 'normálně', 'steady');
+  }
 }
 
 // ── SAFETY VALIDATION ─────────────────────────────────────────────────────────
