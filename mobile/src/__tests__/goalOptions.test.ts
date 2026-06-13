@@ -14,15 +14,27 @@ describe('goal option surfaces', () => {
     expect(visibleRunningGoals).not.toContain('marathon');
   });
 
-  it('keeps advanced sport formats out of onboarding choices', () => {
+  it('keeps advanced and custom sport formats out of onboarding choices', () => {
     const visibleFitnessGoals = trainingGoalsFor('improve_fitness').map(goal => goal.value);
 
     expect(visibleFitnessGoals).toEqual([
-      'play_sport',
-      'sports_conditioning',
       'general_fitness',
     ]);
+    expect(visibleFitnessGoals).not.toContain('play_sport');
+    expect(visibleFitnessGoals).not.toContain('sports_conditioning');
     expect(visibleFitnessGoals).not.toContain('hyrox');
     expect(visibleFitnessGoals).not.toContain('sprint_triathlon');
+  });
+
+  it('keeps default training choices focused on simple repeatable goals', () => {
+    const fallbackGoals = trainingGoalsFor('build_consistency').map(goal => goal.value);
+
+    expect(fallbackGoals).toEqual([
+      'walking_more',
+      'couch_to_5k',
+      'general_fitness',
+    ]);
+    expect(fallbackGoals).not.toContain('play_sport');
+    expect(fallbackGoals).not.toContain('sports_conditioning');
   });
 });

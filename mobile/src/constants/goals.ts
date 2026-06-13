@@ -76,16 +76,12 @@ export function trainingGoalsFor(primaryGoal: PrimaryGoal): TrainingGoalOption[]
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitnessAlt' },
   ];
   if (primaryGoal === 'improve_fitness') return [
-    { value: 'play_sport', labelKey: 'onb.tgPlaySport' },
-    { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
   ];
   return [
-    { value: 'play_sport', labelKey: 'onb.tgPlaySport' },
     { value: 'walking_more', labelKey: 'onb.tgWalking' },
     { value: 'couch_to_5k', labelKey: 'onb.tgCouch' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
-    { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
   ];
 }
 
