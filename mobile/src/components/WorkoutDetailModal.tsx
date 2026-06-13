@@ -33,7 +33,7 @@ const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
   fitbit:         'Fitbit',
   zepp:           'Zepp',
   suunto:         'Suunto',
-  mock:           'Mock (dev)',
+  mock:           'Demo data',
 };
 
 export type WorkoutDetailModalProps = {
