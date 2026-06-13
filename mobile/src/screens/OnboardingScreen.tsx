@@ -77,13 +77,9 @@ export function OnboardingScreen() {
   const touchedCurrentStep = isStepTouched(step, touchedFields);
   const shouldShowRequired = !stepValidation.valid && !autoStep && touchedCurrentStep;
   const stepHelp = subtitleFor(step, locale, t);
-  const footerMessage = autoStep && !stepValidation.valid
-    ? t('onb.tapToContinue')
-    : shouldShowRequired
-      ? t(stepValidation.messageKey, stepValidation.params)
-      : stepHelp;
+  const footerMessage = shouldShowRequired ? t(stepValidation.messageKey, stepValidation.params) : undefined;
   const showFooterActions = idx > 0 || !autoStep || isLast;
-  const showFooter = showFooterActions || shouldShowRequired;
+  const showFooter = showFooterActions || Boolean(footerMessage);
 
   function markTouched(field: OnboardingField) {
     setTouchedFields(current => ({ ...current, [field]: true }));
@@ -149,9 +145,11 @@ export function OnboardingScreen() {
           )}
         </View>
       ) : null}
-      <Text style={[styles.validationText, { color: shouldShowRequired ? colors.orange : colors.muted }]}>
-        {footerMessage}
-      </Text>
+      {footerMessage ? (
+        <Text style={[styles.validationText, { color: colors.orange }]}>
+          {footerMessage}
+        </Text>
+      ) : null}
     </View>
   ) : undefined;
 
