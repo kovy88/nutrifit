@@ -118,19 +118,20 @@ export function TrainingScreen() {
         <CollapsibleDetails label={t('plan.detail')}>
           <InfoRow label={t('training.planned')} value={plannedSessions} />
           <InfoRow label={t('training.done')} value={completedCount} />
+          <View style={styles.historyDetail}>
+            <Text style={[styles.historyTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{t('training.recentTitle')}</Text>
+            <Text style={[styles.historyBody, { color: colors.muted, fontFamily: fonts.medium }]}>
+              {recentWorkoutBody(recent.isLoading, recent.workouts, locale)}
+            </Text>
+            {recent.workouts.length ? (
+              <View style={styles.workoutsList}>
+                {recent.workouts.slice(0, 6).map((workout, index) => (
+                  <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
+                ))}
+              </View>
+            ) : null}
+          </View>
         </CollapsibleDetails>
-      </SectionCard>
-
-      <SectionCard title={t('training.recentTitle')} body={recentWorkoutBody(recent.isLoading, recent.workouts, locale)}>
-        {recent.workouts.length ? (
-          <CollapsibleDetails label={t('plan.detail')}>
-            <View style={styles.workoutsList}>
-              {recent.workouts.slice(0, 6).map((workout, index) => (
-                <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
-              ))}
-            </View>
-          </CollapsibleDetails>
-        ) : null}
       </SectionCard>
 
       <WorkoutDetailModal workout={selectedWorkout} onClose={() => setSelectedWorkout(null)} />
@@ -262,5 +263,8 @@ const styles = StyleSheet.create({
   adjustedNote: { fontSize: 13, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1 },
+  historyDetail: { gap: 8, paddingTop: 2 },
+  historyTitle: { fontSize: 14, lineHeight: 19 },
+  historyBody: { fontSize: 13, lineHeight: 18 },
   workoutsList: { gap: 10 },
 });
