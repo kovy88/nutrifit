@@ -21,6 +21,17 @@ describe('profile label helpers', () => {
     expect(getExperienceLabel('intermediate', t)).toBe('Intermediate');
   });
 
+  it('maps advanced and legacy training goals without leaking raw keys', () => {
+    const cs = createTranslator('cs');
+
+    expect(getRaceGoalLabel('marathon', t)).toBe('Marathon');
+    expect(getRaceGoalLabel('sport_conditioning', t)).toBe('Sport conditioning');
+    expect(getRaceGoalLabel('play_sport', t)).toBe('I play a sport / my own rhythm');
+    expect(getRaceGoalLabel('sprint_triathlon', t)).toBe('Sprint triathlon');
+    expect(getRaceGoalLabel('ocr', cs)).toBe('OCR závod');
+    expect(getRaceGoalLabel('basic_strength', cs)).toBe('Síla');
+  });
+
   it('summarizes health provider state without pretending native health is connected', () => {
     expect(getHealthProviderLabel('auto', t)).toBe('Health data');
     expect(getHealthProviderLabel('manual', t)).toBe('Manual check-ins');

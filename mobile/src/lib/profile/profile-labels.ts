@@ -3,13 +3,34 @@ import type { Translate } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import type { ExperienceLevel, NutritionMode, TrainingGoalKind, UserProfile } from '../../types';
 
+const TRAINING_GOAL_LABELS: Record<Exclude<TrainingGoalKind, 'none'>, TranslationKey> = {
+  general_fitness: 'trainingGoal.general_fitness',
+  walking_more: 'trainingGoal.walking_more',
+  couch_to_5k: 'trainingGoal.couch_to_5k',
+  run_5k: 'trainingGoal.run_5k',
+  run_10k: 'trainingGoal.run_10k',
+  half_marathon: 'trainingGoal.half_marathon',
+  marathon: 'onb.tgMarathon',
+  strength_basics: 'trainingGoal.strength_basics',
+  basic_strength: 'trainingGoal.strength_basics',
+  sports_conditioning: 'onb.tgSportsConditioning',
+  sport_conditioning: 'onb.tgSportsConditioning',
+  hyrox: 'trainingGoal.hyrox',
+  sprint_triathlon: 'onb.tgSprintTri',
+  olympic_triathlon: 'onb.tgOlympicTri',
+  half_ironman: 'onb.tgHalfIron',
+  full_ironman: 'onb.tgFullIron',
+  ocr: 'onb.tgOcr',
+  play_sport: 'onb.tgPlaySport',
+};
+
 export function getGoalLabel(profile: Pick<UserProfile, 'primaryGoal'>, t: Translate): string {
   return t(`goal.${profile.primaryGoal}` as TranslationKey);
 }
 
 export function getRaceGoalLabel(goal: TrainingGoalKind | undefined, t: Translate): string {
   if (!goal || goal === 'none') return t('profile.notSet');
-  return t(`trainingGoal.${goal}` as TranslationKey);
+  return t(TRAINING_GOAL_LABELS[goal]);
 }
 
 export function getNutritionModeLabel(mode: NutritionMode | undefined, t: Translate): string {
