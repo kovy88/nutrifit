@@ -399,12 +399,26 @@ export function OnboardingScreen() {
                 <Pill key={g} active={Boolean(touchedFields.gender) && draft.gender === g} onPress={() => setField('gender', g)}>{g === 'muz' ? t('onb.male') : t('onb.female')}</Pill>
               ))}
             </View>
-            <LabelText text={t('onb.ageField')} />
-            <Field keyboardType="number-pad" value={draft.age === 0 ? '' : String(draft.age)} onChangeText={v => setField('age', Number(v) || 0)} placeholder={t('onb.agePlaceholder')} />
-            <LabelText text={t('onb.heightField')} />
-            <Field keyboardType="number-pad" value={draft.height === 0 ? '' : String(draft.height)} onChangeText={v => setField('height', Number(v) || 0)} placeholder={t('onb.heightPlaceholder')} />
-            <LabelText text={t('onb.weightField')} />
-            <Field keyboardType="number-pad" value={draft.weight === 0 ? '' : String(draft.weight)} onChangeText={v => setField('weight', Number(v) || 0)} placeholder={t('onb.weightPlaceholder')} />
+            <View style={styles.bodyGrid}>
+              <BodyNumberField
+                label={t('onb.ageField')}
+                value={draft.age === 0 ? '' : String(draft.age)}
+                onChangeText={v => setField('age', Number(v) || 0)}
+                placeholder={t('onb.agePlaceholder')}
+              />
+              <BodyNumberField
+                label={t('onb.heightField')}
+                value={draft.height === 0 ? '' : String(draft.height)}
+                onChangeText={v => setField('height', Number(v) || 0)}
+                placeholder={t('onb.heightPlaceholder')}
+              />
+              <BodyNumberField
+                label={t('onb.weightField')}
+                value={draft.weight === 0 ? '' : String(draft.weight)}
+                onChangeText={v => setField('weight', Number(v) || 0)}
+                placeholder={t('onb.weightPlaceholder')}
+              />
+            </View>
           </View>
         )}
 
@@ -617,6 +631,34 @@ function LabelText({ text }: { text: string }) {
   return <Text style={[styles.fieldLabel, { color: colors.faint }]}>{text}</Text>;
 }
 
+function BodyNumberField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.bodyGridItem}>
+      <Text numberOfLines={1} style={[styles.fieldLabel, styles.bodyFieldLabel, { color: colors.faint }]}>
+        {label}
+      </Text>
+      <Field
+        keyboardType="number-pad"
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        style={styles.bodyField}
+      />
+    </View>
+  );
+}
+
 const WEEKDAY_REST = [
   { value: 1, labelKey: 'weekday.mon' as TranslationKey },
   { value: 2, labelKey: 'weekday.tue' as TranslationKey },
@@ -643,6 +685,10 @@ const styles = StyleSheet.create({
   sessionNumber: { fontSize: 25, lineHeight: 29, fontWeight: '900' },
   sessionLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'left' },
   bodyWrap: { gap: 12 },
+  bodyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  bodyGridItem: { flexBasis: '30%', flexGrow: 1, minWidth: 82, gap: 6 },
+  bodyFieldLabel: { marginTop: 0 },
+  bodyField: { minHeight: 50, paddingHorizontal: 12, textAlign: 'center' },
   footer: { gap: 8 },
   actions: { flexDirection: 'row', gap: 10 },
   footerButton: { flex: 1 },
