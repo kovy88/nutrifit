@@ -63,6 +63,7 @@ export function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const healthMode = profile?.healthProviderMode ?? 'auto';
+  const healthModeOptions: Array<'manual' | 'mock' | 'auto'> = __DEV__ ? ['manual', 'mock', 'auto'] : ['manual', 'auto'];
   const nativeConnected = isNativeHealthConnected(native.available, native.permission);
 
   if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
@@ -323,7 +324,7 @@ export function SettingsScreen() {
               {t('settings.healthSourceDesc')}
             </Text>
             <View style={styles.wrap}>
-              {(['manual', 'mock', 'auto'] as const).map(mode => {
+              {healthModeOptions.map(mode => {
                 const label = healthModeLabel(mode, t, locale);
                 const isSelected = healthMode === mode;
                 return (
