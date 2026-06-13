@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
-import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
+import { formatHealthSourceLabel } from '../lib/ui/health-source-labels';
+import type { WorkoutSummary, WorkoutKind } from '../lib/health';
 
 const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   run: 'fitness-outline',
@@ -23,23 +24,6 @@ const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   other: 'ellipse-outline',
 };
 
-const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   'Apple',
-  apple_watch:    'Watch',
-  health_connect: 'HC',
-  google_fit:     'GFit',
-  strava:         'Strava',
-  whoop:          'Whoop',
-  garmin:         'Garmin',
-  polar:          'Polar',
-  oura:           'Oura',
-  fitbit:         'Fitbit',
-  zepp:           'Zepp',
-  suunto:         'Suunto',
-  mock:           'Demo',
-  manual:         'Manual',
-};
-
 export type WorkoutCardProps = {
   workout: WorkoutSummary;
   onPress?: () => void;
@@ -47,10 +31,10 @@ export type WorkoutCardProps = {
 
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const icon = KIND_ICON[workout.kind];
   const kindLabel = t(`wkind.${workout.kind}` as TranslationKey);
-  const sourceBadge = SOURCE_LABEL[workout.source] || workout.source;
+  const sourceBadge = formatHealthSourceLabel(workout.source, locale, 'compact');
   const dateLabel = formatDateTime(workout.startedAt, t);
 
   return (
@@ -70,7 +54,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
           <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>{dateLabel}</Text>
         </View>
-        <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+        <Text numberOfLines={1} style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           {sourceBadge}
         </Text>
       </View>
@@ -116,7 +100,7 @@ function formatDateTime(iso: string, t: Translate): string {
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 8,
     padding: 14,
     gap: 10,
     shadowOpacity: 1,
@@ -125,7 +109,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1 },
   title: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
   subtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
@@ -136,10 +120,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderRadius: 999,
-    letterSpacing: 0.3,
+    letterSpacing: 0,
+    maxWidth: 92,
   },
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metric: { minWidth: 76, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
-  metricLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  metric: { minWidth: 76, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  metricLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0 },
   metricValue: { fontSize: 14, fontWeight: '900', marginTop: 2 },
 });

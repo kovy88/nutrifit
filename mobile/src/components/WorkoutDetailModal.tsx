@@ -12,28 +12,13 @@ import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import { formatPace } from '../lib/units';
-import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
+import { formatHealthSourceLabel } from '../lib/ui/health-source-labels';
+import type { WorkoutSummary, WorkoutKind } from '../lib/health';
 
 const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   run: 'fitness-outline', walk: 'walk-outline', cycle: 'bicycle-outline', swim: 'water-outline',
   strength: 'barbell-outline', hiit: 'flash-outline', yoga: 'body-outline',
   functional: 'fitness-outline', rowing: 'boat-outline', other: 'ellipse-outline',
-};
-
-const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   'Apple Health',
-  apple_watch:    'Apple Watch',
-  health_connect: 'Health Connect',
-  google_fit:     'Google Fit',
-  strava:         'Strava',
-  whoop:          'Whoop',
-  garmin:         'Garmin Connect',
-  polar:          'Polar Flow',
-  oura:           'Oura Ring',
-  fitbit:         'Fitbit',
-  zepp:           'Zepp',
-  suunto:         'Suunto',
-  mock:           'Demo data',
 };
 
 export type WorkoutDetailModalProps = {
@@ -51,7 +36,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 
   const icon = KIND_ICON[workout.kind] || 'ellipse-outline';
   const kindLabel = t(`wkindFull.${workout.kind}` as TranslationKey);
-  const sourceLabel = workout.source === 'manual' ? t('workout.srcManual') : (SOURCE_LABEL[workout.source] || workout.source);
+  const sourceLabel = formatHealthSourceLabel(workout.source, locale, 'full');
   const startedAt = formatFullDateTime(workout.startedAt, t);
   const endedAt = formatTime(workout.endedAt);
   const pace = workout.avgPaceSecPerKm ? formatPace(workout.avgPaceSecPerKm, profile?.units ?? 'metric') : null;
