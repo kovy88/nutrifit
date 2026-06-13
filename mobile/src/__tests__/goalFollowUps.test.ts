@@ -5,8 +5,15 @@ import { goalProfileFromQuickStart, parseGoalText, updateGoalProfile } from '../
 describe('goal follow-up generation', () => {
   it('asks race distance when the user only says run a race', () => {
     const goal = goalProfileFromQuickStart('run_race');
+    const [question] = generateGoalFollowUps(goal);
 
-    expect(generateGoalFollowUps(goal).map(question => question.id)).toEqual(['raceGoal']);
+    expect(question.id).toBe('raceGoal');
+    expect(question.kind).toBe('single_choice');
+    expect(question.kind === 'single_choice' ? question.options.map(option => option.value) : []).toEqual([
+      'run_5k',
+      'run_10k',
+      'half_marathon',
+    ]);
     expect(hasRequiredGoalFollowUps(goal)).toBe(false);
   });
 

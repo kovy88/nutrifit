@@ -14,7 +14,6 @@ export function generateGoalFollowUps(goal: GoalProfile | null): FollowUpQuestio
         { value: 'run_5k', labelKey: 'onb.tgRun5k' },
         { value: 'run_10k', labelKey: 'onb.tgRun10k' },
         { value: 'half_marathon', labelKey: 'onb.tgHalf' },
-        { value: 'marathon', labelKey: 'onb.tgMarathon' },
       ],
     });
   }
