@@ -1,6 +1,6 @@
-import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { Button, Field, Label, Pill, ScreenHeader } from '../components/UI';
+import { Button, Card, Field, Label, Pill, ScreenHeader } from '../components/UI';
 import { SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { WeightInput } from '../components/WeightInput';
@@ -235,10 +235,35 @@ function ProfileSectionCard({
   onPress?: () => void;
   children?: ReactNode;
 }) {
+  const { colors, fonts } = useTheme();
+  const visibleRows = rows.slice(0, 2).filter(Boolean);
+
   return (
-    <SectionCard title={title} body={rows.slice(0, 4).filter(Boolean)} ctaLabel={ctaLabel} onPress={onPress}>
+    <Card style={styles.profileCard}>
+      <View style={styles.profileCardHeader}>
+        <Text numberOfLines={1} style={[styles.profileCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+        {ctaLabel && onPress ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onPress}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.profileEditButton,
+              { borderColor: colors.border, backgroundColor: colors.bgElev },
+              pressed && { opacity: 0.82 },
+            ]}
+          >
+            <Text numberOfLines={1} style={[styles.profileEditText, { color: colors.accent, fontFamily: fonts.bold }]}>{ctaLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={styles.profileRows}>
+        {visibleRows.map((row, index) => (
+          <Text key={`${title}-${index}`} numberOfLines={2} style={[styles.profileRowText, { color: colors.muted, fontFamily: fonts.medium }]}>{row}</Text>
+        ))}
+      </View>
       {expanded && children ? <View style={styles.editor}>{children}</View> : null}
-    </SectionCard>
+    </Card>
   );
 }
 
@@ -595,6 +620,13 @@ function parseOptionalInt(value: string, max: number): number | undefined {
 
 const styles = StyleSheet.create({
   screen: { gap: 14 },
+  profileCard: { borderRadius: 8, padding: 14, gap: 8 },
+  profileCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  profileCardTitle: { flex: 1, minWidth: 0, fontSize: 17, lineHeight: 23 },
+  profileEditButton: { minHeight: 34, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', maxWidth: 150 },
+  profileEditText: { fontSize: 13, lineHeight: 17 },
+  profileRows: { gap: 4 },
+  profileRowText: { fontSize: 14, lineHeight: 20 },
   sectionRows: { gap: 5 },
   sectionLead: { fontSize: 16, lineHeight: 22, fontWeight: '900' },
   rowText: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
