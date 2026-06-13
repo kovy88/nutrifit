@@ -64,7 +64,7 @@ function buildHeadline(session: TrainingSession | null, readiness: ReadinessAsse
   }
   const sessionLabel = shortSessionName(session, loc);
   if (readiness?.dataStatus === 'missing') {
-    return L(loc, `${sessionLabel}. Recovery data chybí.`, `${sessionLabel}. Recovery data missing.`);
+    return L(loc, `${sessionLabel}. Dnes chybí data.`, `${sessionLabel}. Data missing today.`);
   }
   if (!readiness || readiness.level === 'green') {
     return L(loc, `${sessionLabel}. Můžeš jet podle plánu.`, `${sessionLabel}. You can go by plan.`);
@@ -79,7 +79,6 @@ function shortSessionName(session: TrainingSession, loc: Locale): string {
   // Některé title z buildTrainingSessionForDate jsou už zkrácené;
   // pro distance-based session (long_run, intervals) připojíme délku.
   const minutes = session.durationMinutes;
-  const intensity = session.intensity;
   const en = loc === 'en';
   switch (session.kind) {
     case 'long_run':       return `Long run ${minutes} min`;
@@ -99,7 +98,7 @@ function shortSessionName(session: TrainingSession, loc: Locale): string {
     case 'sport':          return session.title || (en ? 'Training' : 'Trénink');
     case 'combat':         return session.title || (en ? `Combat ${minutes} min` : `Bojový trénink ${minutes} min`);
     case 'recovery':       return en ? `Recovery ${minutes} min` : `Regenerace ${minutes} min`;
-    default:               return `${session.title} (${intensity})`;
+    default:               return session.title || (en ? `Training ${minutes} min` : `Trénink ${minutes} min`);
   }
 }
 
@@ -134,8 +133,8 @@ function buildRecommendation(
   //   4. Default — "podle plánu"
 
   if (readiness?.level === 'red') {
-    return L(loc, 'Dnes drž lehkou aktivitu, jdi dřív spát. Pokud čekal hard trénink, sniž ho na easy.',
-                  'Keep it light today, go to bed earlier. If a hard workout was planned, drop it to easy.');
+    return L(loc, 'Dnes jen lehce a jdi dřív spát. Pokud byl v plánu tvrdý trénink, zkrať ho nebo dej chůzi.',
+                  'Keep it light today and get to bed earlier. If a tough workout was planned, shorten it or walk.');
   }
 
   if (load && (load.status === 'overreaching' || load.status === 'high_risk')) {
@@ -148,8 +147,8 @@ function buildRecommendation(
   }
 
   if (readiness?.dataStatus === 'missing') {
-    return L(loc, 'Recovery data dnes chybí. Drž plán podle pocitu a nepřidávej intenzitu.',
-                  'Recovery data is missing today. Follow the plan by feel and do not add intensity.');
+    return L(loc, 'Dnes nemáme data o regeneraci. Drž plán podle pocitu a nepřidávej.',
+                  'Recovery data is missing today. Follow the plan by feel and do not add more.');
   }
 
   if (session && session.kind === 'match') {
@@ -162,8 +161,8 @@ function buildRecommendation(
     const delta = macros.kcal - baselineMacros.kcal;
     const carbsDelta = macros.carbs - baselineMacros.carbs;
     if (delta > 0) {
-      return L(loc, `Pre/post-workout fuel: přidej ${Math.abs(carbsDelta)} g sacharidů navíc (+${delta} kcal proti baseline).`,
-                    `Pre/post-workout fuel: add ${Math.abs(carbsDelta)} g extra carbs (+${delta} kcal over baseline).`);
+      return L(loc, `Kolem tréninku přidej ${Math.abs(carbsDelta)} g sacharidů navíc (+${delta} kcal proti běžnému dni).`,
+                    `Around the workout, add ${Math.abs(carbsDelta)} g extra carbs (+${delta} kcal over a normal day).`);
     }
     if (delta < 0) {
       return L(loc, 'Volný den — drž lehčí jídla s vyšším podílem tuků a bílkovin.',
@@ -172,16 +171,16 @@ function buildRecommendation(
   }
 
   if (session && session.kind === 'long_run') {
-    return L(loc, 'Před long-runem ujisti se o snídani 2–3 h předem a vodu po cestě.',
-                  'Before the long run, have breakfast 2–3 h ahead and water on the way.');
+    return L(loc, 'Před delším během dej snídani 2–3 h předem a vezmi vodu s sebou.',
+                  'Before the long run, have breakfast 2–3 h ahead and bring water with you.');
   }
   if (session && session.kind === 'rest') {
     return L(loc, 'Pohyb 5–10 tisíc kroků, hodně vody, ne moc kávy.',
                   'Get 5–10k steps, plenty of water, not too much coffee.');
   }
   if (readiness?.level === 'yellow') {
-    return L(loc, 'Můžeš odtrénovat naplánovanou jednotku, ale neforsíruj — drž HR v zóně 2.',
-                  'You can do the planned session, but don’t push — keep HR in zone 2.');
+    return L(loc, 'Můžeš odtrénovat plán, ale neforsíruj — drž tempo, ve kterém zvládneš mluvit.',
+                  'You can do the planned session, but don’t push — keep it conversational.');
   }
   return L(loc, 'Drž plán a postupné navyšování. Po tréninku doplň 30 g bílkovin do 30 minut.',
                 'Stick to the plan and gradual progression. Refuel 30 g protein within 30 min post-workout.');

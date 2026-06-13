@@ -87,6 +87,13 @@ describe('composeMorningBriefing — headline shape', () => {
     const b = composeMorningBriefing({ session: intervals, readiness: null, trainingLoad: null, macros, baselineMacros: macros });
     expect(b.headline).toContain('60 min');
   });
+
+  it('unknown workout headline does not append raw intensity', () => {
+    const unknownSession: TrainingSession = { ...intervals, kind: 'custom_strength' as TrainingSession['kind'], title: 'Custom blok' };
+    const b = composeMorningBriefing({ session: unknownSession, readiness: null, trainingLoad: null, macros, baselineMacros: macros });
+    expect(b.headline).toContain('Custom blok');
+    expect(b.headline).not.toContain('(hard)');
+  });
 });
 
 // ── Recommendation rules ────────────────────────────────────────────────────
@@ -122,6 +129,16 @@ describe('composeMorningBriefing — recommendation priority', () => {
     });
     expect(b.recommendation).toContain('95');
     expect(b.recommendation.toLowerCase()).toContain('sachari');
+  });
+
+  it('keeps default recommendation copy free of internal workout jargon', () => {
+    const red = evaluateReadiness({ todaySleepMinutes: 200 });
+    const redBriefing = composeMorningBriefing({ session: intervals, readiness: red, trainingLoad: null, macros, baselineMacros: macros });
+    expect(redBriefing.recommendation).not.toMatch(/\b(hard|easy|baseline|pre\/post-workout)\b/i);
+
+    const adjusted: Macros = { ...macros, kcal: macros.kcal + 380, carbs: macros.carbs + 95 };
+    const fuelBriefing = composeMorningBriefing({ session: longRun, readiness: null, trainingLoad: null, macros: adjusted, baselineMacros: macros });
+    expect(fuelBriefing.recommendation).not.toMatch(/\b(baseline|pre\/post-workout)\b/i);
   });
 
   it('macro delta negative (rest day) → recommends fat/protein focus', () => {
@@ -192,7 +209,7 @@ describe('composeMorningBriefing — detail facts', () => {
   it('does not include missing-data factors', () => {
     const readiness = evaluateReadiness({}); // all missing → all 'green'+missing
     const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    expect(b.headline.toLowerCase()).toMatch(/data chybí|missing/);
+    expect(b.headline.toLowerCase()).toMatch(/data chybí|chybí data|missing/);
     expect(b.recommendation.toLowerCase()).toMatch(/pocitu|by feel/);
     expect(b.detail).toBe('');
   });
