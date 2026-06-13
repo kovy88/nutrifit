@@ -99,7 +99,6 @@ export function TodayScreen() {
             completed={completion?.status === 'completed'}
             onCheckIn={() => setShowCheckIn(true)}
             onDone={markTodayDone}
-            onAdjust={() => navigation.navigate('Trénink')}
             t={t}
             locale={locale}
           />
@@ -155,7 +154,6 @@ function TodayActionCard({
   completed,
   onCheckIn,
   onDone,
-  onAdjust,
   t,
   locale,
 }: {
@@ -164,7 +162,6 @@ function TodayActionCard({
   completed: boolean;
   onCheckIn: () => void;
   onDone: () => void;
-  onAdjust: () => void;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
   locale: 'cs' | 'en';
 }) {
@@ -178,7 +175,6 @@ function TodayActionCard({
         actions={[
           { icon: primaryIcon, label: primaryLabel, onPress: primaryAction, disabled: trainingDay && completed, primary: true },
           { icon: 'pulse-outline', label: t('today.checkIn'), onPress: onCheckIn },
-          { icon: 'options-outline', label: t('today.adjustToday'), onPress: onAdjust },
         ]}
       />
     </SectionCard>
