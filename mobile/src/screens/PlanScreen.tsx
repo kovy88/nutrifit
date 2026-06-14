@@ -249,7 +249,7 @@ export function PlanScreen() {
         body={meals.length ? mealOverviewRows(meals, locale) : t('plan.emptyBody')}
         ctaLabel={!meals.length && !loading ? generateMealsLabel(locale) : undefined}
         onPress={!meals.length && !loading ? generate : undefined}
-        detailLabel={meals.length ? t('plan.detail') : moreOptionsTitle(locale)}
+        detailLabel={meals.length ? t('plan.detail') : undefined}
         detailChildren={
           <>
             {meals.length ? (
@@ -286,31 +286,39 @@ export function PlanScreen() {
                 <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('plan.disclaimer')}</Text>
               </>
             ) : null}
-            <View style={styles.moreOptions}>
-              <Button variant="secondary" onPress={() => setPrefsOpen(true)}>{t('plan.prefsTitle')}</Button>
-              {customSchedule ? (
-                <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
-              ) : null}
-              {weeklyPlan.safetyWarnings?.length ? (
-                <CollapsibleDetails label={t('plan.ambitiousWarning')}>
-                  {weeklyPlan.safetyWarnings.map((warning, index) => (
-                    <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
-                  ))}
-                </CollapsibleDetails>
-              ) : null}
-              {shoppingGroups.length > 0 ? (
-                <CollapsibleDetails label={t('plan.shoppingList')}>
-                  {shoppingGroups.map(group => (
-                    <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
-                      <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
-                      <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
-                    </View>
-                  ))}
-                  <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
-                </CollapsibleDetails>
-              ) : null}
-            </View>
           </>
+        }
+      />
+
+      <SectionCard
+        title={moreOptionsTitle(locale)}
+        body={moreOptionsBody(customSchedule, shoppingGroups.length, locale)}
+        detailLabel={openOptionsLabel(locale)}
+        detailChildren={
+          <View style={styles.moreOptions}>
+            <Button variant="secondary" onPress={() => setPrefsOpen(true)}>{t('plan.prefsTitle')}</Button>
+            {customSchedule ? (
+              <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
+            ) : null}
+            {weeklyPlan.safetyWarnings?.length ? (
+              <CollapsibleDetails label={t('plan.ambitiousWarning')}>
+                {weeklyPlan.safetyWarnings.map((warning, index) => (
+                  <Text key={`${warning}-${index}`} style={[styles.fueling, { color: colors.muted }]}>• {warning}</Text>
+                ))}
+              </CollapsibleDetails>
+            ) : null}
+            {shoppingGroups.length > 0 ? (
+              <CollapsibleDetails label={t('plan.shoppingList')}>
+                {shoppingGroups.map(group => (
+                  <View key={group.category} style={[styles.shoppingGroup, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.shoppingTitle, { color: colors.ink }]}>{group.category}</Text>
+                    <Text style={[styles.shoppingItems, { color: colors.muted }]}>{group.items.join(', ')}</Text>
+                  </View>
+                ))}
+                <Button variant="secondary" onPress={shareShoppingList}>{t('plan.share')}</Button>
+              </CollapsibleDetails>
+            ) : null}
+          </View>
         }
       />
 
@@ -564,6 +572,26 @@ function trainingCardBody(session: TrainingSession, locale: 'cs' | 'en', line: s
 
 function moreOptionsTitle(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'More options' : 'Další možnosti';
+}
+
+function openOptionsLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Open' : 'Zobrazit';
+}
+
+function moreOptionsBody(customSchedule: boolean, shoppingGroupCount: number, locale: 'cs' | 'en'): string {
+  if (customSchedule) {
+    return locale === 'en'
+      ? 'Custom week, preferences and shopping list stay here.'
+      : 'Vlastní týden, preference a nákupní seznam jsou tady.';
+  }
+  if (shoppingGroupCount > 0) {
+    return locale === 'en'
+      ? 'Preferences, safety notes and shopping list stay out of the main plan.'
+      : 'Preference, bezpečnostní poznámky a nákupní seznam jsou mimo hlavní plán.';
+  }
+  return locale === 'en'
+    ? 'Preferences and advanced plan notes stay tucked away.'
+    : 'Preference a pokročilé poznámky k plánu jsou schované tady.';
 }
 
 function selectedTrainingTitle(locale: 'cs' | 'en'): string {
