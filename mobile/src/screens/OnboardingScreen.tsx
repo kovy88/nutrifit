@@ -191,6 +191,7 @@ export function OnboardingScreen() {
             value={goalInput}
             goalProfile={draft.goalProfile}
             scope={scope}
+            locale={locale}
             onTextChange={setGoalInput}
             onGoalProfileChange={setGoalProfile}
             t={t}
