@@ -253,8 +253,8 @@ function buildExplanation({
   const out: string[] = [];
   out.push(L(
     locale,
-    `Připravenost ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Dnes drž strop ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
-    `Today score ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Keep today's ceiling ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
+    `Dnešní signál: ${readinessBandLabel(readiness.band, locale)}. Trénuj ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
+    `Today's signal: ${readinessBandLabel(readiness.band, locale)}. Train ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
   ));
   if (readiness.drivers.length) out.push(readiness.drivers.slice(0, 2).join(' · '));
   if (hasTraining) {

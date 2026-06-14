@@ -51,8 +51,9 @@ describe('generateDailyCoachRecommendation', () => {
   it('uses product language in explanation instead of raw readiness/intensity enums', () => {
     const rec = generateDailyCoachRecommendation(baseInput());
     const firstReason = rec.explanation?.[0] ?? '';
-    expect(firstReason).toContain('Připravenost');
+    expect(firstReason).toContain('Dnešní signál');
     expect(firstReason).toMatch(/dobrý den|drž plán|radši uber/);
+    expect(firstReason).not.toMatch(/\d+\/100|score|ceiling|strop/i);
     expect(firstReason).not.toMatch(/\((low|medium|high)\)/);
     expect(firstReason).not.toMatch(/\b(rest|easy|moderate|hard)\b/);
     expect(rec.trainingRecommendation?.intensity).not.toMatch(/\b(rest|easy|moderate|hard)\b/);

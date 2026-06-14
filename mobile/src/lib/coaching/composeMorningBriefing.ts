@@ -12,7 +12,7 @@
 //
 // Tři pole:
 //   headline       — JEDEN řádek, max ~50 znaků. Akce + stav.
-//   detail         — 2–3 fakty (spánek, HRV, ACWR), oddělené " · "
+//   detail         — 2–3 lidské signály bez raw interních metrik.
 //   recommendation — JEDNA věta s konkrétní akcí pro dnešek.
 
 import type { TrainingSession } from '../../types';
@@ -110,10 +110,10 @@ function buildDetail(readiness: ReadinessAssessment | null, load: TrainingLoadAs
       .filter(f => !f.key.endsWith('_missing'))
       .sort((a, b) => severityRank(b.severity) - severityRank(a.severity))
       .slice(0, 2);
-    for (const f of visible) parts.push(condense(f.message));
+    for (const f of visible) parts.push(readinessSignalLabel(f, loc));
   }
   if (load && load.acwr != null) {
-    parts.push(`ACWR ${load.acwr.toFixed(2)} (${loadStatusShort(load.status, loc)})`);
+    parts.push(trainingLoadSignalLabel(load.status, loc));
   }
   return parts.join(' · ');
 }
@@ -186,23 +186,48 @@ function buildRecommendation(
                 'Stick to the plan and gradual progression. Refuel 30 g protein within 30 min post-workout.');
 }
 
-function condense(message: string): string {
-  // Zkrátí dlouhé "X 30 ms — 60 % průměru (50 ms). Vysoký stres nebo nemoc."
-  // na klíčovou část před první tečkou.
-  const firstSentence = message.split('.')[0];
-  return firstSentence.length > 60 ? `${firstSentence.slice(0, 57)}…` : firstSentence;
-}
-
 function severityRank(s: 'green' | 'yellow' | 'red'): number {
   return s === 'red' ? 2 : s === 'yellow' ? 1 : 0;
 }
 
-function loadStatusShort(s: TrainingLoadAssessment['status'], loc: Locale): string {
-  const en = loc === 'en';
-  switch (s) {
-    case 'optimal':      return en ? 'optimal' : 'optimum';
-    case 'detraining':   return en ? 'detraining' : 'klesá';
-    case 'overreaching': return en ? 'high' : 'hodně';
-    case 'high_risk':    return en ? 'risk' : 'riziko';
+function readinessSignalLabel(factor: ReadinessAssessment['factors'][number], loc: Locale): string {
+  switch (factor.key) {
+    case 'sleep_short':
+      return L(loc, 'Spánek je dnes slabý.', 'Sleep is short today.');
+    case 'sleep_moderate':
+      return L(loc, 'Spánek je trochu pod normálem.', 'Sleep is a bit below normal.');
+    case 'sleep_ok':
+      return L(loc, 'Spánek podporuje plán.', 'Sleep supports the plan.');
+    case 'hrv_low':
+      return L(loc, 'Regenerace je slabší než obvykle.', 'Recovery looks weaker than usual.');
+    case 'hrv_moderate':
+      return L(loc, 'Regenerace je lehce snížená.', 'Recovery is slightly reduced.');
+    case 'hrv_ok':
+      return L(loc, 'Regenerace vypadá stabilně.', 'Recovery looks stable.');
+    case 'rhr_high':
+      return L(loc, 'Tělo dnes působí víc zatíženě.', 'Your body looks more stressed today.');
+    case 'rhr_elevated':
+      return L(loc, 'Tělo je lehce víc zatížené.', 'Your body is slightly more stressed.');
+    case 'rhr_ok':
+      return L(loc, 'Klidový stav vypadá stabilně.', 'Resting state looks stable.');
+    default:
+      return factor.severity === 'red'
+        ? L(loc, 'Dnes radši drž rezervu.', 'Keep some reserve today.')
+        : factor.severity === 'yellow'
+          ? L(loc, 'Jeden signál je lehce slabší.', 'One signal is slightly weaker.')
+          : L(loc, 'Signály podporují plán.', 'Signals support the plan.');
+  }
+}
+
+function trainingLoadSignalLabel(status: TrainingLoadAssessment['status'], loc: Locale): string {
+  switch (status) {
+    case 'optimal':
+      return L(loc, 'Týdenní zátěž je v normě.', 'Weekly load is on track.');
+    case 'detraining':
+      return L(loc, 'Tento týden je zátěž nižší než obvykle.', 'This week is lighter than usual.');
+    case 'overreaching':
+      return L(loc, 'Zátěž roste rychleji než obvykle.', 'Load is rising faster than usual.');
+    case 'high_risk':
+      return L(loc, 'Zátěž je teď vysoká; drž rezervu.', 'Load is high right now; keep some reserve.');
   }
 }

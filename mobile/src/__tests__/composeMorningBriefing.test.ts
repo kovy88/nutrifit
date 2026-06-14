@@ -182,17 +182,19 @@ describe('composeMorningBriefing — detail facts', () => {
       todayHrvMs: 18,                 // red
     });
     const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
-    // First-shown fact should be the worst (HRV red)
-    expect(b.detail.toLowerCase()).toContain('hrv');
+    // First-shown signal should still reflect the worst driver, but without raw HRV values.
+    expect(b.detail.toLowerCase()).toContain('regenerace');
+    expect(b.detail).not.toMatch(/\bHRV\b|\d+\s*ms/i);
   });
 
-  it('includes ACWR in detail when load is measurable', () => {
+  it('summarizes training load without exposing ACWR in detail', () => {
     const workouts: WorkoutSummary[] = [];
     for (let i = 1; i <= 27; i += 2) workouts.push(makeWorkout(i, 50, 'mock'));
     const trainingLoad = computeTrainingLoad({ workouts });
     expect(trainingLoad.acwr).not.toBeNull();
     const b = composeMorningBriefing({ session: longRun, readiness: null, trainingLoad, macros, baselineMacros: macros });
-    expect(b.detail.toLowerCase()).toContain('acwr');
+    expect(b.detail.toLowerCase()).toMatch(/zátěž|load|týden/i);
+    expect(b.detail).not.toMatch(/ACWR|\d+\.\d+/i);
   });
 
   it('detail empty when no signals at all', () => {
