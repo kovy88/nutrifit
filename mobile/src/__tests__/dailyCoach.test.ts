@@ -80,6 +80,22 @@ describe('generateDailyCoachRecommendation', () => {
     expect(explanation).not.toMatch(/readiness guardrails|deterministicky/i);
   });
 
+  it('keeps visible explanation free of raw recovery measurements', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({
+      session: session('intervals', 'hard', 50),
+      recovery: {
+        todaySleepMinutes: 300,
+        todayHrvMs: 18,
+        todayRhrBpm: 92,
+        baseline: { sleepMeanMinutes: 460, hrvMeanMs: 55, rhrMeanBpm: 54 },
+      },
+    }));
+    const explanation = rec.explanation?.join(' ') ?? '';
+
+    expect(explanation).toContain('Regenerace');
+    expect(explanation).not.toMatch(/\bHRV\b|RHR|klidový tep|\d+\s*ms|\d+\s*bpm|\d+\/3/i);
+  });
+
   it('warns when a long-run day is not fueled above baseline', () => {
     const rec = generateDailyCoachRecommendation(baseInput({
       session: session('long_run', 'moderate', 90),

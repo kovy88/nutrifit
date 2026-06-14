@@ -31,6 +31,20 @@ describe('scoreReadiness', () => {
     expect(r.drivers.length).toBeGreaterThan(0);
   });
 
+  it('keeps readiness drivers free of raw recovery measurements', () => {
+    const r = scoreReadiness({
+      todaySleepMinutes: 300,
+      todayHrvMs: 18,
+      todayRhrBpm: 92,
+      sleepDebtHours: 12,
+      baseline: { sleepMeanMinutes: 460, hrvMeanMs: 55, rhrMeanBpm: 54 },
+    });
+    const text = r.drivers.join(' ');
+
+    expect(text).toContain('Regenerace');
+    expect(text).not.toMatch(/\bHRV\b|RHR|klidový tep|\d+\s*ms|\d+\s*bpm|\d+\/3/i);
+  });
+
   it('degrades gracefully with no objective data (neutral score, low confidence)', () => {
     const r = scoreReadiness({});
     expect(r.score).toBe(55);
@@ -66,7 +80,7 @@ describe('scoreReadiness', () => {
   it('confidence reflects the number of objective signals', () => {
     const oneSignal = scoreReadiness({ todaySleepMinutes: 450 });
     expect(oneSignal.confidence).toBe('low');
-    expect(oneSignal.drivers.some(d => /1\/3|jistota|confidence/i.test(d))).toBe(true);
+    expect(oneSignal.drivers.some(d => /orientační|approximate/i.test(d))).toBe(true);
     expect(scoreReadiness({ todaySleepMinutes: 450, todayHrvMs: 50 }).confidence).toBe('medium');
     expect(scoreReadiness({ todaySleepMinutes: 450, todayHrvMs: 50, todayRhrBpm: 55 }).confidence).toBe('high');
   });
