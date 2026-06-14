@@ -76,6 +76,7 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     'Return ONLY a valid JSON object — no markdown fences, no extra text.',
     `All user-facing text MUST be in ${lang}.`,
     'Be concrete and actionable — no generic platitudes. Mention specific numbers from the input.',
+    'Use user-facing wording. Do not expose raw enum ids or internal acronyms such as ACWR, TDEE, TRIMP, green, yellow, red, fat_loss, muscle_gain, or general_fitness in the final text.',
     'Schema:',
     '{',
     `  "headline": "<≤80 chars ${lang}, 1-line summary>",`,
@@ -95,21 +96,21 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     ? Math.round(input.averageAdherence * 100)
     : null;
   const readinessSummary = input.readinessCounts
-    ? `${input.readinessCounts.green}× green, ${input.readinessCounts.yellow}× yellow, ${input.readinessCounts.red}× red`
+    ? readinessCountsLabel(input.readinessCounts, input.locale)
     : 'unknown';
 
   const lines: string[] = [
     `Týden: ${input.weekStartISO} až ${input.weekEndISO}`,
-    `Cíl uživatele: ${input.goalKind}`,
+    `Cíl uživatele: ${goalLabel(input.goalKind, input.locale)}`,
   ];
   if (input.mainSport) lines.push(`Hlavní sport: ${input.mainSport}`);
   if (weightDelta != null && input.weightStartKg != null && input.weightEndKg != null) {
     lines.push(`Váha: ${input.weightStartKg.toFixed(1)} → ${input.weightEndKg.toFixed(1)} kg (${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg)`);
   }
   if (adherencePct != null) lines.push(`Adherence k jídelníčku: ${adherencePct}% v průměru`);
-  if (input.readinessCounts) lines.push(`Readiness dny: ${readinessSummary}`);
-  if (input.totalTrimp != null) lines.push(`Týdenní TRIMP: ${input.totalTrimp}`);
-  if (input.acwr != null) lines.push(`ACWR: ${input.acwr.toFixed(2)}`);
+  if (input.readinessCounts) lines.push(`Dny podle připravenosti: ${readinessSummary}`);
+  if (input.totalTrimp != null) lines.push(`Týdenní tréninková zátěž: ${input.totalTrimp}`);
+  if (input.acwr != null) lines.push(`Zátěž proti normálu: ${trainingLoadLabel(input.acwr, input.locale)} (${input.acwr.toFixed(2)})`);
   if (input.workoutCount != null) lines.push(`Počet tréninků: ${input.workoutCount}`);
   if (input.averageSleepMinutes != null) lines.push(`Průměrný spánek: ${sleepHours} h`);
   if (input.averageHrvMs != null) lines.push(`Průměrné HRV: ${Math.round(input.averageHrvMs)} ms`);
@@ -121,7 +122,7 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
   }
   if (input.energyBalanceKcal != null) {
     const sign = input.energyBalanceKcal >= 0 ? '+' : '';
-    lines.push(`Energetické saldo vs TDEE: ${sign}${input.energyBalanceKcal} kcal za týden`);
+    lines.push(`Energetické saldo proti udržovacímu příjmu: ${sign}${input.energyBalanceKcal} kcal za týden`);
   }
   if (input.theoreticalKgChange != null) {
     const sign = input.theoreticalKgChange >= 0 ? '+' : '';
@@ -137,9 +138,9 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     const ma = input.macroAdherence;
     const parts: string[] = [];
     if (ma.protein != null) parts.push(`Protein ${Math.round(ma.protein * 100)}%`);
-    if (ma.carbs != null) parts.push(`Carbs ${Math.round(ma.carbs * 100)}%`);
-    if (ma.fat != null) parts.push(`Fat ${Math.round(ma.fat * 100)}%`);
-    if (parts.length) lines.push(`Per-macro adherence: ${parts.join(', ')}`);
+    if (ma.carbs != null) parts.push(`Sacharidy ${Math.round(ma.carbs * 100)}%`);
+    if (ma.fat != null) parts.push(`Tuky ${Math.round(ma.fat * 100)}%`);
+    if (parts.length) lines.push(`Dodržení maker: ${parts.join(', ')}`);
   }
 
   const prompt = [
@@ -150,13 +151,48 @@ export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySumm
     'Rules:',
     '- Use the EXACT numbers above (don\'t round to nice values).',
     '- Tone: empathetic but direct, like a knowledgeable training partner.',
-    '- highlights: things to celebrate (consistent adherence, good readiness mix, etc.)',
-    '- concerns: signals that need attention (weight off track, low energy, ACWR spike).',
+    '- highlights: things to celebrate (consistent adherence, good recovery mix, etc.)',
+    '- concerns: signals that need attention (weight off track, low energy, fast load increase).',
     '- recommendation: ONE clear action for next week. Don\'t hedge.',
     '- Don\'t mention "AI" or "automatic" or apologize for limitations.',
   ].join('\n');
 
   return { systemPrompt, prompt, maxTokens: 800 };
+}
+
+function goalLabel(goalKind: WeeklySummaryInput['goalKind'], locale: WeeklySummaryInput['locale']): string {
+  const en = locale === 'en';
+  switch (goalKind) {
+    case 'fat_loss':
+      return en ? 'fat loss' : 'hubnutí';
+    case 'maintenance':
+      return en ? 'maintenance' : 'udržení váhy';
+    case 'muscle_gain':
+      return en ? 'muscle gain' : 'nabírání svalů';
+    case 'endurance':
+      return en ? 'endurance' : 'vytrvalost';
+    case 'general_fitness':
+    default:
+      return en ? 'general fitness' : 'kondice';
+  }
+}
+
+function readinessCountsLabel(
+  counts: NonNullable<WeeklySummaryInput['readinessCounts']>,
+  locale: WeeklySummaryInput['locale'],
+): string {
+  if (locale === 'en') {
+    return `${counts.green}× good, ${counts.yellow}× caution, ${counts.red}× go easy`;
+  }
+  return `${counts.green}× dobrý den, ${counts.yellow}× opatrně, ${counts.red}× uber`;
+}
+
+function trainingLoadLabel(acwr: number, locale: WeeklySummaryInput['locale']): string {
+  const en = locale === 'en';
+  if (acwr < 0.8) return en ? 'below your usual week' : 'nižší než obvykle';
+  if (acwr <= 1.3) return en ? 'stable' : 'stabilní';
+  if (acwr <= 1.5) return en ? 'higher than usual' : 'vyšší než obvykle';
+  return en ? 'sharp increase' : 'prudký nárůst';
 }
 
 export type WeeklySummary = {

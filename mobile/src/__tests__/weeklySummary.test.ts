@@ -22,6 +22,13 @@ describe('buildWeeklySummaryRequest — system prompt', () => {
     expect(r.systemPrompt.toLowerCase()).toContain('do not recompute');
   });
 
+  it('instructs the model to avoid internal product terms in the final text', () => {
+    const r = buildWeeklySummaryRequest(baseInput);
+    expect(r.systemPrompt).toContain('Use user-facing wording');
+    expect(r.systemPrompt).toContain('ACWR');
+    expect(r.systemPrompt).toContain('fat_loss');
+  });
+
   it('embeds schema with headline / highlights / concerns / recommendation', () => {
     const r = buildWeeklySummaryRequest(baseInput);
     expect(r.systemPrompt).toContain('"headline"');
@@ -46,7 +53,8 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
 
   it('includes the goal kind', () => {
     const r = buildWeeklySummaryRequest(baseInput);
-    expect(r.prompt).toContain('fat_loss');
+    expect(r.prompt).toContain('hubnutí');
+    expect(r.prompt).not.toContain('fat_loss');
   });
 
   it('includes main sport when provided', () => {
@@ -79,14 +87,17 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
       ...baseInput,
       readinessCounts: { red: 1, yellow: 2, green: 4 },
     });
-    expect(r.prompt).toContain('4× green');
-    expect(r.prompt).toContain('2× yellow');
-    expect(r.prompt).toContain('1× red');
+    expect(r.prompt).toContain('4× dobrý den');
+    expect(r.prompt).toContain('2× opatrně');
+    expect(r.prompt).toContain('1× uber');
+    expect(r.prompt).not.toContain('4× green');
   });
 
-  it('embeds ACWR formatted to 2 decimals', () => {
+  it('embeds training load index formatted to 2 decimals without exposing ACWR in the data lines', () => {
     const r = buildWeeklySummaryRequest({ ...baseInput, acwr: 1.234 });
     expect(r.prompt).toContain('1.23');
+    expect(r.prompt).toContain('Zátěž proti normálu');
+    expect(r.prompt).not.toContain('ACWR:');
   });
 
   it('embeds adherence as percent', () => {
@@ -123,7 +134,8 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
       energyBalanceKcal: -3500,
     });
     expect(r.prompt).toContain('-3500');
-    expect(r.prompt).toContain('TDEE');
+    expect(r.prompt).toContain('udržovacímu příjmu');
+    expect(r.prompt).not.toContain('TDEE');
   });
 
   it('embeds theoretical kg change with sign', () => {
@@ -159,8 +171,8 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
       macroAdherence: { protein: 0.92, carbs: 1.08, fat: 0.78 },
     });
     expect(r.prompt).toContain('Protein 92%');
-    expect(r.prompt).toContain('Carbs 108%');
-    expect(r.prompt).toContain('Fat 78%');
+    expect(r.prompt).toContain('Sacharidy 108%');
+    expect(r.prompt).toContain('Tuky 78%');
   });
 
   it('omits per-macro line when all macros are null', () => {
@@ -168,7 +180,7 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
       ...baseInput,
       macroAdherence: { protein: null, carbs: null, fat: null },
     });
-    expect(r.prompt).not.toContain('Per-macro');
+    expect(r.prompt).not.toContain('Dodržení maker');
   });
 });
 
