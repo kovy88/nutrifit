@@ -106,6 +106,8 @@ export function buildOnboardingCoachRequest(opts: {
     'Return ONLY valid JSON with shape {"reply":"...","extracted":{...},"confidence":"low|medium|high","missingFields":["..."]}.',
     'Extract only fields the user clearly stated or strongly implied. Do not invent body metrics, race dates, calories, macros, readiness, or training volume.',
     'The app will validate extracted fields deterministically; if something is missing, ask one concise follow-up.',
+    'Use raw enum ids and field names only inside "extracted" and "missingFields". The user-facing "reply" must use plain language, not labels like primaryGoal, trainingGoal, nutritionMode, planIntensity, lose_fat, run_10k, easy, moderate, or ambitious_but_safe.',
+    'Keep onboarding light. Do not offer advanced events or sports like marathon, triathlon, Hyrox, Ironman, or OCR unless the user explicitly mentions that exact goal.',
     `Allowed coachScope: ${COACH_SCOPE_VALUES.join(', ')}`,
     `Allowed primaryGoal: ${PRIMARY_GOALS.join(', ')}`,
     `Allowed trainingGoal: ${TRAINING_GOALS.join(', ')}`,
