@@ -69,6 +69,16 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.training!.whatNotToDo).toBeTruthy();
   });
 
+  it('explains an adjusted workout without internal guardrail language', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({
+      session: session('intervals', 'hard', 50),
+      recovery: { todaySleepMinutes: 300 },
+    }));
+    const explanation = rec.explanation?.join(' ') ?? '';
+    expect(explanation).toMatch(/záměrně lehčí|regenerace/i);
+    expect(explanation).not.toMatch(/readiness guardrails|deterministicky/i);
+  });
+
   it('warns when a long-run day is not fueled above baseline', () => {
     const rec = generateDailyCoachRecommendation(baseInput({
       session: session('long_run', 'moderate', 90),
@@ -111,7 +121,8 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.suggestedActions).not.toContain('no_time');
     expect(rec.readiness.score).toBeGreaterThanOrEqual(0);
     expect(rec.readiness.confidence).toBe('low');
-    expect(rec.warnings.some(w => /bez dat|no sleep|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /chybí|bez dat|missing|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /Readiness/i.test(w))).toBe(false);
   });
 
   it('does not present missing recovery data as a fully cleared hard day', () => {
@@ -121,7 +132,7 @@ describe('generateDailyCoachRecommendation', () => {
     }));
     expect(rec.readiness.confidence).toBe('low');
     expect(rec.training!.whatNotToDo).toBeTruthy();
-    expect(rec.warnings.some(w => /bez dat|no sleep|orientační|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /chybí|bez dat|missing|orientační|guidance/i.test(w))).toBe(true);
   });
 });
 

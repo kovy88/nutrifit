@@ -254,12 +254,12 @@ function buildExplanation({
   out.push(L(
     locale,
     `Připravenost ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Dnes drž strop ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
-    `Readiness ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Keep today's ceiling ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
+    `Today score ${readiness.score}/100: ${readinessBandLabel(readiness.band, locale)}. Keep today's ceiling ${intensityLabel(readiness.recommendedIntensity, locale)}.`,
   ));
   if (readiness.drivers.length) out.push(readiness.drivers.slice(0, 2).join(' · '));
   if (hasTraining) {
     if (adjusted) {
-      out.push(L(locale, 'Trénink byl snížen deterministicky podle readiness guardrails.', 'Training was lowered deterministically by readiness guardrails.'));
+      out.push(L(locale, 'Dnešní trénink je záměrně lehčí, protože regenerace dnes nevypadá ideálně.', "Today's workout is intentionally lighter because recovery does not look ideal."));
     } else if (adjustedSession && adjustedSession.kind !== 'rest') {
       out.push(L(locale, `Dnešní fokus: ${classification.focus}.`, `Today focus: ${classification.focus}.`));
     } else {
@@ -322,23 +322,23 @@ export function validateCoachRecommendationSafety(
   if (objectiveSignals === 0) {
     warnings.push(L(
       loc,
-      'Readiness je dnes bez dat ze spánku, HRV a klidového tepu — ber ji jen jako orientační.',
-      'Readiness has no sleep, HRV or resting-HR data today — treat it as guidance only.',
+      'Dnes chybí spánek, HRV a klidový tep — ber doporučení jako orientační.',
+      'Sleep, HRV and resting heart rate are missing today — treat the recommendation as guidance.',
     ));
   } else if (rec.readiness.confidence === 'low' && planned && planned.intensity === 'hard') {
     warnings.push(L(
       loc,
-      'Readiness má nízkou jistotu a čeká tě tvrdá jednotka — před startem zkontroluj pocit únavy.',
-      'Readiness confidence is low and a hard session is planned — check fatigue before starting.',
+      'Máme málo dat a v plánu je náročný trénink — před startem zkontroluj únavu.',
+      'We have limited data and a challenging workout is planned — check fatigue before starting.',
     ));
   }
 
   // 1) Hard session planned while readiness is low → guardrail.
   if (rec.training && rec.readiness.band === 'low' && planned && planned.intensity === 'hard') {
     if (!rec.training.whatNotToDo) {
-      rec.training.whatNotToDo = L(loc, 'Nízká připravenost — vynech tvrdou jednotku.', 'Low readiness — skip the hard session.');
+      rec.training.whatNotToDo = L(loc, 'Dnes radši vynech tvrdou jednotku.', 'Skip the hard session today.');
     }
-    warnings.push(L(loc, 'Nízká připravenost při naplánované tvrdé jednotce — zvaž regeneraci.', 'Low readiness with a hard session planned — consider recovery.'));
+    warnings.push(L(loc, 'Dnes nejsi na tvrdou jednotku ideálně připravený — zvaž regeneraci.', 'Today is not ideal for a hard session — consider recovery.'));
   }
 
   // 2) Long-run day must not be in a calorie deficit vs baseline.
@@ -348,7 +348,7 @@ export function validateCoachRecommendationSafety(
 
   // 3) Beginner + hard session on a non-high readiness day → caution.
   if (input.profile.experience === 'beginner' && planned && planned.intensity === 'hard' && rec.readiness.band !== 'high') {
-    warnings.push(L(loc, 'Začátečník: tvrdou jednotku zařaď jen při dobré připravenosti.', 'Beginner: do hard sessions only when readiness is good.'));
+    warnings.push(L(loc, 'Začátečník: tvrdou jednotku dej jen ve dni, kdy se cítíš opravdu dobře.', 'Beginner: do hard sessions only on days when you feel genuinely good.'));
   }
 
   // 4) Training load already computed elsewhere; surface high-risk statuses in
