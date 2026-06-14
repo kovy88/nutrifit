@@ -164,7 +164,7 @@ export function OnboardingScreen() {
 
   return (
     <Screen footer={footer} contentContainerStyle={styles.screenContent}>
-      <OnboardingProgress current={idx + 1} total={total} />
+      <OnboardingProgress current={idx + 1} total={total} label={onboardingProgressLabel(idx, total, locale)} />
 
       <H1>{questionFor(step, t, locale)}</H1>
       <Subtitle>{stepHelp}</Subtitle>
@@ -484,6 +484,23 @@ function bodyHelpCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'A few basics let Trenr make your first food recommendation useful.'
     : 'Pár základních údajů stačí, aby první jídelní doporučení dávalo smysl.';
+}
+
+function onboardingProgressLabel(index: number, total: number, locale: 'cs' | 'en'): string {
+  const remaining = Math.max(0, total - index - 1);
+  if (remaining === 0) {
+    return locale === 'en' ? 'Quick start · last step' : 'Rychlý start · poslední krok';
+  }
+  if (locale === 'en') {
+    return `Quick start · ${remaining} ${remaining === 1 ? 'step' : 'steps'} left`;
+  }
+  return `Rychlý start · ${remaining} ${czechStepLabel(remaining)}`;
+}
+
+function czechStepLabel(count: number): string {
+  if (count === 1) return 'krok';
+  if (count >= 2 && count <= 4) return 'kroky';
+  return 'kroků';
 }
 
 function subtitleFor(step: StepId, locale: 'cs' | 'en', t: (k: TranslationKey) => string): string {
