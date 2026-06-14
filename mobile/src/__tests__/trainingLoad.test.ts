@@ -26,12 +26,13 @@ describe('computeTrainingLoad — empty / sparse', () => {
     expect(r.acwr).toBeNull();
   });
 
-  it('only acute workouts (no chronic baseline) → optimal "building baseline"', () => {
+  it('only acute workouts (no chronic history) → optimal "learning rhythm"', () => {
     const r = computeTrainingLoad({ workouts: [workout(2, 45), workout(4, 60)] });
     expect(r.acwr).toBeNull(); // chronic avg < 1
     expect(r.workoutCountAcute).toBe(2);
     expect(r.status).toBe('optimal');
-    expect(r.message.toLowerCase()).toContain('baseline');
+    expect(r.message.toLowerCase()).toMatch(/běžný rytmus|usual rhythm/);
+    expect(r.message.toLowerCase()).not.toContain('baseline');
   });
 });
 
@@ -117,6 +118,14 @@ describe('computeTrainingLoad — TRIMP intensity mapping', () => {
 });
 
 describe('computeTrainingLoad — messages + recommendations', () => {
+  it('keeps internal ACWR out of user-facing messages while preserving the numeric field', () => {
+    const workouts: WorkoutSummary[] = [];
+    for (let i = 1; i <= 27; i += 2) workouts.push(workout(i, 60));
+    const r = computeTrainingLoad({ workouts });
+    expect(r.acwr).not.toBeNull();
+    expect(r.message).not.toMatch(/ACWR/i);
+  });
+
   it('optimal status mentions safe progression', () => {
     const workouts: WorkoutSummary[] = [];
     for (let i = 1; i <= 27; i += 2) workouts.push(workout(i, 60));

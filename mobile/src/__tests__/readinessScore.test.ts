@@ -54,12 +54,13 @@ describe('scoreReadiness', () => {
     expect(sore.drivers.some(d => /svalovka|soreness|pain/i.test(d))).toBe(true);
   });
 
-  it('high ACWR (overload) reduces the score and is surfaced as a driver', () => {
+  it('high ACWR (overload) reduces the score and is surfaced with user-facing copy', () => {
     const base: RecoveryInputs = { todaySleepMinutes: 450, todayHrvMs: 50, todayRhrBpm: 55 };
     const calm = scoreReadiness({ ...base, acwr: 1.0 });
     const overloaded = scoreReadiness({ ...base, acwr: 1.8 });
     expect(overloaded.score).toBeLessThan(calm.score);
-    expect(overloaded.drivers.some(d => d.toLowerCase().includes('acwr'))).toBe(true);
+    expect(overloaded.drivers.some(d => /zátěž|load/i.test(d))).toBe(true);
+    expect(overloaded.drivers.some(d => /acwr/i.test(d))).toBe(false);
   });
 
   it('confidence reflects the number of objective signals', () => {

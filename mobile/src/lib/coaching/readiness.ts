@@ -260,7 +260,7 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): Re
 
   // ── Modifiers ──────────────────────────────────────────────────────────────
   if (input.acwr != null) {
-    if (input.acwr > 1.5) { score -= 12; drivers.push(L(loc, `Vysoká zátěž (ACWR ${input.acwr.toFixed(2)})`, `High load (ACWR ${input.acwr.toFixed(2)})`)); }
+    if (input.acwr > 1.5) { score -= 12; drivers.push(L(loc, 'Zátěž roste rychleji než obvykle', 'Training load is rising faster than usual')); }
     else if (input.acwr > 1.3) { score -= 6; }
   }
   if (input.sleepDebtHours != null) {
