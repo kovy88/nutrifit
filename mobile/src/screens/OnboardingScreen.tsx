@@ -168,12 +168,6 @@ export function OnboardingScreen() {
 
       <H1>{questionFor(step, t, locale)}</H1>
       <Subtitle>{stepHelp}</Subtitle>
-      {step === 'focus' && (
-        <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-          <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
-          <Text style={[styles.welcomeCopy, { color: colors.ink }]}>{t('onb.welcomePromise')}</Text>
-        </View>
-      )}
 
       <View style={styles.options}>
         {step === 'focus' && SCOPE_OPTIONS.map(o => (
@@ -693,9 +687,6 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 
 const styles = StyleSheet.create({
   screenContent: { paddingBottom: 8 },
-  welcomeBox: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 8 },
-  brand: { fontSize: 26, lineHeight: 30, fontWeight: '900' },
-  welcomeCopy: { fontSize: 14, lineHeight: 19, fontWeight: '800' },
   options: { gap: 9, marginTop: 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
