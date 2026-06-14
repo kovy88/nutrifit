@@ -26,7 +26,7 @@ export function validateNutritionSafety(
     warnings.push(L(
       locale,
       `Příliš nízký příjem: Kalorie (${kcal} kcal) jsou pod bezpečným minimem (${floor} kcal).`,
-      `Calorie target (${kcal} kcal) is below the safe minimum floor (${floor} kcal).`
+      `Calorie target (${kcal} kcal) is below the safe minimum (${floor} kcal).`
     ));
   }
 
@@ -37,8 +37,8 @@ export function validateNutritionSafety(
     if (deficit > maxAllowedDeficit) {
       warnings.push(L(
         locale,
-        `Příliš agresivní deficit: Plánovaný deficit (${deficit} kcal) přesahuje bezpečný limit 25 % TDEE (${maxAllowedDeficit} kcal).`,
-        `Aggressive deficit: Target deficit (${deficit} kcal) exceeds the safe limit of 25% of TDEE (${maxAllowedDeficit} kcal).`
+        `Příliš agresivní deficit: Plánovaný deficit (${deficit} kcal) je moc velký proti udržovacímu příjmu. Drž se nejvýš kolem ${maxAllowedDeficit} kcal.`,
+        `Aggressive deficit: Target deficit (${deficit} kcal) is too large compared with maintenance intake. Stay around ${maxAllowedDeficit} kcal or less.`
       ));
     }
   }
@@ -51,7 +51,7 @@ export function validateNutritionSafety(
     warnings.push(L(
       locale,
       `Nízký příjem bílkovin: Bílkoviny (${protein} g) jsou pod doporučeným minimem pro tvůj cíl (${proteinFloor} g).`,
-      `Low protein: Target (${protein} g) is below the recommended floor of ${proteinFloor} g (${minProteinPerKg}g/kg).`
+      `Low protein: Target (${protein} g) is below the recommended minimum for your goal (${proteinFloor} g).`
     ));
   }
 
@@ -62,8 +62,8 @@ export function validateNutritionSafety(
   if (fat < fatFloor) {
     warnings.push(L(
       locale,
-      `Nízký příjem tuků: Tuky (${fat} g) by neměly klesnout pod bezpečnou mez (${fatFloor} g) pro hormonální zdraví.`,
-      `Low fat: Target (${fat} g) is below the safe minimum floor of ${fatFloor} g for hormonal health.`
+      `Nízký příjem tuků: Tuky (${fat} g) by dlouhodobě neměly klesnout pod bezpečnou mez (${fatFloor} g).`,
+      `Low fat: Target (${fat} g) should not stay below the safe minimum (${fatFloor} g) long term.`
     ));
   }
 
