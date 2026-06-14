@@ -110,7 +110,7 @@ export function SettingsScreen() {
   function handleConnectNative() {
     Alert.alert(
       native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
-      native.platform === 'ios' ? t('settings.iosInstrMsg') : t('settings.androidInstrMsg'),
+      nativeConnectMessage(native.platform, native.available, locale),
     );
   }
 
@@ -337,14 +337,8 @@ export function SettingsScreen() {
 
           <SourceStatusCard
             title={nativeSourceTitle(native.platform, t, locale)}
-            body={native.platform === 'unsupported'
-              ? t('settings.nativeUnsupported')
-              : native.available
-                ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
-                : native.platform === 'ios'
-                  ? t('settings.nativeIosSoon')
-                  : t('settings.nativeAndroidSoon')}
-            meta={native.platform !== 'unsupported' ? t('settings.nativeTipShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' }) : undefined}
+            body={nativeHealthBody(native.platform, native.available, native.permission, locale)}
+            meta={native.platform !== 'unsupported' ? nativeHealthMeta(native.platform, native.available, locale) : undefined}
             status={native.available ? t('settings.available') : t('settings.pending')}
             statusTone={native.available ? 'ready' : 'caution'}
             action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
@@ -456,17 +450,6 @@ function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) =
   );
 }
 
-function formatPermission(p: string, t: Translate): string {
-  switch (p) {
-    case 'granted': return t('settings.permGranted');
-    case 'partial': return t('settings.permPartial');
-    case 'denied': return t('settings.permDenied');
-    case 'not_determined': return t('settings.permNotDetermined');
-    case 'unavailable': return t('settings.permUnavailable');
-    default: return p;
-  }
-}
-
 function settingsHealthTitle(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Health data' : 'Zdravotní data';
 }
@@ -479,6 +462,55 @@ function nativeSourceTitle(platform: 'ios' | 'android' | 'unsupported', t: Trans
   if (platform === 'ios') return t('settings.nativeIos');
   if (platform === 'android') return t('settings.nativeAndroid');
   return locale === 'en' ? 'Health data' : 'Zdravotní data';
+}
+
+function nativeHealthBody(platform: 'ios' | 'android' | 'unsupported', available: boolean, permission: string, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') {
+    return locale === 'en'
+      ? 'This device cannot connect health data here. Manual check-ins still work.'
+      : 'Tohle zařízení tady zdravotní data nepřipojí. Ruční check-iny pořád fungují.';
+  }
+  if (isNativeHealthConnected(available, permission)) {
+    return locale === 'en'
+      ? 'Connected health data can support sleep, recovery and workouts.'
+      : 'Připojená zdravotní data pomáhají se spánkem, regenerací a tréninky.';
+  }
+  if (available) {
+    return locale === 'en'
+      ? 'Available, but not connected yet. Manual check-ins still work.'
+      : 'Dostupné, ale zatím nepřipojené. Ruční check-iny pořád fungují.';
+  }
+  return locale === 'en'
+    ? 'Not available in this build. You can keep using manual check-ins.'
+    : 'V tomhle buildu zatím nedostupné. Můžeš dál používat ruční check-iny.';
+}
+
+function nativeHealthMeta(platform: 'ios' | 'android' | 'unsupported', available: boolean, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') return '';
+  if (available) {
+    return locale === 'en'
+      ? 'Optional. Trenr works without it.'
+      : 'Volitelné. Trenr funguje i bez toho.';
+  }
+  return locale === 'en'
+    ? 'Use this later when the native build supports it.'
+    : 'Použiješ později, až to bude podporovat nativní build.';
+}
+
+function nativeConnectMessage(platform: 'ios' | 'android' | 'unsupported', available: boolean, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') {
+    return locale === 'en'
+      ? 'Health data is not available on this device. Manual check-ins are enough to start.'
+      : 'Zdravotní data na tomhle zařízení nejsou dostupná. Pro start stačí ruční check-iny.';
+  }
+  if (available) {
+    return locale === 'en'
+      ? 'Connect it only if you want Trenr to use sleep, recovery and workout data automatically.'
+      : 'Připoj to jen pokud chceš, aby Trenr automaticky používal spánek, regeneraci a tréninky.';
+  }
+  return locale === 'en'
+    ? 'This build cannot connect it yet. Manual check-ins are enough for the daily recommendation.'
+    : 'Tenhle build to zatím nepřipojí. Pro denní doporučení stačí ruční check-iny.';
 }
 
 function morningReminderSummary(enabled: boolean, hour: number, minute: number, locale: 'cs' | 'en'): string {
