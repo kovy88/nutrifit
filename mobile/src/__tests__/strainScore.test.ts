@@ -117,7 +117,7 @@ describe('computeDailyStrain — recommendations', () => {
       todaysWorkouts: [workout(180, 175, 185), workout(120, 170, 185)],
     });
     if (r.band === 'all_out') {
-      expect(r.recommendation.toLowerCase()).toMatch(/rest|extrém|zítra/);
+      expect(r.recommendation.toLowerCase()).toMatch(/volno|regenerační|zítra|vydatněji/);
     }
   });
 
@@ -125,5 +125,16 @@ describe('computeDailyStrain — recommendations', () => {
     const r = computeDailyStrain({ plannedSession: null, todaysWorkouts: [] });
     expect(r.band).toBe('recovery');
     expect(r.recommendation.toLowerCase()).toMatch(/lehkou|zítra/);
+  });
+
+  it('keeps high-load recommendations free of raw recovery jargon', () => {
+    const r = computeDailyStrain({
+      plannedSession: null,
+      todaysWorkouts: [workout(120, 170, 185)],
+      locale: 'en',
+    });
+    expect(['high', 'all_out']).toContain(r.band);
+    expect(r.recommendation).toMatch(/load|lighter|recovery|refuel|eat/i);
+    expect(`${r.label} ${r.recommendation}`).not.toMatch(/strain|all-out|HRV|RHR|resting HR|carb refuel|easy \+/i);
   });
 });
