@@ -468,7 +468,7 @@ function questionFor(step: StepId, t: (k: TranslationKey) => string, locale: 'cs
     case 'raceTarget':    return t('onb.raceTargetQuestion');
     case 'raceSchedule':  return t('onb.raceScheduleQuestion');
     case 'raceFeasibility': return t('onb.feasibilityQuestion');
-    case 'body':          return t('onb.bodyQuestion');
+    case 'body':          return locale === 'en' ? 'Last basics' : 'Poslední základ';
     case 'nutritionMode': return t('onb.nutritionMode');
     case 'planIntensity': return t('onb.planIntensity');
     case 'diet':          return t('onb.dietPrefs');
@@ -477,8 +477,8 @@ function questionFor(step: StepId, t: (k: TranslationKey) => string, locale: 'cs
 
 function bodyHelpCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? 'A few basics let Trenr make your first food recommendation useful.'
-    : 'Pár základních údajů stačí, aby první jídelní doporučení dávalo smysl.';
+    ? 'Only for the first useful food target. You can tune details later.'
+    : 'Jen pro první užitečný jídelní cíl. Detaily doladíš později.';
 }
 
 function onboardingProgressLabel(index: number, total: number, locale: 'cs' | 'en'): string {
