@@ -12,7 +12,7 @@ import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useUnits } from '../hooks/useUnits';
-import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
+import { computeAdherenceTrend, adherenceToTrendPoints } from '../lib/nutrition/adherenceTrend';
 import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib/nutrition/streaks';
 import { computeEnergyBalance } from '../lib/nutrition/energyBalance';
 import { useStrainTrend } from '../hooks/useStrainTrend';
@@ -135,7 +135,7 @@ export function HistoryScreen() {
           t(weeklyReview.recommendationKey),
         )}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
-        statusLabel={adherence.averageRatio == null ? undefined : adherenceLabel}
+        statusLabel={progressHeroStatus(adherence.averageRatio, locale)}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
       />
       <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
@@ -175,7 +175,7 @@ export function HistoryScreen() {
 
           <SectionCard title={progressNextSignalTitle(locale)} body={progressNextSignalBody(logStreak.current, locale)}>
             {adherenceStreak.current > 0 ? (
-              <InfoRow label={t('history.targetStreak')} value={adherenceStreak.current} />
+              <InfoRow label={progressStreakLabel(locale)} value={adherenceStreak.current} />
             ) : (
               <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTargetCopy(locale)}</Text>
             )}
@@ -294,6 +294,13 @@ function progressHeroBody(
   return fallback;
 }
 
+function progressHeroStatus(averageRatio: number | null, locale: 'cs' | 'en'): string | undefined {
+  if (averageRatio == null) return undefined;
+  if (averageRatio >= 0.9 && averageRatio <= 1.1) return locale === 'en' ? 'In rhythm' : 'V rytmu';
+  if (averageRatio < 0.9) return locale === 'en' ? 'A bit low' : 'Spíš nízko';
+  return locale === 'en' ? 'A bit high' : 'Spíš vysoko';
+}
+
 function progressTrainingLabel(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Training rhythm' : 'Tréninkový rytmus';
 }
@@ -308,7 +315,19 @@ function progressConsistencyBody(averageRatio: number | null, locale: 'cs' | 'en
       ? 'Log one planned day and this weekly review will start to fill in.'
       : 'Zapiš jeden plánovaný den a týdenní přehled se začne plnit.';
   }
-  return describeAdherence(averageRatio, locale);
+  if (averageRatio >= 0.9 && averageRatio <= 1.1) {
+    return locale === 'en'
+      ? 'This week is mostly on track. Keep the next day simple.'
+      : 'Tenhle týden jde většinou podle plánu. Další den drž jednoduše.';
+  }
+  if (averageRatio < 0.9) {
+    return locale === 'en'
+      ? 'You are trending a little under the plan. Add one normal meal before making bigger changes.'
+      : 'Jsi trochu pod plánem. Přidej jedno normální jídlo, než budeš dělat větší změny.';
+  }
+  return locale === 'en'
+    ? 'You are trending a little over the plan. Tighten the next meal, not the whole week.'
+    : 'Jsi trochu nad plánem. Zpřesni další jídlo, ne celý týden.';
 }
 
 function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en'): string {
@@ -330,17 +349,17 @@ function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en
 function progressFoodValue(onTarget: number, logged: number, locale: 'cs' | 'en'): string {
   if (onTarget <= 0) {
     return locale === 'en'
-      ? `${logged} logged, none on target yet`
-      : `${logged} zapsáno, zatím mimo cíl`;
+      ? `${logged} logged, still finding rhythm`
+      : `${logged} zapsáno, rytmus se teprve hledá`;
   }
   if (onTarget >= logged) {
     return locale === 'en'
-      ? `All ${logged} logged days on target`
-      : `Všech ${logged} zapsaných dní v cíli`;
+      ? `All ${logged} logged days fit the plan`
+      : `Všech ${logged} zapsaných dní sedí`;
   }
   return locale === 'en'
-    ? `${onTarget} of ${logged} logged days on target`
-    : `${onTarget} z ${logged} zapsaných dní v cíli`;
+    ? `${onTarget} of ${logged} logged days fit the plan`
+    : `${onTarget} z ${logged} zapsaných dní sedí`;
 }
 
 function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
@@ -357,8 +376,12 @@ function progressNoFoodCopy(locale: 'cs' | 'en'): string {
 
 function progressNoTargetCopy(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? 'Your first on-target day will show here after you log a meal.'
-    : 'První den v cíli se ukáže po zalogování jídla.';
+    ? 'Your first steady day will show here after you log a meal.'
+    : 'První stabilní den se ukáže po zalogování jídla.';
+}
+
+function progressStreakLabel(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Steady days' : 'Stabilní dny';
 }
 
 function progressNextSignalTitle(locale: 'cs' | 'en'): string {
