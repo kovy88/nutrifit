@@ -1,7 +1,7 @@
 import { PropsWithChildren, ReactNode, useContext } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 
@@ -14,16 +14,18 @@ type ScreenProps = PropsWithChildren<{
 export function Screen({ children, footer, contentContainerStyle, scroll = true }: ScreenProps) {
   const { colors, isDark } = useTheme();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
-  const tabBarPadding = footer ? 0 : tabBarHeight;
+  const insets = useSafeAreaInsets();
+  const bottomSpacer = footer ? 28 : Math.max(48, tabBarHeight + 24, insets.bottom + 48);
+  const footerBottomPadding = Math.max(10, insets.bottom + 10);
   const content = (
     <>
       {children}
-      <View style={{ height: footer ? 124 : 96 }} />
+      <View pointerEvents="none" style={{ height: bottomSpacer }} />
     </>
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: colors.bg }]}>
       {/* Atmospheric accent glow bleeding down from the top — gives the near-black
           canvas depth instead of a flat fill. Dark mode only; non-interactive. */}
       {isDark && (
@@ -35,7 +37,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
       )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={[styles.flex, tabBarPadding ? { paddingBottom: tabBarPadding } : null]}
+        style={styles.flex}
       >
         {scroll ? (
           <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, contentContainerStyle]} keyboardShouldPersistTaps="handled">
@@ -44,7 +46,11 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
         ) : (
           <View style={[styles.content, styles.flex, contentContainerStyle]}>{content}</View>
         )}
-        {footer ? <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.bg }]}>{footer}</View> : null}
+        {footer ? (
+          <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.bg, paddingBottom: footerBottomPadding }]}>
+            {footer}
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -55,7 +61,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flex: 1, overflow: 'hidden' },
   content: { padding: 20, gap: 16 },
-  footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12 },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
   nonInteractive: { pointerEvents: 'none' },
 });
