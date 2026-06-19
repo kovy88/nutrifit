@@ -129,7 +129,7 @@ export function CoachScreen() {
       <ScreenHeader eyebrow={t('tab.coach')} title={coachScreenTitle(locale)} subtitle={coachScreenSubtitle(locale)} />
 
       <HeroDecisionCard
-        eyebrow={t('coach.todayContext')}
+        eyebrow={coachHeroEyebrow(locale)}
         title={recommendation ? coachHeroTitle(recommendation, locale) : t('coach.title')}
         body={recommendation ? coachHeroBody(recommendation, locale) : t('coach.todayContextEmpty')}
         accent={readinessColor(recommendation?.readiness.band, colors)}
@@ -223,6 +223,10 @@ function coachScreenTitle(locale: 'cs' | 'en'): string {
   return locale === 'en' ? 'Ask about today' : 'Zeptej se na dnešek';
 }
 
+function coachHeroEyebrow(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? "Today's question" : 'Dnešní otázka';
+}
+
 function coachPromptLabels(isCustomSport: boolean, locale: 'cs' | 'en'): string[] {
   if (isCustomSport) {
     return locale === 'en'
@@ -279,8 +283,8 @@ function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): stri
 
 function coachQuestionsBody(locale: 'cs' | 'en'): string {
   return locale === 'en'
-    ? 'Choose one prompt or type your own.'
-    : 'Vyber otázku nebo napiš vlastní.';
+    ? 'Start with one question.'
+    : 'Začni jednou otázkou.';
 }
 
 function sessionTitle(title: string, durationMinutes: number): string {
@@ -297,9 +301,9 @@ function isEasySessionTitle(title: string): boolean {
 }
 
 const styles = StyleSheet.create({
-  screen: { paddingBottom: 8 },
+  screen: { gap: 14 },
   promptList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 96, minHeight: 64, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6, paddingVertical: 8 },
+  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 84, minHeight: 58, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 8 },
   promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '800', textAlign: 'center' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11 },
