@@ -686,7 +686,7 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 }
 
 const styles = StyleSheet.create({
-  screenContent: { paddingBottom: 8 },
+  screenContent: { gap: 14 },
   options: { gap: 9, marginTop: 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sessionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

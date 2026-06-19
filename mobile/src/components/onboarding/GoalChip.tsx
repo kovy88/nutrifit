@@ -42,14 +42,14 @@ const styles = StyleSheet.create({
   chip: {
     flexBasis: '47%',
     flexGrow: 1,
-    minHeight: 58,
+    minHeight: 64,
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     justifyContent: 'center',
     gap: 6,
   },
-  text: { fontSize: 15, lineHeight: 19, textAlign: 'left' },
+  text: { fontSize: 15.5, lineHeight: 20, textAlign: 'left' },
   subtitle: { fontSize: 12, lineHeight: 15, textAlign: 'left' },
 });
