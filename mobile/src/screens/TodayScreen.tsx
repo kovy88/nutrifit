@@ -108,7 +108,7 @@ export function TodayScreen() {
             <SimpleSection
               title={t('today.trainingTitle')}
               primary={trainingSummary(rec.training?.session ?? currentSession, t)}
-              secondary={trainingDetail(rec.training?.session ?? currentSession, rec.training?.focus, rec.training?.whatNotToDo, t, locale)}
+              secondary={trainingDetail(rec.training?.session ?? currentSession, rec.training?.whatNotToDo, t, locale)}
               cta={t('today.adjustToday')}
               onPress={() => navigation.navigate('Trénink')}
             />
@@ -268,23 +268,51 @@ function trainingSummary(session: TrainingSession | null | undefined, t: (key: T
 
 function trainingDetail(
   session: TrainingSession | null | undefined,
-  focus: string | undefined,
   whatNotToDo: string | undefined,
   t: (key: TranslationKey) => string,
   locale: 'cs' | 'en',
 ): string {
   if (!session || session.kind === 'rest') return t('today.restNote');
-  const simpleFocus = focus && focus.length > 18 ? focus : undefined;
-  const detail = simpleFocus ?? session.notes;
-  if (detail) return detail;
   if (whatNotToDo) {
     return locale === 'en'
       ? 'Keep the session clean and skip anything extra.'
       : 'Drž trénink čistý a nepřidávej nic navíc.';
   }
-  return locale === 'en'
-    ? 'Do the planned work and stop with energy left.'
-    : 'Odtrénuj plán a skonči s rezervou.';
+  switch (session.kind) {
+    case 'easy_run':
+    case 'recovery_run':
+    case 'recovery_walk':
+      return locale === 'en'
+        ? 'Keep it light enough that you could talk the whole time.'
+        : 'Drž tempo tak lehké, že bys u něj zvládl mluvit.';
+    case 'long_run':
+      return locale === 'en'
+        ? 'Aim for calm time on your feet, not a pace test.'
+        : 'Cílem je klidný čas na nohách, ne test tempa.';
+    case 'tempo':
+    case 'intervals':
+      return locale === 'en'
+        ? 'Keep the quality parts sharp and skip extra volume.'
+        : 'Drž kvalitu hlavních úseků a nepřidávej objem navíc.';
+    case 'strength':
+      return locale === 'en'
+        ? 'Clean reps, steady effort, and a little left in reserve.'
+        : 'Čisté série, stabilní úsilí a trochu rezervy.';
+    case 'mobility':
+    case 'recovery':
+      return locale === 'en'
+        ? 'Use it to loosen up, breathe, and leave fresher.'
+        : 'Uvolni tělo, dýchej a skonči svěžejší.';
+    case 'race':
+    case 'match':
+      return locale === 'en'
+        ? 'Do the key session, then protect recovery afterward.'
+        : 'Splň hlavní výkon a potom chraň regeneraci.';
+    default:
+      return locale === 'en'
+        ? 'Do the planned work and stop with energy left.'
+        : 'Odtrénuj plán a skonči s rezervou.';
+  }
 }
 
 function todayLoadingBody(locale: 'cs' | 'en'): string {
