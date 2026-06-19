@@ -316,7 +316,7 @@ export function SettingsScreen() {
           healthSourceState(healthMode, connectedOAuth.length, native.available, native.permission, t, locale),
         ]}
         statusLabel={healthSourceStatus(healthMode, connectedOAuth.length, nativeConnected, t, locale)}
-        statusTone={connectedOAuth.length || nativeConnected || healthMode === 'manual' ? 'ready' : 'caution'}
+        statusTone={healthSourceTone(healthMode, connectedOAuth.length, nativeConnected)}
         detailLabel={t('plan.detail')}
         detailChildren={(
           <>
@@ -339,8 +339,8 @@ export function SettingsScreen() {
             title={nativeSourceTitle(native.platform, t, locale)}
             body={nativeHealthBody(native.platform, native.available, native.permission, locale)}
             meta={native.platform !== 'unsupported' ? nativeHealthMeta(native.platform, native.available, locale) : undefined}
-            status={native.available ? t('settings.available') : t('settings.pending')}
-            statusTone={native.available ? 'ready' : 'caution'}
+            status={nativeHealthStatus(native.platform, native.available, native.permission, t, locale)}
+            statusTone={nativeHealthStatusTone(native.platform, native.available, native.permission)}
             action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
           />
 
@@ -533,7 +533,31 @@ function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'he
   if (mode === 'mock') return t('profile.healthMock');
   if (mode === 'apple_health') return t('settings.nativeIos');
   if (mode === 'health_connect') return t('settings.nativeAndroid');
-  return locale === 'en' ? 'Health data' : 'Zdravotní data';
+  return locale === 'en' ? 'Health data later' : 'Zdravotní data později';
+}
+
+function nativeHealthStatus(
+  platform: 'ios' | 'android' | 'unsupported',
+  available: boolean,
+  permission: string,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (platform === 'unsupported') return locale === 'en' ? 'Unavailable' : 'Nedostupné';
+  if (isNativeHealthConnected(available, permission)) return t('settings.connectedShort');
+  if (available) return locale === 'en' ? 'Available' : 'Dostupné';
+  return t('settings.notConnected');
+}
+
+function nativeHealthStatusTone(
+  platform: 'ios' | 'android' | 'unsupported',
+  available: boolean,
+  permission: string,
+): 'neutral' | 'ready' | 'caution' | 'risk' | 'info' {
+  if (isNativeHealthConnected(available, permission)) return 'ready';
+  if (platform === 'unsupported') return 'neutral';
+  if (available) return 'info';
+  return 'caution';
 }
 
 function healthSourceSummary(
@@ -591,6 +615,16 @@ function healthSourceStatus(
   if (mode === 'mock') return locale === 'en' ? 'Demo' : 'Demo';
   if (mode === 'manual') return locale === 'en' ? 'Manual' : 'Ručně';
   return t('settings.notConnected');
+}
+
+function healthSourceTone(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeConnected: boolean,
+): 'neutral' | 'ready' | 'caution' | 'risk' | 'info' {
+  if (connectedCount > 0 || nativeConnected || mode === 'manual') return 'ready';
+  if (mode === 'mock') return 'info';
+  return 'caution';
 }
 
 function isNativeHealthConnected(available: boolean, permission: string): boolean {
