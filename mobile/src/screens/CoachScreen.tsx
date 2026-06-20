@@ -243,11 +243,13 @@ function coachHeroTitle(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): str
   if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
     return locale === 'en' ? 'Keep today light' : 'Dnes to drž lehce';
   }
-  const title = sessionTitle(session.title, session.durationMinutes);
   if (rec.training?.adjusted || rec.readiness.band === 'low' || isEasySessionTitle(session.title)) {
-    return locale === 'en' ? `${title} is enough` : `${title} stačí`;
+    return locale === 'en' ? 'Easy plan is enough' : 'Lehký plán stačí';
   }
-  return locale === 'en' ? `Focus on ${title}` : `Soustřeď se na ${title}`;
+  if (rec.readiness.recommendedIntensity === 'hard' && rec.readiness.band === 'high') {
+    return locale === 'en' ? 'Green light today' : 'Dnes máš zelenou';
+  }
+  return locale === 'en' ? "Stay with today's plan" : 'Drž dnešní plán';
 }
 
 function coachStatusLabel(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
@@ -285,15 +287,6 @@ function coachQuestionsBody(locale: 'cs' | 'en'): string {
   return locale === 'en'
     ? 'Start with one question.'
     : 'Začni jednou otázkou.';
-}
-
-function sessionTitle(title: string, durationMinutes: number): string {
-  const clean = title.trim();
-  return titleHasDuration(clean) ? clean : `${clean} ${durationMinutes} min`;
-}
-
-function titleHasDuration(title: string): boolean {
-  return /\b\d+\s*(min|mins|minutes|minut|m)\b/i.test(title);
 }
 
 function isEasySessionTitle(title: string): boolean {

@@ -179,7 +179,7 @@ export function ProfileScreen() {
       <ProfileSectionCard
         title={t('profile.healthData')}
         rows={healthRows}
-        ctaLabel={t('profile.healthSettings')}
+        ctaLabel={locale === 'en' ? 'Manage' : 'Spravovat'}
         onPress={() => navigation.navigate('Settings')}
       />
 
