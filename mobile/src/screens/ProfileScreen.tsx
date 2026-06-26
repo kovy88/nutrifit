@@ -1,5 +1,5 @@
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Field, Label, Pill, ScreenHeader, SectionHeader } from '../components/UI';
+import { Button, Card, CoachInsightCard, Field, Label, Pill, ScreenHeader, SectionCard } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { WeightInput } from '../components/WeightInput';
 import { useTrenr } from '../context/TrenrContext';
@@ -78,43 +78,30 @@ export function ProfileScreen() {
     ]);
   }
 
+  const trainingGoalLabel = trainingGoals.find(g => g.value === profile.trainingGoal)?.label ?? profile.trainingGoal;
+  const nutritionModeLabel = t(
+    nutritionModes.find(m => m.value === (profile.nutritionMode ?? 'balanced'))?.labelKey ?? 'nutritionMode.balanced',
+  );
+
   return (
     <Screen>
       <ScreenHeader eyebrow={t('tab.profile')} title={t('profile.title')} subtitle={t('profile.subtitle')} />
 
-      <Card>
-        <SectionHeader title={t('profile.coachOverview')} />
-        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.coachOverviewBody')}</Text>
-        <View style={styles.summaryGrid}>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.focus')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(('scope.' + scope) as 'scope.both')}</Text>
-          </View>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.mainGoal')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.ink }]}>{t(`goal.${profile.primaryGoal}` as TranslationKey)}</Text>
-          </View>
-          <View style={[styles.summaryTile, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-            <Text style={[styles.summaryLabel, { color: colors.faint }]}>{t('profile.sessionsPerWeek')}</Text>
-            <Text style={[styles.summaryValue, { color: colors.accent }]}>{profile.sessionsPerWeek}×</Text>
-          </View>
-        </View>
-      </Card>
-
       {!setup.complete ? (
-        <Card>
-          <SectionHeader title={t('setup.profileTitle')} />
-          <Text style={[styles.copy, { color: colors.muted }]}>{t('setup.profileBody', { count: setup.missing.length })}</Text>
+        <CoachInsightCard title={t('setup.profileTitle')} body={t('setup.profileBody', { count: setup.missing.length })} accent={colors.blue}>
           <View style={styles.setupList}>
             {setup.missing.slice(0, 3).map(item => (
               <Text key={item} style={[styles.setupItem, { color: colors.ink }]}>• {t(setupMissingLabelKey(item))}</Text>
             ))}
           </View>
-        </Card>
+        </CoachInsightCard>
       ) : null}
 
-      <Card>
-        <SectionHeader title={t('profile.coachSetup')} />
+      {/* Goal & focus */}
+      <SectionCard
+        title={t('profile.coachSetup')}
+        summary={`${t(`goal.${profile.primaryGoal}` as TranslationKey)} · ${t(('scope.' + scope) as 'scope.both')}`}
+      >
         <Label>{t('profile.focus')}</Label>
         <View style={styles.rowWrap}>
           {(['both', 'training', 'nutrition'] as CoachScope[]).map(s => (
@@ -135,10 +122,10 @@ export function ProfileScreen() {
             </Pill>
           ))}
         </View>
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <SectionHeader title={t('profile.trainingSchedule')} />
+      {/* Training setup */}
+      <SectionCard title={t('profile.trainingSchedule')} summary={`${trainingGoalLabel} · ${profile.sessionsPerWeek}×`}>
         <Label>{t('profile.trainingGoal')}</Label>
         <View style={styles.rowWrap}>
           {trainingGoals.map(goal => (
@@ -188,21 +175,21 @@ export function ProfileScreen() {
             />
           </>
         ) : null}
-        <Button style={{ marginTop: 10 }} onPress={() => setShowCheckIn(true)}>
-          {t('profile.weeklyCheckIn')}
-        </Button>
+        <Button onPress={() => setShowCheckIn(true)}>{t('profile.weeklyCheckIn')}</Button>
         <Button
-          style={{ marginTop: 6 }}
           variant="secondary"
           disabled={weeklySummary.isGenerating}
           onPress={() => weeklySummary.generate()}
         >
           {weeklySummary.isGenerating ? t('profile.aiSummaryGenerating') : t('profile.aiSummary')}
         </Button>
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <SectionHeader title={t('profile.nutritionPrefs')} />
+      {/* Nutrition preferences */}
+      <SectionCard
+        title={t('profile.nutritionPrefs')}
+        summary={`${nutritionModeLabel} · ${t(`diet.${profile.diet}` as TranslationKey)}`}
+      >
         <Label>{t('profile.currentWeight')}</Label>
         <WeightInput weightKg={profile.weight} onChangeKg={weight => setProfile({ ...profile, weight })} />
         <Label>{t('profile.nutritionMode')}</Label>
@@ -227,16 +214,16 @@ export function ProfileScreen() {
         <Field value={profile.likes} onChangeText={likes => setProfile({ ...profile, likes })} placeholder={t('profile.foodLikesPlaceholder')} multiline />
         <Label>{t('profile.foodDislikes')}</Label>
         <Field value={profile.dislikes} onChangeText={dislikes => setProfile({ ...profile, dislikes })} placeholder={t('profile.foodDislikesPlaceholder')} multiline />
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <SectionHeader title={t('profile.healthData')} />
+      {/* Health data */}
+      <SectionCard title={t('profile.healthData')} summary={t('profile.healthDataShort')}>
         <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.healthDataBody')}</Text>
         <Button variant="secondary" onPress={() => navigation.navigate('Settings')}>
           {t('profile.healthSettings')}
         </Button>
-        <Button style={{ marginTop: 6 }} variant="secondary" onPress={() => resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
-      </Card>
+        <Button variant="secondary" onPress={() => resetLocalProfile()}>{t('profile.restartOnboarding')}</Button>
+      </SectionCard>
 
       {/* AI weekly summary — last generated review */}
       {weeklySummary.summary && (
@@ -280,8 +267,8 @@ export function ProfileScreen() {
         </Card>
       )}
 
-      <Card>
-        <SectionHeader title={t('profile.account')} />
+      {/* Account */}
+      <SectionCard title={t('profile.account')} summary={`${user?.email ?? t('profile.notSignedIn')} · ${syncStatus.status}`}>
         <Text style={[styles.copy, { color: colors.muted }]}>
           Sync: {syncStatus.status}
           {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
@@ -306,14 +293,14 @@ export function ProfileScreen() {
             </View>
           </>
         )}
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <SectionHeader title={t('profile.privacySafety')} />
+      {/* Privacy & safety */}
+      <SectionCard title={t('profile.privacySafety')} summary={t('profile.privacyShort')}>
         <Text style={[styles.copy, { color: colors.muted }]}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
         <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
         <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
-      </Card>
+      </SectionCard>
 
       <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
     </Screen>
@@ -385,10 +372,6 @@ function setupMissingLabelKey(item: SetupMissingItem): TranslationKey {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  summaryTile: { flex: 1, minWidth: '30%', borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
-  summaryLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
-  summaryValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   setupList: { gap: 5, marginTop: 8 },
   setupItem: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
   user: { fontWeight: '900' },

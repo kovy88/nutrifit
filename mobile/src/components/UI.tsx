@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -363,7 +363,8 @@ export function TrainingRecommendationCard({
   onPress,
   completed,
   intensity,
-}: {
+  children,
+}: PropsWithChildren<{
   title: string;
   meta: string;
   note?: string;
@@ -371,7 +372,7 @@ export function TrainingRecommendationCard({
   onPress?: () => void;
   completed?: boolean;
   intensity?: string;
-}) {
+}>) {
   const { colors, fonts } = useTheme();
   return (
     <Card>
@@ -386,6 +387,7 @@ export function TrainingRecommendationCard({
           {cta}
         </Button>
       ) : null}
+      {children}
     </Card>
   );
 }
@@ -395,11 +397,14 @@ export function RecoveryCard({
   metrics,
   recommendation,
   status,
+  detailsLabel,
 }: {
   title: string;
   metrics: Array<{ label: string; value: string; color?: string }>;
   recommendation: string;
   status?: string;
+  /** When set, the recommendation copy is tucked behind a collapsible "why" toggle. */
+  detailsLabel?: string;
 }) {
   const { colors, fonts } = useTheme();
   return (
@@ -413,7 +418,13 @@ export function RecoveryCard({
           <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} compact />
         ))}
       </View>
-      <Subtitle>{recommendation}</Subtitle>
+      {detailsLabel ? (
+        <CollapsibleDetails label={detailsLabel}>
+          <Subtitle>{recommendation}</Subtitle>
+        </CollapsibleDetails>
+      ) : (
+        <Subtitle>{recommendation}</Subtitle>
+      )}
     </Card>
   );
 }
@@ -758,6 +769,63 @@ export function ErrorState({
   );
 }
 
+/** Collapsible settings/section card — a title + one-line summary that expands to its
+ *  editable content on tap. Keeps long forms (Profile) calm: scan summaries, tap to edit. */
+export function SectionCard({
+  title,
+  summary,
+  defaultOpen = false,
+  children,
+}: PropsWithChildren<{ title: string; summary?: string; defaultOpen?: boolean }>) {
+  const { colors, fonts } = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen(value => !value)}
+        style={({ pressed }) => [styles.sectionCardHead, pressed && { opacity: 0.7 }]}
+      >
+        <View style={styles.sectionCardHeadText}>
+          <Text style={[styles.sectionCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+          {summary ? (
+            <Text style={[styles.sectionCardSummary, { color: colors.muted, fontFamily: fonts.regular }]} numberOfLines={1}>
+              {summary}
+            </Text>
+          ) : null}
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.muted} />
+      </Pressable>
+      {open ? <View style={styles.sectionCardBody}>{children}</View> : null}
+    </Card>
+  );
+}
+
+/** Lightweight disclosure — keeps a short "why" / detail behind a tap so the primary
+ *  card stays calm. Used for readiness explanation, recovery recommendation, etc. */
+export function CollapsibleDetails({
+  label,
+  children,
+  defaultOpen = false,
+}: PropsWithChildren<{ label: string; defaultOpen?: boolean }>) {
+  const { colors, fonts } = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <View style={styles.collapsible}>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() => setOpen(value => !value)}
+        style={({ pressed }) => [styles.collapsibleToggle, pressed && { opacity: 0.7 }]}
+      >
+        <Text style={[styles.collapsibleLabel, { color: colors.muted, fontFamily: fonts.bold }]}>{label}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={colors.muted} />
+      </Pressable>
+      {open ? <View style={styles.collapsibleBody}>{children}</View> : null}
+    </View>
+  );
+}
+
 export function FadeInView({
   children,
   delay = 0,
@@ -796,9 +864,9 @@ export function FadeInView({
 }
 
 const styles = StyleSheet.create({
-  h1: { fontSize: 32, letterSpacing: 0, lineHeight: 37 },
-  subtitle: { fontSize: 15, lineHeight: 22 },
-  statValue: { fontSize: 46, letterSpacing: 0, lineHeight: 50 },
+  h1: { fontSize: 24, letterSpacing: 0, lineHeight: 29 },
+  subtitle: { fontSize: 14, lineHeight: 20 },
+  statValue: { fontSize: typography.metric, letterSpacing: 0, lineHeight: 36 },
   statLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 2 },
   card: {
     borderRadius: 16,
@@ -828,26 +896,26 @@ const styles = StyleSheet.create({
   screenHeaderAction: { alignItems: 'flex-end' },
   screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
-  screenTitle: { fontSize: typography.screenTitle, lineHeight: 36, letterSpacing: 0 },
+  screenTitle: { fontSize: typography.screenTitle, lineHeight: 27, letterSpacing: 0 },
   screenSubtitle: { fontSize: typography.body, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  sectionTitle: { fontSize: 16, lineHeight: 22 },
+  sectionTitle: { fontSize: typography.subhead, lineHeight: 17, textTransform: 'uppercase', letterSpacing: 0.6 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metricCard: { flex: 1, minWidth: '47%', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  metricValue: { fontSize: 25, lineHeight: 30, letterSpacing: 0 },
-  metricValueCompact: { fontSize: 20, lineHeight: 25 },
+  metricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },
+  metricValueCompact: { fontSize: 18, lineHeight: 22 },
   metricUnit: { fontSize: 11, marginBottom: 4 },
   metricDetail: { fontSize: 11, lineHeight: 15 },
-  scoreValue: { fontSize: typography.metric, lineHeight: 48, letterSpacing: 0 },
+  scoreValue: { fontSize: typography.heroMetric, lineHeight: 46, letterSpacing: 0 },
   scoreLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
   coachCard: { borderWidth: 1.5 },
-  coachTitle: { fontSize: typography.title, lineHeight: 25 },
+  coachTitle: { fontSize: typography.title, lineHeight: 22 },
   coachBody: { fontSize: 14, lineHeight: 20 },
   warningLine: { fontSize: 12, lineHeight: 17 },
-  trainingMeta: { fontSize: 22, lineHeight: 28 },
+  trainingMeta: { fontSize: 18, lineHeight: 23 },
   trainingNote: { fontSize: 14, lineHeight: 20 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   cardBadge: { overflow: 'hidden', borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7 },
@@ -879,6 +947,15 @@ const styles = StyleSheet.create({
   sourceCardMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
   sourceCardError: { fontSize: 12, lineHeight: 17 },
   sourceCardAction: { marginTop: 2 },
+  sectionCardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sectionCardHeadText: { flex: 1, gap: 2 },
+  sectionCardTitle: { fontSize: 15, lineHeight: 20 },
+  sectionCardSummary: { fontSize: 13, lineHeight: 18 },
+  sectionCardBody: { gap: 12, marginTop: 4 },
+  collapsible: { gap: 8 },
+  collapsibleToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  collapsibleLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.7 },
+  collapsibleBody: { gap: 6 },
   stateCard: { alignItems: 'stretch' },
   stateTitle: { fontSize: 17, lineHeight: 23, textAlign: 'center' },
   stateBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },

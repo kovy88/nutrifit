@@ -5,12 +5,13 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
 import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
 import {
+  ActionIconButton,
   Button,
   Card,
   CoachInsightCard,
+  CollapsibleDetails,
   EmptyState,
   LoadingState,
-  MetricCard,
   NutritionTargetCard,
   QuickActionButton,
   RecoveryCard,
@@ -23,7 +24,7 @@ import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { resolveCoachScope, scopeHasNutrition, scopeHasTraining } from '../types';
 import type { TrainingCompletionRecordMap, TrainingSession, UserProfile } from '../types';
-import { sumFoodLog, toDateKey } from '../utils/nutrition';
+import { toDateKey } from '../utils/nutrition';
 import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
@@ -39,7 +40,6 @@ export function TodayScreen() {
     currentMacros: macros,
     currentSession,
     dailyAdjustment,
-    currentFoodLog,
     currentMeals,
     selectedDate,
     setTodaySession,
@@ -61,8 +61,6 @@ export function TodayScreen() {
   const scope = resolveCoachScope(profile);
   const showNutrition = scopeHasNutrition(scope);
   const showTraining = scopeHasTraining(scope);
-  const used = sumFoodLog(currentFoodLog);
-  const proteinPct = macros.protein > 0 ? Math.round(Math.min(used.protein / macros.protein, 1) * 100) : 0;
   const suggestedDowngrade = currentSession ? applyReadinessToSession(currentSession, coaching.assessment, locale) : null;
   const readinessColor = rec ? bandColor(rec.readiness.band, colors) : colors.accent;
   const decision = rec ? readinessDecision(rec.readiness.recommendedIntensity, rec.readiness.band, t) : null;
@@ -81,6 +79,11 @@ export function TodayScreen() {
     : [];
   const customEmpty = !!customPlan && customPlan.sessions.every(s => s.kind === 'rest');
   const matchInfo = customPlan ? nextMatchInfo(profile.weeklyActivities, selectedDate) : null;
+
+  const trainingActive = Boolean(currentSession && currentSession.kind !== 'rest');
+  const trainingCompleted = completion?.status === 'completed';
+  const trainingSkipped = completion?.status === 'skipped';
+  const showFueling = currentSession?.kind === 'long_run' && !!dailyAdjustment && dailyAdjustment.carbsDelta > 0;
 
   async function markTodayDone() {
     await mark('completed');
@@ -108,15 +111,66 @@ export function TodayScreen() {
     navigation.navigate('Trénink');
   }
 
+  // One prioritized nudge — at most a single card/chip, instead of stacking every
+  // conditional. Order: setup → match → empty week → readiness downgrade → missed → tips.
+  const nudge = (() => {
+    if (!setup.complete) {
+      return (
+        <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
+          <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (matchInfo && matchInfo.daysUntil <= 6) {
+      const label = matchInfo.daysUntil === 0 ? t('myweek.matchToday') : matchInfo.daysUntil === 1 ? t('myweek.matchTomorrow') : t('myweek.matchInDays', { days: matchInfo.daysUntil });
+      return (
+        <View style={styles.nudgeChipRow}>
+          <View style={[styles.matchChip, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
+            <Ionicons name="flag" size={14} color={colors.accent} />
+            <Text style={[styles.matchText, { color: colors.accent }]}>{label}</Text>
+          </View>
+        </View>
+      );
+    }
+    if (customEmpty) {
+      return (
+        <CoachInsightCard title={t('myweek.emptyTitle')} body={t('myweek.emptyBody')} accent={colors.accent}>
+          <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (suggestedDowngrade?.adjusted) {
+      return (
+        <CoachInsightCard title={t('readiness.planAdjust')} body={downgradeText(currentSession, suggestedDowngrade.session)}>
+          <Button onPress={() => setTodaySession(suggestedDowngrade.session)}>{t('readiness.adjustToday')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (showTraining && (missedFeedbackVisible || trainingSkipped)) {
+      return (
+        <CoachInsightCard title={t('today.missedAdjustedTitle')} body={t('today.missedAdjustedBody')} accent={colors.orange}>
+          <Button variant="secondary" onPress={() => navigation.navigate('Trénink')}>{t('today.openTraining')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (weekTips.length > 0 && !tipsDismissed) {
+      return (
+        <CoachInsightCard title={t('myweek.tipsTitle')} body={weekTips.map(tip => '• ' + tip).join('\n')} accent={colors.accent}>
+          <Button variant="secondary" onPress={() => setTipsDismissed(true)}>{t('myweek.tipsDismiss')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    return null;
+  })();
+
   return (
     <Screen contentContainerStyle={styles.screen}>
+      {/* 1 — Compact header */}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.greeting, { color: colors.accent }]}>{greeting(new Date(), t)}</Text>
           <Text style={[styles.headerTitle, { color: colors.ink }]}>{t('today.headerTitle')}</Text>
-          <Text style={[styles.headerMeta, { color: colors.muted }]}>
-            {formatFullDate(selectedDate, locale)} · {goalSummary(profile, t)}
-          </Text>
+          <Text style={[styles.headerMeta, { color: colors.muted }]}>{formatFullDate(selectedDate, locale)}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -134,108 +188,102 @@ export function TodayScreen() {
       </View>
 
       {logStreak >= 2 ? (
-        <View style={styles.matchRow}>
-          <View style={[styles.matchChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}>
-            <Ionicons name="flame" size={14} color={colors.orange} />
-            <Text style={[styles.matchText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
-          </View>
+        <View style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}>
+          <Ionicons name="flame" size={13} color={colors.orange} />
+          <Text style={[styles.streakText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
         </View>
       ) : null}
 
-      {matchInfo && matchInfo.daysUntil <= 6 ? (
-        <View style={styles.matchRow}>
-          <View style={[styles.matchChip, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
-            <Ionicons name="flag" size={14} color={colors.accent} />
-            <Text style={[styles.matchText, { color: colors.accent }]}>
-              {matchInfo.daysUntil === 0 ? t('myweek.matchToday') : matchInfo.daysUntil === 1 ? t('myweek.matchTomorrow') : t('myweek.matchInDays', { days: matchInfo.daysUntil })}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+      {/* 2 — Single prioritized nudge */}
+      {nudge}
 
-      {!setup.complete ? (
-        <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
-          <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
-        </CoachInsightCard>
-      ) : null}
-
-      {customEmpty ? (
-        <CoachInsightCard title={t('myweek.emptyTitle')} body={t('myweek.emptyBody')} accent={colors.accent}>
-          <Button variant="secondary" onPress={() => navigation.navigate('MujTyden')}>{t('myweek.openCta')}</Button>
-        </CoachInsightCard>
-      ) : null}
-
+      {/* Coach loading / empty */}
       {coaching.isLoading && !rec ? (
         <LoadingState title={t('today.loadingCoachTitle')} body={t('today.loadingCoachBody')} />
       ) : null}
-
       {!coaching.isLoading && !rec ? (
         <EmptyState title={t('today.emptyCoachTitle')} body={t('today.emptyCoachBody')} />
       ) : null}
 
+      {/* 3 — Readiness hero: one score + one status line; the "why" lives behind a tap */}
       {rec ? (
         <Card style={[styles.heroCard, { borderColor: readinessColor }]}>
           <View style={styles.heroBody}>
-            <ScoreRing score={rec.readiness.score} label={bandLabel(rec.readiness.band, t)} color={readinessColor} size={126} />
+            <ScoreRing score={rec.readiness.score} label={bandLabel(rec.readiness.band, t)} color={readinessColor} size={112} />
             <View style={styles.heroCopy}>
               <Text style={[styles.focusLabel, { color: readinessColor }]}>{decision?.label ?? t('today.oneThing')}</Text>
               <Text style={[styles.focusValue, { color: colors.ink }]}>{decision ? decision.title : rec.headline}</Text>
-              <Text style={[styles.coachNote, { color: colors.muted }]}>{rec.coachNote}</Text>
-              {decision?.hint ? <Text style={[styles.decisionHint, { color: colors.muted }]}>{decision.hint}</Text> : null}
-              {rec.training?.whatNotToDo ? (
-                <Text style={[styles.caution, { color: colors.orange }]}>{rec.training.whatNotToDo}</Text>
-              ) : null}
             </View>
           </View>
-          <View style={[styles.todayFocus, { borderTopColor: colors.border }]}>
-            <Text style={[styles.todayFocusLabel, { color: colors.faint }]}>{t('today.focus')}</Text>
-            <Text style={[styles.todayFocusText, { color: colors.ink }]}>{rec.training?.focus ?? rec.headline}</Text>
-          </View>
-          <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('today.readinessNote')}</Text>
+          <CollapsibleDetails label={t('today.whyLabel')}>
+            <Text style={[styles.coachNote, { color: colors.muted }]}>{rec.coachNote}</Text>
+            {decision?.hint ? <Text style={[styles.decisionHint, { color: colors.muted }]}>{decision.hint}</Text> : null}
+            {rec.training?.whatNotToDo ? <Text style={[styles.caution, { color: colors.orange }]}>{rec.training.whatNotToDo}</Text> : null}
+            <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('today.readinessNote')}</Text>
+          </CollapsibleDetails>
         </Card>
       ) : null}
 
-      {showNutrition && (
-        <>
-          <NutritionTargetCard
-            label={t('today.nutritionTitle')}
-            kcal={macros.kcal}
-            protein={macros.protein}
-            carbs={macros.carbs}
-            fat={macros.fat}
-            macroLabels={{
-              kcal: 'kcal',
-              protein: t('home.protein'),
-              carbs: t('home.carbs'),
-              fat: t('home.fat'),
-            }}
-            dayLabel={trainingDay ? t('today.trainingDay') : t('today.restDayLabel')}
-            reason={rec?.nutrition?.reason ?? dailyAdjustment?.note}
-          />
-        </>
-      )}
+      {/* 4 — Today focus: one short sentence */}
+      {rec?.training?.focus ? (
+        <View style={styles.focusLine}>
+          <Text style={[styles.focusLineLabel, { color: colors.faint }]}>{t('today.focus')}</Text>
+          <Text style={[styles.focusLineText, { color: colors.ink }]} numberOfLines={2}>{rec.training.focus}</Text>
+        </View>
+      ) : null}
 
-      {showTraining && (
+      {/* 5 — Training: one card, one CTA, secondary actions folded in */}
+      {showTraining ? (
         <TrainingRecommendationCard
           title={t('today.trainingTitle')}
           meta={trainingMeta}
-          note={trainingNote(currentSession, rec?.training?.focus, dailyAdjustment?.note, t)}
+          note={trainingNote(currentSession, dailyAdjustment?.note, t)}
           intensity={intensityLabel(currentSession, t)}
-          cta={completion?.status === 'completed' ? t('today.completed') : t('today.markDone')}
-          completed={completion?.status === 'completed'}
-          onPress={currentSession && currentSession.kind !== 'rest' ? markTodayDone : undefined}
-        />
-      )}
-
-      {suggestedDowngrade?.adjusted ? (
-        <CoachInsightCard title={t('readiness.planAdjust')} body={downgradeText(currentSession, suggestedDowngrade.session)}>
-          <Button onPress={() => setTodaySession(suggestedDowngrade.session)}>{t('readiness.adjustToday')}</Button>
-        </CoachInsightCard>
+          cta={trainingCompleted ? t('today.completed') : currentSession?.second ? t('today.amDone') : t('today.markDone')}
+          completed={trainingCompleted}
+          onPress={trainingActive ? markTodayDone : undefined}
+        >
+          {trainingActive && (currentSession?.second || (!trainingCompleted && !trainingSkipped) || showFueling) ? (
+            <View style={styles.trainingExtras}>
+              {currentSession?.second || (!trainingCompleted && !trainingSkipped) ? (
+                <View style={styles.trainingActionRow}>
+                  {currentSession?.second ? (
+                    <ActionIconButton icon="checkmark-done-outline" label={t('today.pmDone')} onPress={markSecondDone} disabled={completion?.secondStatus === 'completed'} />
+                  ) : null}
+                  {!trainingCompleted && !trainingSkipped ? (
+                    <ActionIconButton icon="time-outline" label={t('today.noTime')} onPress={markNoTimeToday} />
+                  ) : null}
+                </View>
+              ) : null}
+              {showFueling ? (
+                <Text style={[styles.fuelLine, { color: colors.accent }]}>
+                  {t('home.longRunFueling', { carbs: Math.round(dailyAdjustment!.carbsDelta) })}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </TrainingRecommendationCard>
       ) : null}
 
+      {/* 6 — Nutrition: kcal + macros */}
+      {showNutrition ? (
+        <NutritionTargetCard
+          label={t('today.nutritionTitle')}
+          kcal={macros.kcal}
+          protein={macros.protein}
+          carbs={macros.carbs}
+          fat={macros.fat}
+          macroLabels={{ kcal: 'kcal', protein: t('home.protein'), carbs: t('home.carbs'), fat: t('home.fat') }}
+          dayLabel={trainingDay ? t('today.trainingDay') : t('today.restDayLabel')}
+          reason={rec?.nutrition?.reason ?? dailyAdjustment?.note}
+        />
+      ) : null}
+
+      {/* 7 — Recovery mini: metrics now, recommendation behind a tap */}
       <RecoveryCard
         title={t('today.recoveryTitle')}
         status={recoveryStatus(rec?.readiness.recommendedIntensity, t)}
+        detailsLabel={t('today.whyLabel')}
         metrics={[
           { label: t('home.sleep'), value: formatSleep(health.sleep?.totalMinutes), color: colors.ink },
           { label: t('home.restingHr'), value: health.restingHeartRate?.bpm ? `${health.restingHeartRate.bpm}` : '-', color: colors.ink },
@@ -245,56 +293,23 @@ export function TodayScreen() {
         recommendation={coaching.assessment?.recommendation ?? t('today.recoveryFallback')}
       />
 
-      {weekTips.length > 0 && !tipsDismissed ? (
-        <CoachInsightCard title={t('myweek.tipsTitle')} body={weekTips.map(tip => '• ' + tip).join('\n')} accent={colors.accent}>
-          <Button variant="secondary" onPress={() => setTipsDismissed(true)}>{t('myweek.tipsDismiss')}</Button>
-        </CoachInsightCard>
-      ) : null}
-
+      {/* 8 — Quick actions (max 4) */}
       <View style={styles.quickGrid}>
         <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => setShowCheckIn(true)} />
-        {showTraining && currentSession?.kind !== 'rest' ? (
-          currentSession?.second ? (
-            <>
-              <QuickActionButton icon="checkmark-circle-outline" label={t('today.amDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
-              <QuickActionButton icon="checkmark-done-outline" label={t('today.pmDone')} onPress={markSecondDone} disabled={completion?.secondStatus === 'completed'} />
-            </>
-          ) : (
-            <QuickActionButton icon="checkmark-circle-outline" label={t('today.workoutDone')} onPress={markTodayDone} disabled={completion?.status === 'completed'} />
-          )
-        ) : null}
-        {showTraining && currentSession?.kind !== 'rest' ? (
-          <QuickActionButton icon="time-outline" label={t('today.noTime')} onPress={markNoTimeToday} disabled={completion?.status === 'completed' || completion?.status === 'skipped'} />
-        ) : null}
         {showNutrition ? <QuickActionButton icon="restaurant-outline" label={t('today.simpleMeal')} onPress={() => navigation.navigate('Jídelníček')} /> : null}
-        <QuickActionButton icon="bed-outline" label={t('today.fatigued')} onPress={handleFatigue} />
+        {showTraining ? <QuickActionButton icon="bed-outline" label={t('today.fatigued')} onPress={handleFatigue} /> : null}
       </View>
 
-      {showTraining && (missedFeedbackVisible || completion?.status === 'skipped') ? (
-        <CoachInsightCard title={t('today.missedAdjustedTitle')} body={t('today.missedAdjustedBody')} accent={colors.orange}>
-          <Button variant="secondary" onPress={() => navigation.navigate('Trénink')}>{t('today.openTraining')}</Button>
-        </CoachInsightCard>
-      ) : null}
-
+      {/* 9 — Weekly mini progress (3 metrics) */}
       <WeeklyProgressCard
         title={t('today.weekTitle')}
         items={[
           { label: t('today.sessions'), value: `${week.completed}/${week.planned}`, color: colors.accent },
-          { label: t('today.skipped'), value: String(week.skipped), color: week.skipped ? colors.orange : colors.faint },
-          { label: t('today.protein'), value: `${proteinPct}%`, color: colors.green },
           { label: t('today.planAdherence'), value: currentMeals.length ? t('common.yes') : t('common.no'), color: currentMeals.length ? colors.green : colors.orange },
           { label: t('today.nextCheckIn'), value: nextCheckInLabel(selectedDate, locale), color: colors.blue },
         ]}
       />
 
-      {currentSession?.kind === 'long_run' && dailyAdjustment && dailyAdjustment.carbsDelta > 0 ? (
-        <MetricCard
-          label={t('workout.fuelingTitle')}
-          value={`+${Math.round(dailyAdjustment.carbsDelta)}g`}
-          detail={t('home.longRunFueling', { carbs: Math.round(dailyAdjustment.carbsDelta) })}
-          color={colors.accent}
-        />
-      ) : null}
       <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
     </Screen>
   );
@@ -314,12 +329,11 @@ function sessionMeta(session: TrainingSession | null, t: (key: TranslationKey) =
 
 function trainingNote(
   session: TrainingSession | null,
-  focus: string | undefined,
   adjustmentNote: string | undefined,
   t: (key: TranslationKey) => string,
 ): string {
   if (!session || session.kind === 'rest') return t('today.restNote');
-  return focus ? `${focus}. ${adjustmentNote ?? ''}`.trim() : adjustmentNote ?? session.notes ?? '';
+  return adjustmentNote ?? session.notes ?? '';
 }
 
 function bandColor(band: 'low' | 'medium' | 'high', palette: { accent: string; orange: string; red: string }): string {
@@ -376,11 +390,6 @@ function greeting(date: Date, t: (key: TranslationKey) => string): string {
   return t('today.greetingEvening');
 }
 
-function goalSummary(profile: UserProfile, t: (key: TranslationKey) => string): string {
-  if (profile.goalProfile?.summary) return profile.goalProfile.summary;
-  return t(`goal.${profile.primaryGoal}` as TranslationKey);
-}
-
 function intensityLabel(session: TrainingSession | null, t: (key: TranslationKey) => string): string {
   if (!session || session.kind === 'rest') return t('today.restDayLabel');
   if (session.intensity === 'hard') return 'RPE 8';
@@ -427,27 +436,32 @@ function weeklyCompletion(records: TrainingCompletionRecordMap, selectedDate: st
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 14 },
+  screen: { gap: 16 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 3 },
   greeting: { fontSize: 12, lineHeight: 16, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  headerTitle: { fontSize: 30, lineHeight: 36, fontWeight: '900' },
+  headerTitle: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
   headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  iconButton: { width: 46, height: 46, borderWidth: 1, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  matchRow: { flexDirection: 'row', marginBottom: 2 },
+  iconButton: { width: 44, height: 44, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  streakChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  streakText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  nudgeChipRow: { flexDirection: 'row' },
   matchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   matchText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 },
   heroCard: { gap: 14 },
   heroBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   heroCopy: { flex: 1, gap: 5 },
   focusLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  focusValue: { fontSize: 20, lineHeight: 25, fontWeight: '900' },
+  focusValue: { fontSize: 18, lineHeight: 23, fontWeight: '900' },
   coachNote: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
   decisionHint: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
   caution: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  todayFocus: { borderTopWidth: 1, paddingTop: 12, gap: 3 },
-  todayFocusLabel: { fontSize: 11, lineHeight: 15, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  todayFocusText: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
   disclaimer: { fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
+  focusLine: { gap: 4 },
+  focusLineLabel: { fontSize: 11, lineHeight: 15, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  focusLineText: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
+  trainingExtras: { gap: 10, marginTop: 2 },
+  trainingActionRow: { flexDirection: 'row', gap: 8 },
+  fuelLine: { fontSize: 12.5, lineHeight: 17, fontWeight: '800' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });
