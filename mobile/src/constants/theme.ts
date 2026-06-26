@@ -82,10 +82,11 @@ export const typography = {
   caption: 12,
   body: 14,
   bodyLarge: 16,
-  title: 20,
-  screenTitle: 30,
-  metric: 44,
-  heroMetric: 56,
+  subhead: 13, // calm, uppercase section titles
+  title: 17, // card titles
+  screenTitle: 22, // screen headers — quieter, mobile-first
+  metric: 32, // secondary big numbers
+  heroMetric: 44, // reserved for the single hero number (readiness score)
 };
 
 export const sizes = {
