@@ -1,15 +1,17 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function LoadingScreen() {
   const { colors, fonts } = useTheme();
+  const { t } = useLanguage();
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <View style={[styles.mark, { borderColor: colors.accent, backgroundColor: colors.accent + '14' }]}>
         <ActivityIndicator color={colors.accent} />
       </View>
       <Text style={[styles.brand, { color: colors.ink, fontFamily: fonts.display }]}>Trenr</Text>
-      <Text style={[styles.text, { color: colors.muted, fontFamily: fonts.bold }]}>Načítám tvého kouče...</Text>
+      <Text style={[styles.text, { color: colors.muted, fontFamily: fonts.bold }]}>{t('app.loading')}</Text>
     </View>
   );
 }

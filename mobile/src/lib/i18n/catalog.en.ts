@@ -12,6 +12,7 @@ function enDays(n: number): string {
 
 export const en: Record<TranslationKey, CatalogValue> = {
   // ── Common ────────────────────────────────────────────────────────────────
+  'app.loading': 'Loading your coach…',
   'common.save': 'Save',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
