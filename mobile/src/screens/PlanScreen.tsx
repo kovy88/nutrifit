@@ -253,7 +253,7 @@ export function PlanScreen() {
 
       {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
         <View style={{ marginBottom: 12, paddingHorizontal: 4 }}>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: colors.accent }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accent }}>
             {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
           </Text>
         </View>

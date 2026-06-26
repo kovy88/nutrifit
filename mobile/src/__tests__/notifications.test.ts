@@ -18,9 +18,9 @@ describe('createNotificationScheduler', () => {
     expect(perm).toBe('unavailable');
   });
 
-  it('mode=auto returns Noop today (no expo-notifications installed yet)', () => {
+  it('mode=auto returns Expo (expo-notifications is in package.json)', () => {
     const s = createNotificationScheduler('auto');
-    expect(s.name).toBe('noop');
+    expect(s.name).toBe('expo');
   });
 });
 

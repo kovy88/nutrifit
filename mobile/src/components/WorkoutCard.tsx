@@ -127,11 +127,11 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1 },
-  title: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
   subtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   sourceBadge: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metric: { minWidth: 76, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
   metricLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  metricValue: { fontSize: 14, fontWeight: '900', marginTop: 2 },
+  metricValue: { fontSize: 14, fontWeight: '700', marginTop: 2 },
 });

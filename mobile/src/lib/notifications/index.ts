@@ -31,8 +31,8 @@ export type NotificationMode = 'auto' | 'noop' | 'expo';
 export function createNotificationScheduler(mode: NotificationMode = 'auto'): NotificationScheduler {
   if (mode === 'expo') return new ExpoNotificationScheduler();
   if (mode === 'noop') return new NoopNotificationScheduler();
-  // auto: dnes vždy Noop. Po `expo install expo-notifications` přepni na 'expo'
-  // v hooks/useMorningBriefingSchedule. (Dynamický runtime check by vyžadoval
-  // async factory; jednodušší je explicit switch v jednom místě.)
-  return new NoopNotificationScheduler();
+  // auto: expo-notifications je v package.json → použij ExpoNotificationScheduler.
+  // ExpoNotificationScheduler dynamicky importuje modul a vrátí 'unavailable'
+  // pokud native plugin chybí (Expo Go bez custom buildu).
+  return new ExpoNotificationScheduler();
 }
