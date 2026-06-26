@@ -33,6 +33,7 @@ import { complementarySuggestions } from '../lib/coaching/complementarySuggestio
 import { planForDate, hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import type { TranslationKey } from '../lib/i18n';
 import { profileSetupCompleteness } from '../lib/onboarding/validation';
+import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
 
 export function TodayScreen() {
   const {
@@ -56,6 +57,8 @@ export function TodayScreen() {
   const [missedFeedbackVisible, setMissedFeedbackVisible] = useState(false);
   const [tipsDismissed, setTipsDismissed] = useState(false);
   const [deviceNudgeDismissed, setDeviceNudgeDismissed] = useState(false);
+  const [notifNudgeDismissed, setNotifNudgeDismissed] = useState(false);
+  const briefing = useMorningBriefingSchedule();
 
   if (!profile || !macros) return null;
 
@@ -128,6 +131,16 @@ export function TodayScreen() {
           <View style={styles.trainingActionRow}>
             <Button style={styles.actionButton} onPress={() => navigation.navigate('Settings')}>{t('today.deviceNudgeCta')}</Button>
             <Button style={styles.actionButton} variant="secondary" onPress={() => setDeviceNudgeDismissed(true)}>{t('common.close')}</Button>
+          </View>
+        </CoachInsightCard>
+      );
+    }
+    if (briefing.isReady && briefing.permission === 'undetermined' && !notifNudgeDismissed) {
+      return (
+        <CoachInsightCard title={t('today.notifNudgeTitle')} body={t('today.notifNudgeBody')} accent={colors.accent}>
+          <View style={styles.trainingActionRow}>
+            <Button style={styles.actionButton} onPress={async () => { await briefing.requestPermission(); setNotifNudgeDismissed(true); }}>{t('today.notifNudgeCta')}</Button>
+            <Button style={styles.actionButton} variant="secondary" onPress={() => setNotifNudgeDismissed(true)}>{t('common.skip')}</Button>
           </View>
         </CoachInsightCard>
       );
