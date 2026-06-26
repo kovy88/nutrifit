@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
@@ -55,6 +55,7 @@ export function TodayScreen() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [missedFeedbackVisible, setMissedFeedbackVisible] = useState(false);
   const [tipsDismissed, setTipsDismissed] = useState(false);
+  const [deviceNudgeDismissed, setDeviceNudgeDismissed] = useState(false);
 
   if (!profile || !macros) return null;
 
@@ -112,12 +113,22 @@ export function TodayScreen() {
   }
 
   // One prioritized nudge — at most a single card/chip, instead of stacking every
-  // conditional. Order: setup → match → empty week → readiness downgrade → missed → tips.
+  // conditional. Order: setup → device → match → empty week → readiness downgrade → missed → tips.
   const nudge = (() => {
     if (!setup.complete) {
       return (
         <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
           <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (health.isEmpty && !deviceNudgeDismissed) {
+      return (
+        <CoachInsightCard title={t('today.deviceNudgeTitle')} body={t('today.deviceNudgeBody')} accent={colors.blue}>
+          <View style={styles.trainingActionRow}>
+            <Button style={styles.actionButton} onPress={() => navigation.navigate('Settings')}>{t('today.deviceNudgeCta')}</Button>
+            <Button style={styles.actionButton} variant="secondary" onPress={() => setDeviceNudgeDismissed(true)}>{t('common.close')}</Button>
+          </View>
         </CoachInsightCard>
       );
     }
@@ -163,6 +174,16 @@ export function TodayScreen() {
     return null;
   })();
 
+  async function shareToday() {
+    if (!rec) return;
+    const message = t('today.shareText', {
+      score: rec.readiness.score,
+      band: bandLabel(rec.readiness.band, t),
+      headline: rec.headline,
+    });
+    await Share.share({ message });
+  }
+
   return (
     <Screen contentContainerStyle={styles.screen}>
       {/* 1 — Compact header */}
@@ -172,18 +193,27 @@ export function TodayScreen() {
           <Text style={[styles.headerTitle, { color: colors.ink }]}>{t('today.headerTitle')}</Text>
           <Text style={[styles.headerMeta, { color: colors.muted }]}>{formatFullDate(selectedDate, locale)}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('a11y.profile')}
-          hitSlop={10}
-          onPress={() => navigation.navigate('Profil')}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && { opacity: 0.7 },
-          ]}
-        >
-          <Ionicons name="person-circle-outline" size={24} color={colors.muted} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          {rec ? (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={10}
+              onPress={shareToday}
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="share-outline" size={22} color={colors.muted} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.profile')}
+            hitSlop={10}
+            onPress={() => navigation.navigate('Profil')}
+            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={colors.muted} />
+          </Pressable>
+        </View>
       </View>
 
       {logStreak >= 2 ? (
@@ -443,6 +473,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, lineHeight: 27, fontWeight: '700' },
   headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
   iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   streakChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   streakText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
   nudgeChipRow: { flexDirection: 'row' },
@@ -459,6 +490,7 @@ const styles = StyleSheet.create({
   disclaimer: { fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
   trainingExtras: { gap: 10, marginTop: 2 },
   trainingActionRow: { flexDirection: 'row', gap: 8 },
+  actionButton: { flex: 1 },
   fuelLine: { fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });
