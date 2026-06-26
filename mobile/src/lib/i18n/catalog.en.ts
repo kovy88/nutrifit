@@ -189,6 +189,7 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'today.notifNudgeCta': 'Enable notifications',
   'common.skip': 'Skip',
   'today.streak': ({ days }: Record<string, string | number>) => `${days}-day streak`,
+  'today.streakShareText': ({ days }: Record<string, string | number>) => `🔥 ${days}-day streak on Trenr. Consistency is a superpower.\n\ntrenr.app`,
   'today.completed': 'Completed',
   'today.notCompleted': 'Not marked completed yet',
   'today.completedTitle': 'Workout saved',

@@ -196,6 +196,7 @@ export const cs = {
   'today.notifNudgeCta': 'Zapnout notifikace',
   'common.skip': 'Přeskočit',
   'today.streak': ({ days }: Record<string, string | number>) => `${days} ${Number(days) === 1 ? 'den' : Number(days) >= 2 && Number(days) <= 4 ? 'dny' : 'dní'} v řadě`,
+  'today.streakShareText': ({ days }: Record<string, string | number>) => `🔥 ${days} dní v řadě na Trenr. Konzistence je superschopnost.\n\ntrenr.app`,
   'today.completed': 'Odtrénováno',
   'today.notCompleted': 'Zatím neoznačeno jako hotové',
   'today.completedTitle': 'Trénink uložen',

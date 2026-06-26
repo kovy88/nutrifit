@@ -197,6 +197,11 @@ export function TodayScreen() {
     await Share.share({ message });
   }
 
+  async function shareStreak() {
+    if (logStreak < 7) return;
+    await Share.share({ message: t('today.streakShareText', { days: logStreak }) });
+  }
+
   return (
     <Screen contentContainerStyle={styles.screen}>
       {/* 1 — Compact header */}
@@ -230,10 +235,16 @@ export function TodayScreen() {
       </View>
 
       {logStreak >= 2 ? (
-        <View style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}>
+        <Pressable
+          onPress={logStreak >= 7 ? shareStreak : undefined}
+          style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}
+          accessibilityRole={logStreak >= 7 ? 'button' : undefined}
+          accessibilityLabel={logStreak >= 7 ? t('today.streakShareText', { days: logStreak }) : undefined}
+        >
           <Ionicons name="flame" size={13} color={colors.orange} />
           <Text style={[styles.streakText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
-        </View>
+          {logStreak >= 7 ? <Ionicons name="share-outline" size={11} color={colors.orange} style={{ marginLeft: 2 }} /> : null}
+        </Pressable>
       ) : null}
 
       {/* 2 — Single prioritized nudge */}
