@@ -130,7 +130,7 @@ export function HistoryScreen() {
         body={describeAdherence(adherence.averageRatio, locale)}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
       />
-      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
         {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
           <Pressable
             key={item}

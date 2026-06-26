@@ -186,7 +186,7 @@ export function CoachScreen() {
 function PromptChip({ label, onPress }: { label: string; onPress: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.promptChip, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.promptChip, { borderColor: colors.hairline, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
       <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
       <Text style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
     </Pressable>

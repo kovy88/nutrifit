@@ -78,12 +78,12 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
             </View>
 
             {/* Source badge */}
-            <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
               {sourceLabel}
             </Text>
 
             {/* Big primary metric */}
-            <View style={[styles.primaryCol, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <View style={[styles.primaryCol, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
               <Metric
                 label={t('workout.duration')}
                 value={`${workout.durationMinutes} min`}
@@ -113,7 +113,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 
             {/* Fueling recommendation — pre/intra/post per workout intensity */}
             {fueling && (
-              <View style={[styles.fuelingBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+              <View style={[styles.fuelingBox, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
                 <Text style={[styles.fuelingTitle, { color: colors.ink }]}>{t('workout.fuelingTitle')}</Text>
                 <Text style={[styles.fuelingSummary, { color: colors.muted }]}>{fueling.summary}</Text>
                 {fueling.pre && (
@@ -174,7 +174,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 function Metric({ label, value, color, big }: { label: string; value: string; color: string; big?: boolean }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metric, { borderColor: colors.border, backgroundColor: colors.bgElev }, big && styles.metricBig]}>
+    <View style={[styles.metric, { borderColor: colors.hairline, backgroundColor: colors.bgElev }, big && styles.metricBig]}>
       <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
       <Text style={[big ? styles.metricValueBig : styles.metricValue, { color }]}>{value}</Text>
     </View>

@@ -56,7 +56,7 @@ export function MiniTrendChart({
 
   if (validPoints.length < 2) {
     return (
-      <View style={[styles.emptyBox, { borderColor: colors.border }]}>
+      <View style={[styles.emptyBox, { borderColor: colors.hairline }]}>
         <Text style={[styles.emptyText, { color: colors.faint }]}>
           {validPoints.length === 0 ? t('chart.noData') : t('chart.needTwoDays')}
         </Text>
