@@ -9,3 +9,6 @@ node_modules/
 # Expo native prebuild (CNG — regenerated via `expo prebuild`; not committed)
 mobile/ios/
 mobile/android/
+
+# Worktree symlink — mobile/node_modules links to repo root in worktrees
+mobile/node_modules
