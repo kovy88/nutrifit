@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
@@ -119,6 +120,16 @@ export function HistoryScreen() {
     navigation.navigate('Dnes');
   }
 
+  async function shareWeek() {
+    const message = t('history.shareWeekText', {
+      training: weeklyReview.completedSessions,
+      planned: weeklyReview.plannedSessions,
+      readiness: weeklyReview.averageReadiness ?? '-',
+      recommendation: t(weeklyReview.recommendationKey),
+    });
+    await Share.share({ message });
+  }
+
   const adherenceLabel = adherence.averageRatio == null ? '-' : `${Math.round(adherence.averageRatio * 100)}%`;
   const latestWeight = [...weightTrend].reverse().find(point => point.value != null)?.value;
 
@@ -159,7 +170,12 @@ export function HistoryScreen() {
           </Card>
 
           <Card>
-            <SectionHeader title={t('history.weeklyReview')} />
+            <View style={styles.cardHeaderRow}>
+              <SectionHeader title={t('history.weeklyReview')} />
+              <Pressable onPress={shareWeek} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('history.shareWeek')}>
+                <Ionicons name="share-outline" size={18} color={colors.muted} />
+              </Pressable>
+            </View>
             <View style={styles.metricGrid}>
               <MetricCard
                 label={t('history.weeklyTraining')}
@@ -251,6 +267,7 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   segment: { flexDirection: 'row', borderWidth: 0.5, borderRadius: 14, padding: 4, gap: 4 },
   segmentItem: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   segmentText: { fontSize: 13, fontWeight: '600' },

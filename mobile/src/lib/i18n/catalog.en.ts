@@ -585,6 +585,9 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'history.weeklyRecommendationConsistency': 'Prioritize consistency: a smaller plan, completed.',
   'history.weeklyRecommendationNutrition': 'Simplify meals and hold protein before adding detail.',
   'history.weeklyRecommendationHold': 'Keep the rhythm. Do not add volume until consistency repeats.',
+  'history.shareWeek': 'Share weekly review',
+  'history.shareWeekText': ({ training, planned, readiness, recommendation }: Record<string, string | number>) =>
+    `Trenr — My week 💪\nWorkouts: ${training}/${planned}\nReadiness: ${readiness}\n\n${recommendation}\n\ntrenr.app`,
   'history.logStreak': 'Logs',
   'history.targetStreak': 'On target',
   'history.tab.overview': 'Overview',

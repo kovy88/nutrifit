@@ -592,6 +592,9 @@ export const cs = {
   'history.weeklyRecommendationConsistency': 'Priorita je konzistence: menší plán, ale dokončit.',
   'history.weeklyRecommendationNutrition': 'Zjednoduš jídla a drž protein, než budeš přidávat detaily.',
   'history.weeklyRecommendationHold': 'Drž rytmus. Nepřidávej objem, dokud se opakuje konzistence.',
+  'history.shareWeek': 'Sdílet týdenní přehled',
+  'history.shareWeekText': ({ training, planned, readiness, recommendation }: Record<string, string | number>) =>
+    `Trenr — Můj týden 💪\nTréninky: ${training}/${planned}\nReadiness: ${readiness}\n\n${recommendation}\n\ntrenr.app`,
   'history.logStreak': 'Zápisy',
   'history.targetStreak': 'V cíli',
   'history.tab.overview': 'Přehled',
