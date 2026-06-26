@@ -487,7 +487,7 @@ function IconAction({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.mealAction, { borderColor: colors.hairline }, disabled && { opacity: 0.45 }]}>
+    <Pressable disabled={disabled} onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={[styles.mealAction, { borderColor: colors.hairline }, disabled && { opacity: 0.45 }]}>
       <Ionicons name={icon} size={18} color={colors.accent} />
       <Text style={[styles.mealActionText, { color: colors.ink }]}>{label}</Text>
     </Pressable>

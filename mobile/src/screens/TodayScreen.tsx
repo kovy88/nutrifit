@@ -215,6 +215,7 @@ export function TodayScreen() {
           {rec ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={t('a11y.share')}
               hitSlop={10}
               onPress={shareToday}
               style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}

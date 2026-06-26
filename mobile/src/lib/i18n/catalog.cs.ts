@@ -20,6 +20,7 @@ function czWorkout(n: number): string {
 export const cs = {
   // ── Common ────────────────────────────────────────────────────────────────
   'app.loading': 'Načítám tvého kouče…',
+  'a11y.share': 'Sdílet',
   'common.save': 'Uložit',
   'common.cancel': 'Zrušit',
   'common.close': 'Zavřít',

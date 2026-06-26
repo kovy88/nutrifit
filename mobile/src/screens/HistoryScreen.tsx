@@ -246,7 +246,9 @@ export function HistoryScreen() {
             summaries.slice(0, 14).map(item => (
               <Pressable
                 key={item.dateKey}
-                style={({ pressed }) => [styles.row, { borderBottomColor: colors.border }, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel={formatDateLabel(item.dateKey, locale)}
+                style={({ pressed }) => [styles.row, { borderBottomColor: colors.hairline }, pressed && { opacity: 0.7 }]}
                 onPress={() => handleSelectDay(item.dateKey)}
               >
                 <View style={{ flex: 1 }}>

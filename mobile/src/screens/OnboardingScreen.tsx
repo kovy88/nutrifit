@@ -145,7 +145,7 @@ export function OnboardingScreen() {
         footer={
           <View style={styles.welcomeFooterContent}>
             <Button onPress={() => setShowWelcome(false)}>{t('onb.getStarted')}</Button>
-            <Pressable onPress={async () => { await setProfile(DEFAULT_PROFILE); }} hitSlop={12}>
+            <Pressable onPress={async () => { await setProfile(DEFAULT_PROFILE); }} accessibilityRole="button" accessibilityLabel={t('onb.modeDemo')} hitSlop={12}>
               <Text style={[styles.demoLink, { color: colors.faint, fontFamily: fonts.medium }]}>{t('onb.modeDemo')}</Text>
             </Pressable>
           </View>
