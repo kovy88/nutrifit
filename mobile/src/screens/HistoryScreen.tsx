@@ -251,18 +251,18 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 4, gap: 4 },
+  segment: { flexDirection: 'row', borderWidth: 0.5, borderRadius: 14, padding: 4, gap: 4 },
   segmentItem: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: 13, fontWeight: '900' },
+  segmentText: { fontSize: 13, fontWeight: '600' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
-  meta: { fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
-  dateLabel: { fontSize: 15, fontWeight: '900' },
+  meta: { fontSize: 11, lineHeight: 15, fontWeight: '500', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '700', marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth },
+  dateLabel: { fontSize: 15, fontWeight: '600' },
   dateSub: { fontSize: 12, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
-  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
 });
 
 function currentWeekDates(selectedDate: string): string[] {

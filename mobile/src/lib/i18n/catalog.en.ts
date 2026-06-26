@@ -334,11 +334,12 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'diet.vysokoproteínový': 'High-protein',
 
   // ── Onboarding ────────────────────────────────────────────────────────────────
-  'onb.title': "Let's set up Trenr in a minute.",
-  'onb.subtitle': 'Pick a focus — you don’t have to fill in everything. A few questions and you have a daily plan.',
-  'onb.welcomePromise': 'Every morning you get one clear answer: eat, train, or back off.',
-  'onb.modeManual': 'Manual now',
-  'onb.modeDemo': 'Demo data',
+  ‘onb.title’: "Let’s set up Trenr in a minute.",
+  ‘onb.subtitle’: ‘Pick a focus — you don’t have to fill in everything. A few questions and you have a daily plan.’,
+  ‘onb.welcomePromise’: ‘Every morning you get one clear answer: eat, train, or back off.’,
+  ‘onb.getStarted’: ‘Get Started’,
+  ‘onb.modeManual’: ‘Manual now’,
+  ‘onb.modeDemo’: ‘Demo data’,
   'onb.modeHealth': 'Health later',
   'onb.focusQuestion': 'What do you want to use Trenr for?',
   'onb.goalQuestion': 'What is your main goal?',

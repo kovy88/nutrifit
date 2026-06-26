@@ -157,7 +157,7 @@ export function CoachScreen() {
                 styles.bubble,
                 m.role === 'user'
                   ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
-                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: 0.5, borderColor: colors.hairline },
               ]}
             >
               {m.role === 'coach' ? <StructuredCoachText text={m.text} /> : (
@@ -217,16 +217,16 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
 
 const styles = StyleSheet.create({
   contextGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  contextNote: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
+  contextNote: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  promptChip: { minHeight: 42, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
-  promptText: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  promptChip: { minHeight: 42, borderWidth: 0.5, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
+  promptText: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
-  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   structured: { gap: 6 },
-  coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '900' },
-  coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
   composer: { gap: 10 },
   disclaimer: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' },
 });

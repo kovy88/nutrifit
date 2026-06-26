@@ -344,6 +344,7 @@ export const cs = {
   'onb.title': 'Trenr nastavíme za minutu.',
   'onb.subtitle': 'Vyber si zaměření — nemusíš vyplňovat všechno. Pár otázek a máš denní plán.',
   'onb.welcomePromise': 'Každé ráno dostaneš jednu jasnou odpověď: jíst, trénovat, nebo ubrat.',
+  'onb.getStarted': 'Začít',
   'onb.modeManual': 'Ručně teď',
   'onb.modeDemo': 'Demo data',
   'onb.modeHealth': 'Health později',

@@ -41,17 +41,17 @@ export function createBottomNavigationOptions(
       paddingTop: 4,
     },
     tabBarStyle: {
-      borderTopColor: colors.border,
-      borderTopWidth: 1,
+      borderTopColor: colors.hairline,
+      borderTopWidth: 0.5,
       backgroundColor: colors.card,
       height: 74,
       paddingBottom: 10,
       paddingTop: 8,
       shadowColor: colors.shadow,
-      shadowOpacity: 1,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: -6 },
-      elevation: 12,
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: -4 },
+      elevation: 6,
     },
     tabBarIcon: ({ color, focused, size }) => {
       const item = items[route.name];

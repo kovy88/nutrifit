@@ -26,7 +26,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
       {isDark && (
         <LinearGradient
           pointerEvents="none"
-          colors={[colors.accent + '1f', colors.accent + '08', 'transparent']}
+          colors={[colors.accent + '14', colors.accent + '06', 'transparent']}
           locations={[0, 0.45, 1]}
           style={styles.glow}
         />
@@ -39,7 +39,7 @@ export function Screen({ children, footer, contentContainerStyle, scroll = true 
         ) : (
           <View style={[styles.content, styles.flex, contentContainerStyle]}>{content}</View>
         )}
-        {footer ? <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.bg }]}>{footer}</View> : null}
+        {footer ? <View style={[styles.footer, { borderTopColor: colors.hairline, backgroundColor: colors.bg }]}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -49,6 +49,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
   content: { padding: 20, gap: 16 },
-  footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
 });
