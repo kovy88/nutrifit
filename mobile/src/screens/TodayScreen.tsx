@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
@@ -7,9 +7,9 @@ import { WeeklyCheckInModal } from '../components/WeeklyCheckInModal';
 import {
   ActionIconButton,
   Button,
-  Card,
   CoachInsightCard,
   CollapsibleDetails,
+  Divider,
   EmptyState,
   LoadingState,
   NutritionTargetCard,
@@ -33,6 +33,8 @@ import { complementarySuggestions } from '../lib/coaching/complementarySuggestio
 import { planForDate, hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import type { TranslationKey } from '../lib/i18n';
 import { profileSetupCompleteness } from '../lib/onboarding/validation';
+import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
+import { useRatingPrompt } from '../hooks/useRatingPrompt';
 
 export function TodayScreen() {
   const {
@@ -55,6 +57,10 @@ export function TodayScreen() {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [missedFeedbackVisible, setMissedFeedbackVisible] = useState(false);
   const [tipsDismissed, setTipsDismissed] = useState(false);
+  const [deviceNudgeDismissed, setDeviceNudgeDismissed] = useState(false);
+  const [notifNudgeDismissed, setNotifNudgeDismissed] = useState(false);
+  const briefing = useMorningBriefingSchedule();
+  useRatingPrompt(logStreak ?? 0);
 
   if (!profile || !macros) return null;
 
@@ -112,12 +118,32 @@ export function TodayScreen() {
   }
 
   // One prioritized nudge — at most a single card/chip, instead of stacking every
-  // conditional. Order: setup → match → empty week → readiness downgrade → missed → tips.
+  // conditional. Order: setup → device → match → empty week → readiness downgrade → missed → tips.
   const nudge = (() => {
     if (!setup.complete) {
       return (
         <CoachInsightCard title={t('setup.title')} body={t('setup.body', { count: setup.missing.length })} accent={colors.blue}>
           <Button variant="secondary" onPress={() => navigation.navigate('Profil')}>{t('setup.cta')}</Button>
+        </CoachInsightCard>
+      );
+    }
+    if (health.isEmpty && !deviceNudgeDismissed) {
+      return (
+        <CoachInsightCard title={t('today.deviceNudgeTitle')} body={t('today.deviceNudgeBody')} accent={colors.blue}>
+          <View style={styles.trainingActionRow}>
+            <Button style={styles.actionButton} onPress={() => navigation.navigate('Settings')}>{t('today.deviceNudgeCta')}</Button>
+            <Button style={styles.actionButton} variant="secondary" onPress={() => setDeviceNudgeDismissed(true)}>{t('common.close')}</Button>
+          </View>
+        </CoachInsightCard>
+      );
+    }
+    if (briefing.isReady && briefing.permission === 'undetermined' && !notifNudgeDismissed) {
+      return (
+        <CoachInsightCard title={t('today.notifNudgeTitle')} body={t('today.notifNudgeBody')} accent={colors.accent}>
+          <View style={styles.trainingActionRow}>
+            <Button style={styles.actionButton} onPress={async () => { await briefing.requestPermission(); setNotifNudgeDismissed(true); }}>{t('today.notifNudgeCta')}</Button>
+            <Button style={styles.actionButton} variant="secondary" onPress={() => setNotifNudgeDismissed(true)}>{t('common.skip')}</Button>
+          </View>
         </CoachInsightCard>
       );
     }
@@ -163,35 +189,65 @@ export function TodayScreen() {
     return null;
   })();
 
+  async function shareToday() {
+    if (!rec) return;
+    const message = t('today.shareText', {
+      score: rec.readiness.score,
+      band: bandLabel(rec.readiness.band, t),
+      headline: rec.headline,
+    });
+    await Share.share({ message });
+  }
+
+  async function shareStreak() {
+    if (logStreak < 7) return;
+    await Share.share({ message: t('today.streakShareText', { days: logStreak }) });
+  }
+
   return (
     <Screen contentContainerStyle={styles.screen}>
       {/* 1 — Compact header */}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <Text style={[styles.greeting, { color: colors.accent }]}>{greeting(new Date(), t)}</Text>
+          <Text style={[styles.greeting, { color: colors.muted }]}>{greeting(new Date(), t)}</Text>
           <Text style={[styles.headerTitle, { color: colors.ink }]}>{t('today.headerTitle')}</Text>
           <Text style={[styles.headerMeta, { color: colors.muted }]}>{formatFullDate(selectedDate, locale)}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('a11y.profile')}
-          hitSlop={10}
-          onPress={() => navigation.navigate('Profil')}
-          style={({ pressed }) => [
-            styles.iconButton,
-            { borderColor: colors.border, backgroundColor: colors.bgElev },
-            pressed && { opacity: 0.8 },
-          ]}
-        >
-          <Ionicons name="person-circle-outline" size={23} color={colors.accent} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          {rec ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.share')}
+              hitSlop={10}
+              onPress={shareToday}
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="share-outline" size={22} color={colors.muted} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.profile')}
+            hitSlop={10}
+            onPress={() => navigation.navigate('Profil')}
+            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={colors.muted} />
+          </Pressable>
+        </View>
       </View>
 
       {logStreak >= 2 ? (
-        <View style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}>
+        <Pressable
+          onPress={logStreak >= 7 ? shareStreak : undefined}
+          style={[styles.streakChip, { borderColor: colors.orange, backgroundColor: colors.orange + '18' }]}
+          accessibilityRole={logStreak >= 7 ? 'button' : undefined}
+          accessibilityLabel={logStreak >= 7 ? t('today.streakShareText', { days: logStreak }) : undefined}
+        >
           <Ionicons name="flame" size={13} color={colors.orange} />
           <Text style={[styles.streakText, { color: colors.orange }]}>{t('today.streak', { days: logStreak })}</Text>
-        </View>
+          {logStreak >= 7 ? <Ionicons name="share-outline" size={11} color={colors.orange} style={{ marginLeft: 2 }} /> : null}
+        </Pressable>
       ) : null}
 
       {/* 2 — Single prioritized nudge */}
@@ -205,15 +261,14 @@ export function TodayScreen() {
         <EmptyState title={t('today.emptyCoachTitle')} body={t('today.emptyCoachBody')} />
       ) : null}
 
-      {/* 3 — Readiness hero: one score + one status line; the "why" lives behind a tap */}
+      {/* 3 — Readiness hero: centered ring, decision below, "why" behind a tap */}
       {rec ? (
-        <Card style={[styles.heroCard, { borderColor: readinessColor }]}>
-          <View style={styles.heroBody}>
-            <ScoreRing score={rec.readiness.score} label={bandLabel(rec.readiness.band, t)} color={readinessColor} size={112} />
-            <View style={styles.heroCopy}>
-              <Text style={[styles.focusLabel, { color: readinessColor }]}>{decision?.label ?? t('today.oneThing')}</Text>
-              <Text style={[styles.focusValue, { color: colors.ink }]}>{decision ? decision.title : rec.headline}</Text>
-            </View>
+        <View style={styles.heroSection}>
+          <ScoreRing score={rec.readiness.score} label={bandLabel(rec.readiness.band, t)} color={readinessColor} size={128} />
+          <View style={styles.heroDecision}>
+            <Text style={[styles.focusLabel, { color: readinessColor }]}>{decision?.label ?? t('today.oneThing')}</Text>
+            <Text style={[styles.focusValue, { color: colors.ink }]}>{decision ? decision.title : rec.headline}</Text>
+            {rec.training?.focus ? <Text style={[styles.heroFocus, { color: colors.muted }]} numberOfLines={2}>{rec.training.focus}</Text> : null}
           </View>
           <CollapsibleDetails label={t('today.whyLabel')}>
             <Text style={[styles.coachNote, { color: colors.muted }]}>{rec.coachNote}</Text>
@@ -221,18 +276,12 @@ export function TodayScreen() {
             {rec.training?.whatNotToDo ? <Text style={[styles.caution, { color: colors.orange }]}>{rec.training.whatNotToDo}</Text> : null}
             <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('today.readinessNote')}</Text>
           </CollapsibleDetails>
-        </Card>
-      ) : null}
-
-      {/* 4 — Today focus: one short sentence */}
-      {rec?.training?.focus ? (
-        <View style={styles.focusLine}>
-          <Text style={[styles.focusLineLabel, { color: colors.faint }]}>{t('today.focus')}</Text>
-          <Text style={[styles.focusLineText, { color: colors.ink }]} numberOfLines={2}>{rec.training.focus}</Text>
         </View>
       ) : null}
 
-      {/* 5 — Training: one card, one CTA, secondary actions folded in */}
+      <Divider />
+
+      {/* 4 — Training: one card, one CTA, secondary actions folded in */}
       {showTraining ? (
         <TrainingRecommendationCard
           title={t('today.trainingTitle')}
@@ -265,7 +314,9 @@ export function TodayScreen() {
         </TrainingRecommendationCard>
       ) : null}
 
-      {/* 6 — Nutrition: kcal + macros */}
+      {showTraining ? <Divider /> : null}
+
+      {/* 5 — Nutrition: kcal + macros */}
       {showNutrition ? (
         <NutritionTargetCard
           label={t('today.nutritionTitle')}
@@ -279,7 +330,9 @@ export function TodayScreen() {
         />
       ) : null}
 
-      {/* 7 — Recovery mini: metrics now, recommendation behind a tap */}
+      {showNutrition ? <Divider /> : null}
+
+      {/* 6 — Recovery: inline metrics, recommendation behind a tap */}
       <RecoveryCard
         title={t('today.recoveryTitle')}
         status={recoveryStatus(rec?.readiness.recommendedIntensity, t)}
@@ -293,14 +346,18 @@ export function TodayScreen() {
         recommendation={coaching.assessment?.recommendation ?? t('today.recoveryFallback')}
       />
 
-      {/* 8 — Quick actions (max 4) */}
+      <Divider />
+
+      {/* 7 — Quick actions (max 4) */}
       <View style={styles.quickGrid}>
         <QuickActionButton icon="pulse-outline" label={t('today.checkIn')} onPress={() => setShowCheckIn(true)} />
         {showNutrition ? <QuickActionButton icon="restaurant-outline" label={t('today.simpleMeal')} onPress={() => navigation.navigate('Jídelníček')} /> : null}
         {showTraining ? <QuickActionButton icon="bed-outline" label={t('today.fatigued')} onPress={handleFatigue} /> : null}
       </View>
 
-      {/* 9 — Weekly mini progress (3 metrics) */}
+      <Divider />
+
+      {/* 8 — Weekly mini progress (3 metrics) */}
       <WeeklyProgressCard
         title={t('today.weekTitle')}
         items={[
@@ -436,32 +493,31 @@ function weeklyCompletion(records: TrainingCompletionRecordMap, selectedDate: st
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 16 },
+  screen: { gap: 20 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 3 },
-  greeting: { fontSize: 12, lineHeight: 16, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  headerTitle: { fontSize: 22, lineHeight: 27, fontWeight: '900' },
-  headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  iconButton: { width: 44, height: 44, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  streakChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  streakText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  greeting: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  headerTitle: { fontSize: 22, lineHeight: 27, fontWeight: '700' },
+  headerMeta: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
+  iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  streakChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  streakText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
   nudgeChipRow: { flexDirection: 'row' },
-  matchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  matchText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 0.3 },
-  heroCard: { gap: 14 },
-  heroBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  heroCopy: { flex: 1, gap: 5 },
-  focusLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
-  focusValue: { fontSize: 18, lineHeight: 23, fontWeight: '900' },
-  coachNote: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  decisionHint: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
-  caution: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  matchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  matchText: { fontSize: 12.5, fontWeight: '600', letterSpacing: 0.2 },
+  heroSection: { alignItems: 'center', gap: 12 },
+  heroDecision: { alignItems: 'center', gap: 4 },
+  heroFocus: { fontSize: 13, lineHeight: 18, fontWeight: '400', textAlign: 'center' },
+  focusLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
+  focusValue: { fontSize: 18, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  coachNote: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
+  decisionHint: { fontSize: 12, lineHeight: 17, fontWeight: '400' },
+  caution: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
   disclaimer: { fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
-  focusLine: { gap: 4 },
-  focusLineLabel: { fontSize: 11, lineHeight: 15, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  focusLineText: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
   trainingExtras: { gap: 10, marginTop: 2 },
   trainingActionRow: { flexDirection: 'row', gap: 8 },
-  fuelLine: { fontSize: 12.5, lineHeight: 17, fontWeight: '800' },
+  actionButton: { flex: 1 },
+  fuelLine: { fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

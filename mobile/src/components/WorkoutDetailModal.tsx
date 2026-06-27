@@ -78,12 +78,12 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
             </View>
 
             {/* Source badge */}
-            <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
               {sourceLabel}
             </Text>
 
             {/* Big primary metric */}
-            <View style={[styles.primaryCol, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+            <View style={[styles.primaryCol, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
               <Metric
                 label={t('workout.duration')}
                 value={`${workout.durationMinutes} min`}
@@ -113,7 +113,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 
             {/* Fueling recommendation — pre/intra/post per workout intensity */}
             {fueling && (
-              <View style={[styles.fuelingBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+              <View style={[styles.fuelingBox, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
                 <Text style={[styles.fuelingTitle, { color: colors.ink }]}>{t('workout.fuelingTitle')}</Text>
                 <Text style={[styles.fuelingSummary, { color: colors.muted }]}>{fueling.summary}</Text>
                 {fueling.pre && (
@@ -174,7 +174,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 function Metric({ label, value, color, big }: { label: string; value: string; color: string; big?: boolean }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metric, { borderColor: colors.border, backgroundColor: colors.bgElev }, big && styles.metricBig]}>
+    <View style={[styles.metric, { borderColor: colors.hairline, backgroundColor: colors.bgElev }, big && styles.metricBig]}>
       <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
       <Text style={[big ? styles.metricValueBig : styles.metricValue, { color }]}>{value}</Text>
     </View>
@@ -217,14 +217,14 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   kindIcon: { width: 40, textAlign: 'center' },
   headerCol: { flex: 1, gap: 2 },
-  title: { fontSize: 22, fontWeight: '900' },
+  title: { fontSize: 22, fontWeight: '700' },
   dateTime: { fontSize: 13, fontWeight: '600' },
   sourceBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
     borderWidth: 1,
     borderRadius: 999,
     letterSpacing: 0.3,
@@ -245,15 +245,15 @@ const styles = StyleSheet.create({
   },
   metric: { minWidth: 100, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
   metricBig: { alignItems: 'center', minWidth: 0 },
-  metricLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
-  metricValue: { fontSize: 17, fontWeight: '900' },
-  metricValueBig: { fontSize: 28, fontWeight: '900' },
+  metricLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  metricValue: { fontSize: 17, fontWeight: '700' },
+  metricValueBig: { fontSize: 28, fontWeight: '700' },
   externalId: { fontSize: 11, fontFamily: 'System', marginTop: 8 },
   fuelingBox: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  fuelingTitle: { fontSize: 15, fontWeight: '900' },
+  fuelingTitle: { fontSize: 15, fontWeight: '700' },
   fuelingSummary: { fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
   fuelingRow: { gap: 2, marginTop: 6 },
-  fuelingLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3, textTransform: 'uppercase' },
-  fuelingValue: { fontSize: 14, fontWeight: '900' },
+  fuelingLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase' },
+  fuelingValue: { fontSize: 14, fontWeight: '700' },
   fuelingNote: { fontSize: 11, lineHeight: 15, marginTop: 2 },
 });

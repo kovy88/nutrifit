@@ -58,7 +58,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderColor: colors.border, backgroundColor: colors.card, shadowColor: colors.shadow },
+        { borderColor: colors.hairline, backgroundColor: colors.card, shadowColor: colors.shadow },
         pressed && onPress ? { opacity: 0.75 } : null,
       ]}
     >
@@ -70,7 +70,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
           <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>{dateLabel}</Text>
         </View>
-        <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+        <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
           {sourceBadge}
         </Text>
       </View>
@@ -93,7 +93,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metric, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+    <View style={[styles.metric, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
       <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
     </View>
@@ -127,11 +127,11 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1 },
-  title: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
   subtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   sourceBadge: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metric: { minWidth: 76, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
   metricLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  metricValue: { fontSize: 14, fontWeight: '900', marginTop: 2 },
+  metricValue: { fontSize: 14, fontWeight: '700', marginTop: 2 },
 });

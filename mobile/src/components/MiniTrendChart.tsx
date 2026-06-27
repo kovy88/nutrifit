@@ -56,7 +56,7 @@ export function MiniTrendChart({
 
   if (validPoints.length < 2) {
     return (
-      <View style={[styles.emptyBox, { borderColor: colors.border }]}>
+      <View style={[styles.emptyBox, { borderColor: colors.hairline }]}>
         <Text style={[styles.emptyText, { color: colors.faint }]}>
           {validPoints.length === 0 ? t('chart.noData') : t('chart.needTwoDays')}
         </Text>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   minMax: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 6 },
   dateLabel: { fontSize: 10, fontWeight: '700' },
-  latestLabel: { fontSize: 13, fontWeight: '900' },
+  latestLabel: { fontSize: 13, fontWeight: '700' },
   emptyBox: {
     height: 90,
     borderWidth: 1,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
@@ -119,6 +120,16 @@ export function HistoryScreen() {
     navigation.navigate('Dnes');
   }
 
+  async function shareWeek() {
+    const message = t('history.shareWeekText', {
+      training: weeklyReview.completedSessions,
+      planned: weeklyReview.plannedSessions,
+      readiness: weeklyReview.averageReadiness ?? '-',
+      recommendation: t(weeklyReview.recommendationKey),
+    });
+    await Share.share({ message });
+  }
+
   const adherenceLabel = adherence.averageRatio == null ? '-' : `${Math.round(adherence.averageRatio * 100)}%`;
   const latestWeight = [...weightTrend].reverse().find(point => point.value != null)?.value;
 
@@ -130,7 +141,7 @@ export function HistoryScreen() {
         body={describeAdherence(adherence.averageRatio, locale)}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
       />
-      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
         {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
           <Pressable
             key={item}
@@ -159,7 +170,12 @@ export function HistoryScreen() {
           </Card>
 
           <Card>
-            <SectionHeader title={t('history.weeklyReview')} />
+            <View style={styles.cardHeaderRow}>
+              <SectionHeader title={t('history.weeklyReview')} />
+              <Pressable onPress={shareWeek} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('history.shareWeek')}>
+                <Ionicons name="share-outline" size={18} color={colors.muted} />
+              </Pressable>
+            </View>
             <View style={styles.metricGrid}>
               <MetricCard
                 label={t('history.weeklyTraining')}
@@ -230,7 +246,9 @@ export function HistoryScreen() {
             summaries.slice(0, 14).map(item => (
               <Pressable
                 key={item.dateKey}
-                style={({ pressed }) => [styles.row, { borderBottomColor: colors.border }, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel={formatDateLabel(item.dateKey, locale)}
+                style={({ pressed }) => [styles.row, { borderBottomColor: colors.hairline }, pressed && { opacity: 0.7 }]}
                 onPress={() => handleSelectDay(item.dateKey)}
               >
                 <View style={{ flex: 1 }}>
@@ -251,18 +269,19 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 14, padding: 4, gap: 4 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  segment: { flexDirection: 'row', borderWidth: 0.5, borderRadius: 14, padding: 4, gap: 4 },
   segmentItem: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: 13, fontWeight: '900' },
+  segmentText: { fontSize: 13, fontWeight: '600' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
-  meta: { fontSize: 11, lineHeight: 15, fontWeight: '800', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
-  dateLabel: { fontSize: 15, fontWeight: '900' },
+  meta: { fontSize: 11, lineHeight: 15, fontWeight: '500', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '700', marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth },
+  dateLabel: { fontSize: 15, fontWeight: '600' },
   dateSub: { fontSize: 12, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
-  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
 });
 
 function currentWeekDates(selectedDate: string): string[] {

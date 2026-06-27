@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   dateSubText: {
     fontSize: 11,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayBtnText: {
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 12,
   },
 });

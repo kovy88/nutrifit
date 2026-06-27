@@ -32,7 +32,8 @@ import {
 export function OnboardingScreen() {
   const { setProfile } = useTrenr();
   const { t } = useLanguage();
-  const { colors } = useTheme();
+  const { colors, fonts } = useTheme();
+  const [showWelcome, setShowWelcome] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<UserProfile>(() => ({ ...DEFAULT_PROFILE, age: 0, height: 0, weight: 0 }));
   const [touchedFields, setTouchedFields] = useState<TouchedOnboardingFields>({});
@@ -47,6 +48,7 @@ export function OnboardingScreen() {
       if (!stored || cancelled) { hydrated.current = true; return; }
       const ageMs = Date.now() - new Date(stored.updatedAt).getTime();
       if (ageMs > 24 * 3600 * 1000) { await clearOnboardingDraft(); hydrated.current = true; return; }
+      setShowWelcome(false);
       setDraft(stored.draft);
       setGoalInput(stored.draft.goalProfile?.rawText ?? '');
       setStepIndex(Math.max(0, stored.step));
@@ -136,6 +138,28 @@ export function OnboardingScreen() {
     await clearOnboardingDraft();
   }
 
+  if (showWelcome) {
+    return (
+      <Screen
+        scroll={false}
+        footer={
+          <View style={styles.welcomeFooterContent}>
+            <Button onPress={() => setShowWelcome(false)}>{t('onb.getStarted')}</Button>
+            <Pressable onPress={async () => { await setProfile(DEFAULT_PROFILE); }} accessibilityRole="button" accessibilityLabel={t('onb.modeDemo')} hitSlop={12}>
+              <Text style={[styles.demoLink, { color: colors.faint, fontFamily: fonts.medium }]}>{t('onb.modeDemo')}</Text>
+            </Pressable>
+          </View>
+        }
+        contentContainerStyle={styles.welcomeScreen}
+      >
+        <View style={styles.welcomeHero}>
+          <Text style={[styles.welcomeBrand, { color: colors.ink, fontFamily: fonts.display }]}>Trenr</Text>
+          <Text style={[styles.welcomeTagline, { color: colors.muted, fontFamily: fonts.regular }]}>{t('onb.welcomePromise')}</Text>
+        </View>
+      </Screen>
+    );
+  }
+
   const footer = (
     <View style={styles.footer}>
       <View style={styles.actions}>
@@ -156,21 +180,6 @@ export function OnboardingScreen() {
 
       <H1>{questionFor(step, t)}</H1>
       <Subtitle>{t(helpKeyFor(step))}</Subtitle>
-      {step === 'focus' && (
-        <View style={[styles.welcomeBox, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-          <Text style={[styles.brand, { color: colors.accent }]}>Trenr</Text>
-          <Text style={[styles.welcomeCopy, { color: colors.ink }]}>{t('onb.welcomePromise')}</Text>
-          <View style={styles.modeRow}>
-            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeManual')}</Text>
-            <Pressable onPress={async () => {
-              await setProfile(DEFAULT_PROFILE);
-            }}>
-              <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeDemo')}</Text>
-            </Pressable>
-            <Text style={[styles.modePill, { color: colors.muted, borderColor: colors.border }]}>{t('onb.modeHealth')}</Text>
-          </View>
-        </View>
-      )}
 
       <View style={styles.options}>
         {step === 'focus' && SCOPE_OPTIONS.map(o => (
@@ -528,12 +537,15 @@ function experienceLabelKey(value: ExperienceLevel): TranslationKey {
 }
 
 const styles = StyleSheet.create({
+  // Welcome screen
+  welcomeScreen: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  welcomeHero: { alignItems: 'center', gap: 20, paddingHorizontal: 24 },
+  welcomeBrand: { fontSize: 56, lineHeight: 60, letterSpacing: -2 },
+  welcomeTagline: { fontSize: 17, lineHeight: 26, textAlign: 'center' },
+  welcomeFooterContent: { gap: 12 },
+  demoLink: { fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+  // Step screens
   screenContent: { paddingBottom: 8 },
-  welcomeBox: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 10 },
-  brand: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
-  welcomeCopy: { fontSize: 15, lineHeight: 21, fontWeight: '800' },
-  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  modePill: { borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, fontWeight: '800' },
   options: { gap: 10, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   bodyWrap: { gap: 12 },
@@ -541,12 +553,12 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10 },
   footerButton: { flex: 1 },
   disclaimer: { fontSize: 12, lineHeight: 18, marginTop: 12 },
-  fieldLabel: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
-  validationText: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
-  datePreview: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
-  feasibilityBox: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
-  feasibilityVerdict: { fontSize: 16, fontWeight: '900' },
-  feasibilityStats: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  fieldLabel: { fontSize: 12, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  validationText: { fontSize: 12, lineHeight: 17, fontWeight: '500', textAlign: 'center' },
+  datePreview: { fontSize: 13, lineHeight: 18, fontWeight: '500', textAlign: 'center' },
+  feasibilityBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, gap: 8 },
+  feasibilityVerdict: { fontSize: 16, fontWeight: '700' },
+  feasibilityStats: { fontSize: 12, lineHeight: 17, fontWeight: '600' },
   feasibilityReason: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  feasibilityRecommendation: { fontSize: 13, lineHeight: 18, fontWeight: '800', marginTop: 2 },
+  feasibilityRecommendation: { fontSize: 13, lineHeight: 18, fontWeight: '600', marginTop: 2 },
 });

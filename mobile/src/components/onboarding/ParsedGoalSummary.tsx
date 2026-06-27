@@ -7,7 +7,7 @@ export function ParsedGoalSummary({ goalProfile, t }: { goalProfile: GoalProfile
   const { colors, fonts } = useTheme();
   if (!goalProfile) {
     return (
-      <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+      <View style={[styles.box, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
         <Text style={[styles.text, { color: colors.muted, fontFamily: fonts.bold }]}>{t('onb.goalWaiting')}</Text>
       </View>
     );

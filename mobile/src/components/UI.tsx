@@ -37,7 +37,7 @@ export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
+          borderColor: colors.hairline,
           shadowColor: colors.shadow,
         },
         style,
@@ -210,7 +210,7 @@ export function ScreenHeader({
   return (
     <View style={styles.screenHeader}>
       {onBack ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
           <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
       ) : null}
@@ -228,10 +228,15 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
       {action}
     </View>
   );
+}
+
+export function Divider() {
+  const { colors } = useTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.hairline }]} />;
 }
 
 export function MetricCard({
@@ -252,7 +257,7 @@ export function MetricCard({
   const { colors, fonts } = useTheme();
   const accent = color ?? colors.accent;
   return (
-    <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
       <Text style={[styles.metricLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
       <View style={styles.metricValueRow}>
         <Text style={[styles.metricValue, compact && styles.metricValueCompact, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
@@ -338,19 +343,34 @@ export function NutritionTargetCard({
   dayLabel?: string;
 }) {
   const { colors, fonts } = useTheme();
+  const totalG = protein + carbs + fat || 1;
+  const macroItems = [
+    { label: macroLabels.protein, value: protein, color: colors.macroProtein },
+    { label: macroLabels.carbs, value: carbs, color: colors.macroCarb },
+    { label: macroLabels.fat, value: fat, color: colors.macroFat },
+  ];
   return (
     <Card>
       <View style={styles.cardTitleRow}>
-        <SectionHeader title={label} />
-        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent, backgroundColor: colors.accent + '16', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
+        <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{label}</Text>
+        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent + '44', backgroundColor: colors.accent + '12', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
       </View>
-      <View style={styles.metricGrid}>
-        <MetricCard label={macroLabels.kcal} value={kcal} color={colors.accent} />
-        <MetricCard label={macroLabels.protein} value={protein} unit="g" color={colors.macroProtein} />
-        <MetricCard label={macroLabels.carbs} value={carbs} unit="g" color={colors.macroCarb} />
-        <MetricCard label={macroLabels.fat} value={fat} unit="g" color={colors.macroFat} />
+      <View style={styles.kcalRow}>
+        <Text style={[styles.kcalValue, { color: colors.ink, fontFamily: fonts.number }]}>{kcal}</Text>
+        <Text style={[styles.kcalUnit, { color: colors.muted, fontFamily: fonts.medium }]}>{macroLabels.kcal}</Text>
       </View>
-      {reason ? <Subtitle>{reason}</Subtitle> : null}
+      <View style={styles.macroBarsRow}>
+        {macroItems.map(m => (
+          <View key={m.label} style={styles.macroBarItem}>
+            <View style={[styles.macroBarBg, { backgroundColor: colors.hairline }]}>
+              <View style={[styles.macroBarFill, { width: `${Math.round(m.value / totalG * 100)}%` as any, backgroundColor: m.color }]} />
+            </View>
+            <Text style={[styles.macroBarValue, { color: colors.ink, fontFamily: fonts.bold }]}>{m.value}g</Text>
+            <Text style={[styles.macroBarLabel, { color: colors.faint, fontFamily: fonts.medium }]}>{m.label}</Text>
+          </View>
+        ))}
+      </View>
+      {reason ? <Text style={[styles.nutritionReason, { color: colors.muted, fontFamily: fonts.regular }]}>{reason}</Text> : null}
     </Card>
   );
 }
@@ -380,7 +400,7 @@ export function TrainingRecommendationCard({
         <SectionHeader title={title} />
         {intensity ? <Text style={[styles.cardBadge, { color: colors.orange, borderColor: colors.orange, backgroundColor: colors.orange + '14', fontFamily: fonts.bold }]}>{intensity}</Text> : null}
       </View>
-      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.extraBold }]}>{meta}</Text>
+      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.bold }]}>{meta}</Text>
       {note ? <Text style={[styles.trainingNote, { color: colors.muted, fontFamily: fonts.regular }]}>{note}</Text> : null}
       {cta && onPress ? (
         <Button variant={completed ? 'secondary' : 'primary'} disabled={completed} onPress={onPress}>
@@ -410,12 +430,21 @@ export function RecoveryCard({
   return (
     <Card>
       <View style={styles.cardTitleRow}>
-        <SectionHeader title={title} />
-        {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue, backgroundColor: colors.blue + '14', fontFamily: fonts.bold }]}>{status}</Text> : null}
+        <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
+        {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue + '44', backgroundColor: colors.blue + '12', fontFamily: fonts.bold }]}>{status}</Text> : null}
       </View>
-      <View style={styles.metricGrid}>
-        {metrics.map(metric => (
-          <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} compact />
+      <View style={styles.recoveryMetricsRow}>
+        {metrics.map((metric, i) => (
+          <View
+            key={metric.label}
+            style={[
+              styles.recoveryMetricCell,
+              i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.recoveryMetricValue, { color: metric.color ?? colors.ink, fontFamily: fonts.number }]}>{metric.value}</Text>
+            <Text style={[styles.recoveryMetricLabel, { color: colors.faint, fontFamily: fonts.medium }]}>{metric.label}</Text>
+          </View>
         ))}
       </View>
       {detailsLabel ? (
@@ -469,14 +498,14 @@ export function PlanDayCard({
   const { colors, fonts } = useTheme();
 
   let backgroundColor = colors.card;
-  let borderColor = colors.border;
+  let borderColor = colors.hairline;
 
   if (selected) {
     backgroundColor = colors.accent + '18';
     borderColor = colors.accent;
   } else if (isRest) {
     backgroundColor = colors.bgElev;
-    borderColor = colors.border;
+    borderColor = colors.hairline;
   } else if (isLongRun) {
     backgroundColor = colors.accent + '06';
     borderColor = colors.accent + '60';
@@ -546,12 +575,12 @@ export function QuickActionButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.quickAction,
-        { borderColor: colors.border, backgroundColor: colors.bgElev },
+        { borderColor: colors.hairline, backgroundColor: colors.bgElev },
         pressed && !disabled && { opacity: 0.82 },
         disabled && { opacity: 0.45 },
       ]}
     >
-      <Ionicons name={icon} size={20} color={colors.accent} />
+      <Ionicons name={icon} size={20} color={colors.muted} />
       <Text style={[styles.quickActionText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
     </Pressable>
   );
@@ -636,7 +665,7 @@ export function SegmentedControl<T extends string>({
 }) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
       {options.map(option => {
         const active = option.value === value;
         return (
@@ -669,9 +698,9 @@ export function SettingRow({
 }>) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.settingRow, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.settingRow, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
       <View style={styles.settingText}>
-        <Text style={[styles.settingTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+        <Text style={[styles.settingTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
         {body ? <Text style={[styles.settingBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text> : null}
         {meta ? <Text style={[styles.settingMeta, { color: colors.faint, fontFamily: fonts.bold }]}>{meta}</Text> : null}
       </View>
@@ -700,7 +729,7 @@ export function SourceStatusCard({
 }) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.sourceCard, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.sourceCard, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
       <View style={styles.sourceCardHeader}>
         <Text style={[styles.sourceCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
         {status ? <StatusPill label={status} tone={statusTone} /> : null}
@@ -880,7 +909,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   label: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4 },
-  field: { minHeight: 50, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: typography.bodyLarge },
+  field: { minHeight: 50, borderWidth: 0.5, borderRadius: 12, paddingHorizontal: 14, fontSize: typography.bodyLarge },
   button: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   disabled: { opacity: 0.45 },
   buttonText: { fontSize: 15.5, letterSpacing: 0.2 },
@@ -894,14 +923,14 @@ const styles = StyleSheet.create({
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   screenHeaderText: { flex: 1, gap: 3 },
   screenHeaderAction: { alignItems: 'flex-end' },
-  screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
   screenTitle: { fontSize: typography.screenTitle, lineHeight: 27, letterSpacing: 0 },
   screenSubtitle: { fontSize: typography.body, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   sectionTitle: { fontSize: typography.subhead, lineHeight: 17, textTransform: 'uppercase', letterSpacing: 0.6 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metricCard: { flex: 1, minWidth: '47%', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
+  metricCard: { flex: 1, minWidth: '47%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
@@ -918,29 +947,29 @@ const styles = StyleSheet.create({
   trainingMeta: { fontSize: 18, lineHeight: 23 },
   trainingNote: { fontSize: 14, lineHeight: 20 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  cardBadge: { overflow: 'hidden', borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7 },
-  planDayCard: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
+  cardBadge: { overflow: 'hidden', borderWidth: 0.5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7 },
+  planDayCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 14, gap: 12 },
   planDayHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   planDayTitle: { fontSize: 16, lineHeight: 21 },
   planDaySubtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   markerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'flex-end' },
   marker: { fontSize: 10, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3, textTransform: 'uppercase' },
-  quickAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, flex: 1, minWidth: '47%' },
+  quickAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1, minWidth: '47%' },
   quickActionText: { fontSize: 13, lineHeight: 17 },
-  actionIconButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, flex: 1 },
+  actionIconButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1 },
   actionIconText: { fontSize: 13, lineHeight: 17 },
-  statusPill: { alignSelf: 'flex-start', fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7, borderWidth: 1, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
-  segmented: { flexDirection: 'row', borderWidth: 1, borderRadius: 16, padding: 4, gap: 4 },
+  statusPill: { alignSelf: 'flex-start', fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7, borderWidth: 0.5, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
+  segmented: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 4, gap: 4 },
   segment: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   segmentText: { fontSize: 13, lineHeight: 17, textAlign: 'center' },
-  settingRow: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
+  settingRow: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 10 },
   settingText: { flex: 1, gap: 3 },
   settingTitle: { fontSize: 15, lineHeight: 20 },
   settingBody: { fontSize: 13, lineHeight: 18 },
   settingMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
   settingAction: { alignSelf: 'flex-start' },
   settingChildren: { gap: 8 },
-  sourceCard: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
+  sourceCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 8 },
   sourceCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   sourceCardTitle: { flex: 1, fontSize: 15, lineHeight: 20 },
   sourceCardBody: { fontSize: 13, lineHeight: 18 },
@@ -962,4 +991,19 @@ const styles = StyleSheet.create({
   skeletonRow: { gap: 10, width: '100%' },
   skeletonBlock: { height: 88, borderRadius: 16, opacity: 0.8 },
   skeletonLine: { height: 14, width: '66%', alignSelf: 'center', borderRadius: 999, opacity: 0.8 },
+  divider: { height: StyleSheet.hairlineWidth },
+  kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  kcalValue: { fontSize: 38, lineHeight: 42, letterSpacing: -0.5 },
+  kcalUnit: { fontSize: 14, lineHeight: 18 },
+  macroBarsRow: { flexDirection: 'row', gap: 12 },
+  macroBarItem: { flex: 1, gap: 4 },
+  macroBarBg: { height: 2, borderRadius: 1, overflow: 'hidden' },
+  macroBarFill: { height: 2, borderRadius: 1 },
+  macroBarValue: { fontSize: 15, lineHeight: 20 },
+  macroBarLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  nutritionReason: { fontSize: 12, lineHeight: 17 },
+  recoveryMetricsRow: { flexDirection: 'row', marginVertical: 2 },
+  recoveryMetricCell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  recoveryMetricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },
+  recoveryMetricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
 });

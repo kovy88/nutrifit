@@ -227,10 +227,10 @@ export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<
   const request = buildWeeklySummaryRequest(input);
   const data = await postJsonWithRetry<any>('/api/generate', request);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI nevrátila žádný text.');
+  if (!text) throw new Error('No response from AI.');
   const parsed = parseJson(text);
   const summary = parseWeeklySummary(parsed) ?? parseWeeklySummarySafe(parsed);
-  if (!summary) throw new Error('AI vrátila neplatný JSON pro týdenní shrnutí.');
+  if (!summary) throw new Error('AI returned invalid data for weekly summary.');
   return summary;
 }
 
@@ -289,12 +289,12 @@ export async function askCoach(opts: {
 export async function callAiCoachProxy(request: { systemPrompt: string; prompt: string; maxTokens: number }): Promise<string> {
   const data = await postJsonWithRetry<any>('/api/generate', request);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI nevrátila žádný text.');
+  if (!text) throw new Error('No response from AI.');
   return text;
 }
 
 function parseJson(text: string) {
-  if (!text) throw new Error('AI nevrátila odpověď.');
+  if (!text) throw new Error('No AI response.');
   const cleaned = String(text).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
   return JSON.parse(cleaned);
 }
