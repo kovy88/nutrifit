@@ -34,6 +34,7 @@ import { planForDate, hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import type { TranslationKey } from '../lib/i18n';
 import { profileSetupCompleteness } from '../lib/onboarding/validation';
 import { useMorningBriefingSchedule } from '../hooks/useMorningBriefingSchedule';
+import { useRatingPrompt } from '../hooks/useRatingPrompt';
 
 export function TodayScreen() {
   const {
@@ -59,6 +60,7 @@ export function TodayScreen() {
   const [deviceNudgeDismissed, setDeviceNudgeDismissed] = useState(false);
   const [notifNudgeDismissed, setNotifNudgeDismissed] = useState(false);
   const briefing = useMorningBriefingSchedule();
+  useRatingPrompt(logStreak ?? 0);
 
   if (!profile || !macros) return null;
 
