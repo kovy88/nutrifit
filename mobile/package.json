@@ -35,7 +35,7 @@
     "expo-linking": "~56.0.12",
     "expo-notifications": "~56.0.14",
     "expo-secure-store": "~56.0.4",
-    "expo-store-review": "~56.0.2",
+    "expo-store-review": "~56.0.3",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
     "expo-updates": "~56.0.17",
