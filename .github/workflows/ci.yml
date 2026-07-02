@@ -18,7 +18,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # @supabase/supabase-js's realtime client needs the native WebSocket
+          # global, which Node only ships stable from v22 — Node 20 throws at
+          # import time (see PR #33 CI's first-ever failed run).
+          node-version: 22
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
