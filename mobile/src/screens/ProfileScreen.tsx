@@ -6,7 +6,7 @@ import { useTrenr } from '../context/TrenrContext';
 import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { deleteAccount, exportAccountData } from '../services/api';
-import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, TrainingGoalKind } from '../types';
+import type { CoachScope, DietStyle, NutritionMode, PlanIntensity, SyncStatus, TrainingGoalKind } from '../types';
 import { resolveCoachScope, scopeHasTraining } from '../types';
 import { activityFactorForSessions } from '../utils/nutrition';
 import { useWeeklySummary } from '../hooks/useWeeklySummary';
@@ -268,10 +268,10 @@ export function ProfileScreen() {
       )}
 
       {/* Account */}
-      <SectionCard title={t('profile.account')} summary={`${user?.email ?? t('profile.notSignedIn')} · ${syncStatus.status}`}>
+      <SectionCard title={t('profile.account')} summary={`${user?.email ?? t('profile.notSignedIn')} · ${syncStatusLabel(syncStatus.status, t)}`}>
         <Text style={[styles.copy, { color: colors.muted }]}>
-          Sync: {syncStatus.status}
-          {syncStatus.pendingWrites ? ` · pending ${syncStatus.pendingWrites}` : ''}
+          {t('profile.syncLabel')}: {syncStatusLabel(syncStatus.status, t)}
+          {syncStatus.pendingWrites ? ` · ${t('profile.syncPending', { n: syncStatus.pendingWrites })}` : ''}
           {syncStatus.lastSyncedAt ? ` · ${new Date(syncStatus.lastSyncedAt).toLocaleString()}` : ''}
         </Text>
         {syncStatus.error && <Text style={[styles.errorText, { color: colors.red }]}>{syncStatus.error}</Text>}
@@ -367,6 +367,15 @@ function parseOptionalInt(value: string, max: number): number | undefined {
 
 function setupMissingLabelKey(item: SetupMissingItem): TranslationKey {
   return `setup.missing.${item}` as TranslationKey;
+}
+
+function syncStatusLabel(status: SyncStatus, t: (key: TranslationKey) => string): string {
+  switch (status) {
+    case 'syncing': return t('profile.syncSyncing');
+    case 'offline': return t('profile.syncOffline');
+    case 'error':   return t('profile.syncError');
+    default:        return t('profile.syncIdle');
+  }
 }
 
 const styles = StyleSheet.create({

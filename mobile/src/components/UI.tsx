@@ -258,7 +258,7 @@ export function MetricCard({
   const accent = color ?? colors.accent;
   return (
     <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
-      <Text style={[styles.metricLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
+      <Text style={[styles.metricLabel, compact && styles.metricLabelCompact, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
       <View style={styles.metricValueRow}>
         <Text style={[styles.metricValue, compact && styles.metricValueCompact, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
         {unit ? <Text style={[styles.metricUnit, { color: colors.muted, fontFamily: fonts.bold }]}>{unit}</Text> : null}
@@ -933,6 +933,7 @@ const styles = StyleSheet.create({
   metricCard: { flex: 1, minWidth: '47%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
+  metricLabelCompact: { fontSize: 9, letterSpacing: 0.2 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   metricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },
   metricValueCompact: { fontSize: 18, lineHeight: 22 },

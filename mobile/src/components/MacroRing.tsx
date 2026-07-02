@@ -34,7 +34,7 @@ export function MacroRing({
     <View
       style={[
         styles.container,
-        { width: size, height: size },
+        { width: size, height: size, borderRadius: size / 2 },
         glow && {
           shadowColor: color,
           shadowOpacity: 0.55,
