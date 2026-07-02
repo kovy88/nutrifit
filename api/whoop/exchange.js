@@ -6,10 +6,11 @@
 //   2. Set redirect URL = https://nutri-fit-omega.vercel.app/whoop-callback.html
 //   3. Set Vercel env: WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET
 
-const { method, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await requireUser(req, res))) return;
 
   const clientId = process.env.WHOOP_CLIENT_ID;
   const clientSecret = process.env.WHOOP_CLIENT_SECRET;
@@ -23,6 +24,9 @@ module.exports = async function handler(req, res) {
   }
   if (!redirectUri) {
     return sendError(res, 400, 'missing_redirect_uri', 'Chybí `redirectUri` — musí přesně sedět s URL co Whoop appka má v dashboardu.');
+  }
+  if (!isAllowedRedirectUri(redirectUri)) {
+    return sendError(res, 400, 'invalid_redirect_uri', 'Neplatná `redirectUri`.');
   }
 
   const body = new URLSearchParams({

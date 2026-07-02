@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-05-27 → 2026-07-02.** Popisuje starou webovou appku (NutriPlan) z doby před přechodem na mobile-first (`mobile/`). Neaktuální — nepoužívej jako popis současného stavu. Aktuální architektura: [`docs/architecture.md`](../architecture.md).
+
 # NutriPlan — Brutální Audit
 
 Stav: branch `refactor/nutriplan-adaptive-v2`, 5577 LOC v `js/`, 70 testů.

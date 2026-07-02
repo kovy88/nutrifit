@@ -1,6 +1,7 @@
 // ── NÁKUPNÍ SEZNAM
 
 import { SHOP_CATEGORIES } from './state.js?v=9';
+import { esc } from './recipes.js?v=9';
 
 // Položky, které se nekupují (voda, koření v stopovém množství, dochucovadla)
 const TRIVIAL_KEYWORDS = [
@@ -92,7 +93,7 @@ export function buildShoppingList(meals) {
     group.innerHTML = `
       <div class="shop-group-label">${icon} ${cat}</div>
       <div class="shop-items-list">
-        ${items.map(item => `<div class="shop-item"><div class="shop-check"></div><span>${item}</span></div>`).join('')}
+        ${items.map(item => `<div class="shop-item"><div class="shop-check"></div><span>${esc(item)}</span></div>`).join('')}
       </div>`;
     group.querySelectorAll('.shop-item').forEach(el => {
       el.addEventListener('click', () => el.classList.toggle('checked'));

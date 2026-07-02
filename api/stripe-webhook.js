@@ -32,7 +32,13 @@ module.exports = async function handler(req, res) {
   }
 
   const stripeClient = stripe(STRIPE_SECRET_KEY);
-  const rawBody = await getRawBody(req);
+  let rawBody;
+  try {
+    rawBody = await getRawBody(req);
+  } catch (err) {
+    console.error('Stripe webhook: failed to read request body:', err.message);
+    return res.status(400).json({ error: 'Failed to read request body' });
+  }
   const sig = req.headers['stripe-signature'];
 
   let event;

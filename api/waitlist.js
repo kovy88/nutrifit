@@ -2,9 +2,7 @@
 // Inserts an email into the `waitlist` table via the service-role REST helper
 // (table has RLS on with no anon policies, so only this endpoint can write).
 
-const { method, rateLimit, sendError, supabaseRest } = require('./_lib/store-readiness');
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const { method, rateLimit, sendError, supabaseRest, isValidEmail } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -12,7 +10,7 @@ module.exports = async function handler(req, res) {
   if (!(await rateLimit(req, res, 'waitlist', 5))) return;
 
   const email = String(req.body?.email || '').trim().toLowerCase();
-  if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
+  if (!isValidEmail(email)) {
     return sendError(res, 400, 'invalid_email', 'Zadej platný e-mail.');
   }
 

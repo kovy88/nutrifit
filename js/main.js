@@ -4,7 +4,7 @@ import { appState, MEAL_NAMES, initAuthListener } from './state.js?v=9';
 import { updateNavAuth, openAuthModal, closeAuthModal, handleLogin, handleRegister, handleLogout, getCurrentUser } from './auth.js?v=8';
 import { calculate, startEdit, finishEdit, handleEditKey } from './calculator.js?v=9';
 import { toggleDayPlanner } from './dayplanner.js?v=9';
-import { generateMealPlan, closeRecipeModal, renderList } from './recipes.js?v=9';
+import { generateMealPlan, closeRecipeModal, renderList, esc } from './recipes.js?v=9';
 import { openProfileModal, closeProfileModal, saveProfile, loadProfileOnStart } from './profile.js?v=9';
 import { getUsageInfo, FREE_LIMIT } from './generation-limit.js?v=8';
 import { authHeaders } from './supabase.js?v=8';
@@ -1531,7 +1531,7 @@ function updateUsageBadge(info) {
           p.style.display = 'flex';
           p.style.alignItems = 'center';
           p.style.gap = '6px';
-          p.innerHTML = `<span><strong>Upozornění:</strong> ${warn}</span>`;
+          p.innerHTML = `<span><strong>Upozornění:</strong> ${esc(warn)}</span>`;
           warningsEl.appendChild(p);
         });
       }
