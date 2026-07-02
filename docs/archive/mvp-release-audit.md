@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-04 → 2026-07-02.** Popisuje appku před WHOOP-inspired redesignem a několika koly UX/i18n oprav. Většina P0 položek (Today jako hlavní obrazovka, weekly check-in, quick actions) je už hotová. Neber jako popis současného stavu. Aktuální architektura: [`docs/architecture.md`](../architecture.md).
+
 # NutriFit / Trenr MVP Release Audit
 
 Datum: 2026-06-04

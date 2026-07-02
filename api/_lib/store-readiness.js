@@ -2,6 +2,18 @@ const PROD_ORIGINS = [
   'https://nutri-fit-omega.vercel.app',
 ];
 
+/** OAuth callback bridge pages this backend will exchange a `code` against.
+ *  One per wearable provider — see mobile/src/lib/health/oauth/*.ts. */
+const ALLOWED_OAUTH_REDIRECT_URIS = [
+  'https://nutri-fit-omega.vercel.app/whoop-callback.html',
+  'https://nutri-fit-omega.vercel.app/oura-callback.html',
+  'https://nutri-fit-omega.vercel.app/garmin-callback.html',
+  'https://nutri-fit-omega.vercel.app/strava-callback.html',
+];
+function isAllowedRedirectUri(uri) {
+  return typeof uri === 'string' && ALLOWED_OAUTH_REDIRECT_URIS.includes(uri);
+}
+
 const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const fallbackHits = new Map();
 
@@ -164,6 +176,12 @@ async function supabaseRest(path, options = {}) {
   return response.json().catch(() => null);
 }
 
+/** Basic RFC-5322-ish email shape check + max length (254 = SMTP limit). */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(email) {
+  return typeof email === 'string' && email.length > 0 && email.length <= 254 && EMAIL_RE.test(email);
+}
+
 module.exports = {
   method,
   sendError,
@@ -171,4 +189,6 @@ module.exports = {
   requireUser,
   getRequester,
   supabaseRest,
+  isValidEmail,
+  isAllowedRedirectUri,
 };

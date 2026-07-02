@@ -1,6 +1,8 @@
 // Vercel serverless funkce — přidání emailu do Brevo listu
 // BREVO_API_KEY musí být nastaven v Environment Variables na Vercelu
 
+const { isValidEmail } = require('./_lib/store-readiness');
+
 module.exports = async function handler(req, res) {
   const allowedOrigins = [
     'https://nutri-fit-omega.vercel.app',
@@ -15,8 +17,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { email } = req.body || {};
-  if (!email || !email.includes('@') || !email.includes('.')) {
+  const email = String(req.body?.email || '').trim();
+  if (!isValidEmail(email)) {
     return res.status(400).json({ error: 'Neplatný e-mail.' });
   }
 

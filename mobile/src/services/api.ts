@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import { supabase } from './supabase';
+import { getAuthHeaders } from './supabase';
 import { buildAllergenRepairRequest, buildMealPlanRequest, buildSingleMealRequest, namesForMealCount } from '../utils/mealPrompts';
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
 import { parseAllergensFromFreeText, validateMealsAgainstAllergens } from '../lib/nutrition/allergens';
@@ -13,17 +13,12 @@ import type { Locale } from '../lib/i18n';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {};
-}
-
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(await authHeaders()),
+      ...(await getAuthHeaders()),
     },
     body: JSON.stringify(body),
   });
@@ -244,7 +239,7 @@ export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg'): Pr
 
 export async function exportAccountData() {
   const response = await fetch(`${apiBaseUrl}/api/export-data`, {
-    headers: await authHeaders(),
+    headers: await getAuthHeaders(),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) throw new Error(data.error?.message || 'Export dat se nepodařil.');
@@ -254,7 +249,7 @@ export async function exportAccountData() {
 export async function deleteAccount() {
   const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
     method: 'DELETE',
-    headers: await authHeaders(),
+    headers: await getAuthHeaders(),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) throw new Error(data.error?.message || 'Smazání účtu se nepodařilo.');

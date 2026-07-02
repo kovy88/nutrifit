@@ -16,6 +16,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
+import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
 
 const STATE_KEY = 'nutrifit.oauth.strava.state.v1';
@@ -95,7 +96,7 @@ export class StravaOAuth {
     try {
       exchangeRes = await fetch(EXCHANGE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ code: parsed.code }),
       });
     } catch {
@@ -127,7 +128,7 @@ export class StravaOAuth {
     try {
       res = await fetch(REFRESH_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ refreshToken: token.refreshToken }),
       });
     } catch {

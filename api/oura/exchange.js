@@ -6,10 +6,11 @@
 //                spo2 ring_configuration
 //   2. Set Vercel env: OURA_CLIENT_ID + OURA_CLIENT_SECRET
 
-const { method, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await requireUser(req, res))) return;
 
   const clientId = process.env.OURA_CLIENT_ID;
   const clientSecret = process.env.OURA_CLIENT_SECRET;
@@ -20,6 +21,7 @@ module.exports = async function handler(req, res) {
   const { code, redirectUri } = req.body || {};
   if (!code) return sendError(res, 400, 'missing_code', 'Chybí `code`.');
   if (!redirectUri) return sendError(res, 400, 'missing_redirect_uri', 'Chybí `redirectUri`.');
+  if (!isAllowedRedirectUri(redirectUri)) return sendError(res, 400, 'invalid_redirect_uri', 'Neplatná `redirectUri`.');
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',

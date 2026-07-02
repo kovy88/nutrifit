@@ -7,6 +7,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
+import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
 import { parseQuery } from './StravaOAuth';
 
@@ -73,7 +74,7 @@ export class OuraOAuth {
     try {
       res = await fetch(EXCHANGE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ code: parsed.code, redirectUri: BRIDGE_URL }),
       });
     } catch {
@@ -100,7 +101,7 @@ export class OuraOAuth {
     try {
       res = await fetch(REFRESH_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ refreshToken: token.refreshToken }),
       });
     } catch {
