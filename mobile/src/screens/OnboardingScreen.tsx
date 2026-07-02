@@ -16,6 +16,7 @@ import { clearOnboardingDraft, loadOnboardingDraft, saveOnboardingDraft } from '
 import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../lib/i18n';
 import { validateRaceGoalFeasibility } from '../lib/training/feasibility';
+import type { RaceFeasibilityReasonKey, RaceFeasibilityRecommendationKey } from '../lib/training/feasibility';
 import { trainingGoalsFor, isRunRaceGoal } from '../constants/goals';
 import { applyGoalProfileToUserProfile } from '../lib/onboarding/goal-profile-adapter';
 import type { GoalProfile } from '../types/goal-types';
@@ -31,7 +32,7 @@ import {
 
 export function OnboardingScreen() {
   const { setProfile } = useTrenr();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { colors, fonts } = useTheme();
   const [showWelcome, setShowWelcome] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
@@ -196,6 +197,7 @@ export function OnboardingScreen() {
           <GoalInputStep
             value={goalInput}
             goalProfile={draft.goalProfile}
+            locale={locale}
             onTextChange={setGoalInput}
             onGoalProfileChange={setGoalProfile}
             t={t}
@@ -366,10 +368,10 @@ export function OnboardingScreen() {
                 safe: feasibility.safePeakByRaceKm,
               })}
             </Text>
-            {(feasibility.reasons.length ? feasibility.reasons : [t('onb.feasibilityNoReasons')]).map((reason, index) => (
+            {(feasibility.reasons.length ? feasibility.reasons.map(r => t(feasibilityReasonKey(r))) : [t('onb.feasibilityNoReasons')]).map((reason, index) => (
               <Text key={`${reason}-${index}`} style={[styles.feasibilityReason, { color: colors.ink }]}>• {reason}</Text>
             ))}
-            <Text style={[styles.feasibilityRecommendation, { color: colors.muted }]}>{feasibility.recommendation}</Text>
+            <Text style={[styles.feasibilityRecommendation, { color: colors.muted }]}>{t(feasibilityRecommendationKey(feasibility.recommendation))}</Text>
             {feasibility.verdict === 'unrealistic' && (
               <>
                 <Button variant="secondary" onPress={() => {
@@ -511,6 +513,14 @@ function feasibilityLabelKey(verdict: 'feasible' | 'tight' | 'unrealistic'): Tra
     : verdict === 'tight'
       ? 'onb.feasibilityTight'
       : 'onb.feasibilityUnrealistic';
+}
+
+function feasibilityReasonKey(reason: RaceFeasibilityReasonKey): TranslationKey {
+  return `onb.feasibilityReason.${reason}` as TranslationKey;
+}
+
+function feasibilityRecommendationKey(recommendation: RaceFeasibilityRecommendationKey): TranslationKey {
+  return `onb.feasibilityRecommendation.${recommendation}` as TranslationKey;
 }
 
 function verdictColor(verdict: 'feasible' | 'tight' | 'unrealistic', colors: ReturnType<typeof useTheme>['colors']): string {

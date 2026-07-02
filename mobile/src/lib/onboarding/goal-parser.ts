@@ -1,3 +1,4 @@
+import type { Locale } from '../i18n';
 import type { GoalParseResult, GoalProfile, GoalQuickStart, NutritionMode, PrimaryGoal, RaceGoal } from '../../types/goal-types';
 import { withGoalProfileDefaults } from './goal-schema';
 
@@ -10,14 +11,19 @@ type GoalSignal = {
 };
 
 export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
-  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.' },
-  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.' },
-  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.' },
-  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.' },
-  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.' },
-  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.' },
-  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.' },
+  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', textCs: 'Chci zhubnout tuk.' },
+  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', textCs: 'Chci zlepšit kondici.' },
+  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', textCs: 'Chci uběhnout 5 km.' },
+  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', textCs: 'Chci uběhnout 10 km.' },
+  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', textCs: 'Chci uběhnout půlmaraton.' },
+  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', textCs: 'Chci nabrat svaly.' },
+  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', textCs: 'Chci jíst zdravěji.' },
 ];
+
+/** Locale-appropriate seed text for a quick-start chip. */
+export function goalQuickStartText(quickStart: GoalQuickStart, locale: Locale): string {
+  return locale === 'cs' ? quickStart.textCs : quickStart.text;
+}
 
 export function parseGoalText(rawText: string): GoalParseResult {
   const text = normalize(rawText);

@@ -1,6 +1,7 @@
 import type { PrimaryGoal, TrainingGoalKind, UserProfile } from '../../types';
 import { peakWeeklyKm, progressVolume } from './plan';
 import { validateRaceGoalFeasibility as coreValidateRaceGoalFeasibility } from './training-core';
+import type { RaceFeasibilityReasonKey, RaceFeasibilityRecommendationKey } from './training-core';
 
 const RUN_RACE_GOALS: TrainingGoalKind[] = ['couch_to_5k', 'run_5k', 'run_10k', 'half_marathon', 'marathon'];
 const FITNESS_EVENT_GOALS: TrainingGoalKind[] = ['sports_conditioning', 'hyrox', 'ocr', 'sprint_triathlon', 'olympic_triathlon', 'half_ironman', 'full_ironman'];
@@ -60,14 +61,16 @@ export type RaceFeasibilityInput = {
 
 export type RaceFeasibilityVerdict = 'feasible' | 'tight' | 'unrealistic';
 
+export type { RaceFeasibilityReasonKey, RaceFeasibilityRecommendationKey } from './training-core';
+
 export type RaceFeasibilityResult = {
   verdict: RaceFeasibilityVerdict;
   weeksUntilRace: number;
   requiredPeakKm: number;
   currentBaseKm: number;
   safePeakByRaceKm: number;
-  reasons: string[];
-  recommendation: string;
+  reasons: RaceFeasibilityReasonKey[];
+  recommendation: RaceFeasibilityRecommendationKey;
 };
 
 export function validateRaceGoalFeasibility(input: RaceFeasibilityInput): RaceFeasibilityResult {

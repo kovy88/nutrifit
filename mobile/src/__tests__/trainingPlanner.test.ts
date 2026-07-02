@@ -356,7 +356,7 @@ describe('Running Goals & Support Core Checks', () => {
       todayISO: '2026-01-01',
     });
     expect(res.verdict).toBe('unrealistic');
-    expect(res.reasons.some(r => r.includes('historie') || r.includes('začátečník') || r.includes('experience') || r.includes('běžecký základ') || r.includes('Marathon') || r.includes('blocked'))).toBe(true);
+    expect(res.reasons).toContain('marathon_no_base_volume');
   });
 
   it('weekly volume progression handles deload weeks', () => {

@@ -76,6 +76,9 @@ export function buildOnboardingSteps(
   const hasExperience = Boolean(goalProfile?.experienceLevel);
   const hasWeeklyKm = Boolean(goalProfile?.currentWeeklyKm);
   const hasLongestRun = Boolean(goalProfile?.longestRecentRunKm);
+  const hasRunsPerWeek = Boolean(goalProfile?.runsPerWeek);
+  // Booleans: `false` is a valid answer, so check "answered" via undefined, not truthiness.
+  const hasRunLimits = goalProfile?.injuryFlag !== undefined && goalProfile?.runWalkPreferred !== undefined;
   const hasRaceDate = Boolean(goalProfile?.raceDateISO && /^\d{4}-\d{2}-\d{2}$/.test(goalProfile.raceDateISO));
   const training: StepId[] = [
     'focus',
@@ -86,8 +89,8 @@ export function buildOnboardingSteps(
     ...(running ? [
       ...(!hasWeeklyKm ? ['weeklyKm' as StepId] : []),
       ...(!hasLongestRun ? ['longestRun' as StepId] : []),
-      'runFrequency' as StepId,
-      'runLimits' as StepId,
+      ...(!hasRunsPerWeek ? ['runFrequency' as StepId] : []),
+      ...(!hasRunLimits ? ['runLimits' as StepId] : []),
     ] : []),
     ...(race ? [
       ...(!hasRaceDate ? ['raceDate' as StepId] : []),
