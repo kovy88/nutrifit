@@ -61,7 +61,10 @@ export type GoalQuickStart = {
   id: PrimaryGoal;
   labelKey: string;
   subtitleKey: string;
+  /** English seed text — used by tests and as the `en` locale value. */
   text: string;
+  /** Czech seed text, shown/written when the app locale is `cs`. */
+  textCs: string;
 };
 
 export type GoalParseResult = {
