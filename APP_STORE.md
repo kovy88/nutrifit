@@ -30,7 +30,6 @@ Ask anything: "Why am I tired this week?", "What should I eat before my race?", 
 - WHOOP
 - Garmin Connect
 - Strava
-- Polar Flow, Fitbit
 
 No device? Trenr still works — manual logging gives you the nutrition and training features from day one.
 
