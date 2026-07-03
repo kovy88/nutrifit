@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createHealthDataProvider,
   ManualHealthDataProvider,
   MockHealthDataProvider,
 } from '../lib/health';
 import type {
-  BodyWeightSample,
   DailyActivitySummary,
   HrvSample,
   RestingHeartRateSample,

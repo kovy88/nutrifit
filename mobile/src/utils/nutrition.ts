@@ -1,9 +1,7 @@
 import type {
   DailyAdjustment,
-  ExperienceLevel,
   FoodEstimate,
   FoodLogItem,
-  Gender,
   Macros,
   Meal,
   MealPlanValidationResult,
@@ -11,7 +9,6 @@ import type {
   NutritionGoalKind,
   NutritionMode,
   PrimaryGoal,
-  TrainingGoalKind,
   TrainingSession,
   UserProfile,
   ShoppingListGroup,

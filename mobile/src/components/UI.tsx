@@ -420,7 +420,7 @@ export function RecoveryCard({
   detailsLabel,
 }: {
   title: string;
-  metrics: Array<{ label: string; value: string; color?: string }>;
+  metrics: { label: string; value: string; color?: string }[];
   recommendation: string;
   status?: string;
   /** When set, the recommendation copy is tucked behind a collapsible "why" toggle. */
@@ -463,7 +463,7 @@ export function WeeklyProgressCard({
   items,
 }: {
   title: string;
-  items: Array<{ label: string; value: string; color?: string }>;
+  items: { label: string; value: string; color?: string }[];
 }) {
   return (
     <Card>
@@ -660,7 +660,7 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: {
   value: T;
-  options: Array<{ value: T; label: string }>;
+  options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) {
   const { colors, fonts } = useTheme();
@@ -865,6 +865,8 @@ export function FadeInView({
   duration?: number;
   style?: any;
 }>) {
+  /* eslint-disable react-hooks/refs -- Animated.Value refs are stable mutable
+     animation drivers meant to be read directly here, not React render state. */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
 
@@ -890,6 +892,7 @@ export function FadeInView({
       {children}
     </Animated.View>
   );
+  /* eslint-enable react-hooks/refs */
 }
 
 const styles = StyleSheet.create({

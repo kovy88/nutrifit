@@ -158,6 +158,7 @@ export async function sha256Base64Url(input: string): Promise<string> {
   try {
     // @ts-ignore — optional native dep, not a declared dependency; falls
     // through to the pure-JS SHA256 below if it isn't installed/resolvable.
+    // eslint-disable-next-line import/no-unresolved -- intentionally optional, see above
     const mod = await import('expo-crypto');
     if (mod?.digestStringAsync) {
       const hash = await mod.digestStringAsync(mod.CryptoDigestAlgorithm.SHA256, input, { encoding: mod.CryptoEncoding.BASE64 });

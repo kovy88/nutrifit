@@ -159,6 +159,6 @@ function buildHealthDataSummary(input: {
   };
 }
 
-function uniqueSources(values: Array<HealthDataSource | undefined>): HealthDataSource[] {
+function uniqueSources(values: (HealthDataSource | undefined)[]): HealthDataSource[] {
   return Array.from(new Set(values.filter((v): v is HealthDataSource => Boolean(v))));
 }

@@ -310,7 +310,7 @@ export function ProfileScreen() {
   );
 }
 
-const trainingGoals: Array<{ value: TrainingGoalKind; labelKey: TranslationKey }> = [
+const trainingGoals: { value: TrainingGoalKind; labelKey: TranslationKey }[] = [
   { value: 'general_fitness', labelKey: 'trainingGoal.general_fitness' },
   { value: 'walking_more', labelKey: 'trainingGoal.walking_more' },
   { value: 'couch_to_5k', labelKey: 'trainingGoal.couch_to_5k' },
@@ -321,7 +321,7 @@ const trainingGoals: Array<{ value: TrainingGoalKind; labelKey: TranslationKey }
   { value: 'hyrox', labelKey: 'trainingGoal.hyrox' },
 ];
 
-const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
+const nutritionModes: { value: NutritionMode; labelKey: TranslationKey }[] = [
   { value: 'balanced', labelKey: 'nutritionMode.balanced' },
   { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
   { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
@@ -331,7 +331,7 @@ const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> 
   { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
 ];
 
-const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
+const planIntensities: { value: PlanIntensity; labelKey: TranslationKey }[] = [
   { value: 'easy', labelKey: 'planIntensity.easy' },
   { value: 'moderate', labelKey: 'planIntensity.moderate' },
   { value: 'ambitious_but_safe', labelKey: 'planIntensity.ambitious_but_safe' },

@@ -14,12 +14,13 @@ export type RecentWorkoutsState = {
   refresh: () => Promise<void>;
 };
 
+type RecentWorkoutsData = Pick<RecentWorkoutsState, 'workouts' | 'isLoading'>;
+
 export function useRecentWorkouts(days = 14): RecentWorkoutsState {
   const provider = useHealthDataProvider();
-  const [state, setState] = useState<RecentWorkoutsState>({
+  const [state, setState] = useState<RecentWorkoutsData>({
     workouts: [],
     isLoading: true,
-    refresh: async () => {},
   });
 
   const refresh = useCallback(async () => {
@@ -31,9 +32,9 @@ export function useRecentWorkouts(days = 14): RecentWorkoutsState {
       const list = await provider.getWorkoutSummaries(start, end);
       // Newest first.
       const sorted = list.slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-      setState({ workouts: sorted, isLoading: false, refresh });
+      setState({ workouts: sorted, isLoading: false });
     } catch {
-      setState({ workouts: [], isLoading: false, refresh });
+      setState({ workouts: [], isLoading: false });
     }
   }, [provider, days]);
 
@@ -41,5 +42,5 @@ export function useRecentWorkouts(days = 14): RecentWorkoutsState {
     void refresh();
   }, [refresh]);
 
-  return state;
+  return { ...state, refresh };
 }

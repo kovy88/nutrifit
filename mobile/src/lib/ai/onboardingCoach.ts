@@ -57,7 +57,7 @@ export type OnboardingCoachReply = {
   reply: string;
   extracted: OnboardingExtractedFields;
   confidence: 'low' | 'medium' | 'high';
-  missingFields: Array<keyof OnboardingExtractedFields>;
+  missingFields: (keyof OnboardingExtractedFields)[];
 };
 
 const COACH_SCOPE_VALUES: CoachScope[] = ['both', 'training', 'nutrition'];

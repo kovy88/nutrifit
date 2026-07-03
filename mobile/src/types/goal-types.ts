@@ -78,7 +78,7 @@ export type FollowUpQuestion =
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: RaceGoal; labelKey: string }>;
+      options: { value: RaceGoal; labelKey: string }[];
     }
   | {
       id: 'raceDateISO' | 'dietPreferences';
@@ -99,26 +99,26 @@ export type FollowUpQuestion =
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: ExperienceLevel; labelKey: string }>;
+      options: { value: ExperienceLevel; labelKey: string }[];
     }
   | {
       id: 'trainingEnvironment';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: TrainingEnvironment; labelKey: string }>;
+      options: { value: TrainingEnvironment; labelKey: string }[];
     }
   | {
       id: 'mainWellbeingBlocker';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: WellbeingBlocker; labelKey: string }>;
+      options: { value: WellbeingBlocker; labelKey: string }[];
     }
   | {
       id: 'injuryFlag' | 'gymStrengthAvailable' | 'runWalkPreferred';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: boolean; labelKey: string }>;
+      options: { value: boolean; labelKey: string }[];
     };

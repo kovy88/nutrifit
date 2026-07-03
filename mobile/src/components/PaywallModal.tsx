@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Button, Card, FadeInView } from './UI';
+import { Button, FadeInView } from './UI';
 
 interface PaywallModalProps {
   visible: boolean;

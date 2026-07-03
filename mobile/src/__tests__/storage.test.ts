@@ -7,7 +7,6 @@ import {
   loadFoodLogsByDate,
   saveFoodLogForDate,
   loadSessionsByDate,
-  saveSessionForDate,
   listStoredDates,
   runMigration,
   loadCoachThreadsByDate,
@@ -17,10 +16,9 @@ import {
   saveDailyCoachRecommendationForDate,
   saveTrainingCompletionForDate,
 } from '../services/storage';
-import { toDateKey } from '../utils/nutrition';
+import { toDateKey , DEFAULT_PROFILE, calculateMacros } from '../utils/nutrition';
 import type { Meal, FoodLogItem } from '../types';
 import { generateDailyCoachRecommendation } from '../lib/coaching/dailyCoach';
-import { DEFAULT_PROFILE, calculateMacros } from '../utils/nutrition';
 
 vi.mock('@react-native-async-storage/async-storage', () => {
   const store: Record<string, string> = {};

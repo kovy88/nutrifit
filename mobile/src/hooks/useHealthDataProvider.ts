@@ -16,11 +16,13 @@ export function useHealthDataProvider(): HealthDataProvider {
   const { profile } = useTrenr();
   const weightKg = profile?.weight ?? 75;
   const mode = profile?.healthProviderMode ?? 'auto';
+  // Providers are stateless w.r.t. weight beyond the mock seed — bucket into
+  // steps of ~2kg so the memo only re-creates on substantial weight change.
+  const weightBucket = Math.round(weightKg / 2);
 
   return useMemo(
     () => createHealthDataProvider({ mode, weightKg }),
-    // Note: providers are stateless w.r.t. weight beyond the mock seed —
-    // only re-create on substantial weight change (>2 kg) or mode change to avoid churn.
-    [mode, Math.round(weightKg / 2)],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- weightBucket intentionally stands in for weightKg, see comment above
+    [mode, weightBucket],
   );
 }

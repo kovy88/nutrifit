@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   AsyncStorageTokenStore,
   CompositeHealthDataProvider,
