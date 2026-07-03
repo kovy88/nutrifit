@@ -15,12 +15,13 @@ export type StrainTrendState = {
   refresh: () => Promise<void>;
 };
 
+type StrainTrendData = Pick<StrainTrendState, 'data' | 'isLoading'>;
+
 export function useStrainTrend(days = 14): StrainTrendState {
   const provider = useHealthDataProvider();
-  const [state, setState] = useState<StrainTrendState>({
+  const [state, setState] = useState<StrainTrendData>({
     data: [],
     isLoading: true,
-    refresh: async () => {},
   });
 
   const refresh = useCallback(async () => {
@@ -49,9 +50,9 @@ export function useStrainTrend(days = 14): StrainTrendState {
         const value = strain.workoutCount > 0 ? strain.score : null;
         points.push({ date: toDateKey(day), value });
       }
-      setState({ data: points, isLoading: false, refresh });
+      setState({ data: points, isLoading: false });
     } catch {
-      setState({ data: [], isLoading: false, refresh });
+      setState({ data: [], isLoading: false });
     }
   }, [provider, days]);
 
@@ -59,7 +60,7 @@ export function useStrainTrend(days = 14): StrainTrendState {
     void refresh();
   }, [refresh]);
 
-  return state;
+  return { ...state, refresh };
 }
 
 function toDateKey(d: Date): string {

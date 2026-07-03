@@ -4,8 +4,7 @@
 // který nahrazuje statický `buildTrainingSessionForDate` z utils/nutrition.ts.
 // Generuje TÝDENNÍ plán a vrátí jednotku pro konkrétní den.
 
-import type { TrainingSession, UserProfile } from '../../types';
-import type { TrainingCompletionRecordMap } from '../../types';
+import type { TrainingSession, UserProfile , TrainingCompletionRecordMap } from '../../types';
 import type { SleepSummary, WorkoutSummary } from '../../types/health';
 import { adjustTrainingAfterMissedSession, generateTrainingPlan, type TrainingGoal, type TrainingPlan } from './plan';
 import { localizeTrainingText, localizeSessionTitles } from './localizeTitle';

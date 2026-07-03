@@ -18,6 +18,7 @@ import type { HealthDataSummary } from '../types/health';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
 import { NoopNotificationScheduler } from '../lib/notifications';
+import type { WeeklyCheckIn } from '../types/checkin';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -382,8 +383,6 @@ async function migrateLegacyKeys(): Promise<void> {
 }
 
 // ── Weekly check-ins ─────────────────────────────────────────────────────────
-import type { WeeklyCheckIn } from '../types/checkin';
-
 export async function loadCheckIns(): Promise<WeeklyCheckIn[]> {
   return (await readJson<WeeklyCheckIn[]>(keys.checkIns)) || [];
 }

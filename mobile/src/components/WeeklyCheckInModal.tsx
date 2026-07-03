@@ -65,6 +65,7 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
         completedSessions,
         plannedSessions,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
       await setProfile({ ...profile, weight: nextWeight });
       setPending(adjustment);

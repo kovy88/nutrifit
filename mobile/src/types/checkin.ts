@@ -33,8 +33,11 @@ export type WeeklyCheckIn = {
   sleepFeel?: SubjectiveLevel;
   /** Volitelná poznámka, např. „dovolená, jedl jsem hodně venku“. */
   notes?: string;
-  /** Kdy byl check-in uložen. */
+  /** Kdy byl check-in poprvé uložen. */
   createdAt: string;
+  /** Kdy byl check-in naposledy uložen/přepsán — použito pro sync merge
+   *  (resolveByUpdatedAt), ne jen pro zobrazení. */
+  updatedAt: string;
 };
 
 export type PlanAdjustment = {

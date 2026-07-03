@@ -28,6 +28,7 @@ async function loadPurchases(): Promise<any | null> {
   if (purchasesModule) return purchasesModule;
   try {
     // @ts-ignore — optional native dep; installed only for production EAS builds
+    // eslint-disable-next-line import/no-unresolved -- intentionally optional, see above
     const mod = await import('react-native-purchases');
     purchasesModule = mod?.default ?? mod;
     return purchasesModule;

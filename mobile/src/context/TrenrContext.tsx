@@ -11,10 +11,11 @@ import type {
   DailyPlanRecord,
   DailyFoodLogRecord,
   DailySessionRecord,
+  SyncConflict,
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
   TrainingCompletionStatus,
-} from '../types';
+ NutritionGoalKind } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, sumFoodLog, toDateKey } from '../utils/nutrition';
 import { computeLogStreak } from '../lib/nutrition/streaks';
 import { adjustedPlanSessionForDate } from '../lib/training';
@@ -57,9 +58,8 @@ import {
   saveSubscriptionStatus,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
-import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
-import { pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase } from '../services/sync';
+import { mergeRecordsByUpdatedAt, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase } from '../services/sync';
 import { syncStore } from '../stores/syncStore';
 
 type AuthUser = {
@@ -328,6 +328,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   async function hydrateFromRemote() {
     if (!user?.id) return;
     const remote = await pullRemoteSnapshotFromSupabase(user.id);
+    const allConflicts: SyncConflict[] = [];
     if (remote.profile && !profile) {
       await saveProfile(remote.profile);
       setProfileState(remote.profile);
@@ -348,16 +349,23 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       await Promise.all(Object.entries(merged).map(([date, weight]) => saveWeightForDate(date, weight)));
     }
     if (remote.checkIns?.length) {
-      const byWeek = new Map(remote.checkIns.map(checkIn => [checkIn.weekStartISO, checkIn]));
-      checkIns.forEach(checkIn => byWeek.set(checkIn.weekStartISO, checkIn));
-      const merged = Array.from(byWeek.values()).sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
+      const localByWeek = Object.fromEntries(checkIns.map(c => [c.weekStartISO, c]));
+      const remoteByWeek = Object.fromEntries(remote.checkIns.map(c => [c.weekStartISO, c]));
+      const { merged: mergedByWeek, conflicts } = mergeRecordsByUpdatedAt('weekly_checkins', localByWeek, remoteByWeek);
+      const merged = Object.values(mergedByWeek).sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
       setCheckIns(merged);
       for (const checkIn of merged) await saveCheckIn(checkIn);
+      allConflicts.push(...conflicts);
     }
     if (remote.trainingCompletionsByDate) {
-      const merged = { ...remote.trainingCompletionsByDate, ...trainingCompletionsByDate };
-      setTrainingCompletionsByDate(merged);
-      await saveTrainingCompletionsByDate(merged);
+      const { merged, conflicts } = mergeRecordsByUpdatedAt(
+        'training_completions',
+        trainingCompletionsByDate,
+        remote.trainingCompletionsByDate,
+      );
+      setTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      await saveTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      allConflicts.push(...conflicts);
     }
     if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
     if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
@@ -373,6 +381,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       setOverrideGoalKind(remote.overrideGoalKind);
       await saveOverrideGoalKind(remote.overrideGoalKind);
     }
+    if (allConflicts.length) syncStore.setConflicts(allConflicts);
   }
 
   useEffect(() => {

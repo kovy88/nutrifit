@@ -456,7 +456,7 @@ function questionFor(step: StepId, t: (k: TranslationKey) => string): string {
   }
 }
 
-const SCOPE_OPTIONS: Array<{ value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }> = [
+const SCOPE_OPTIONS: { value: CoachScope; titleKey: TranslationKey; subKey: TranslationKey }[] = [
   { value: 'both', titleKey: 'scope.both', subKey: 'scope.bothSub' },
   { value: 'training', titleKey: 'scope.training', subKey: 'scope.trainingSub' },
   { value: 'nutrition', titleKey: 'scope.nutrition', subKey: 'scope.nutritionSub' },
@@ -467,7 +467,7 @@ function helpKeyFor(step: StepId): TranslationKey {
   return (`onb.help.${step}` as TranslationKey);
 }
 
-const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
+const nutritionModes: { value: NutritionMode; labelKey: TranslationKey }[] = [
   { value: 'balanced', labelKey: 'nutritionMode.balanced' },
   { value: 'fat_loss_friendly', labelKey: 'nutritionMode.fat_loss_friendly' },
   { value: 'muscle_gain_friendly', labelKey: 'nutritionMode.muscle_gain_friendly' },
@@ -477,7 +477,7 @@ const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> 
   { value: 'endurance_fueling', labelKey: 'nutritionMode.endurance_fueling' },
 ];
 
-const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
+const planIntensities: { value: PlanIntensity; labelKey: TranslationKey }[] = [
   { value: 'easy', labelKey: 'planIntensity.easy' },
   { value: 'moderate', labelKey: 'planIntensity.moderate' },
   { value: 'ambitious_but_safe', labelKey: 'planIntensity.ambitious_but_safe' },
