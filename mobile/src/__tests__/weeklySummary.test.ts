@@ -105,6 +105,7 @@ describe('buildWeeklySummaryRequest — user prompt content', () => {
         sorenessLevel: 4,
         notes: 'Týden v Itálii, hodně chození',
         createdAt: '2026-05-26T20:00:00Z',
+        updatedAt: '2026-05-26T20:00:00Z',
       },
     });
     expect(r.prompt).toContain('Týden v Itálii');
