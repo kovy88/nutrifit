@@ -3,6 +3,7 @@
 const { method, rateLimit, requireUser, sendError, msg, getLocale } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
+const GEMINI_TIMEOUT_MS = 25000;
 
 function emptyEstimate(locale) {
   if (locale === 'en') {
@@ -99,38 +100,49 @@ If there is no food in the image or the portion cannot be recognized, return JSO
 Use integers for kcal/protein/carbs/fat.
 `;
 
-  const geminiRes = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: imageBase64 } },
-        ],
-      }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          required: ['foodName', 'portionGuess', 'kcal', 'protein', 'carbs', 'fat', 'confidence', 'note'],
-          properties: {
-            foodName: { type: 'STRING' },
-            portionGuess: { type: 'STRING' },
-            kcal: { type: 'INTEGER' },
-            protein: { type: 'INTEGER' },
-            carbs: { type: 'INTEGER' },
-            fat: { type: 'INTEGER' },
-            confidence: { type: 'STRING' },
-            note: { type: 'STRING' },
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let geminiRes;
+  try {
+    geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: imageBase64 } },
+          ],
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            required: ['foodName', 'portionGuess', 'kcal', 'protein', 'carbs', 'fat', 'confidence', 'note'],
+            properties: {
+              foodName: { type: 'STRING' },
+              portionGuess: { type: 'STRING' },
+              kcal: { type: 'INTEGER' },
+              protein: { type: 'INTEGER' },
+              carbs: { type: 'INTEGER' },
+              fat: { type: 'INTEGER' },
+              confidence: { type: 'STRING' },
+              note: { type: 'STRING' },
+            },
           },
+          maxOutputTokens: 900,
+          thinkingConfig,
         },
-        maxOutputTokens: 900,
-        thinkingConfig,
-      },
-    }),
-  });
+      }),
+    });
+  } catch (err) {
+    const code = err?.name === 'AbortError' ? 'gemini_timeout' : 'gemini_unreachable';
+    return sendError(res, 502, code, msg(req, 'AI se nepodařilo kontaktovat. Zkus to prosím znovu.', 'Could not reach the AI. Please try again.'));
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = coalesceCandidateText(await geminiRes.json());
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
