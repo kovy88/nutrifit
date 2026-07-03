@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
     const session = event.data.object;
     const userId = session.metadata?.supabase_user_id;
     if (isUuid(userId)) {
-      await setUserPremium(SUPABASE_URL, SUPABASE_SERVICE_KEY, userId, true);
+      await setUserPremium(SUPABASE_URL, SUPABASE_SERVICE_KEY, userId, true, session.customer);
     }
   }
 
@@ -74,7 +74,11 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({ received: true });
 };
 
-async function setUserPremium(supabaseUrl, serviceKey, userId, isPremium) {
+async function setUserPremium(supabaseUrl, serviceKey, userId, isPremium, stripeCustomerId) {
+  const body = { is_premium: isPremium };
+  if (typeof stripeCustomerId === 'string' && stripeCustomerId) {
+    body.stripe_customer_id = stripeCustomerId;
+  }
   const response = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     headers: {
@@ -83,7 +87,7 @@ async function setUserPremium(supabaseUrl, serviceKey, userId, isPremium) {
       'Authorization': `Bearer ${serviceKey}`,
       'Prefer': 'return=minimal',
     },
-    body: JSON.stringify({ is_premium: isPremium }),
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     const text = await response.text().catch(() => '');

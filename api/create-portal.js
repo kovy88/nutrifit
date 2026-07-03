@@ -2,7 +2,7 @@
 // Env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_URL
 
 const stripe = require('stripe');
-const { method, requireUser, sendError, rateLimit } = require('./_lib/store-readiness');
+const { method, requireUser, sendError, rateLimit, supabaseRest } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -16,6 +16,7 @@ module.exports = async function handler(req, res) {
     return sendError(res, 500, 'stripe_not_configured', 'Stripe není nakonfigurován.');
   }
 
+  const userId = requester.user.id;
   const email = requester.user.email;
   if (!email) {
     return sendError(res, 400, 'missing_user_email', 'Přihlášený účet nemá e-mail.');
@@ -26,14 +27,33 @@ module.exports = async function handler(req, res) {
   try {
     const stripeClient = stripe(STRIPE_SECRET_KEY);
 
-    // Find customer by email
-    const customers = await stripeClient.customers.list({ email, limit: 1 });
-    if (!customers.data.length) {
-      return sendError(res, 404, 'customer_not_found', 'Zákazník nenalezen.');
+    // Prefer the customer id stored on the profile (set by the webhook on
+    // checkout completion) — searching Stripe by email is fragile, since a
+    // user can end up with more than one Customer object sharing the same
+    // email and .list() gives no guarantee about which one comes back.
+    let customerId = null;
+    const rows = await supabaseRest(`/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id`);
+    customerId = rows?.[0]?.stripe_customer_id || null;
+
+    if (!customerId) {
+      const customers = await stripeClient.customers.list({ email, limit: 1 });
+      if (!customers.data.length) {
+        return sendError(res, 404, 'customer_not_found', 'Zákazník nenalezen.');
+      }
+      customerId = customers.data[0].id;
+      // Self-heal: persist it so future portal requests use the reliable path.
+      await supabaseRest(`/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ stripe_customer_id: customerId }),
+      }).catch(() => {
+        // Non-fatal — the portal session below still works this time,
+        // it'll just fall back to the email search again next time.
+      });
     }
 
     const session = await stripeClient.billingPortal.sessions.create({
-      customer: customers.data[0].id,
+      customer: customerId,
       return_url: baseUrl,
     });
 
