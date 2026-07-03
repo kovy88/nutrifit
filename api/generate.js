@@ -35,26 +35,32 @@ module.exports = async function handler(req, res) {
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
 
-  let result = await callGeminiModel({
-    apiKey,
-    model,
-    systemPrompt,
-    prompt,
-    maxTokens,
-    thinkingConfig,
-  });
-
-  const fallbackModel = 'gemini-2.5-flash';
-  if (isModelFallbackError(result.status) && model !== fallbackModel) {
+  let result;
+  try {
     result = await callGeminiModel({
       apiKey,
-      model: fallbackModel,
+      model,
       systemPrompt,
       prompt,
-      maxTokens: requestedMaxTokens,
-      thinkingConfig: { thinkingBudget: 0 },
-      fallbackFrom: model,
+      maxTokens,
+      thinkingConfig,
     });
+
+    const fallbackModel = 'gemini-2.5-flash';
+    if (isModelFallbackError(result.status) && model !== fallbackModel) {
+      result = await callGeminiModel({
+        apiKey,
+        model: fallbackModel,
+        systemPrompt,
+        prompt,
+        maxTokens: requestedMaxTokens,
+        thinkingConfig: { thinkingBudget: 0 },
+        fallbackFrom: model,
+      });
+    }
+  } catch (err) {
+    const code = err?.name === 'AbortError' ? 'gemini_timeout' : 'gemini_unreachable';
+    return sendError(res, 502, code, msg(req, 'AI se nepodařilo kontaktovat. Zkus to prosím znovu.', 'Could not reach the AI. Please try again.'));
   }
 
   return res.status(result.status).json(coalesceCandidateText({
@@ -64,23 +70,32 @@ module.exports = async function handler(req, res) {
   }));
 };
 
+const GEMINI_TIMEOUT_MS = 25000;
+
 async function callGeminiModel({ apiKey, model, systemPrompt, prompt, maxTokens, thinkingConfig, fallbackFrom }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const geminiRes = await fetch(url, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt || '' }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        responseMimeType: 'application/json',
-        thinkingConfig,
-      },
-    }),
-  });
-  const data = await geminiRes.json();
-  return { status: geminiRes.status, data, model, fallbackFrom };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  try {
+    const geminiRes = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt || '' }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          responseMimeType: 'application/json',
+          thinkingConfig,
+        },
+      }),
+    });
+    const data = await geminiRes.json();
+    return { status: geminiRes.status, data, model, fallbackFrom };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function isModelFallbackError(status) {
