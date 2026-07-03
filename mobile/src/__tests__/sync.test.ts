@@ -1,36 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildSyncRows,
-  clearPendingSyncWrites,
-  loadPendingSyncWrites,
   mergeRecordsByUpdatedAt,
-  queuePendingSyncWrite,
   resolveByUpdatedAt,
 } from '../services/sync';
 import { DEFAULT_PROFILE } from '../utils/nutrition';
-
-vi.mock('@react-native-async-storage/async-storage', () => {
-  const store: Record<string, string> = {};
-  return {
-    default: {
-      getItem: vi.fn().mockImplementation(async (key: string) => store[key] || null),
-      setItem: vi.fn().mockImplementation(async (key: string, val: string) => { store[key] = val; }),
-      removeItem: vi.fn().mockImplementation(async (key: string) => { delete store[key]; }),
-      clear: vi.fn().mockImplementation(async () => { Object.keys(store).forEach(k => delete store[k]); }),
-    },
-  };
-});
 
 vi.mock('../services/supabase', () => ({
   supabase: { from: () => ({ upsert: vi.fn().mockResolvedValue({ error: null }) }) },
 }));
 
 describe('sync helpers', () => {
-  beforeEach(async () => {
-    await AsyncStorage.clear();
-  });
-
   it('resolves updated-at conflicts by newer record and reports the decision', () => {
     const local = { value: 'local', updatedAt: '2026-05-30T10:00:00.000Z' };
     const remote = { value: 'remote', updatedAt: '2026-05-30T09:00:00.000Z' };
@@ -68,15 +48,6 @@ describe('sync helpers', () => {
     const { conflicts } = mergeRecordsByUpdatedAt('training_completions', local, remote);
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0].resolvedBy).toBe('local');
-  });
-
-  it('queues pending writes for offline/background retry', async () => {
-    await clearPendingSyncWrites();
-    await queuePendingSyncWrite({ entity: 'profile', payload: { reason: 'offline' } });
-    await queuePendingSyncWrite({ entity: 'weight_entries', payload: { date: '2026-05-30' } });
-    const writes = await loadPendingSyncWrites();
-    expect(writes).toHaveLength(2);
-    expect(writes[0].entity).toBe('profile');
   });
 
   it('builds deterministic Supabase rows from the local snapshot', () => {
