@@ -122,29 +122,37 @@ export class StravaOAuth {
 
   /** Pokud token vypršel, požádej backend o nový skrz refresh_token. */
   async refresh(): Promise<boolean> {
-    const token = await this.tokens.getToken('strava');
-    if (!token?.refreshToken) return false;
-    let res: Response;
-    try {
-      res = await fetch(REFRESH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
-        body: JSON.stringify({ refreshToken: token.refreshToken }),
-      });
-    } catch {
-      return false;
-    }
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.accessToken) return false;
-    await this.tokens.setToken('strava', {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresAt: data.expiresAt,
-      scope: token.scope,
-      metadata: token.metadata,
-    });
-    return true;
+    return refreshStravaToken(this.tokens);
   }
+}
+
+/** Standalone (class-independent) refresh so StravaProvider's data-fetching
+ *  path can call it without needing a full StravaOAuth instance (which
+ *  requires a clientId it has no use for here — refresh only needs the
+ *  refreshToken already in the token store). */
+export async function refreshStravaToken(tokens: OAuthTokenStore): Promise<boolean> {
+  const token = await tokens.getToken('strava');
+  if (!token?.refreshToken) return false;
+  let res: Response;
+  try {
+    res = await fetch(REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ refreshToken: token.refreshToken }),
+    });
+  } catch {
+    return false;
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.accessToken) return false;
+  await tokens.setToken('strava', {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    scope: token.scope,
+    metadata: token.metadata,
+  });
+  return true;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
