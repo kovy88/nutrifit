@@ -238,22 +238,26 @@ export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', loc
   return normalizeFoodEstimate(parseJson(text, locale));
 }
 
-export async function exportAccountData() {
+export async function exportAccountData(locale: Locale = 'cs') {
   const response = await fetch(`${apiBaseUrl}/api/export-data`, {
     headers: await getAuthHeaders(),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data.error?.message || 'Export dat se nepodařil.');
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || (locale === 'en' ? 'Data export failed.' : 'Export dat se nepodařil.'));
+  }
   return data;
 }
 
-export async function deleteAccount() {
+export async function deleteAccount(locale: Locale = 'cs') {
   const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
     method: 'DELETE',
     headers: await getAuthHeaders(),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data.error?.message || 'Smazání účtu se nepodařilo.');
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || (locale === 'en' ? 'Account deletion failed.' : 'Smazání účtu se nepodařilo.'));
+  }
 }
 
 /**
