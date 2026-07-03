@@ -213,4 +213,36 @@ describe('date-based storage and migration', () => {
     expect(await AsyncStorage.getItem('nutrifit.foodLog.v1')).toBeNull();
     expect(await AsyncStorage.getItem('nutrifit.todaySession.v1')).toBeNull();
   });
+
+  it('prunes date-bound records older than the retention window on every runMigration() call', async () => {
+    const today = new Date();
+    const recentDate = toDateKey(today);
+    // 100 days ago — past the 90-day retention window pruneDateBoundedStores() enforces.
+    const oldDate = toDateKey(new Date(today.getTime() - 100 * 24 * 60 * 60 * 1000));
+
+    await savePlanForDate(recentDate, []);
+    await savePlanForDate(oldDate, []);
+    await saveFoodLogForDate(recentDate, []);
+    await saveFoodLogForDate(oldDate, []);
+
+    await runMigration();
+
+    const plans = await loadPlansByDate();
+    const logs = await loadFoodLogsByDate();
+    expect(plans[recentDate]).toBeDefined();
+    expect(plans[oldDate]).toBeUndefined();
+    expect(logs[recentDate]).toBeDefined();
+    expect(logs[oldDate]).toBeUndefined();
+  });
+
+  it('does not prune a date sitting just inside the retention window', async () => {
+    const today = new Date();
+    // 89 days ago — inside the 90-day window, must survive pruning.
+    const borderlineDate = toDateKey(new Date(today.getTime() - 89 * 24 * 60 * 60 * 1000));
+
+    await savePlanForDate(borderlineDate, []);
+    await runMigration();
+
+    expect((await loadPlansByDate())[borderlineDate]).toBeDefined();
+  });
 });
