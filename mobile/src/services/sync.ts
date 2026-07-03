@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import type {
   DailyFoodLogRecord,
@@ -15,15 +14,6 @@ import type {
 import type { WeeklyCheckIn } from '../types/checkin';
 import type { CoachThreadRecordMap, DailyCoachHistoryMap } from '../types/coach';
 import type { HealthDataSummary } from '../types/health';
-
-const PENDING_KEY = 'nutrifit.sync.pendingWrites.v1';
-
-export type PendingSyncWrite = {
-  id: string;
-  entity: SyncConflict['entity'];
-  payload: unknown;
-  createdAt: string;
-};
 
 export type LocalSyncSnapshot = {
   profile: UserProfile | null;
@@ -74,35 +64,6 @@ export function resolveByUpdatedAt<T extends { updatedAt?: string | null }>(
       remote,
     },
   };
-}
-
-export async function loadPendingSyncWrites(): Promise<PendingSyncWrite[]> {
-  const raw = await AsyncStorage.getItem(PENDING_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function savePendingSyncWrites(writes: PendingSyncWrite[]): Promise<void> {
-  await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(writes.slice(-100)));
-}
-
-export async function queuePendingSyncWrite(write: Omit<PendingSyncWrite, 'id' | 'createdAt'>): Promise<PendingSyncWrite> {
-  const next: PendingSyncWrite = {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    createdAt: nowISO(),
-    ...write,
-  };
-  await savePendingSyncWrites([...(await loadPendingSyncWrites()), next]);
-  return next;
-}
-
-export async function clearPendingSyncWrites(): Promise<void> {
-  await AsyncStorage.removeItem(PENDING_KEY);
 }
 
 export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, timestamp = nowISO()) {

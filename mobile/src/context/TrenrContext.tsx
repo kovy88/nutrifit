@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import type {
   DailyAdjustment,
@@ -59,7 +59,7 @@ import {
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
 import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
-import { loadPendingSyncWrites, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
+import { pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase } from '../services/sync';
 import { syncStore } from '../stores/syncStore';
 
 type AuthUser = {
@@ -144,6 +144,12 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
   const [isSubscribed, setIsSubscribedState] = useState(false);
   const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(() => getFallbackPackages(locale));
+  // Guards syncNow() against overlapping pushes — each call closes over a
+  // React-state snapshot, so two rapid calls (e.g. logging two foods back to
+  // back) could otherwise race, with the later-resolving one carrying the
+  // staler snapshot and overwriting the newer push's result.
+  const syncInFlightRef = useRef(false);
+  const syncQueuedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -265,6 +271,18 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     overrideGoalKind: NutritionGoalKind | null;
   }> = {}) {
     if (!user?.id) return;
+    // A sync is already running — don't start a second overlapping push
+    // (each call closes over its own React-state snapshot, so the later one
+    // could resolve first and get clobbered by the earlier one, or vice
+    // versa). Just remember one more sync is owed once this one finishes;
+    // by then all pending state updates from the queued call's originating
+    // action will have flushed, so a plain no-overrides retry picks up the
+    // latest state anyway.
+    if (syncInFlightRef.current) {
+      syncQueuedRef.current = true;
+      return;
+    }
+    syncInFlightRef.current = true;
     syncStore.setSyncing();
     try {
       const [storedCoachThreadsByDate, storedDailyCoachHistory, storedDailyHealthSummaries] = await Promise.all([
@@ -292,8 +310,18 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sync failed';
       syncStore.setError(message);
-      await queuePendingSyncWrite({ entity: 'profile', payload: { reason: message } });
-      syncStore.setPendingWrites((await loadPendingSyncWrites()).length);
+      // Count of consecutive failed sync attempts since the last success —
+      // not a literal queue of specific writes: syncNow() always pushes the
+      // *current* full state, so the next successful call (triggered by any
+      // subsequent action, or on next app launch) already re-sends
+      // everything. There's nothing granular to persist and replay.
+      syncStore.setPendingWrites(syncStore.getSnapshot().pendingWrites + 1);
+    } finally {
+      syncInFlightRef.current = false;
+      if (syncQueuedRef.current) {
+        syncQueuedRef.current = false;
+        void syncNow();
+      }
     }
   }
 
