@@ -10,6 +10,7 @@ import type {
   DailySessionRecord,
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
+  NutritionGoalKind,
 } from '../types';
 import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
 import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
@@ -38,6 +39,8 @@ const keys = {
   coachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
+  /** Nutrition goal override z accepted weekly adjustment (přepíše profile.primaryGoal pro macro calc). */
+  overrideGoalKind: 'nutrifit.overrideGoalKind.v1',
   /** Rozpracovaný onboarding (step + draft profile + last-touched). */
   onboardingDraft: 'nutrifit.onboardingDraft.v1',
   /** Marker so the one-time legacy migration runs once, not on every boot. */
@@ -403,6 +406,17 @@ export async function loadBaselineKcalDelta(): Promise<number> {
 
 export async function saveBaselineKcalDelta(value: number): Promise<void> {
   await AsyncStorage.setItem(keys.baselineKcalDelta, JSON.stringify({ value }));
+}
+
+/** Nutrition goal override from an accepted weekly adjustment. Persisted so
+ *  the override survives an app restart, same as baselineKcalDelta. */
+export async function loadOverrideGoalKind(): Promise<NutritionGoalKind | null> {
+  const raw = await readJson<{ value: NutritionGoalKind | null }>(keys.overrideGoalKind);
+  return raw?.value ?? null;
+}
+
+export async function saveOverrideGoalKind(value: NutritionGoalKind | null): Promise<void> {
+  await AsyncStorage.setItem(keys.overrideGoalKind, JSON.stringify({ value }));
 }
 
 // ── Onboarding draft ────────────────────────────────────────────────────────

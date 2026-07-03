@@ -76,7 +76,7 @@ export function PhotoScreen() {
     setLoading(true);
     setError(null);
     try {
-      const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg');
+      const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg', locale);
       setEstimate(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : t('photo.tryAnother');

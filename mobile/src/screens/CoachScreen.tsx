@@ -114,7 +114,7 @@ export function CoachScreen() {
     <Screen
       footer={
         <View style={styles.composer}>
-          <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline />
+          <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline maxLength={2000} />
           <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{sending ? t('coach.thinking') : t('coach.send')}</Button>
         </View>
       }

@@ -7,6 +7,7 @@ import type {
   FoodLogItem,
   Macros,
   Meal,
+  NutritionGoalKind,
   SyncConflict,
   TrainingCompletionRecordMap,
   UserProfile,
@@ -36,6 +37,11 @@ export type LocalSyncSnapshot = {
   coachThreadsByDate?: CoachThreadRecordMap;
   dailyCoachHistory?: DailyCoachHistoryMap;
   dailyHealthSummaries?: Record<string, HealthDataSummary>;
+  /** Cumulative kcal delta from accepted weekly adjustments. Piggybacks on
+   *  the `profiles` row (as extra JSON keys, not dedicated columns) since
+   *  that table's schema isn't tracked in supabase/migrations/ here. */
+  baselineKcalDelta?: number;
+  overrideGoalKind?: NutritionGoalKind | null;
 };
 
 export type SyncRows = ReturnType<typeof buildSyncRows>;
@@ -184,7 +190,17 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
   }));
 
   const profile = snapshot.profile
-    ? [{ user_id: userId, profile: snapshot.profile, updated_at: timestamp }]
+    ? [{
+        user_id: userId,
+        // `profile` is a jsonb blob — piggyback the weekly-adjustment state on
+        // it under a `_sync` sub-key so it travels with the profile row
+        // without needing dedicated columns on an untracked table schema.
+        profile: {
+          ...snapshot.profile,
+          _sync: { baselineKcalDelta: snapshot.baselineKcalDelta ?? 0, overrideGoalKind: snapshot.overrideGoalKind ?? null },
+        },
+        updated_at: timestamp,
+      }]
     : [];
 
   const dailyTargets = Object.entries(snapshot.baselineTargetsByDate ?? {}).map(([date, macros]) => ({
@@ -258,8 +274,13 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
     .find(res => res.error)?.error;
   if (firstError) throw new Error(firstError.message);
 
+  const remoteProfileRaw = (profileRes.data as any)?.profile ?? null;
+  const { _sync, ...remoteProfile } = remoteProfileRaw ?? { _sync: undefined };
+
   return {
-    profile: (profileRes.data as any)?.profile ?? null,
+    profile: remoteProfileRaw ? (remoteProfile as UserProfile) : null,
+    baselineKcalDelta: _sync?.baselineKcalDelta,
+    overrideGoalKind: _sync?.overrideGoalKind,
     plansByDate: Object.fromEntries(((plansRes.data as any[]) ?? []).map(row => [row.plan_date, row.meals ?? []])),
     foodLogsByDate: groupFoodLogs((logsRes.data as any[]) ?? []),
     weightsByDate: Object.fromEntries(((weightsRes.data as any[]) ?? []).map(row => [row.entry_date, Number(row.weight_kg)])),

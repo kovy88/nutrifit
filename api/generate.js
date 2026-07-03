@@ -18,6 +18,14 @@ module.exports = async function handler(req, res) {
   if (!prompt) {
     return sendError(res, 400, 'missing_prompt', 'Chybí parametr prompt.');
   }
+  // Cost/abuse guard — real prompts (meal plan context, coach chat + history)
+  // stay well under this; it only stops someone pasting a huge blob.
+  if (typeof prompt !== 'string' || prompt.length > 12000) {
+    return sendError(res, 400, 'prompt_too_long', 'Zpráva je příliš dlouhá.');
+  }
+  if (systemPrompt != null && (typeof systemPrompt !== 'string' || systemPrompt.length > 6000)) {
+    return sendError(res, 400, 'system_prompt_too_long', 'Systémový prompt je příliš dlouhý.');
+  }
 
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const maxTokens = model.includes('gemini-3')
