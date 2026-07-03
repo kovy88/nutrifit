@@ -119,6 +119,7 @@ describe('sync helpers', () => {
         hungerLevel: 2,
         sorenessLevel: 4,
         createdAt: '2026-05-30T10:00:00.000Z',
+        updatedAt: '2026-05-30T10:00:00.000Z',
       }],
       trainingCompletionsByDate: {
         '2026-05-30': {
@@ -138,5 +139,27 @@ describe('sync helpers', () => {
     expect(rows.weightEntries[0].weight_kg).toBe(80);
     expect(rows.weeklyCheckins[0].soreness_level).toBe(4);
     expect(rows.trainingCompletions[0].status).toBe('completed');
+  });
+
+  it('stamps weekly_checkins rows with each check-in\'s own updatedAt, not the push-time timestamp', () => {
+    const rows = buildSyncRows({
+      profile: DEFAULT_PROFILE,
+      plansByDate: {},
+      foodLogsByDate: {},
+      sessionsByDate: {},
+      weightsByDate: {},
+      checkIns: [{
+        weekStartISO: '2026-05-25',
+        adherence: 0.8,
+        createdAt: '2026-05-25T09:00:00.000Z',
+        updatedAt: '2026-05-25T09:00:00.000Z',
+      }],
+      trainingCompletionsByDate: {},
+      // push-time timestamp is deliberately different from the check-in's own
+      // updatedAt above — a real edit-time timestamp must win, matching the
+      // pattern training_completions already used before this fix.
+    }, 'user-1', '2026-06-01T12:00:00.000Z');
+
+    expect(rows.weeklyCheckins[0].updated_at).toBe('2026-05-25T09:00:00.000Z');
   });
 });

@@ -161,7 +161,7 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
     completed_sessions: checkIn.completedSessions ?? null,
     planned_sessions: checkIn.plannedSessions ?? null,
     notes: checkIn.notes ?? null,
-    updated_at: timestamp,
+    updated_at: checkIn.updatedAt ?? timestamp,
   }));
 
   const trainingCompletions = Object.values(snapshot.trainingCompletionsByDate ?? {}).map(record => ({
@@ -319,6 +319,7 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
       plannedSessions: row.planned_sessions ?? undefined,
       notes: row.notes ?? undefined,
       createdAt: row.created_at ?? nowISO(),
+      updatedAt: row.updated_at ?? row.created_at ?? nowISO(),
     })),
     trainingCompletionsByDate: Object.fromEntries(((completionsRes.data as any[]) ?? []).map(row => [row.completion_date, {
       date: row.completion_date,
