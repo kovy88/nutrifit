@@ -1,4 +1,4 @@
-const { method, requireUser, sendError, supabaseRest } = require('./_lib/store-readiness');
+const { method, requireUser, sendError, supabaseRest, msg } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['GET'])) return;
@@ -56,6 +56,6 @@ module.exports = async function handler(req, res) {
       dailyHealthSummaries: dailyHealthSummaries || [],
     });
   } catch (err) {
-    return sendError(res, 500, 'export_failed', err.message || 'Export dat se nepodařil.');
+    return sendError(res, 500, 'export_failed', err.message || msg(req, 'Export dat se nepodařil.', 'Data export failed.'));
   }
 };

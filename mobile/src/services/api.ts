@@ -13,31 +13,33 @@ import type { Locale } from '../lib/i18n';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function postJson<T>(path: string, body: unknown, locale: Locale = 'cs'): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Locale': locale,
       ...(await getAuthHeaders()),
     },
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
-    throw new Error(data.error?.message || data.error || `Chyba serveru (${response.status})`);
+    const genericError = locale === 'en' ? `Server error (${response.status})` : `Chyba serveru (${response.status})`;
+    throw new Error(data.error?.message || data.error || genericError);
   }
   return data as T;
 }
 
 // Retry wrapper with exponential backoff
-async function postJsonWithRetry<T>(path: string, body: unknown, retries = 1, delay = 1000): Promise<T> {
+async function postJsonWithRetry<T>(path: string, body: unknown, locale: Locale = 'cs', retries = 1, delay = 1000): Promise<T> {
   try {
-    return await postJson<T>(path, body);
+    return await postJson<T>(path, body, locale);
   } catch (err) {
     if (retries > 0) {
       console.warn(`Trenr API: Request to ${path} failed. Retrying in ${delay}ms... Error:`, err);
       await new Promise<void>(resolve => { setTimeout(() => resolve(), delay); });
-      return await postJsonWithRetry<T>(path, body, retries - 1, delay * 2);
+      return await postJsonWithRetry<T>(path, body, locale, retries - 1, delay * 2);
     }
     throw err;
   }
@@ -189,24 +191,31 @@ export async function regenerateMeal(opts: {
   session?: TrainingSession | null;
   current: Meal;
   otherMeals?: Meal[];
+  locale?: Locale;
 }): Promise<Meal> {
+  const locale = opts.locale ?? 'cs';
+  const isEn = locale === 'en';
   const request = buildSingleMealRequest(opts);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const data = await postJsonWithRetry<any>('/api/generate', request, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const parsed = parseJson(text);
+  const parsed = parseJson(text, locale);
   // Some AI runs wrap the object in {"meals":[…]} or {"meal":{…}}; handle both.
   const rawMeal = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
   const meal = normalizeMeal(rawMeal || {}, opts.current.mealType);
 
   // Don't accept a near-duplicate of the rejected one.
   if (meal.name.trim().toLowerCase() === opts.current.name.trim().toLowerCase()) {
-    throw new Error('AI vrátila stejné jídlo. Zkus to znovu nebo uprav preference.');
+    throw new Error(isEn ? 'AI returned the same meal. Try again or adjust your preferences.' : 'AI vrátila stejné jídlo. Zkus to znovu nebo uprav preference.');
   }
   // Macro tolerance ±10 % per macro (or ±5 g floor for tiny values)
   const within = (actual: number, target: number) =>
     Math.abs(actual - target) <= Math.max(5, target * 0.1);
   if (!within(meal.kcal, opts.current.kcal)) {
-    throw new Error(`AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`);
+    throw new Error(
+      isEn
+        ? `AI returned ${meal.kcal} kcal instead of ${opts.current.kcal} (out of tolerance).`
+        : `AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`,
+    );
   }
   return meal;
 }
@@ -221,7 +230,7 @@ export async function regenerateMeal(opts: {
 export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<WeeklySummary> {
   const isEn = input.locale === 'en';
   const request = buildWeeklySummaryRequest(input);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const data = await postJsonWithRetry<any>('/api/generate', request, isEn ? 'en' : 'cs');
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error(isEn ? 'No response from AI.' : 'AI neodpověděla.');
   const parsed = parseJson(text, isEn ? 'en' : 'cs');
@@ -232,7 +241,7 @@ export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<
 
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'cs'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType });
+  const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType }, locale);
   if (data.estimate) return normalizeFoodEstimate(data.estimate);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   return normalizeFoodEstimate(parseJson(text, locale));
@@ -240,7 +249,7 @@ export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', loc
 
 export async function exportAccountData(locale: Locale = 'cs') {
   const response = await fetch(`${apiBaseUrl}/api/export-data`, {
-    headers: await getAuthHeaders(),
+    headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
@@ -252,7 +261,7 @@ export async function exportAccountData(locale: Locale = 'cs') {
 export async function deleteAccount(locale: Locale = 'cs') {
   const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
     method: 'DELETE',
-    headers: await getAuthHeaders(),
+    headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
@@ -273,7 +282,7 @@ export async function askCoach(opts: {
 }): Promise<{ reply: string; followups: string[]; actions: CoachProposedAction[] }> {
   const request = buildCoachChatRequest(opts);
   try {
-    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const data = await postJsonWithRetry<any>('/api/generate', request, opts.locale);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     const parsed = text ? parseStructuredCoachReply(parseJson(text)) : null;
     if (parsed) return parsed;
