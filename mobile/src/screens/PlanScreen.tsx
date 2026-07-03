@@ -89,6 +89,13 @@ export function PlanScreen() {
   }, [selectedDate, meals.length]);
 
   const weekDays = useMemo(() => buildWeek(selectedDate, locale), [selectedDate, locale]);
+  // Computed unconditionally (before the early return below) so hook order
+  // stays stable across renders — e.g. profile can flip to null mid-session
+  // after account deletion while this screen is still mounted.
+  const weeklyPlanOrNull = useMemo(
+    () => (profile ? planForDate(profile, new Date(selectedDate), {}, locale) : null),
+    [profile, selectedDate, locale],
+  );
 
   if (!profile || !currentMacros) return null;
 
@@ -96,7 +103,7 @@ export function PlanScreen() {
   const activeMacros = currentMacros;
   const shoppingGroups = buildShoppingList(meals);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
-  const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
+  const weeklyPlan = weeklyPlanOrNull!;
   const phase: TrainingPhase | null = hasCustomSchedule(activeProfile)
     ? null
     : trainingPhase({ weekIndex: weeklyPlan.weekIndex, weekStartISO: weeklyPlan.weekStartISO, raceDateISO: activeProfile.raceDateISO, goalKind: activeProfile.trainingGoal });
