@@ -23,7 +23,7 @@ export function ProfileScreen() {
   const navigation = useNavigation<any>();
   const weeklySummary = useWeeklySummary();
   const syncStatus = useSyncStatus();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { colors } = useTheme();
   const [auth, setAuth] = useState({ name: '', email: '', password: '' });
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -78,7 +78,7 @@ export function ProfileScreen() {
     ]);
   }
 
-  const trainingGoalLabel = trainingGoals.find(g => g.value === profile.trainingGoal)?.label ?? profile.trainingGoal;
+  const trainingGoalLabel = t(trainingGoals.find(g => g.value === profile.trainingGoal)?.labelKey ?? 'trainingGoal.general_fitness');
   const nutritionModeLabel = t(
     nutritionModes.find(m => m.value === (profile.nutritionMode ?? 'balanced'))?.labelKey ?? 'nutritionMode.balanced',
   );
@@ -129,7 +129,7 @@ export function ProfileScreen() {
         <Label>{t('profile.trainingGoal')}</Label>
         <View style={styles.rowWrap}>
           {trainingGoals.map(goal => (
-            <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => setProfile({ ...profile, trainingGoal: goal.value })}>{goal.label}</Pill>
+            <Pill key={goal.value} active={profile.trainingGoal === goal.value} onPress={() => setProfile({ ...profile, trainingGoal: goal.value })}>{t(goal.labelKey)}</Pill>
           ))}
         </View>
         <Label>{t('profile.sessionsPerWeek')}</Label>
@@ -228,11 +228,11 @@ export function ProfileScreen() {
       {/* AI weekly summary — last generated review */}
       {weeklySummary.summary && (
         <Card>
-          <Label>Týdenní AI shrnutí</Label>
+          <Label>{t('profile.aiSummary')}</Label>
           <Text style={[styles.summaryHeadline, { color: colors.ink }]}>{weeklySummary.summary.headline}</Text>
           {weeklySummary.summary.highlights.length > 0 && (
             <View style={{ marginTop: 8, gap: 4 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>✓ Co šlo</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>{t('profile.weeklySummaryHighlights')}</Text>
               {weeklySummary.summary.highlights.map((h, i) => (
                 <Text key={`hl-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {h}</Text>
               ))}
@@ -240,7 +240,7 @@ export function ProfileScreen() {
           )}
           {weeklySummary.summary.concerns.length > 0 && (
             <View style={{ marginTop: 10, gap: 4 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>Hlídej</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>{t('profile.weeklySummaryConcerns')}</Text>
               {weeklySummary.summary.concerns.map((c, i) => (
                 <Text key={`cn-${i}`} style={[styles.summaryBullet, { color: colors.ink }]}>• {c}</Text>
               ))}
@@ -248,13 +248,16 @@ export function ProfileScreen() {
           )}
           {weeklySummary.summary.recommendation && (
             <View style={{ marginTop: 10 }}>
-              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>→ Příští týden</Text>
+              <Text style={[styles.summarySectionLabel, { color: colors.muted }]}>{t('profile.weeklySummaryNextWeek')}</Text>
               <Text style={[styles.summaryRec, { color: colors.green }]}>{weeklySummary.summary.recommendation}</Text>
             </View>
           )}
           {weeklySummary.generatedAt && (
             <Text style={[styles.summaryMeta, { color: colors.faint }]}>
-              Vygenerováno {new Date(weeklySummary.generatedAt).toLocaleDateString('cs-CZ')} pro týden {weeklySummary.weekStartISO}
+              {t('profile.weeklySummaryGenerated', {
+                date: new Date(weeklySummary.generatedAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'cs-CZ'),
+                week: weeklySummary.weekStartISO ?? '',
+              })}
             </Text>
           )}
         </Card>
@@ -262,7 +265,7 @@ export function ProfileScreen() {
       {weeklySummary.error && (
         <Card>
           <Text style={[styles.errorText, { color: colors.red }]}>
-            Chyba při generování AI shrnutí: {weeklySummary.error}
+            {t('profile.weeklySummaryError', { error: weeklySummary.error })}
           </Text>
         </Card>
       )}
@@ -284,12 +287,12 @@ export function ProfileScreen() {
           </>
         ) : (
           <>
-            <Field value={auth.name} onChangeText={name => setAuth(v => ({ ...v, name }))} placeholder="Jméno pro registraci" />
-            <Field autoCapitalize="none" keyboardType="email-address" value={auth.email} onChangeText={email => setAuth(v => ({ ...v, email }))} placeholder="E-mail" />
-            <Field secureTextEntry value={auth.password} onChangeText={password => setAuth(v => ({ ...v, password }))} placeholder="Heslo" />
+            <Field value={auth.name} onChangeText={name => setAuth(v => ({ ...v, name }))} placeholder={t('profile.namePlaceholder')} />
+            <Field autoCapitalize="none" keyboardType="email-address" value={auth.email} onChangeText={email => setAuth(v => ({ ...v, email }))} placeholder={t('profile.emailPlaceholder')} />
+            <Field secureTextEntry value={auth.password} onChangeText={password => setAuth(v => ({ ...v, password }))} placeholder={t('profile.passwordPlaceholder')} />
             <View style={styles.row}>
-              <Button variant="secondary" onPress={login}>Přihlásit</Button>
-              <Button onPress={register}>Registrovat</Button>
+              <Button variant="secondary" onPress={login}>{t('profile.loginButton')}</Button>
+              <Button onPress={register}>{t('profile.registerButton')}</Button>
             </View>
           </>
         )}
@@ -297,9 +300,9 @@ export function ProfileScreen() {
 
       {/* Privacy & safety */}
       <SectionCard title={t('profile.privacySafety')} summary={t('profile.privacyShort')}>
-        <Text style={[styles.copy, { color: colors.muted }]}>Trenr není zdravotnický prostředek, nediagnostikuje, neléčí a nenahrazuje odbornou péči.</Text>
-        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>Ochrana osobních údajů</Text>
-        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>Veřejná žádost o smazání účtu</Text>
+        <Text style={[styles.copy, { color: colors.muted }]}>{t('profile.legalDisclaimer')}</Text>
+        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/legal.html#privacy')}>{t('profile.privacyPolicyLink')}</Text>
+        <Text style={[styles.link, { color: colors.blue }]} onPress={() => Linking.openURL('https://nutri-fit-omega.vercel.app/delete-account.html')}>{t('profile.deleteAccountLink')}</Text>
       </SectionCard>
 
       <WeeklyCheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} />
@@ -307,15 +310,15 @@ export function ProfileScreen() {
   );
 }
 
-const trainingGoals: Array<{ value: TrainingGoalKind; label: string }> = [
-  { value: 'general_fitness', label: 'Kondice' },
-  { value: 'walking_more', label: 'Chůze' },
-  { value: 'couch_to_5k', label: 'Couch→5k' },
-  { value: 'run_5k', label: '5 km' },
-  { value: 'run_10k', label: '10 km' },
-  { value: 'half_marathon', label: 'Půlmaraton' },
-  { value: 'strength_basics', label: 'Síla' },
-  { value: 'hyrox', label: 'Hyrox' },
+const trainingGoals: Array<{ value: TrainingGoalKind; labelKey: TranslationKey }> = [
+  { value: 'general_fitness', labelKey: 'trainingGoal.general_fitness' },
+  { value: 'walking_more', labelKey: 'trainingGoal.walking_more' },
+  { value: 'couch_to_5k', labelKey: 'trainingGoal.couch_to_5k' },
+  { value: 'run_5k', labelKey: 'trainingGoal.run_5k' },
+  { value: 'run_10k', labelKey: 'trainingGoal.run_10k' },
+  { value: 'half_marathon', labelKey: 'trainingGoal.half_marathon' },
+  { value: 'strength_basics', labelKey: 'trainingGoal.strength_basics' },
+  { value: 'hyrox', labelKey: 'trainingGoal.hyrox' },
 ];
 
 const nutritionModes: Array<{ value: NutritionMode; labelKey: TranslationKey }> = [
