@@ -1,10 +1,11 @@
-const { method, requireUser, sendError, supabaseRest, msg } = require('./_lib/store-readiness');
+const { method, requireUser, sendError, supabaseRest, msg, rateLimit } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['GET'])) return;
 
   const requester = await requireUser(req, res);
   if (!requester) return;
+  if (!(await rateLimit(req, res, 'export-data', 5))) return;
 
   try {
     const userId = requester.user.id;

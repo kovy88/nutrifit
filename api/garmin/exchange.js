@@ -9,11 +9,12 @@
 //      GARMIN_CLIENT_ID = <UUID>
 //      GARMIN_CLIENT_SECRET = <hex string>
 
-const { method, requireUser, sendError, isAllowedRedirectUri } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-exchange', 10))) return;
 
   const clientId = process.env.GARMIN_CLIENT_ID;
   const clientSecret = process.env.GARMIN_CLIENT_SECRET;

@@ -77,15 +77,22 @@ async function getRequester(req) {
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!anonKey) return { token, user: null };
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!response.ok) return { token, user: null };
-  const user = await response.json();
-  return { token, user };
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) return { token, user: null };
+    const user = await response.json();
+    return { token, user };
+  } catch {
+    // Network/DNS failure talking to Supabase Auth — fail closed rather than
+    // let an unhandled rejection crash every endpoint that calls this
+    // (requireUser + rateLimit gate almost the entire authenticated surface).
+    return { token, user: null };
+  }
 }
 
 async function requireUser(req, res) {

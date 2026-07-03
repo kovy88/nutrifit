@@ -13,11 +13,12 @@
 //      STRAVA_CLIENT_ID = <číslo>
 //      STRAVA_CLIENT_SECRET = <40-znaků hex>
 
-const { method, requireUser, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-exchange', 10))) return;
 
   const clientId = process.env.STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
