@@ -244,34 +244,40 @@ export function remainingMacros(macros: Macros, items: FoodLogItem[]) {
   };
 }
 
-export function normalizeFoodEstimate(raw: Partial<FoodEstimate>): FoodEstimate {
+const CONFIDENCE_LEVELS_CS = ['nízká', 'střední', 'vysoká'];
+const CONFIDENCE_LEVELS_EN = ['low', 'medium', 'high'];
+
+export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: string = 'cs'): FoodEstimate {
+  const isEn = locale === 'en';
+  const levels = isEn ? CONFIDENCE_LEVELS_EN : CONFIDENCE_LEVELS_CS;
   return {
-    foodName: String(raw.foodName || 'Neznámé jídlo').slice(0, 80),
-    portionGuess: String(raw.portionGuess || 'Orientační porce').slice(0, 120),
+    foodName: String(raw.foodName || (isEn ? 'Unknown food' : 'Neznámé jídlo')).slice(0, 80),
+    portionGuess: String(raw.portionGuess || (isEn ? 'Approximate portion' : 'Orientační porce')).slice(0, 120),
     kcal: clampInt(raw.kcal, 0, 3000),
     protein: clampInt(raw.protein, 0, 250),
     carbs: clampInt(raw.carbs, 0, 500),
     fat: clampInt(raw.fat, 0, 250),
-    confidence: ['nízká', 'střední', 'vysoká'].includes(String(raw.confidence)) ? String(raw.confidence) : 'střední',
-    note: String(raw.note || 'Jde o orientační odhad. Uprav hodnoty podle skutečné porce.').slice(0, 180),
+    confidence: [...CONFIDENCE_LEVELS_CS, ...CONFIDENCE_LEVELS_EN].includes(String(raw.confidence)) ? String(raw.confidence) : levels[1],
+    note: String(raw.note || (isEn ? 'This is an approximate estimate. Adjust the values to match the actual portion.' : 'Jde o orientační odhad. Uprav hodnoty podle skutečné porce.')).slice(0, 180),
     plannedMealKey: raw.plannedMealKey ? String(raw.plannedMealKey).slice(0, 160) : undefined,
   };
 }
 
-export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string): Meal {
+export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, locale: string = 'cs'): Meal {
+  const isEn = locale === 'en';
   const protein = clampInt(raw.protein, 0, 250);
   const carbs = clampInt(raw.carbs, 0, 500);
   const fat = clampInt(raw.fat, 0, 250);
   return {
     mealType: String(raw.mealType || fallbackType),
-    name: String(raw.name || 'Jídlo bez názvu'),
+    name: String(raw.name || (isEn ? 'Unnamed meal' : 'Jídlo bez názvu')),
     kcal: clampInt(raw.kcal || protein * 4 + carbs * 4 + fat * 9, 0, 3000),
     protein,
     carbs,
     fat,
     fiber: clampInt(raw.fiber, 0, 80),
     prepTime: clampInt(raw.prepTime || 15, 1, 180),
-    difficulty: String(raw.difficulty || 'Jednoduchá'),
+    difficulty: String(raw.difficulty || (isEn ? 'Easy' : 'Jednoduchá')),
     ingredients: Array.isArray(raw.ingredients) ? raw.ingredients.map(String) : [],
     steps: Array.isArray(raw.steps) ? raw.steps.map(String) : [],
   };
@@ -318,7 +324,7 @@ export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCoun
   return { valid: errors.length === 0, errors, totals };
 }
 
-export function mealToFoodEstimate(meal: Meal): FoodEstimate {
+export function mealToFoodEstimate(meal: Meal, locale: string = 'cs'): FoodEstimate {
   return normalizeFoodEstimate({
     foodName: meal.name,
     portionGuess: meal.mealType,
@@ -326,10 +332,10 @@ export function mealToFoodEstimate(meal: Meal): FoodEstimate {
     protein: meal.protein,
     carbs: meal.carbs,
     fat: meal.fat,
-    confidence: 'vysoká',
-    note: 'Zapsáno z vygenerovaného jídelníčku.',
+    confidence: locale === 'en' ? 'high' : 'vysoká',
+    note: locale === 'en' ? 'Logged from the generated meal plan.' : 'Zapsáno z vygenerovaného jídelníčku.',
     plannedMealKey: plannedMealKey(meal),
-  });
+  }, locale);
 }
 
 export function plannedMealKey(meal: Pick<Meal, 'mealType' | 'name'>) {

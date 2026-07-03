@@ -58,6 +58,12 @@ describe('nutrition utilities', () => {
     expect(estimate.confidence).toBe('střední');
   });
 
+  it('normalizes AI food estimates in English when locale is en', () => {
+    const estimate = normalizeFoodEstimate({ foodName: '', kcal: 9999, confidence: 'maybe' }, 'en');
+    expect(estimate.foodName).toBe('Unknown food');
+    expect(estimate.confidence).toBe('medium');
+  });
+
   it('adjusts rest and long-run days', () => {
     const baseline = calculateMacros({ ...DEFAULT_PROFILE, primaryGoal: 'improve_running', trainingGoal: 'run_10k' } as any);
     const rest = adjustForDay(baseline, { date: '2026-05-27', kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' }, DEFAULT_PROFILE);

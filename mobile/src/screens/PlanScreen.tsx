@@ -134,7 +134,7 @@ export function PlanScreen() {
 
     setLoading(true);
     try {
-      const next = await generateMealPlan(activeProfile, activeMacros, selectedSession);
+      const next = await generateMealPlan(activeProfile, activeMacros, selectedSession, locale);
       await setMeals(next);
       setPlansByDate(current => ({ ...current, [selectedDate]: next }));
     } catch (err) {
@@ -156,7 +156,7 @@ export function PlanScreen() {
       });
       if (!confirm) return;
     }
-    await addFood(mealToFoodEstimate(meal), 'planned');
+    await addFood(mealToFoodEstimate(meal, locale), 'planned');
     Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate, locale) }));
   }
 

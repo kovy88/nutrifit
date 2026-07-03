@@ -1,18 +1,33 @@
 // Vercel serverless funkce — multimodální odhad maker z fotky jídla (Gemini Vision)
 
-const { method, rateLimit, requireUser, sendError, msg } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError, msg, getLocale } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
-const EMPTY_ESTIMATE = {
-  foodName: 'Jídlo se nepodařilo rozpoznat',
-  portionGuess: 'porce nerozpoznána',
-  kcal: 0,
-  protein: 0,
-  carbs: 0,
-  fat: 0,
-  confidence: 'nízká',
-  note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
-};
+
+function emptyEstimate(locale) {
+  if (locale === 'en') {
+    return {
+      foodName: 'Could not recognize the food',
+      portionGuess: 'portion not recognized',
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      confidence: 'low',
+      note: 'The food is not clearly visible in the photo. Try better lighting, a top-down shot, and the whole plate.',
+    };
+  }
+  return {
+    foodName: 'Jídlo se nepodařilo rozpoznat',
+    portionGuess: 'porce nerozpoznána',
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 'nízká',
+    note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
+  };
+}
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -47,7 +62,26 @@ module.exports = async function handler(req, res) {
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
 
-  const prompt = `
+  const locale = getLocale(req);
+  const prompt = locale === 'en'
+    ? `
+You are a nutrition assistant. Estimate the food and approximate macros from the image.
+Return ONLY valid JSON with no markdown, comments, or extra text.
+All user-facing JSON string values must be in English.
+If there is no food in the image or the portion cannot be recognized, return JSON with zero macros and low confidence.
+{
+  "foodName": "Food name",
+  "portionGuess": "Short portion estimate",
+  "kcal": 0,
+  "protein": 0,
+  "carbs": 0,
+  "fat": 0,
+  "confidence": "low|medium|high",
+  "note": "Short note that this is an approximate estimate"
+}
+Use integers for kcal/protein/carbs/fat.
+`
+    : `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
 Return ONLY valid JSON with no markdown, comments, or extra text.
 All user-facing JSON string values must be in Czech.
@@ -102,7 +136,7 @@ Use integers for kcal/protein/carbs/fat.
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const estimate = normalizeEstimate(parseJSONLoose(text) || EMPTY_ESTIMATE);
+  const estimate = normalizeEstimate(parseJSONLoose(text) || emptyEstimate(locale), locale);
   return res.status(200).json({ ...data, estimate });
 };
 
@@ -143,17 +177,20 @@ function coalesceCandidateText(data) {
   };
 }
 
-function normalizeEstimate(raw) {
-  const confidence = String(raw.confidence || EMPTY_ESTIMATE.confidence).toLowerCase();
+const CONFIDENCE_LEVELS = ['nízká', 'střední', 'vysoká', 'low', 'medium', 'high'];
+
+function normalizeEstimate(raw, locale) {
+  const fallback = emptyEstimate(locale);
+  const confidence = String(raw.confidence || fallback.confidence).toLowerCase();
   return {
-    foodName: text(raw.foodName, EMPTY_ESTIMATE.foodName),
-    portionGuess: text(raw.portionGuess, EMPTY_ESTIMATE.portionGuess),
+    foodName: text(raw.foodName, fallback.foodName),
+    portionGuess: text(raw.portionGuess, fallback.portionGuess),
     kcal: number(raw.kcal),
     protein: number(raw.protein),
     carbs: number(raw.carbs),
     fat: number(raw.fat),
-    confidence: ['nízká', 'střední', 'vysoká'].includes(confidence) ? confidence : 'střední',
-    note: text(raw.note, EMPTY_ESTIMATE.note),
+    confidence: CONFIDENCE_LEVELS.includes(confidence) ? confidence : (locale === 'en' ? 'medium' : 'střední'),
+    note: text(raw.note, fallback.note),
   };
 }
 
