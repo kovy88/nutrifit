@@ -4,6 +4,7 @@
 // build where the package is installed and an API key is configured.
 
 import { Platform } from 'react-native';
+import type { Locale } from '../i18n/types';
 import {
   PREMIUM_ENTITLEMENT,
   type SubscriptionPackage,
@@ -75,7 +76,7 @@ export class RevenueCatSubscriptionProvider implements SubscriptionProvider {
     }
   }
 
-  async getOfferings(): Promise<SubscriptionPackage[]> {
+  async getOfferings(_locale?: Locale): Promise<SubscriptionPackage[]> {
     const Purchases = await loadPurchases();
     if (!Purchases) return [];
     try {
