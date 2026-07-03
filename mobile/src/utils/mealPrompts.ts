@@ -1,7 +1,8 @@
 import type { Macros, Meal, UserProfile, TrainingSession } from '../types';
 import { primaryGoalLabel } from './nutrition';
+import type { Locale } from '../lib/i18n';
 
-const mealNames: Record<number, string[]> = {
+const mealNamesCs: Record<number, string[]> = {
   2: ['Snídaně', 'Večeře'],
   3: ['Snídaně', 'Oběd', 'Večeře'],
   4: ['Snídaně', 'Oběd', 'Odpolední svačina', 'Večeře'],
@@ -9,7 +10,16 @@ const mealNames: Record<number, string[]> = {
   6: ['Snídaně', 'Dop. svačina', 'Oběd', 'Odp. svačina', 'Večeře', '2. večeře'],
 };
 
-export function namesForMealCount(count: number) {
+const mealNamesEn: Record<number, string[]> = {
+  2: ['Breakfast', 'Dinner'],
+  3: ['Breakfast', 'Lunch', 'Dinner'],
+  4: ['Breakfast', 'Lunch', 'Afternoon snack', 'Dinner'],
+  5: ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack', 'Dinner'],
+  6: ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack', 'Dinner', '2nd dinner'],
+};
+
+export function namesForMealCount(count: number, locale: Locale = 'cs') {
+  const mealNames = locale === 'en' ? mealNamesEn : mealNamesCs;
   return mealNames[count] || mealNames[5];
 }
 
@@ -20,23 +30,42 @@ export function buildMealPlanRequest(
   /** When a previous attempt failed validation, the errors are fed back so the
    *  model can self-correct on a single retry before we surface a hard error. */
   repairErrors?: string[],
+  locale: Locale = 'cs',
 ) {
-  const names = namesForMealCount(profile.mealCount);
-  const systemPrompt = [
-    'You are Trenr AI, a Czech nutrition assistant.',
-    'Return only valid JSON without markdown.',
-    'All user-facing JSON string values must be in Czech.',
-    'The app is not a medical device, so do not make diagnostic or treatment claims.',
-    'Respect allergies, diet style, and ingredients commonly available in Czech stores.',
-  ].join('\n');
+  const isEn = locale === 'en';
+  const names = namesForMealCount(profile.mealCount, locale);
+  const systemPrompt = isEn
+    ? [
+        'You are Trenr AI, a nutrition assistant.',
+        'Return only valid JSON without markdown.',
+        'All user-facing JSON string values must be in English.',
+        'The app is not a medical device, so do not make diagnostic or treatment claims.',
+        'Respect allergies and diet style; ingredients should be commonly available in supermarkets.',
+      ].join('\n')
+    : [
+        'You are Trenr AI, a Czech nutrition assistant.',
+        'Return only valid JSON without markdown.',
+        'All user-facing JSON string values must be in Czech.',
+        'The app is not a medical device, so do not make diagnostic or treatment claims.',
+        'Respect allergies, diet style, and ingredients commonly available in Czech stores.',
+      ].join('\n');
 
   let trainingContext = '';
   if (session && session.kind !== 'rest' && session.durationMinutes > 0) {
-    trainingContext = `Dnes má uživatel naplánovaný trénink: ${session.title} (druh ${session.kind}, ${session.durationMinutes} min, intenzita ${session.intensity}). 
+    trainingContext = isEn
+      ? `Today the user has a planned training session: ${session.title} (kind ${session.kind}, ${session.durationMinutes} min, intensity ${session.intensity}).
+Adapt the meal plan sensibly: the meal immediately before or after training should have more easily digestible carbs for quick energy and enough protein for recovery. In the meal description or steps you can briefly mention in one sentence why this particular meal is great for today's training.`
+      : `Dnes má uživatel naplánovaný trénink: ${session.title} (druh ${session.kind}, ${session.durationMinutes} min, intenzita ${session.intensity}).
 Jídelníček tréninku rozumně přizpůsob: jídlo bezprostředně před nebo po tréninku by mělo obsahovat více lehce stravitelných sacharidů pro rychlou energii a dostatek bílkovin pro regeneraci. Do popisu jídla nebo postupu můžeš stručně v jedné větě česky zmínit, proč je toto konkrétní jídlo pro dnešní trénink skvělé.`;
   } else {
-    trainingContext = 'Dnes má uživatel volný den bez náročného tréninku. Rozlož makroživiny rovnoměrně a zaměř se na stabilní hladinu energie po celý den.';
+    trainingContext = isEn
+      ? "Today the user has a rest day with no hard training. Spread macros evenly and aim for stable energy throughout the day."
+      : 'Dnes má uživatel volný den bez náročného tréninku. Rozlož makroživiny rovnoměrně a zaměř se na stabilní hladinu energie po celý den.';
   }
+
+  const jsonExample = isEn
+    ? '{"meals":[{"mealType":"Breakfast","name":"Name","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Easy","ingredients":["150g of ingredient"],"steps":["Step."]}]}'
+    : '{"meals":[{"mealType":"Snídaně","name":"Název","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["150g suroviny"],"steps":["Krok."]}]}';
 
   const prompt = `Create a 1-day meal plan with exactly ${profile.mealCount} meals.
 
@@ -51,7 +80,7 @@ RESTRICTIONS/ALLERGIES: ${profile.dislikes || 'no restrictions'}
 MEALS: ${names.join(', ')}
 ${repairErrors && repairErrors.length ? `\nPREVIOUS ATTEMPT FAILED VALIDATION — fix exactly these issues and keep daily totals on target:\n- ${repairErrors.slice(0, 4).join('\n- ')}\n` : ''}
 Return JSON:
-{"meals":[{"mealType":"Snídaně","name":"Název","kcal":450,"protein":30,"carbs":45,"fat":12,"fiber":8,"prepTime":10,"difficulty":"Jednoduchá","ingredients":["150g suroviny"],"steps":["Krok."]}]}`;
+${jsonExample}`;
 
   return { systemPrompt, prompt, maxTokens: 3500, mealNames: names };
 }
@@ -84,20 +113,33 @@ export function buildAllergenRepairRequest(opts: {
   current: Meal;
   forbidden: string[];
   otherMeals?: Meal[];
+  locale?: Locale;
 }): SingleMealRequest {
   const { profile, session, current, forbidden, otherMeals = [] } = opts;
+  const locale = opts.locale ?? 'cs';
+  const isEn = locale === 'en';
 
-  const systemPrompt = [
-    'You are Trenr AI, a Czech nutrition assistant.',
-    'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
-    'All user-facing JSON string values must be in Czech.',
-    'CRITICAL: The user has allergies/intolerances listed under FORBIDDEN. The meal MUST NOT contain any of these ingredients OR their derivatives (e.g. milk → cheese, butter, cream, casein, whey; gluten → wheat, rye, barley, spelt, semolina; nuts → almond butter, marzipan, pesto with pine nuts).',
-    'If you cannot satisfy the macro target safely without the forbidden items, return a simpler meal at the same macros using clearly allowed staples.',
-  ].join('\n');
+  const systemPrompt = isEn
+    ? [
+        'You are Trenr AI, a nutrition assistant.',
+        'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
+        'All user-facing JSON string values must be in English.',
+        'CRITICAL: The user has allergies/intolerances listed under FORBIDDEN. The meal MUST NOT contain any of these ingredients OR their derivatives (e.g. milk → cheese, butter, cream, casein, whey; gluten → wheat, rye, barley, spelt, semolina; nuts → almond butter, marzipan, pesto with pine nuts).',
+        'If you cannot satisfy the macro target safely without the forbidden items, return a simpler meal at the same macros using clearly allowed staples.',
+      ].join('\n')
+    : [
+        'You are Trenr AI, a Czech nutrition assistant.',
+        'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
+        'All user-facing JSON string values must be in Czech.',
+        'CRITICAL: The user has allergies/intolerances listed under FORBIDDEN. The meal MUST NOT contain any of these ingredients OR their derivatives (e.g. milk → cheese, butter, cream, casein, whey; gluten → wheat, rye, barley, spelt, semolina; nuts → almond butter, marzipan, pesto with pine nuts).',
+        'If you cannot satisfy the macro target safely without the forbidden items, return a simpler meal at the same macros using clearly allowed staples.',
+      ].join('\n');
 
   let trainingContext = '';
   if (session && session.kind !== 'rest' && session.durationMinutes > 0) {
-    trainingContext = `Dnes má uživatel trénink ${session.title} (${session.durationMinutes} min, intenzita ${session.intensity}).`;
+    trainingContext = isEn
+      ? `Today the user has training ${session.title} (${session.durationMinutes} min, intensity ${session.intensity}).`
+      : `Dnes má uživatel trénink ${session.title} (${session.durationMinutes} min, intenzita ${session.intensity}).`;
   }
 
   const otherHints = otherMeals
@@ -106,7 +148,12 @@ export function buildAllergenRepairRequest(opts: {
     .map(m => `${m.mealType}: ${m.name}`)
     .join(' | ');
 
-  const prompt = `Generate ONE alternative Czech meal for slot "${current.mealType}" that strictly avoids the user's allergens.
+  const namePlaceholder = isEn ? 'English name' : 'Český název';
+  const difficultyPlaceholder = isEn ? 'Easy' : 'Jednoduchá';
+  const ingredientPlaceholder = isEn ? '150g of ingredient' : '150g suroviny';
+  const stepPlaceholder = isEn ? 'Step 1.' : 'Krok 1.';
+
+  const prompt = `Generate ONE alternative ${isEn ? 'English-language' : 'Czech'} meal for slot "${current.mealType}" that strictly avoids the user's allergens.
 
 TARGET MACROS (must match ±10 %):
   ${current.kcal} kcal | Protein ${current.protein} g | Carbs ${current.carbs} g | Fat ${current.fat} g
@@ -119,7 +166,7 @@ ${otherHints ? `OTHER MEALS TODAY (do not duplicate main protein): ${otherHints}
 ${trainingContext ? `TRAINING CONTEXT: ${trainingContext}` : ''}
 
 Return JSON:
-{"mealType":"${current.mealType}","name":"Český název","kcal":${current.kcal},"protein":${current.protein},"carbs":${current.carbs},"fat":${current.fat},"fiber":8,"prepTime":15,"difficulty":"Jednoduchá","ingredients":["150g suroviny"],"steps":["Krok 1."]}`;
+{"mealType":"${current.mealType}","name":"${namePlaceholder}","kcal":${current.kcal},"protein":${current.protein},"carbs":${current.carbs},"fat":${current.fat},"fiber":8,"prepTime":15,"difficulty":"${difficultyPlaceholder}","ingredients":["${ingredientPlaceholder}"],"steps":["${stepPlaceholder}"]}`;
 
   return { systemPrompt, prompt, maxTokens: 900, mealType: current.mealType };
 }
@@ -144,20 +191,33 @@ export function buildSingleMealRequest(opts: {
   current: Meal;
   /** Other meals in the day so AI doesn't repeat ingredients. */
   otherMeals?: Meal[];
+  locale?: Locale;
 }): SingleMealRequest {
   const { profile, session, current, otherMeals = [] } = opts;
+  const locale = opts.locale ?? 'cs';
+  const isEn = locale === 'en';
 
-  const systemPrompt = [
-    'You are Trenr AI, a Czech nutrition assistant.',
-    'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
-    'All user-facing JSON string values must be in Czech.',
-    'The app is not a medical device, so do not make diagnostic or treatment claims.',
-    'Respect allergies, diet style, and ingredients commonly available in Czech stores.',
-  ].join('\n');
+  const systemPrompt = isEn
+    ? [
+        'You are Trenr AI, a nutrition assistant.',
+        'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
+        'All user-facing JSON string values must be in English.',
+        'The app is not a medical device, so do not make diagnostic or treatment claims.',
+        'Respect allergies and diet style; ingredients should be commonly available in supermarkets.',
+      ].join('\n')
+    : [
+        'You are Trenr AI, a Czech nutrition assistant.',
+        'Return ONLY ONE valid JSON meal object (no array wrapper, no markdown).',
+        'All user-facing JSON string values must be in Czech.',
+        'The app is not a medical device, so do not make diagnostic or treatment claims.',
+        'Respect allergies, diet style, and ingredients commonly available in Czech stores.',
+      ].join('\n');
 
   let trainingContext = '';
   if (session && session.kind !== 'rest' && session.durationMinutes > 0) {
-    trainingContext = `Dnes má uživatel trénink ${session.title} (${session.durationMinutes} min, intenzita ${session.intensity}). Jídlo přizpůsob — pre/post-workout sacharidy + bílkoviny.`;
+    trainingContext = isEn
+      ? `Today the user has training ${session.title} (${session.durationMinutes} min, intensity ${session.intensity}). Adapt the meal — pre/post-workout carbs + protein.`
+      : `Dnes má uživatel trénink ${session.title} (${session.durationMinutes} min, intenzita ${session.intensity}). Jídlo přizpůsob — pre/post-workout sacharidy + bílkoviny.`;
   }
 
   // Other meals' main protein + names so the AI avoids repeats.
@@ -167,7 +227,11 @@ export function buildSingleMealRequest(opts: {
     .map(m => `${m.mealType}: ${m.name}`)
     .join(' | ');
 
-  const prompt = `Generate ONE alternative Czech meal for slot "${current.mealType}".
+  const namePlaceholder = isEn ? 'English name' : 'Český název';
+  const difficultyPlaceholder = isEn ? 'Easy' : 'Jednoduchá';
+  const ingredientPlaceholder = isEn ? '150g of ingredient' : '150g suroviny';
+
+  const prompt = `Generate ONE alternative ${isEn ? 'English-language' : 'Czech'} meal for slot "${current.mealType}".
 
 TARGET MACROS (must match ±10 %):
   ${current.kcal} kcal | Protein ${current.protein} g | Carbs ${current.carbs} g | Fat ${current.fat} g
@@ -180,7 +244,7 @@ ${otherProteinHints ? `OTHER MEALS TODAY (do not duplicate main protein): ${othe
 ${trainingContext ? `TRAINING CONTEXT: ${trainingContext}` : ''}
 
 Return JSON:
-{"mealType":"${current.mealType}","name":"Český název","kcal":${current.kcal},"protein":${current.protein},"carbs":${current.carbs},"fat":${current.fat},"fiber":8,"prepTime":15,"difficulty":"Jednoduchá","ingredients":["150g suroviny"],"steps":["Krok 1.","Krok 2."]}`;
+{"mealType":"${current.mealType}","name":"${namePlaceholder}","kcal":${current.kcal},"protein":${current.protein},"carbs":${current.carbs},"fat":${current.fat},"fiber":8,"prepTime":15,"difficulty":"${difficultyPlaceholder}","ingredients":["${ingredientPlaceholder}"],"steps":["${isEn ? 'Step 1.' : 'Krok 1.'}","${isEn ? 'Step 2.' : 'Krok 2.'}"]}`;
 
   return { systemPrompt, prompt, maxTokens: 900, mealType: current.mealType };
 }

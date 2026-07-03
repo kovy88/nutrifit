@@ -45,25 +45,25 @@ async function postJsonWithRetry<T>(path: string, body: unknown, locale: Locale 
   }
 }
 
-export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null): Promise<Meal[]> {
+export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null, locale: Locale = 'cs'): Promise<Meal[]> {
   // First attempt. If the result fails validation, we re-prompt ONCE with the
   // concrete errors fed back (self-correction) before surfacing a hard error —
   // a single bad generation no longer breaks the core flow.
   try {
-    let meals = await requestAndNormalizeMealPlan(profile, macros, session);
-    let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
+    let meals = await requestAndNormalizeMealPlan(profile, macros, session, undefined, locale);
+    let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length);
     if (!validation.valid) {
-      meals = await requestAndNormalizeMealPlan(profile, macros, session, validation.errors);
-      validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount).length);
+      meals = await requestAndNormalizeMealPlan(profile, macros, session, validation.errors, locale);
+      validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length);
     }
     if (validation.valid) {
-      return await repairAllergenViolations(meals, profile, session);
+      return await repairAllergenViolations(meals, profile, session, locale);
     }
     console.warn('Trenr API: falling back to deterministic meal plan after invalid AI output:', validation.errors);
   } catch (err) {
     console.warn('Trenr API: falling back to deterministic meal plan after AI failure:', err);
   }
-  return buildFallbackMealPlan(profile, macros);
+  return buildFallbackMealPlan(profile, macros, locale);
 }
 
 /** One round-trip: build request (optionally with repair feedback), call the
@@ -73,15 +73,16 @@ async function requestAndNormalizeMealPlan(
   macros: Macros,
   session?: TrainingSession | null,
   repairErrors?: string[],
+  locale: Locale = 'cs',
 ): Promise<Meal[]> {
-  const request = buildMealPlanRequest(profile, macros, session, repairErrors);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const request = buildMealPlanRequest(profile, macros, session, repairErrors, locale);
+  const data = await postJsonWithRetry<any>('/api/generate', request, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const parsed = parseJson(text);
+  const parsed = parseJson(text, locale);
   // Zod structural validation first; fall back to the lenient extraction so a
   // slightly-off shape still gets normalized rather than hard-failing.
   const rawMeals = parseMealPlanResponse(parsed) ?? (Array.isArray(parsed?.meals) ? parsed.meals : []);
-  return request.mealNames.map((mealType, index) => normalizeMeal(rawMeals[index] || {}, mealType));
+  return request.mealNames.map((mealType, index) => normalizeMeal(rawMeals[index] || {}, mealType, locale));
 }
 
 /**
@@ -94,6 +95,7 @@ async function repairAllergenViolations(
   meals: Meal[],
   profile: UserProfile,
   session?: TrainingSession | null,
+  locale: Locale = 'cs',
 ): Promise<Meal[]> {
   const allergens = parseAllergensFromFreeText(profile.dislikes);
   if (!allergens.length) return meals;
@@ -110,12 +112,13 @@ async function repairAllergenViolations(
       current: hit.meal,
       forbidden: hit.matched,
       otherMeals,
+      locale,
     });
-    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const data = await postJsonWithRetry<any>('/api/generate', request, locale);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsed = parseJson(text);
+    const parsed = parseJson(text, locale);
     const raw = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
-    repaired[hit.mealIndex] = normalizeMeal(raw || {}, hit.meal.mealType);
+    repaired[hit.mealIndex] = normalizeMeal(raw || {}, hit.meal.mealType, locale);
   }
 
   const post = validateMealsAgainstAllergens(repaired, allergens);
@@ -124,14 +127,17 @@ async function repairAllergenViolations(
       .map(h => `${h.meal.mealType}: ${h.matched.join(', ')}`)
       .join(' | ');
     throw new Error(
-      `AI nedokázala vyhnout se tvým alergenům (${stuckList}). Zkus to znovu nebo uprav preference v profilu.`,
+      locale === 'en'
+        ? `AI couldn't avoid your allergens (${stuckList}). Try again or adjust your profile preferences.`
+        : `AI nedokázala vyhnout se tvým alergenům (${stuckList}). Zkus to znovu nebo uprav preference v profilu.`,
     );
   }
   return repaired;
 }
 
-function buildFallbackMealPlan(profile: UserProfile, macros: Macros): Meal[] {
-  const names = namesForMealCount(profile.mealCount);
+function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Locale = 'cs'): Meal[] {
+  const isEn = locale === 'en';
+  const names = namesForMealCount(profile.mealCount, locale);
   const weights = mealWeights(names.length);
   const protein = splitMacro(macros.protein, weights);
   const carbs = splitMacro(macros.carbs, weights);
@@ -142,23 +148,34 @@ function buildFallbackMealPlan(profile: UserProfile, macros: Macros): Meal[] {
     const kcal = protein[index] * 4 + carbs[index] * 4 + fat[index] * 9;
     return {
       mealType,
-      name: `${mealType} - jednoduchý záložní talíř`,
+      name: isEn ? `${mealType} - simple backup plate` : `${mealType} - jednoduchý záložní talíř`,
       kcal,
       protein: protein[index],
       carbs: carbs[index],
       fat: fat[index],
       fiber: fiber[index],
       prepTime: 15,
-      difficulty: 'Jednoduchá',
-      ingredients: [
-        `${protein[index]} g bílkovin z tolerovaného zdroje`,
-        `${carbs[index]} g sacharidů z běžné přílohy`,
-        `${fat[index]} g tuků z tolerovaného zdroje`,
-      ],
-      steps: [
-        'Zvol suroviny, které máš ověřené a snášíš.',
-        'Slož porci podle uvedených makro cílů a uprav gramáž v aplikaci podle reality.',
-      ],
+      difficulty: isEn ? 'Easy' : 'Jednoduchá',
+      ingredients: isEn
+        ? [
+            `${protein[index]} g protein from a tolerated source`,
+            `${carbs[index]} g carbs from a regular side`,
+            `${fat[index]} g fat from a tolerated source`,
+          ]
+        : [
+            `${protein[index]} g bílkovin z tolerovaného zdroje`,
+            `${carbs[index]} g sacharidů z běžné přílohy`,
+            `${fat[index]} g tuků z tolerovaného zdroje`,
+          ],
+      steps: isEn
+        ? [
+            'Pick ingredients you know and tolerate well.',
+            'Portion according to the macro targets above and adjust the amounts in the app to match reality.',
+          ]
+        : [
+            'Zvol suroviny, které máš ověřené a snášíš.',
+            'Slož porci podle uvedených makro cílů a uprav gramáž v aplikaci podle reality.',
+          ],
     };
   });
 }
@@ -201,7 +218,7 @@ export async function regenerateMeal(opts: {
   const parsed = parseJson(text, locale);
   // Some AI runs wrap the object in {"meals":[…]} or {"meal":{…}}; handle both.
   const rawMeal = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
-  const meal = normalizeMeal(rawMeal || {}, opts.current.mealType);
+  const meal = normalizeMeal(rawMeal || {}, opts.current.mealType, locale);
 
   // Don't accept a near-duplicate of the rejected one.
   if (meal.name.trim().toLowerCase() === opts.current.name.trim().toLowerCase()) {
@@ -242,9 +259,9 @@ export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'cs'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType }, locale);
-  if (data.estimate) return normalizeFoodEstimate(data.estimate);
+  if (data.estimate) return normalizeFoodEstimate(data.estimate, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  return normalizeFoodEstimate(parseJson(text, locale));
+  return normalizeFoodEstimate(parseJson(text, locale), locale);
 }
 
 export async function exportAccountData(locale: Locale = 'cs') {

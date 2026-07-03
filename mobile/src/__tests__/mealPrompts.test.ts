@@ -102,4 +102,12 @@ describe('buildSingleMealRequest', () => {
     const r = buildSingleMealRequest({ profile, current: breakfast });
     expect(r.prompt).toContain('mušle, kapr');
   });
+
+  it('returns English-only output instruction and placeholders when locale is en', () => {
+    const r = buildSingleMealRequest({ profile, current: breakfast, locale: 'en' });
+    expect(r.systemPrompt).toContain('English');
+    expect(r.systemPrompt).not.toContain('Czech');
+    expect(r.prompt).toContain('English name');
+    expect(r.prompt).not.toContain('Český název');
+  });
 });
