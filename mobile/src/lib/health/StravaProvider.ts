@@ -37,6 +37,7 @@ import type {
 } from '../../types/health';
 import type { RecoveryInputs } from '../../types/coach';
 import { isExpired, type OAuthToken, type OAuthTokenStore } from './oauth/OAuthTokenStore';
+import { refreshStravaToken } from './oauth/StravaOAuth';
 
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3';
 
@@ -102,10 +103,15 @@ export class StravaProvider implements HealthDataProvider {
   async getRecoveryInputs(_start: Date, _end: Date): Promise<RecoveryInputs[]> { return []; }
 
   async getWorkoutSummaries(start: Date, end: Date): Promise<WorkoutSummary[]> {
-    const token = await this.tokens.getToken('strava');
+    let token = await this.tokens.getToken('strava');
     if (!token) return [];
 
-    // TODO(oauth): pokud isExpired(token) && refreshToken, zavolat refresh přes backend.
+    if (isExpired(token) && token.refreshToken) {
+      const refreshed = await refreshStravaToken(this.tokens);
+      if (!refreshed) return [];
+      token = await this.tokens.getToken('strava');
+      if (!token) return [];
+    }
 
     const params = new URLSearchParams({
       after: String(Math.floor(start.getTime() / 1000)),
