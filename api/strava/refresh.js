@@ -5,11 +5,12 @@
 // Strava access tokeny vyprší po 6h, refresh tokeny se občas rotují
 // (vrácený `refresh_token` se musí přepsat oproti starému).
 
-const { method, requireUser, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-refresh', 20))) return;
 
   const clientId = process.env.STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;

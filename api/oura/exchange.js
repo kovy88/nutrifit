@@ -6,11 +6,12 @@
 //                spo2 ring_configuration
 //   2. Set Vercel env: OURA_CLIENT_ID + OURA_CLIENT_SECRET
 
-const { method, requireUser, sendError, isAllowedRedirectUri } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-exchange', 10))) return;
 
   const clientId = process.env.OURA_CLIENT_ID;
   const clientSecret = process.env.OURA_CLIENT_SECRET;

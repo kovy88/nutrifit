@@ -6,11 +6,12 @@
 //   2. Set redirect URL = https://nutri-fit-omega.vercel.app/whoop-callback.html
 //   3. Set Vercel env: WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET
 
-const { method, requireUser, sendError, isAllowedRedirectUri } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-exchange', 10))) return;
 
   const clientId = process.env.WHOOP_CLIENT_ID;
   const clientSecret = process.env.WHOOP_CLIENT_SECRET;

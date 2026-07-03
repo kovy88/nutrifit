@@ -2,13 +2,14 @@
 // Env vars: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, NEXT_PUBLIC_URL
 
 const stripe = require('stripe');
-const { method, requireUser, sendError } = require('./_lib/store-readiness');
+const { method, requireUser, sendError, rateLimit } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
 
   const requester = await requireUser(req, res);
   if (!requester) return;
+  if (!(await rateLimit(req, res, 'create-checkout', 10))) return;
 
   const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_SECRET_KEY) {

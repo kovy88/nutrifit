@@ -1,11 +1,12 @@
 // Garmin refresh token endpoint.
 // POST { refreshToken } → { accessToken, refreshToken (rotated), expiresAt }
 
-const { method, requireUser, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-refresh', 20))) return;
 
   const clientId = process.env.GARMIN_CLIENT_ID;
   const clientSecret = process.env.GARMIN_CLIENT_SECRET;
