@@ -367,9 +367,24 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       await saveTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
       allConflicts.push(...conflicts);
     }
-    if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
-    if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
-    if (remote.dailyHealthSummaries) await saveDailyHealthSummaries(remote.dailyHealthSummaries);
+    if (remote.coachThreadsByDate) {
+      const local = await loadCoachThreadsByDate();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('coach_threads', local, remote.coachThreadsByDate);
+      await saveCoachThreadsByDate(merged);
+      allConflicts.push(...conflicts);
+    }
+    if (remote.dailyCoachHistory) {
+      const local = await loadDailyCoachHistory();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('daily_coach_recommendations', local, remote.dailyCoachHistory);
+      await saveDailyCoachHistory(merged);
+      allConflicts.push(...conflicts);
+    }
+    if (remote.dailyHealthSummaries) {
+      const local = await loadDailyHealthSummaries();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('daily_health_summaries', local, remote.dailyHealthSummaries);
+      await saveDailyHealthSummaries(merged);
+      allConflicts.push(...conflicts);
+    }
     // Only adopt the remote weekly-adjustment state when this device hasn't
     // already applied one locally — same "don't clobber local" policy as the
     // profile merge above, not last-write-wins.
