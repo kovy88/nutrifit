@@ -1,6 +1,7 @@
 import { loadSubscriptionStatus, saveSubscriptionStatus } from '../../services/storage';
+import type { Locale } from '../i18n/types';
 import {
-  FALLBACK_PACKAGES,
+  getFallbackPackages,
   type SubscriptionPackage,
   type SubscriptionPlanId,
   type SubscriptionProvider,
@@ -24,8 +25,8 @@ export class MockSubscriptionProvider implements SubscriptionProvider {
     // no-op
   }
 
-  async getOfferings(): Promise<SubscriptionPackage[]> {
-    return FALLBACK_PACKAGES;
+  async getOfferings(locale?: Locale): Promise<SubscriptionPackage[]> {
+    return getFallbackPackages(locale);
   }
 
   async getStatus(): Promise<SubscriptionStatus> {

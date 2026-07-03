@@ -11,6 +11,8 @@
 //   4. EAS build (the SDK is native — not available in Expo Go)
 // See docs/monetization.md.
 
+import type { Locale } from '../i18n/types';
+
 export const PREMIUM_ENTITLEMENT = 'premium';
 
 export type SubscriptionPlanId = 'monthly' | 'yearly';
@@ -37,8 +39,10 @@ export interface SubscriptionProvider {
   isAvailable(): boolean;
   /** Configure the SDK and identify the user. Call once after auth resolves. */
   configure(userId?: string | null): Promise<void>;
-  /** Live packages with store prices (empty if offerings can't load). */
-  getOfferings(): Promise<SubscriptionPackage[]>;
+  /** Live packages with store prices (empty if offerings can't load). `locale`
+   *  only affects the Mock provider's fallback strings — a real store already
+   *  returns prices localised to the device. */
+  getOfferings(locale?: Locale): Promise<SubscriptionPackage[]>;
   /** Current entitlement. */
   getStatus(): Promise<SubscriptionStatus>;
   /** Purchase a plan; resolves with the new status. Throws on failure/cancel. */
@@ -48,7 +52,15 @@ export interface SubscriptionProvider {
 }
 
 /** Shown when live offerings can't be fetched (Expo Go / offline / mock). */
-export const FALLBACK_PACKAGES: SubscriptionPackage[] = [
-  { planId: 'monthly', priceString: '149 Kč', productId: 'trenr_premium_monthly' },
-  { planId: 'yearly', priceString: '1 290 Kč', productId: 'trenr_premium_yearly' },
-];
+export function getFallbackPackages(locale: Locale = 'cs'): SubscriptionPackage[] {
+  if (locale === 'en') {
+    return [
+      { planId: 'monthly', priceString: '$6.99', productId: 'trenr_premium_monthly' },
+      { planId: 'yearly', priceString: '$59.99', productId: 'trenr_premium_yearly' },
+    ];
+  }
+  return [
+    { planId: 'monthly', priceString: '149 Kč', productId: 'trenr_premium_monthly' },
+    { planId: 'yearly', priceString: '1 290 Kč', productId: 'trenr_premium_yearly' },
+  ];
+}

@@ -19,7 +19,7 @@ import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primar
 import { computeLogStreak } from '../lib/nutrition/streaks';
 import { adjustedPlanSessionForDate } from '../lib/training';
 import { useLanguage } from './LanguageContext';
-import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
+import { getSubscriptionProvider, getFallbackPackages, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
@@ -143,7 +143,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
   const [isSubscribed, setIsSubscribedState] = useState(false);
-  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(FALLBACK_PACKAGES);
+  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(() => getFallbackPackages(locale));
 
   useEffect(() => {
     let active = true;
@@ -198,7 +198,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     void (async () => {
       try {
         await provider.configure(user?.id ?? null);
-        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings()]);
+        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings(locale)]);
         setIsSubscribedState(status.isActive);
         await saveSubscriptionStatus(status.isActive);
         if (packages.length) setSubscriptionPackages(packages);
@@ -206,7 +206,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         // keep the locally stored flag on any billing/offline error
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const baselineMacros = useMemo(
     () =>

@@ -27,6 +27,15 @@ describe('MockSubscriptionProvider', () => {
     expect(offerings.map(o => o.planId)).toContain('yearly');
   });
 
+  it('localises fallback price strings by locale instead of always showing Kč', async () => {
+    const p = new MockSubscriptionProvider();
+    const cs = await p.getOfferings('cs');
+    const en = await p.getOfferings('en');
+    expect(cs.every(o => o.priceString.includes('Kč'))).toBe(true);
+    expect(en.every(o => !o.priceString.includes('Kč'))).toBe(true);
+    expect(en.every(o => o.priceString.startsWith('$'))).toBe(true);
+  });
+
   it('can be locked so local premium flags are ignored outside dev/test', async () => {
     await saveSubscriptionStatus(true);
     const p = new MockSubscriptionProvider(false);

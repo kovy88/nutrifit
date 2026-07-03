@@ -238,11 +238,11 @@ export function SettingsScreen() {
 
           {__DEV__ && (
             <Card>
-              <SectionHeader title="Vývojářská nastavení (Debug)" />
-              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>Přepnutím nasimulujete, že má uživatel koupené Premium. Jen ve vývoji — v produkci se nezobrazuje.</Text>
+              <SectionHeader title={t('settings.devSettings')} />
+              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.devSettingsDesc')}</Text>
               <View style={styles.wrap}>
                 <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
-                  {isSubscribed ? "Premium: AKTIVNÍ" : "Premium: NEAKTIVNÍ"}
+                  {isSubscribed ? t('settings.premiumActive') : t('settings.premiumInactive')}
                 </Pill>
               </View>
             </Card>
