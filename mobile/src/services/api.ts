@@ -7,8 +7,7 @@ import { buildWeeklySummaryRequest, parseWeeklySummary, type WeeklySummary, type
 import { parseMealPlanResponse, parseWeeklySummarySafe, parseStructuredCoachReply } from '../lib/ai/schemas';
 import { buildCoachChatRequest, type CoachChatContext } from '../lib/ai/coachChat';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
-import type { CoachMessage } from '../types/coach';
-import type { CoachProposedAction } from '../types/coach';
+import type { CoachMessage , CoachProposedAction } from '../types/coach';
 import type { Locale } from '../lib/i18n';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';

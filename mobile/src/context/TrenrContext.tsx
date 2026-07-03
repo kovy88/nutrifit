@@ -14,7 +14,7 @@ import type {
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
   TrainingCompletionStatus,
-} from '../types';
+ NutritionGoalKind } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, sumFoodLog, toDateKey } from '../utils/nutrition';
 import { computeLogStreak } from '../lib/nutrition/streaks';
 import { adjustedPlanSessionForDate } from '../lib/training';
@@ -57,7 +57,6 @@ import {
   saveSubscriptionStatus,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
-import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
 import { loadPendingSyncWrites, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
 import { syncStore } from '../stores/syncStore';

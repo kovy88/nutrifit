@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, primaryGoalToNutritionKind, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal } from '../utils/nutrition';
-import { DEFAULT_PROFILE } from '../utils/nutrition';
+import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, primaryGoalToNutritionKind, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal , DEFAULT_PROFILE } from '../utils/nutrition';
 import { normalizeConsent } from '../services/storage';
 import type { Meal } from '../types';
 

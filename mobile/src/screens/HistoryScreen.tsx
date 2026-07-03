@@ -5,7 +5,7 @@ import { Card, CoachInsightCard, EmptyState, MetricCard, ScreenHeader, SectionHe
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadDailyCoachHistory, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
-import { formatDateLabel } from '../utils/nutrition';
+import { formatDateLabel , primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { SimpleLineChart } from '../components/premium/SimpleLineChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
@@ -15,7 +15,6 @@ import { useUnits } from '../hooks/useUnits';
 import { computeAdherenceTrend, adherenceToTrendPoints, describeAdherence } from '../lib/nutrition/adherenceTrend';
 import { computeAdherenceStreak, computeLogStreak, describeStreak } from '../lib/nutrition/streaks';
 import { computeEnergyBalance, describeEnergyBalance } from '../lib/nutrition/energyBalance';
-import { primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useStrainTrend } from '../hooks/useStrainTrend';
 import { generateWeeklyMiniReview } from '../lib/coaching/weekly-review';
 import { planSessionForDate } from '../lib/training';
@@ -66,10 +65,6 @@ export function HistoryScreen() {
   const logStreak = computeLogStreak(adherence.days);
   const adherenceStreak = computeAdherenceStreak(adherence.days);
 
-  useEffect(() => {
-    if (isFocused) void loadSummaries();
-  }, [isFocused]);
-
   async function loadSummaries() {
     try {
       const dates = await listStoredDates();
@@ -114,6 +109,11 @@ export function HistoryScreen() {
       console.error('Failed to load history summaries', err);
     }
   }
+
+  useEffect(() => {
+    if (isFocused) void loadSummaries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSummaries closes over many values that change every render; only re-run on focus change.
+  }, [isFocused]);
 
   function handleSelectDay(dateKey: string) {
     setSelectedDate(dateKey);

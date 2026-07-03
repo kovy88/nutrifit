@@ -23,7 +23,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { resolveCoachScope, scopeHasNutrition, scopeHasTraining } from '../types';
-import type { TrainingCompletionRecordMap, TrainingSession, UserProfile } from '../types';
+import type { TrainingCompletionRecordMap, TrainingSession } from '../types';
 import { toDateKey } from '../utils/nutrition';
 import { useDailyHealth } from '../hooks/useDailyHealth';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';

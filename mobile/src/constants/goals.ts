@@ -41,7 +41,7 @@ export const USER_PRIMARY_GOALS: PrimaryGoalOption[] = [
   },
 ];
 
-export const NUTRITION_PRIMARY_GOALS: Array<Pick<PrimaryGoalOption, 'value' | 'labelKey' | 'subtitleKey'>> = [
+export const NUTRITION_PRIMARY_GOALS: Pick<PrimaryGoalOption, 'value' | 'labelKey' | 'subtitleKey'>[] = [
   {
     value: 'lose_fat',
     labelKey: 'onb.goalLoseFat',

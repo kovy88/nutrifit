@@ -1,6 +1,5 @@
 import type { WeeklyCheckIn, PlanAdjustment } from '../../types/checkin';
-import type { Locale } from '../i18n';
-import type { TranslationKey } from '../i18n';
+import type { Locale , TranslationKey } from '../i18n';
 import type { NutritionGoalKind } from '../../types';
 import { planWeeklyAdjustment, type WeeklyAdjustmentInput } from './weeklyAdjustment';
 

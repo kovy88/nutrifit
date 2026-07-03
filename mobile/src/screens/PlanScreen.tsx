@@ -25,6 +25,11 @@ import { trainingPhase, type TrainingPhase } from '../lib/training/phase';
 import { SPORTS, cloneStarter } from '../lib/training/sports';
 import type { Meal, TrainingSession } from '../types';
 import type { TranslationKey } from '../lib/i18n';
+import { useLanguage } from '../context/LanguageContext';
+import { useUnits } from '../hooks/useUnits';
+import { PaywallModal } from '../components/PaywallModal';
+import { loadPlansByDate } from '../services/storage';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
   build: 'phase.build',
@@ -33,11 +38,6 @@ const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
   taper: 'phase.taper',
   race_week: 'phase.race_week',
 };
-import { useLanguage } from '../context/LanguageContext';
-import { useUnits } from '../hooks/useUnits';
-import { PaywallModal } from '../components/PaywallModal';
-import { loadPlansByDate } from '../services/storage';
-import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 export function PlanScreen() {
   const {
@@ -283,7 +283,7 @@ export function PlanScreen() {
               markers={planMarkers(session, selected ? dailyAdjustment?.carbsDelta ?? 0 : 0, t)}
               onPress={() => {
                 setSelectedDate(day.key);
-                setExpandedDay(expanded ? day.key : day.key);
+                setExpandedDay(expanded ? '' : day.key);
               }}
             >
               {expanded ? (
