@@ -4,6 +4,7 @@ import {
   buildSyncRows,
   clearPendingSyncWrites,
   loadPendingSyncWrites,
+  mergeRecordsByUpdatedAt,
   queuePendingSyncWrite,
   resolveByUpdatedAt,
 } from '../services/sync';
@@ -36,6 +37,37 @@ describe('sync helpers', () => {
     const result = resolveByUpdatedAt('training_completions', '2026-05-30', local, remote);
     expect(result.value).toBe(local);
     expect(result.conflict?.resolvedBy).toBe('local');
+  });
+
+  it('mergeRecordsByUpdatedAt picks the newer record per key and unions both key sets', () => {
+    const local = {
+      '2026-05-30': { value: 'local-newer', updatedAt: '2026-05-30T10:00:00.000Z' },
+      '2026-05-31': { value: 'local-only', updatedAt: '2026-05-31T00:00:00.000Z' },
+    };
+    const remote = {
+      '2026-05-30': { value: 'remote-older', updatedAt: '2026-05-30T09:00:00.000Z' },
+      '2026-06-01': { value: 'remote-only', updatedAt: '2026-06-01T00:00:00.000Z' },
+    };
+    const { merged } = mergeRecordsByUpdatedAt('training_completions', local, remote);
+    expect(merged['2026-05-30'].value).toBe('local-newer');
+    expect(merged['2026-05-31'].value).toBe('local-only');
+    expect(merged['2026-06-01'].value).toBe('remote-only');
+  });
+
+  it('mergeRecordsByUpdatedAt only reports a conflict when the two sides actually disagree', () => {
+    const identical = { value: 'same', updatedAt: '2026-05-30T10:00:00.000Z' };
+    const local = { '2026-05-30': identical };
+    const remote = { '2026-05-30': { ...identical } };
+    const { conflicts } = mergeRecordsByUpdatedAt('training_completions', local, remote);
+    expect(conflicts).toHaveLength(0);
+  });
+
+  it('mergeRecordsByUpdatedAt reports a conflict when both sides exist and differ', () => {
+    const local = { '2026-05-30': { value: 'local', updatedAt: '2026-05-30T10:00:00.000Z' } };
+    const remote = { '2026-05-30': { value: 'remote', updatedAt: '2026-05-30T09:00:00.000Z' } };
+    const { conflicts } = mergeRecordsByUpdatedAt('training_completions', local, remote);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].resolvedBy).toBe('local');
   });
 
   it('queues pending writes for offline/background retry', async () => {

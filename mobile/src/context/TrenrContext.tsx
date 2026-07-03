@@ -59,7 +59,7 @@ import {
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
 import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
-import { loadPendingSyncWrites, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
+import { loadPendingSyncWrites, mergeRecordsByUpdatedAt, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
 import { syncStore } from '../stores/syncStore';
 
 type AuthUser = {
@@ -327,9 +327,14 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       for (const checkIn of merged) await saveCheckIn(checkIn);
     }
     if (remote.trainingCompletionsByDate) {
-      const merged = { ...remote.trainingCompletionsByDate, ...trainingCompletionsByDate };
-      setTrainingCompletionsByDate(merged);
-      await saveTrainingCompletionsByDate(merged);
+      const { merged, conflicts } = mergeRecordsByUpdatedAt(
+        'training_completions',
+        trainingCompletionsByDate,
+        remote.trainingCompletionsByDate,
+      );
+      setTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      await saveTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      if (conflicts.length) syncStore.setConflicts(conflicts);
     }
     if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
     if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);

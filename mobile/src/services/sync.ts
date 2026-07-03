@@ -76,6 +76,30 @@ export function resolveByUpdatedAt<T extends { updatedAt?: string | null }>(
   };
 }
 
+/** Merges a whole local/remote record map key-by-key via resolveByUpdatedAt.
+ *  Only surfaces a conflict when both sides exist AND actually disagree —
+ *  resolveByUpdatedAt reports a decision any time both are present, even
+ *  when they're identical (e.g. an already-synced, unchanged record). */
+export function mergeRecordsByUpdatedAt<T extends { updatedAt?: string | null }>(
+  entity: SyncConflict['entity'],
+  local: Record<string, T>,
+  remote: Record<string, T>,
+): { merged: Record<string, T>; conflicts: SyncConflict<T>[] } {
+  const keys = new Set([...Object.keys(remote), ...Object.keys(local)]);
+  const merged: Record<string, T> = {};
+  const conflicts: SyncConflict<T>[] = [];
+  for (const key of keys) {
+    const localValue = local[key] ?? null;
+    const remoteValue = remote[key] ?? null;
+    const { value, conflict } = resolveByUpdatedAt(entity, key, localValue, remoteValue);
+    if (value) merged[key] = value;
+    if (conflict && localValue && remoteValue && JSON.stringify(localValue) !== JSON.stringify(remoteValue)) {
+      conflicts.push(conflict);
+    }
+  }
+  return { merged, conflicts };
+}
+
 export async function loadPendingSyncWrites(): Promise<PendingSyncWrite[]> {
   const raw = await AsyncStorage.getItem(PENDING_KEY);
   if (!raw) return [];
