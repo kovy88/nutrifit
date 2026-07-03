@@ -39,12 +39,25 @@ npm install
 ```
 
 ### 2. Konfigurace prostředí
-Vytvoř soubor `.env` ve složce `mobile/` na základě `.env.example`:
+Vytvoř soubor `.env` ve složce `mobile/` na základě `.env.example`. Základ (bez těchto appka nenaběhne):
 ```bash
 EXPO_PUBLIC_API_BASE_URL=https://nutri-fit-omega.vercel.app
 EXPO_PUBLIC_SUPABASE_URL=...
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
+Volitelné — bez nich appka běží, jen bez dané integrace (OAuth propojení / placený paywall spadnou zpátky na mock/no-op):
+```bash
+EXPO_PUBLIC_STRAVA_CLIENT_ID=
+EXPO_PUBLIC_WHOOP_CLIENT_ID=
+EXPO_PUBLIC_GARMIN_CLIENT_ID=
+EXPO_PUBLIC_OURA_CLIENT_ID=
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
+```
+Detaily a odkazy na registraci každé OAuth appky viz `.env.example`.
+
+Pro EAS build (`eas build`) žádný z těchto `EXPO_PUBLIC_*` klíčů není v `eas.json` —
+nastavují se přes EAS dashboard (Project → Environment variables), ne v repu.
 
 ### 3. Spuštění v dev buildu
 ```bash
@@ -72,11 +85,13 @@ Spuštění testů:
 npm test
 ```
 
-Všechny testy v souborech `storage.test.ts` a `nutrition.test.ts` procházejí a ověřují:
-1.  Přesný výpočet BMR a TDEE s ochrannými limity (safety floors).
-2.  Dynamický odhad kalorického výdeje z reálné hmotnosti uživatele.
-3.  Správné mapování frekvence tréninků na aktivní faktory.
-4.  Migraci datových struktur ze starších verzí na více-denní ukládání.
+Testy žijí v `src/__tests__/` (přes 50 souborů) a pokrývají mimo jiné:
+1.  Výpočet BMR/TDEE s ochrannými limity (safety floors) a dynamický odhad kalorického výdeje.
+2.  Tréninkovou logiku (generování plánu, fáze, mapování frekvence na aktivní faktory).
+3.  AsyncStorage — ukládání, migrace ze starších verzí, retention pruning.
+4.  Sync se Supabase, i18n katalogy, subscription/paywall logiku, OAuth token store a další.
+
+CI (`.github/workflows/ci.yml`) spouští `npm run typecheck` + `npm test` na každý PR a push do `main`.
 
 ---
 

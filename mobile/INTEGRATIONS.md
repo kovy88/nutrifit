@@ -153,11 +153,10 @@ Není potřeba žádný kód navíc — Composite je transparentně sloučí.
 
 ## Token storage
 
-OAuth tokeny se ukládají do AsyncStorage přes `OAuthTokenStore`.
-**TODO**: migrace na `expo-secure-store` (iOS Keychain / Android Keystore).
-Současný stav je v pohodě pro MVP, ale pro release na App Store se to musí
-upgradovat — security pravidla pro health-related apps tlačí na encrypted
-storage.
+OAuth tokeny se ukládají přes `OAuthTokenStore` — produkčně `SecureOAuthTokenStore`
+(iOS Keychain / Android Keystore přes `expo-secure-store`), s `AsyncStorageTokenStore`
+jako plain-text fallback jen když `expo-secure-store` není dostupný (Expo Go / testy).
+Migrace mezi nimi je automatická a jednorázová per token per service.
 
 ## Account deletion
 
