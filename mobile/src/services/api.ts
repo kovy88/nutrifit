@@ -219,22 +219,23 @@ export async function regenerateMeal(opts: {
  * Returns null pokud AI vrátí non-parseable nebo invalid JSON.
  */
 export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<WeeklySummary> {
+  const isEn = input.locale === 'en';
   const request = buildWeeklySummaryRequest(input);
   const data = await postJsonWithRetry<any>('/api/generate', request);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No response from AI.');
-  const parsed = parseJson(text);
+  if (!text) throw new Error(isEn ? 'No response from AI.' : 'AI neodpověděla.');
+  const parsed = parseJson(text, isEn ? 'en' : 'cs');
   const summary = parseWeeklySummary(parsed) ?? parseWeeklySummarySafe(parsed);
-  if (!summary) throw new Error('AI returned invalid data for weekly summary.');
+  if (!summary) throw new Error(isEn ? 'AI returned invalid data for weekly summary.' : 'AI vrátila neplatná data pro týdenní shrnutí.');
   return summary;
 }
 
-export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg'): Promise<FoodEstimate> {
+export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'cs'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType });
   if (data.estimate) return normalizeFoodEstimate(data.estimate);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  return normalizeFoodEstimate(parseJson(text));
+  return normalizeFoodEstimate(parseJson(text, locale));
 }
 
 export async function exportAccountData() {
@@ -288,9 +289,14 @@ export async function callAiCoachProxy(request: { systemPrompt: string; prompt: 
   return text;
 }
 
-function parseJson(text: string) {
-  if (!text) throw new Error('No AI response.');
+function parseJson(text: string, locale: Locale = 'cs') {
+  const isEn = locale === 'en';
+  if (!text) throw new Error(isEn ? 'No AI response.' : 'AI neodpověděla.');
   const cleaned = String(text).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error(isEn ? 'Could not parse the AI response.' : 'Odpověď AI se nepodařilo zpracovat.');
+  }
 }
 
