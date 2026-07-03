@@ -195,6 +195,27 @@ async function supabaseRest(path, options = {}) {
   return response.json().catch(() => null);
 }
 
+/** Like supabaseRest, but follows PostgREST's limit/offset pagination until
+ *  a page comes back empty — instead of a single request. PostgREST caps
+ *  rows per request (commonly 1000, server-configurable), so a single-shot
+ *  query on a long-lived per-day table (food logs, coach history, ...)
+ *  silently truncates once a user has accumulated enough rows. Advances the
+ *  offset by however many rows actually came back (not the requested page
+ *  size), so it stays correct even if the server clamps the limit lower
+ *  than requested. `path` must already have a stable `order=` clause. */
+async function supabaseRestAll(path, options = {}, pageSize = 1000) {
+  const separator = path.includes('?') ? '&' : '?';
+  let offset = 0;
+  const all = [];
+  for (;;) {
+    const page = await supabaseRest(`${path}${separator}limit=${pageSize}&offset=${offset}`, options);
+    if (!page || !page.length) break;
+    all.push(...page);
+    offset += page.length;
+  }
+  return all;
+}
+
 /** Basic RFC-5322-ish email shape check + max length (254 = SMTP limit). */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function isValidEmail(email) {
@@ -206,6 +227,7 @@ module.exports = {
   sendError,
   rateLimit,
   requireUser,
+  supabaseRestAll,
   getRequester,
   supabaseRest,
   isValidEmail,
