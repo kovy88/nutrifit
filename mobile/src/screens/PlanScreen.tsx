@@ -178,7 +178,7 @@ export function PlanScreen() {
     }
     setRegeneratingIndex(index);
     try {
-      const next = await regenerateMeal({ profile: activeProfile, session: selectedSession, current: meal, otherMeals: meals });
+      const next = await regenerateMeal({ profile: activeProfile, session: selectedSession, current: meal, otherMeals: meals, locale });
       const nextMeals = meals.slice();
       nextMeals[index] = next;
       await setMeals(nextMeals);

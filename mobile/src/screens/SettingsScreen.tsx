@@ -138,7 +138,7 @@ export function SettingsScreen() {
     }
     setExporting(true);
     try {
-      const data = await exportAccountData();
+      const data = await exportAccountData(locale);
       const json = JSON.stringify(data, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}nutrifit-export-${new Date().toISOString().slice(0, 10)}.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
@@ -162,7 +162,7 @@ export function SettingsScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              if (user) await deleteAccount();
+              if (user) await deleteAccount(locale);
               await purgeAllUserData();
               if (user) await signOut();
             } catch (err) {

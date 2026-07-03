@@ -1,7 +1,7 @@
 // Vercel serverless funkce — proxy pro individuální návrh jídelníčku (Gemini)
 // API klíč zůstává na serveru, nikdy nedorazí do prohlížeče
 
-const { method, rateLimit, requireUser, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError, msg } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -10,21 +10,21 @@ module.exports = async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return sendError(res, 500, 'missing_gemini_key', 'GEMINI_API_KEY není nastavený v prostředí serveru.');
+    return sendError(res, 500, 'missing_gemini_key', msg(req, 'GEMINI_API_KEY není nastavený v prostředí serveru.', 'GEMINI_API_KEY is not configured on the server.'));
   }
 
   const { systemPrompt, prompt } = req.body || {};
   const requestedMaxTokens = Math.min(parseInt(req.body.maxTokens) || 3500, 6500);
   if (!prompt) {
-    return sendError(res, 400, 'missing_prompt', 'Chybí parametr prompt.');
+    return sendError(res, 400, 'missing_prompt', msg(req, 'Chybí parametr prompt.', 'Missing prompt parameter.'));
   }
   // Cost/abuse guard — real prompts (meal plan context, coach chat + history)
   // stay well under this; it only stops someone pasting a huge blob.
   if (typeof prompt !== 'string' || prompt.length > 12000) {
-    return sendError(res, 400, 'prompt_too_long', 'Zpráva je příliš dlouhá.');
+    return sendError(res, 400, 'prompt_too_long', msg(req, 'Zpráva je příliš dlouhá.', 'Message is too long.'));
   }
   if (systemPrompt != null && (typeof systemPrompt !== 'string' || systemPrompt.length > 6000)) {
-    return sendError(res, 400, 'system_prompt_too_long', 'Systémový prompt je příliš dlouhý.');
+    return sendError(res, 400, 'system_prompt_too_long', msg(req, 'Systémový prompt je příliš dlouhý.', 'System prompt is too long.'));
   }
 
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';

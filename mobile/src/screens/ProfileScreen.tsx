@@ -51,7 +51,7 @@ export function ProfileScreen() {
 
   async function exportData() {
     try {
-      const data = await exportAccountData();
+      const data = await exportAccountData(locale);
       Alert.alert(t('profile.exportReady'), t('profile.exportSummary', { profile: t(data.profile ? 'common.yes' : 'common.no'), count: data.mealHistory?.length || 0 }));
     } catch (err) {
       Alert.alert(t('profile.exportFailed'), err instanceof Error ? err.message : t('profile.signInAgain'));
@@ -66,7 +66,7 @@ export function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteAccount();
+            await deleteAccount(locale);
             // Server-side deletion succeeded — now wipe all local data
             // (profile, plans, food logs, training sessions, weights, consent).
             await purgeAllUserData();

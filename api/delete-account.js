@@ -1,4 +1,4 @@
-const { method, requireUser, sendError, supabaseRest } = require('./_lib/store-readiness');
+const { method, requireUser, sendError, supabaseRest, msg } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['DELETE', 'POST'])) return;
@@ -30,6 +30,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ ok: true });
   } catch (err) {
-    return sendError(res, 500, 'delete_failed', err.message || 'Smazání účtu se nepodařilo.');
+    return sendError(res, 500, 'delete_failed', err.message || msg(req, 'Smazání účtu se nepodařilo.', 'Account deletion failed.'));
   }
 };

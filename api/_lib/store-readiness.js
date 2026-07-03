@@ -24,7 +24,7 @@ function setCors(req, res) {
   }
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Locale');
 }
 
 function method(req, res, allowed) {
@@ -42,6 +42,18 @@ function method(req, res, allowed) {
 
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
+}
+
+/** Locale hint the mobile client sends via `X-Locale` (see mobile's postJson).
+ *  Anything not starting with "en" defaults to Czech — the app's native market. */
+function getLocale(req) {
+  const header = String(req.headers['x-locale'] || '').toLowerCase();
+  return header.startsWith('en') ? 'en' : 'cs';
+}
+
+/** Pick the message matching the request's locale. */
+function msg(req, cs, en) {
+  return getLocale(req) === 'en' ? en : cs;
 }
 
 function getClientIp(req) {
@@ -79,7 +91,7 @@ async function getRequester(req) {
 async function requireUser(req, res) {
   const requester = await getRequester(req);
   if (!requester.user?.id) {
-    sendError(res, 401, 'auth_required', 'Přihlaš se prosím znovu.');
+    sendError(res, 401, 'auth_required', msg(req, 'Přihlaš se prosím znovu.', 'Please sign in again.'));
     return null;
   }
   return requester;
@@ -127,28 +139,28 @@ async function rateLimit(req, res, bucket, max, windowMs = 60 * 60 * 1000) {
       if (response.ok) {
         const allowed = await response.json();
         if (!allowed) {
-          sendError(res, 429, 'rate_limited', 'Příliš mnoho požadavků. Zkus to za chvíli.');
+          sendError(res, 429, 'rate_limited', msg(req, 'Příliš mnoho požadavků. Zkus to za chvíli.', 'Too many requests. Try again shortly.'));
           return false;
         }
         return true;
       }
       if (!allowInMemoryRateLimitFallback()) {
-        sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.');
+        sendError(res, 503, 'rate_limit_unavailable', msg(req, 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.', 'Abuse protection is unavailable. Try again shortly.'));
         return false;
       }
     } catch {
       if (!allowInMemoryRateLimitFallback()) {
-        sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.');
+        sendError(res, 503, 'rate_limit_unavailable', msg(req, 'Ochrana proti zneužití není dostupná. Zkus to za chvíli.', 'Abuse protection is unavailable. Try again shortly.'));
         return false;
       }
     }
   } else if (!allowInMemoryRateLimitFallback()) {
-    sendError(res, 503, 'rate_limit_unavailable', 'Ochrana proti zneužití není nakonfigurovaná.');
+    sendError(res, 503, 'rate_limit_unavailable', msg(req, 'Ochrana proti zneužití není nakonfigurovaná.', 'Abuse protection is not configured.'));
     return false;
   }
 
   if (fallbackRateLimit(key, windowMs, max)) {
-    sendError(res, 429, 'rate_limited', 'Příliš mnoho požadavků. Zkus to za chvíli.');
+    sendError(res, 429, 'rate_limited', msg(req, 'Příliš mnoho požadavků. Zkus to za chvíli.', 'Too many requests. Try again shortly.'));
     return false;
   }
   return true;
@@ -191,4 +203,6 @@ module.exports = {
   supabaseRest,
   isValidEmail,
   isAllowedRedirectUri,
+  getLocale,
+  msg,
 };

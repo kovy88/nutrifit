@@ -1,6 +1,6 @@
 // Vercel serverless funkce — multimodální odhad maker z fotky jídla (Gemini Vision)
 
-const { method, rateLimit, requireUser, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError, msg } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
 const EMPTY_ESTIMATE = {
@@ -21,24 +21,24 @@ module.exports = async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return sendError(res, 500, 'missing_gemini_key', 'GEMINI_API_KEY není nastavený v prostředí serveru.');
+    return sendError(res, 500, 'missing_gemini_key', msg(req, 'GEMINI_API_KEY není nastavený v prostředí serveru.', 'GEMINI_API_KEY is not configured on the server.'));
   }
 
   const { imageBase64, mimeType } = req.body || {};
   if (!imageBase64 || !mimeType) {
-    return sendError(res, 400, 'missing_image', 'Chybí imageBase64 nebo mimeType.');
+    return sendError(res, 400, 'missing_image', msg(req, 'Chybí imageBase64 nebo mimeType.', 'Missing imageBase64 or mimeType.'));
   }
   if (typeof imageBase64 !== 'string' || typeof mimeType !== 'string') {
-    return sendError(res, 400, 'invalid_image', 'Neplatný formát obrázku.');
+    return sendError(res, 400, 'invalid_image', msg(req, 'Neplatný formát obrázku.', 'Invalid image format.'));
   }
   if (!mimeType.startsWith('image/')) {
-    return sendError(res, 400, 'invalid_mime', 'Soubor musí být obrázek.');
+    return sendError(res, 400, 'invalid_mime', msg(req, 'Soubor musí být obrázek.', 'The file must be an image.'));
   }
   if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
-    return sendError(res, 400, 'image_too_large', 'Fotka je moc velká. Maximum je 5 MB.');
+    return sendError(res, 400, 'image_too_large', msg(req, 'Fotka je moc velká. Maximum je 5 MB.', 'The photo is too large. Maximum is 5 MB.'));
   }
   if (!/^[A-Za-z0-9+/=]+$/.test(imageBase64)) {
-    return sendError(res, 400, 'invalid_base64', 'Obrázek není validní base64.');
+    return sendError(res, 400, 'invalid_base64', msg(req, 'Obrázek není validní base64.', 'The image is not valid base64.'));
   }
 
   const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
