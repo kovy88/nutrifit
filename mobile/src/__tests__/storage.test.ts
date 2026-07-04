@@ -13,8 +13,10 @@ import {
   loadDailyCoachHistory,
   loadTrainingCompletionsByDate,
   saveCoachThreadForDate,
+  saveCoachThreadsByDate,
   saveDailyCoachRecommendationForDate,
   saveTrainingCompletionForDate,
+  purgeAllLocalData,
 } from '../services/storage';
 import { toDateKey , DEFAULT_PROFILE, calculateMacros } from '../utils/nutrition';
 import type { Meal, FoodLogItem } from '../types';
@@ -33,6 +35,15 @@ vi.mock('@react-native-async-storage/async-storage', () => {
       }),
       clear: vi.fn().mockImplementation(async () => {
         Object.keys(store).forEach(k => delete store[k]);
+      }),
+      getAllKeys: vi.fn().mockImplementation(async () => Object.keys(store)),
+      multiGet: vi.fn().mockImplementation(async (keys: string[]) =>
+        keys.map(k => [k, store[k] ?? null] as [string, string | null])),
+      multiSet: vi.fn().mockImplementation(async (pairs: [string, string][]) => {
+        for (const [k, v] of pairs) store[k] = v;
+      }),
+      multiRemove: vi.fn().mockImplementation(async (keysToRemove: string[]) => {
+        for (const k of keysToRemove) delete store[k];
       }),
     },
   };
@@ -242,5 +253,96 @@ describe('date-based storage and migration', () => {
     await runMigration();
 
     expect((await loadPlansByDate())[borderlineDate]).toBeDefined();
+  });
+
+  describe('coach thread per-day storage', () => {
+    const memory = { goalSummary: 'lose_fat + general_fitness', updatedAt: '2026-05-30T10:00:00.000Z' };
+
+    it('migrates the legacy single-blob key into per-day keys, then removes it', async () => {
+      const legacyBlob = {
+        '2026-05-28': { date: '2026-05-28', messages: [{ id: 'a', role: 'user', text: 'hi', createdAt: '2026-05-28T00:00:00.000Z' }], memory, createdAt: '2026-05-28T00:00:00.000Z', updatedAt: '2026-05-28T00:00:00.000Z' },
+        '2026-05-29': { date: '2026-05-29', messages: [{ id: 'b', role: 'user', text: 'hey', createdAt: '2026-05-29T00:00:00.000Z' }], memory, createdAt: '2026-05-29T00:00:00.000Z', updatedAt: '2026-05-29T00:00:00.000Z' },
+      };
+      await AsyncStorage.setItem('nutrifit.coachThreadsByDate.v1', JSON.stringify(legacyBlob));
+
+      await runMigration();
+
+      const all = await loadCoachThreadsByDate();
+      expect(all['2026-05-28'].messages[0].text).toBe('hi');
+      expect(all['2026-05-29'].messages[0].text).toBe('hey');
+      expect(await AsyncStorage.getItem('nutrifit.coachThreadsByDate.v1')).toBeNull();
+    });
+
+    it('running the migration twice is a no-op the second time', async () => {
+      await AsyncStorage.setItem('nutrifit.coachThreadsByDate.v1', JSON.stringify({
+        '2026-05-28': { date: '2026-05-28', messages: [], memory, createdAt: '2026-05-28T00:00:00.000Z', updatedAt: '2026-05-28T00:00:00.000Z' },
+      }));
+      await runMigration();
+      await runMigration();
+
+      const all = await loadCoachThreadsByDate();
+      expect(Object.keys(all)).toEqual(['2026-05-28']);
+    });
+
+    it('saving one day does not touch another day already in storage', async () => {
+      await saveCoachThreadForDate('2026-06-01', [
+        { id: '1', role: 'user', text: 'day one', createdAt: '2026-06-01T00:00:00.000Z' },
+      ], memory);
+      await saveCoachThreadForDate('2026-06-02', [
+        { id: '2', role: 'user', text: 'day two', createdAt: '2026-06-02T00:00:00.000Z' },
+      ], memory);
+
+      const all = await loadCoachThreadsByDate();
+      expect(all['2026-06-01'].messages[0].text).toBe('day one');
+      expect(all['2026-06-02'].messages[0].text).toBe('day two');
+    });
+
+    it('preserves createdAt across repeated saves to the same day', async () => {
+      const first = await saveCoachThreadForDate('2026-06-03', [
+        { id: '1', role: 'user', text: 'first', createdAt: '2026-06-03T00:00:00.000Z' },
+      ], memory);
+      const second = await saveCoachThreadForDate('2026-06-03', [
+        { id: '1', role: 'user', text: 'first', createdAt: '2026-06-03T00:00:00.000Z' },
+        { id: '2', role: 'coach', text: 'reply', createdAt: '2026-06-03T00:01:00.000Z' },
+      ], memory);
+
+      expect(second.createdAt).toBe(first.createdAt);
+      expect(second.messages).toHaveLength(2);
+    });
+
+    it('saveCoachThreadsByDate bulk-writes one key per date without disturbing others', async () => {
+      await saveCoachThreadForDate('2026-06-04', [], memory);
+      await saveCoachThreadsByDate({
+        '2026-06-05': { date: '2026-06-05', messages: [], memory, createdAt: '2026-06-05T00:00:00.000Z', updatedAt: '2026-06-05T00:00:00.000Z' },
+        '2026-06-06': { date: '2026-06-06', messages: [], memory, createdAt: '2026-06-06T00:00:00.000Z', updatedAt: '2026-06-06T00:00:00.000Z' },
+      });
+
+      const all = await loadCoachThreadsByDate();
+      expect(Object.keys(all).sort()).toEqual(['2026-06-04', '2026-06-05', '2026-06-06']);
+    });
+
+    it('prunes per-day coach thread keys older than the retention window', async () => {
+      const today = new Date();
+      const recentDate = toDateKey(today);
+      const oldDate = toDateKey(new Date(today.getTime() - 100 * 24 * 60 * 60 * 1000));
+
+      await saveCoachThreadForDate(recentDate, [], memory);
+      await saveCoachThreadForDate(oldDate, [], memory);
+
+      await runMigration();
+
+      const all = await loadCoachThreadsByDate();
+      expect(all[recentDate]).toBeDefined();
+      expect(all[oldDate]).toBeUndefined();
+    });
+
+    it('purgeAllLocalData removes every per-day coach thread key', async () => {
+      await saveCoachThreadForDate('2026-06-10', [], memory);
+      await saveCoachThreadForDate('2026-06-11', [], memory);
+
+      await purgeAllLocalData();
+
+      expect(await loadCoachThreadsByDate()).toEqual({});
+    });
   });
 });
