@@ -137,8 +137,15 @@ function normalize(value: string): string {
   return value.toLocaleLowerCase().replace(/[.,!?;:()[\]{}"'`´]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Matches `needle` only at word boundaries (space or start/end of the
+ *  normalized, space-delimited text) — plain `.includes()` let short
+ *  needles like 'cut' or '5k' match inside unrelated words/numbers
+ *  ('cutlery', '25k steps'). */
 function hasAny(text: string, needles: string[]): boolean {
-  return needles.some(needle => text.includes(needle));
+  return needles.some(needle => {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^| )${escaped}(?: |$)`).test(text);
+  });
 }
 
 function buildSummary(goal: Pick<GoalProfile, 'primaryGoal' | 'raceGoal'>): string {
