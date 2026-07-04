@@ -92,6 +92,8 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -126,6 +128,8 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
       onPress={onPress}
       style={[
         styles.pill,
@@ -166,6 +170,9 @@ export function Choice({
   const { colors, fonts } = useTheme();
   return (
     <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: !!active }}
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
@@ -513,6 +520,9 @@ export function PlanDayCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      accessibilityLabel={`${title}. ${subtitle}`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.planDayCard,
@@ -571,6 +581,9 @@ export function QuickActionButton({
   const { colors, fonts } = useTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -605,6 +618,9 @@ export function ActionIconButton({
   const foreground = isPrimary ? colors.accentText : isDanger ? '#fff' : colors.ink;
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -671,6 +687,9 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={option.value}
+            accessibilityRole="tab"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
             style={[styles.segment, active && { backgroundColor: colors.accent }]}
           >
