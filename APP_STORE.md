@@ -10,7 +10,7 @@ AI Coach for Training & Nutrition
 
 Trenr gives you one clear answer every morning: train harder, back off, or hold steady — based on how your body actually recovered.
 
-Connect Oura, WHOOP, Garmin, or Apple Health and Trenr reads your sleep, HRV, and resting heart rate overnight. By the time you wake up, your AI coach has already adjusted today's training intensity and your nutrition targets to match your recovery.
+Connect Apple Health and Trenr reads your sleep, HRV, and resting heart rate overnight. By the time you wake up, your AI coach has already adjusted today's training intensity and your nutrition targets to match your recovery. Strava keeps your training log in sync automatically.
 
 **DAILY READINESS SCORE**
 See a single score (0–100) the moment you open the app. Green means go. Orange means manage carefully. Red means rest is the workout.
@@ -26,10 +26,9 @@ Ask anything: "Why am I tired this week?", "What should I eat before my race?", 
 
 **WORKS WITH YOUR DEVICES**
 - Apple Health (steps, HRV, sleep, heart rate)
-- Oura Ring
-- WHOOP
-- Garmin Connect
-- Strava
+- Strava (workouts)
+
+More wearables (Oura, WHOOP, Garmin, and more) are on the way.
 
 No device? Trenr still works — manual logging gives you the nutrition and training features from day one.
 
@@ -39,7 +38,7 @@ No device? Trenr still works — manual logging gives you the nutrition and trai
 
 Trenr ti každé ráno dá jednu jasnou odpověď: přidej, drž, nebo uber — podle toho, jak se tvoje tělo regenerovalo.
 
-Připoj Ouru, WHOOP, Garmin nebo Apple Health a Trenr přes noc přečte tvůj spánek, HRV a klidový tep. Než se ráno probudíš, tvůj AI kouč už přizpůsobil dnešní tréninkovou intenzitu a výživové cíle tvé regeneraci.
+Připoj Apple Health a Trenr přes noc přečte tvůj spánek, HRV a klidový tep. Než se ráno probudíš, tvůj AI kouč už přizpůsobil dnešní tréninkovou intenzitu a výživové cíle tvé regeneraci. Strava automaticky synchronizuje tvé tréninky.
 
 **DENNÍ SKÓRE PŘIPRAVENOSTI**
 Hned po otevření aplikace vidíš jedno číslo (0–100). Zelená = jeď naplno. Oranžová = opatrně. Červená = regenerace je trénink.
