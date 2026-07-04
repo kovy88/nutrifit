@@ -10,6 +10,7 @@ export { AppleHealthProvider } from './AppleHealthProvider';
 export { HealthConnectProvider } from './HealthConnectProvider';
 export { StravaProvider } from './StravaProvider';
 export { WhoopProvider } from './WhoopProvider';
+export { OuraProvider } from './OuraProvider';
 export { CompositeHealthDataProvider } from './CompositeHealthDataProvider';
 export {
   AsyncStorageTokenStore,

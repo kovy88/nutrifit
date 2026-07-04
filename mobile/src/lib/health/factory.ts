@@ -17,6 +17,7 @@ import { CompositeHealthDataProvider } from './CompositeHealthDataProvider';
 import { HealthConnectProvider } from './HealthConnectProvider';
 import { ManualHealthDataProvider } from './ManualHealthDataProvider';
 import { MockHealthDataProvider, type MockHealthDataProviderOptions } from './MockHealthDataProvider';
+import { OuraProvider } from './OuraProvider';
 import { StravaProvider } from './StravaProvider';
 import { WhoopProvider } from './WhoopProvider';
 import { type OAuthTokenStore } from './oauth/OAuthTokenStore';
@@ -30,7 +31,8 @@ export type HealthDataProviderMode =
   | 'apple_health'
   | 'health_connect'
   | 'strava'
-  | 'whoop';
+  | 'whoop'
+  | 'oura';
 
 export type CreateHealthDataProviderOptions = {
   mode?: HealthDataProviderMode;
@@ -52,6 +54,7 @@ export function createHealthDataProvider(opts: CreateHealthDataProviderOptions =
   if (mode === 'health_connect') return new HealthConnectProvider();
   if (mode === 'strava')       return new StravaProvider(tokens);
   if (mode === 'whoop')        return new WhoopProvider(tokens);
+  if (mode === 'oura')         return new OuraProvider(tokens);
 
   // ── auto mode ──────────────────────────────────────────────────────────────
   //
@@ -59,7 +62,8 @@ export function createHealthDataProvider(opts: CreateHealthDataProviderOptions =
   //   1. native (Apple Health / Health Connect) — primárně steps, sleep, RHR
   //   2. Strava — pokud připojeno, dostává prioritu pro workouts
   //   3. Whoop  — pokud připojeno, prioritní pro HRV / recovery
-  //   4. Manual — fallback pro vše, co se zapisuje ručně
+  //   4. Oura   — pokud připojeno, doplní HRV/RHR/sleep, když Whoop není
+  //   5. Manual — fallback pro vše, co se zapisuje ručně
   //
   // Composite všechno dotáže najednou a zmerguje, takže UI nemusí řešit
   // "odkud to vlastně přišlo". Dedup workoutů řeší Composite sám.
@@ -78,6 +82,7 @@ export function createHealthDataProvider(opts: CreateHealthDataProviderOptions =
   // composite je transparentně přeskočí.
   providers.push(new StravaProvider(tokens));
   providers.push(new WhoopProvider(tokens));
+  providers.push(new OuraProvider(tokens));
 
   // V dev modu přidáme Mock jako poslední — UI dostane data i bez setupu.
   // V produkci přidáme Manual jako fallback pro váhu / kroky / spánek.

@@ -94,27 +94,36 @@ export class OuraOAuth {
     return { ok: true };
   }
 
+  /** Pokud token vypršel, požádej backend o nový skrz refresh_token. */
   async refresh(): Promise<boolean> {
-    const token = await this.tokens.getToken('oura');
-    if (!token?.refreshToken) return false;
-    let res: Response;
-    try {
-      res = await fetch(REFRESH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
-        body: JSON.stringify({ refreshToken: token.refreshToken }),
-      });
-    } catch {
-      return false;
-    }
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.accessToken) return false;
-    await this.tokens.setToken('oura', {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresAt: data.expiresAt,
-      scope: token.scope,
-    });
-    return true;
+    return refreshOuraToken(this.tokens);
   }
+}
+
+/** Standalone (class-independent) refresh so OuraProvider's data-fetching
+ *  path can call it without needing a full OuraOAuth instance (which
+ *  requires a clientId it has no use for here — refresh only needs the
+ *  refreshToken already in the token store). Mirrors refreshStravaToken. */
+export async function refreshOuraToken(tokens: OAuthTokenStore): Promise<boolean> {
+  const token = await tokens.getToken('oura');
+  if (!token?.refreshToken) return false;
+  let res: Response;
+  try {
+    res = await fetch(REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ refreshToken: token.refreshToken }),
+    });
+  } catch {
+    return false;
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.accessToken) return false;
+  await tokens.setToken('oura', {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    scope: token.scope,
+  });
+  return true;
 }

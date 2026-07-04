@@ -121,18 +121,29 @@ Uživatel musí mít aktivní Whoop subscription, aby OAuth povolení proběhlo.
 
 ---
 
-## 5. Garmin / Oura — OAUTH DONE, needs a HealthDataProvider
+## 5. Oura — DONE
+
+Všech 6 kroků z template patternu hotovo, včetně `OuraProvider.ts`
+(2026-07-04): čte sleep (+ HRV/RHR), daily activity, workouty a statickou
+profile váhu z `/v2/usercollection/{sleep,daily_activity,workout,personal_info}`.
+Field names ověřené proti Oura's oficiálnímu OpenAPI spec (křížově přes
+dva nezávislé zdroje), ale BEZ přístupu k živému Oura účtu — považovat
+za ověřené na papíře, ne field-testované. Viz `TODO.md` pro detaily.
+
+## 6. Garmin — OAUTH DONE, needs a HealthDataProvider
 
 Kroky 1-5 z template patternu (backend exchange/refresh, web bridge,
-`lib/health/oauth/<Service>OAuth.ts`, `hooks/use<Service>Connect.ts`,
-Settings wiring) jsou u obou už hotové stejně jako u Strava/Whoop —
+`lib/health/oauth/GarminOAuth.ts`, `hooks/useGarminConnect.ts`,
+Settings wiring) jsou už hotové stejně jako u Strava/Whoop/Oura —
 uživatel se dnes reálně může připojit a token se uloží. Chybí jen krok 6:
-žádná `<Service>Provider.ts` (HealthDataProvider implementace) zatím
+žádný `GarminProvider.ts` (HealthDataProvider implementace) zatím
 neexistuje, takže composite provider připojený token zatím nevyužije pro
-čtení dat. Vzor viz `WhoopProvider.ts` (read-side stub, čeká na reálné
-API mapování).
+čtení dat. Navíc vyžaduje schválení Garmin Connect Developer Program
+(~2 týdny review) — kick off tu žádost brzy, je to delší krok než samotné
+kódování. Vzor viz `OuraProvider.ts` (hotová implementace) nebo
+`WhoopProvider.ts` (read-side stub, čeká na reálné API mapování).
 
-## 6. Polar / Fitbit — TEMPLATE, NOTHING BUILT YET
+## 7. Polar / Fitbit — TEMPLATE, NOTHING BUILT YET
 
 Na rozdíl od Garmin/Oura tady neexistuje vůbec nic — jen placeholder
 entry v `OAuthService`/`HealthDataProvider['name']` union types. Stejný
@@ -149,7 +160,7 @@ pattern jako Strava a Whoop, od nuly:
 
 ---
 
-## 6. Zepp / Mi Fit / Amazfit / Suunto — VIA NATIVE BRIDGE
+## 8. Zepp / Mi Fit / Amazfit / Suunto — VIA NATIVE BRIDGE
 
 Tyto ekosystémy NEMAJÍ public OAuth API. Cesta:
 
