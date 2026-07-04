@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
 import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
-import { parseQuery } from './StravaOAuth';
+import { generateRandomHex, parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.whoop.state.v1';
 const BRIDGE_URL = 'https://nutri-fit-omega.vercel.app/whoop-callback.html';
@@ -39,7 +39,7 @@ export class WhoopOAuth {
     if (!this.config.clientId) {
       throw new Error('Whoop client ID není nastavený (env EXPO_PUBLIC_WHOOP_CLIENT_ID).');
     }
-    const state = generateState();
+    const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
     const params = new URLSearchParams({
       response_type: 'code',
@@ -118,10 +118,4 @@ export class WhoopOAuth {
     });
     return true;
   }
-}
-
-function generateState(): string {
-  let s = '';
-  for (let i = 0; i < 16; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
 }

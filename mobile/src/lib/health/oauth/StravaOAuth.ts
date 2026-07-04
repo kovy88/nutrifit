@@ -18,6 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
 import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
+import { generateRandomHex, parseQuery } from './oauthShared';
+
+export { parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.strava.state.v1';
 const BRIDGE_URL = 'https://nutri-fit-omega.vercel.app/strava-callback.html';
@@ -50,7 +53,7 @@ export class StravaOAuth {
     if (!this.config.clientId) {
       throw new Error('Strava client ID není nastavený (env EXPO_PUBLIC_STRAVA_CLIENT_ID).');
     }
-    const state = generateState();
+    const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
 
     const params = new URLSearchParams({
@@ -153,24 +156,4 @@ export async function refreshStravaToken(tokens: OAuthTokenStore): Promise<boole
     metadata: token.metadata,
   });
   return true;
-}
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function generateState(): string {
-  // Nepoužíváme crypto.getRandomValues (nemusí být na všech Hermes verzích);
-  // pro CSRF na OAuth flow stačí 16 znaků z Math.random hexadecimálně.
-  let s = '';
-  for (let i = 0; i < 16; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
-}
-
-export function parseQuery(url: string): { code?: string; state?: string; error?: string } {
-  const q = url.split('?')[1] || '';
-  const out: Record<string, string> = {};
-  for (const part of q.split('&')) {
-    const [k, v] = part.split('=');
-    if (k) out[decodeURIComponent(k)] = decodeURIComponent(v ?? '');
-  }
-  return out;
 }

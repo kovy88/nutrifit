@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
 import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
-import { parseQuery } from './StravaOAuth';
+import { generateRandomHex, parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.oura.state.v1';
 const BRIDGE_URL = 'https://nutri-fit-omega.vercel.app/oura-callback.html';
@@ -38,7 +38,7 @@ export class OuraOAuth {
     if (!this.config.clientId) {
       throw new Error('Oura client ID není nastavený (env EXPO_PUBLIC_OURA_CLIENT_ID).');
     }
-    const state = generateState();
+    const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
     const params = new URLSearchParams({
       response_type: 'code',
@@ -117,10 +117,4 @@ export class OuraOAuth {
     });
     return true;
   }
-}
-
-function generateState(): string {
-  let s = '';
-  for (let i = 0; i < 16; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
 }
