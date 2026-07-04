@@ -9,12 +9,14 @@ reality in the meantime — this file tracks closing that gap for real.
 - **Apple Health** — done. `AppleHealthProvider.ts` reads real HealthKit data
   (steps, HRV, sleep, resting HR, body weight, workouts).
 - **Strava** — done. `StravaProvider.ts` reads real workouts via the Strava API.
-- **Oura** — OAuth connect works end-to-end (backend exchange/refresh,
-  `OuraOAuth.ts`, `useOuraConnect` hook, wired into Settings) and a token gets
-  stored — but there's no `OuraProvider.ts` at all, so nothing ever reads
-  sleep/HRV/readiness from Oura's API. **Needs:** a `HealthDataProvider`
-  implementation against Oura's REST API (see `INTEGRATIONS.md` for the
-  endpoint list already scoped out).
+- **Oura** — done (2026-07-04). `OuraProvider.ts` reads real sleep (+HRV/RHR),
+  daily activity, and workouts via `/v2/usercollection/{sleep,daily_activity,
+  workout}`, plus a static profile weight via `/personal_info`. Field names
+  verified against Oura's official OpenAPI spec (cross-checked two independent
+  sources — no live Oura account was available to test against a real API
+  response, so treat the mapping as verified-on-paper, not field-tested).
+  Wired into `factory.ts`'s auto-mode composite and as an explicit `'oura'`
+  mode. 17 unit tests cover token refresh and data mapping.
 - **WHOOP** — same OAuth-connect situation as Oura, but `WhoopProvider.ts`
   does exist as a skeleton. Every data method (`getSleepSummary`,
   `getLatestHrv`, `getLatestRestingHeartRate`, `getRecoveryInputs`,
@@ -44,8 +46,7 @@ in `INTEGRATIONS.md` section 6 ("VIA NATIVE BRIDGE"):
 
 ## Suggested order
 
-1. Oura `HealthDataProvider` (OAuth already works, REST API is well-documented,
-   no external approval process needed — likely the fastest real integration).
+1. ~~Oura `HealthDataProvider`~~ — done 2026-07-04.
 2. `HealthConnectProvider.ts` real implementation (unblocks Android entirely —
    Health Connect aggregates Garmin/Samsung/Zepp/Withings/Polar Flow, so this
    one change covers many Android wearables at once, not just one brand).
@@ -53,5 +54,6 @@ in `INTEGRATIONS.md` section 6 ("VIA NATIVE BRIDGE"):
    endpoint list already scoped in the file's own comments).
 4. Garmin `HealthDataProvider` (gate on developer program approval — kick
    off that application early since it's the long pole, not the coding).
-5. Once (1)-(4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
-   in `APP_STORE.md`.
+5. Once (2)-(4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
+   in `APP_STORE.md` (Oura specifically could arguably go back in sooner,
+   once someone's confirmed the field mapping against a real account).
