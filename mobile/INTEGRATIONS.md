@@ -121,9 +121,22 @@ Uživatel musí mít aktivní Whoop subscription, aby OAuth povolení proběhlo.
 
 ---
 
-## 5. Garmin / Polar / Oura / Fitbit — TEMPLATE READY
+## 5. Garmin / Oura — OAUTH DONE, needs a HealthDataProvider
 
-Stejný pattern jako Strava a Whoop:
+Kroky 1-5 z template patternu (backend exchange/refresh, web bridge,
+`lib/health/oauth/<Service>OAuth.ts`, `hooks/use<Service>Connect.ts`,
+Settings wiring) jsou u obou už hotové stejně jako u Strava/Whoop —
+uživatel se dnes reálně může připojit a token se uloží. Chybí jen krok 6:
+žádná `<Service>Provider.ts` (HealthDataProvider implementace) zatím
+neexistuje, takže composite provider připojený token zatím nevyužije pro
+čtení dat. Vzor viz `WhoopProvider.ts` (read-side stub, čeká na reálné
+API mapování).
+
+## 6. Polar / Fitbit — TEMPLATE, NOTHING BUILT YET
+
+Na rozdíl od Garmin/Oura tady neexistuje vůbec nic — jen placeholder
+entry v `OAuthService`/`HealthDataProvider['name']` union types. Stejný
+pattern jako Strava a Whoop, od nuly:
 
 1. Backend: `api/<service>/exchange.js` + `api/<service>/refresh.js`
    - Stejný shape jako `api/strava/exchange.js`
@@ -132,7 +145,7 @@ Stejný pattern jako Strava a Whoop:
 3. Mobile: `lib/health/oauth/<Service>OAuth.ts` (paralelně k `StravaOAuth.ts`)
 4. Hook: `hooks/use<Service>Connect.ts`
 5. Settings: napojení `handleConnect` na nový hook
-6. Provider class už existuje (stuby), stačí doplnit reálné API mapování
+6. `<Service>Provider.ts` (HealthDataProvider implementace) s reálným API mapováním
 
 ---
 

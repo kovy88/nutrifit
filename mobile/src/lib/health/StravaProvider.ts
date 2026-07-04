@@ -8,7 +8,7 @@
 // Pro tuto třídu je relevantní jen getWorkoutSummaries(). Ostatní metody
 // vrací prázdná data — composite provider je pak doplní z jiného zdroje.
 //
-// OAuth flow:
+// OAuth flow (implemented — viz useStravaConnect hook + lib/health/oauth/StravaOAuth.ts):
 //   1. App opens `https://www.strava.com/oauth/authorize?client_id=<id>
 //        &response_type=code&redirect_uri=nutrifit://strava/callback
 //        &scope=activity:read_all,profile:read_all`
@@ -18,9 +18,10 @@
 //   4. Backend vymění code → token a vrátí access_token + refresh_token.
 //   5. Mobile uloží token přes OAuthTokenStore.setToken('strava', …)
 //
-// TODO(oauth): Až bude implementován flow + backend endpoint, doplnit
-// `connect()` metodu, která to celé spustí. Zatím provider funguje jen
-// pokud uživatel uloží token ručně (debug / E2E test).
+// Tahle třída (HealthDataProvider) sama connect() nespouští — to dělá
+// useStravaConnect() přes StravaOAuth.beginConnect(), protože otevření
+// browseru + deep link callback nesedí do requestPermissions()'s
+// synchronního tvaru. Tahle třída jen čte token, který tam uložil.
 
 import type { HealthDataProvider } from './HealthDataProvider';
 import type {
@@ -82,7 +83,9 @@ export class StravaProvider implements HealthDataProvider {
   }
 
   async requestPermissions(types: HealthDataType[]): Promise<HealthPermissionResult> {
-    // TODO(oauth): spustí connect() flow. Zatím vrací 'not_determined'.
+    // Nespouští connect() flow — to dělá useStravaConnect() (browser + deep
+    // link callback), viz komentář nahoře souboru. Tahle metoda jen reportuje
+    // stav podle toho, jestli token už je uložený.
     const token = await this.tokens.getToken('strava');
     const status = token ? 'granted' : 'not_determined';
     return {
