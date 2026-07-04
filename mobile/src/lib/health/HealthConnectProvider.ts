@@ -278,7 +278,7 @@ export class HealthConnectProvider implements HealthDataProvider {
       this.readRange<HcHrvRecord>(hc, 'HeartRateVariabilityRmssd', start, end),
     ]);
 
-    const sleepByDate = new Map(sleepRecords.map(r => [toDateKey(r.startTime), summarizeSleep(r)]));
+    const sleepByDate = new Map(sleepRecords.map(r => [toDateKey(r.endTime), summarizeSleep(r)]));
     const rhrByDate = new Map<string, number>();
     for (const r of rhrRecords) rhrByDate.set(toDateKey(r.time), Math.round(r.beatsPerMinute));
     const hrvByDate = new Map<string, number>();
@@ -294,10 +294,12 @@ export class HealthConnectProvider implements HealthDataProvider {
   }
 }
 
+/** Sleep "for date X" = sleep ending on date X (wake-up date), matching the
+ *  convention AppleHealthProvider documents — not the bedtime/start date. */
 function summarizeSleep(r: HcSleepRecord): SleepSummary {
   const totalSessionMinutes = durationMinutes(r.startTime, r.endTime);
   if (!r.stages?.length) {
-    return { date: toDateKey(r.startTime), totalMinutes: totalSessionMinutes, source: 'health_connect' };
+    return { date: toDateKey(r.endTime), totalMinutes: totalSessionMinutes, source: 'health_connect' };
   }
   let deep = 0;
   let rem = 0;
@@ -311,7 +313,7 @@ function summarizeSleep(r: HcSleepRecord): SleepSummary {
     else asleep += minutes;
   }
   return {
-    date: toDateKey(r.startTime),
+    date: toDateKey(r.endTime),
     totalMinutes: asleep,
     deepMinutes: deep,
     remMinutes: rem,

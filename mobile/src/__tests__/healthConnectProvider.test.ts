@@ -150,6 +150,18 @@ describe('HealthConnectProvider', () => {
     expect(summary.deepMinutes).toBeUndefined();
   });
 
+  it('dates a sleep session by wake-up time (endTime), not bedtime (startTime), for a session spanning midnight', async () => {
+    readRecordsMock.mockImplementation(async (recordType: string) => {
+      if (recordType !== 'SleepSession') return { records: [] };
+      // Bedtime on 05-01, wake-up on 05-02 in both UTC and UTC+2 — an
+      // unambiguous cross-midnight case regardless of the machine's local TZ.
+      return { records: [{ startTime: '2026-05-01T21:00:00Z', endTime: '2026-05-02T05:00:00Z' }] };
+    });
+
+    const [summary] = await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-03'));
+    expect(summary.date).toBe('2026-05-02');
+  });
+
   it('getHrv reports metric rmssd and converts heartRateVariabilityMillis', async () => {
     readRecordsMock.mockImplementation(async (recordType: string) => {
       if (recordType !== 'HeartRateVariabilityRmssd') return { records: [] };
