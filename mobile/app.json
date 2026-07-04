@@ -82,7 +82,8 @@
           "background": true
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "react-native-health-connect"
     ],
     "extra": {
       "privacyUrl": "https://nutri-fit-omega.vercel.app/legal.html#privacy",

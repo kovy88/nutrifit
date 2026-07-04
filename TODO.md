@@ -26,10 +26,16 @@ reality in the meantime — this file tracks closing that gap for real.
 - **Garmin** — same as Oura: OAuth connect works, no `GarminProvider.ts` yet.
   Requires Garmin Connect Developer Program approval (~2 week review) before
   it's testable against the real API — see `INTEGRATIONS.md` section 5.
-- **Android (Health Connect)** — `HealthConnectProvider.ts` is entirely
-  `TODO(android)` stubs too. Nothing reads real data on Android yet
-  regardless of source; even a Zepp→Health Connect sync wouldn't surface
-  in-app until this one has a real implementation.
+- **Android (Health Connect)** — done (2026-07-04). `HealthConnectProvider.ts`
+  reads real Health Connect data (steps, active calories, distance, workouts,
+  sleep stages, resting HR, HRV, body weight) via `react-native-health-connect`.
+  Field names/shapes verified against the package's own TypeScript
+  declarations (source of truth over docs). Native module — requires EAS
+  Build, no Expo Go/web support, so this is verified via typecheck-against-
+  real-types + mocked-module unit tests (14 tests), **not** field-tested on a
+  real Android device with Health Connect installed. This unblocks Garmin/
+  Samsung/Zepp/Withings/Polar Flow on Android all at once, since they all
+  route through Health Connect.
 
 ## Amazfit / Zepp (incl. Helio Strap) — user request
 
@@ -40,20 +46,19 @@ in `INTEGRATIONS.md` section 6 ("VIA NATIVE BRIDGE"):
   provider is a real implementation. Worth a manual confirmation pass once
   a Helio Strap is in hand — Zepp's HealthKit writes need to actually cover
   the fields we read (sleep, HRV, resting HR, workouts).
-- **Android**: same idea via Health Connect, but blocked on
-  `HealthConnectProvider.ts` actually being implemented (see above) —
-  syncing Zepp → Health Connect won't do anything in-app until then.
+- **Android**: same idea via Health Connect — `HealthConnectProvider.ts` now
+  has a real implementation (see above), so a Zepp→Health Connect sync should
+  surface in-app already, same field-testing caveat as everything else in
+  this file (no real device to confirm against yet).
 
 ## Suggested order
 
 1. ~~Oura `HealthDataProvider`~~ — done 2026-07-04.
-2. `HealthConnectProvider.ts` real implementation (unblocks Android entirely —
-   Health Connect aggregates Garmin/Samsung/Zepp/Withings/Polar Flow, so this
-   one change covers many Android wearables at once, not just one brand).
+2. ~~`HealthConnectProvider.ts` real implementation~~ — done 2026-07-04.
 3. WHOOP data methods (OAuth already works, `WhoopProvider.ts` skeleton and
    endpoint list already scoped in the file's own comments).
 4. Garmin `HealthDataProvider` (gate on developer program approval — kick
    off that application early since it's the long pole, not the coding).
-5. Once (2)-(4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
+5. Once (3)-(4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
    in `APP_STORE.md` (Oura specifically could arguably go back in sooner,
    once someone's confirmed the field mapping against a real account).
