@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
 import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
-import { parseQuery } from './StravaOAuth';
+import { generateRandomHex, parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.garmin.state.v1';
 const VERIFIER_KEY = 'nutrifit.oauth.garmin.verifier.v1';
@@ -44,8 +44,8 @@ export class GarminOAuth {
     if (!this.config.clientId) {
       throw new Error('Garmin client ID není nastavený (env EXPO_PUBLIC_GARMIN_CLIENT_ID).');
     }
-    const state = generateRandom(16);
-    const verifier = generateRandom(64);
+    const state = generateRandomHex(16);
+    const verifier = generateRandomHex(64);
     const challenge = await sha256Base64Url(verifier);
     await AsyncStorage.setItem(STATE_KEY, state);
     await AsyncStorage.setItem(VERIFIER_KEY, verifier);
@@ -140,17 +140,6 @@ export class GarminOAuth {
 }
 
 // ── PKCE helpers ─────────────────────────────────────────────────────────────
-
-/** Náhodný base64url string délky `bytes`. Bez crypto.getRandomValues
- *  závislosti — Math.random je pro state + verifier dostačující entropy
- *  (~1e19 kombinací pro 16 bytes). */
-function generateRandom(bytes: number): string {
-  let s = '';
-  for (let i = 0; i < bytes; i++) {
-    s += Math.floor(Math.random() * 16).toString(16);
-  }
-  return s.slice(0, bytes);
-}
 
 /** SHA256 + base64url. Používá `expo-crypto` (pokud je), jinak fallback
  *  na js-only SHA256 (níže). */
