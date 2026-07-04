@@ -15,8 +15,9 @@
 // Resting HR: jeden vzorek per cycle (přes noc).
 //
 // Stejně jako Strava: OAuth flow přes backend (client_secret), token přes
-// OAuthTokenStore. Tato třída implementuje read-side, OAuth UI dorazí
-// později.
+// OAuthTokenStore. OAuth UI už existuje (useWhoopConnect hook, zapojený
+// v SettingsScreen) — tahle třída je jen read-side a zatím jen stub metody
+// (viz TODO(whoop) níže), žádné z nich zatím reálně nevolají Whoop API.
 
 import type { HealthDataProvider } from './HealthDataProvider';
 import type {
