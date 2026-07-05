@@ -64,29 +64,25 @@ plnit a Composite je transparentně přiřadí.
 
 ---
 
-## 2. Android Health Connect — STUB (ready to wire)
+## 2. Android Health Connect — DONE (2026-07-04)
 
-Provider class je stub s TODO(android) markery. Postup:
+`HealthConnectProvider.ts` reads real data via `react-native-health-connect`
+(steps, active calories, distance, workouts, sleep stages, resting HR, HRV,
+body weight). Zepp, Mi Band, Garmin Connect, Samsung Health, Withings všechno
+teče skrz Health Connect, takže tahle jedna implementace odemyká všechny
+najednou na Androidu.
 
-```bash
-cd mobile
-npx expo install react-native-health-connect
-```
+Native module — vyžaduje EAS Build (žádný Expo Go/web support). Config
+plugin + `expo.android.permissions` (READ_STEPS/READ_ACTIVE_CALORIES_BURNED/
+READ_SLEEP/READ_HEART_RATE/READ_RESTING_HEART_RATE/READ_HEART_RATE_VARIABILITY/
+READ_WEIGHT/READ_EXERCISE/READ_DISTANCE/READ_TOTAL_CALORIES_BURNED) už jsou
+v `app.json`.
 
-Add to `app.json` → `expo.android.permissions`:
-```json
-"android.permission.health.READ_STEPS",
-"android.permission.health.READ_ACTIVE_CALORIES_BURNED",
-"android.permission.health.READ_SLEEP",
-"android.permission.health.READ_HEART_RATE",
-"android.permission.health.READ_HEART_RATE_VARIABILITY",
-"android.permission.health.READ_WEIGHT",
-"android.permission.health.READ_EXERCISE"
-```
-
-Then implement the TODO(android) bodies in `HealthConnectProvider.ts` —
-the package's `readRecords()` API maps cleanly to our methods. Zepp, Mi Band,
-Garmin Connect, Samsung Health, Withings všechno teče skrz Health Connect.
+Verifikace: typecheck proti reálným typům balíčku + mockované unit testy
+(`healthConnectProvider.test.ts`, 14 testů). **Bez reálného Android zařízení
+s Health Connect nainstalovaným nejde field-testovat živě** — field
+names/shapes ověřené proti balíčku's vlastním TS typům, ne proti skutečné
+API odpovědi.
 
 ---
 
