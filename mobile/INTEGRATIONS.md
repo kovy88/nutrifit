@@ -105,7 +105,7 @@ V appce: Profil → ⚙️ Zdravotní zdroje → Strava → "Připojit"
 
 ---
 
-## 4. Whoop OAuth — DONE, needs credentials + subscription
+## 4. Whoop — DONE, needs credentials + subscription
 
 1. Register at https://developer.whoop.com/
    - Redirect URL: `https://nutri-fit-omega.vercel.app/whoop-callback.html`
@@ -118,6 +118,17 @@ V appce: Profil → ⚙️ Zdravotní zdroje → Strava → "Připojit"
 4. Rebuild
 
 Uživatel musí mít aktivní Whoop subscription, aby OAuth povolení proběhlo.
+
+`WhoopProvider.ts` (2026-07-04): čte sleep, workouty, resting HR a HRV přes
+v2 API (`/v2/activity/sleep`, `/v2/activity/workout`, `/v2/recovery`), plus
+statickou profile váhu z `/v2/user/measurement/body`. WHOOP migroval v1→v2
+(v1 se deprecuje) — implementace cílí výhradně na v2. HRV/RHR žijí na
+`/v2/recovery`, ne na `/v2/cycle` (cycle dává jen strain/kilojoule/HR).
+Field names ověřené proti reálné, udržované OSS knihovně
+(github.com/hedgertronic/whoop) s doslovnými example JSON v docstringech —
+WHOOP's vlastní tutorial stránky měly na jedné z nich zastaralé v1 field
+names, stejná past jako u Oury. BEZ přístupu k živému WHOOP účtu — považovat
+za ověřené na papíře, ne field-testované. Viz `TODO.md`.
 
 ---
 
@@ -140,8 +151,8 @@ uživatel se dnes reálně může připojit a token se uloží. Chybí jen krok 
 neexistuje, takže composite provider připojený token zatím nevyužije pro
 čtení dat. Navíc vyžaduje schválení Garmin Connect Developer Program
 (~2 týdny review) — kick off tu žádost brzy, je to delší krok než samotné
-kódování. Vzor viz `OuraProvider.ts` (hotová implementace) nebo
-`WhoopProvider.ts` (read-side stub, čeká na reálné API mapování).
+kódování. Vzor viz `OuraProvider.ts` nebo `WhoopProvider.ts` (obě hotové
+implementace).
 
 ## 7. Polar / Fitbit — TEMPLATE, NOTHING BUILT YET
 

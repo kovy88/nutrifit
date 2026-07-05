@@ -17,12 +17,21 @@ reality in the meantime — this file tracks closing that gap for real.
   response, so treat the mapping as verified-on-paper, not field-tested).
   Wired into `factory.ts`'s auto-mode composite and as an explicit `'oura'`
   mode. 17 unit tests cover token refresh and data mapping.
-- **WHOOP** — same OAuth-connect situation as Oura, but `WhoopProvider.ts`
-  does exist as a skeleton. Every data method (`getSleepSummary`,
-  `getLatestHrv`, `getLatestRestingHeartRate`, `getRecoveryInputs`,
-  `getWorkoutSummaries`, `getLatestBodyWeight`) is an unimplemented stub
-  returning `[]`/`null` — see the `TODO(whoop)` comments in that file for the
-  exact endpoint each one needs.
+- **WHOOP** — done (2026-07-04). `WhoopProvider.ts` reads real sleep
+  (stage-summary based), workouts, resting HR, and HRV via the v2 API
+  (`/v2/activity/sleep`, `/v2/activity/workout`, `/v2/recovery`), plus a
+  static profile weight via `/v2/user/measurement/body`. Note: WHOOP has
+  migrated v1→v2 (v1 is being deprecated) — this targets v2 throughout,
+  unlike the old skeleton's v1 base URL. HRV/RHR come from `/v2/recovery`,
+  *not* `/v2/cycle` (cycle only has strain/kilojoule/heart-rate, no
+  HRV/RHR) — the old skeleton's comments had this endpoint wrong. Field
+  names verified against a real, maintained OSS client
+  (github.com/hedgertronic/whoop) with literal example JSON in its
+  docstrings — WHOOP's own tutorial pages turned out to have stale v1
+  field names on at least one page, same "docs are unreliable" trap as
+  Oura. No live WHOOP account was available to test against a real API
+  response, so treat the mapping as verified-on-paper, not field-tested.
+  18 unit tests cover token refresh, data mapping, and pagination.
 - **Garmin** — same as Oura: OAuth connect works, no `GarminProvider.ts` yet.
   Requires Garmin Connect Developer Program approval (~2 week review) before
   it's testable against the real API — see `INTEGRATIONS.md` section 5.
@@ -50,10 +59,9 @@ in `INTEGRATIONS.md` section 6 ("VIA NATIVE BRIDGE"):
 2. `HealthConnectProvider.ts` real implementation (unblocks Android entirely —
    Health Connect aggregates Garmin/Samsung/Zepp/Withings/Polar Flow, so this
    one change covers many Android wearables at once, not just one brand).
-3. WHOOP data methods (OAuth already works, `WhoopProvider.ts` skeleton and
-   endpoint list already scoped in the file's own comments).
+3. ~~WHOOP data methods~~ — done 2026-07-04.
 4. Garmin `HealthDataProvider` (gate on developer program approval — kick
    off that application early since it's the long pole, not the coding).
-5. Once (2)-(4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
-   in `APP_STORE.md` (Oura specifically could arguably go back in sooner,
-   once someone's confirmed the field mapping against a real account).
+5. Once (2) and (4) ship, restore the fuller "connect Oura/WHOOP/Garmin" claim
+   in `APP_STORE.md` (Oura and WHOOP specifically could arguably go back in
+   sooner, once someone's confirmed the field mapping against a real account).
