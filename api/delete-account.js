@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
 
   const requester = await requireUser(req, res);
   if (!requester) return;
-  if (!(await rateLimit(req, res, 'delete-account', 5))) return;
+  if (!(await rateLimit(req, res, 'delete-account', 2))) return;
 
   try {
     const userId = requester.user.id;

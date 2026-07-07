@@ -18,8 +18,9 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
   - Náročnost: medium (~1 den) — potřeba i zpětně dotagovat existující Customery bez metadata, nebo aspoň fail-safe pro chybějící metadata.
   - Dotčené soubory: `api/create-portal.js`, `api/stripe-webhook.js` (checkout.session.completed handler), případně jednorázový backfill skript.
   - Riziko: nízké — čistě přidává validaci, nemění happy path.
+  - **Poznámka z 2026-07-07 běhu:** přeskočeno automatickým auditem — dotýká se produkčního billing/checkout flow (`create-checkout.js` aktuálně nechává Stripe auto-vytvořit Customera přes `customer_email`, takže metadata je potřeba buď dotáhnout přes explicitní `customers.create` před checkoutem, nebo `customers.update` ve webhooku — obojí bez možnosti otestovat proti reálnému Stripe API v tomto prostředí) a vyžaduje rozhodnutí o fail-safe chování pro existující Customery bez metadata (aby se neediskvalifikovali platící uživatelé). Vhodné pro ruční review/implementaci, ne pro samostatný denní auto-task.
 
-- [ ] **Zpřísnit rate limit na `delete-account`**
+- [x] **Zpřísnit rate limit na `delete-account`**
   - Problém: `api/delete-account.js:8` povoluje 5 pokusů/hodinu na nevratnou destruktivní operaci (smazání účtu + auth uživatele).
   - Proč vadí: Ukradený/kompromitovaný session token má 5 pokusů za hodinu na trvalé smazání dat bez jakéhokoli potvrzovacího kroku.
   - Řešení: Snížit `max` na 2 a zvážit přidání potvrzovacího e-mailu/OTP před samotným smazáním (druhý krok, ne blokující tento task).
