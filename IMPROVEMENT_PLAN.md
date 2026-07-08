@@ -29,7 +29,7 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
   - Dotčené soubory: `api/delete-account.js:8`.
   - Riziko: velmi nízké.
 
-- [ ] **Posílit CSRF/PKCE state generaci na `expo-crypto` místo `Math.random()`**
+- [x] **Posílit CSRF/PKCE state generaci na `expo-crypto` místo `Math.random()`**
   - Problém: `mobile/src/lib/health/oauth/oauthShared.ts:7-15` (`generateRandomHex`) používá `Math.random()` pro OAuth CSRF state i PKCE verifier. Komentář správně poznamenává, že entropie (1e19 při délce 16) je prakticky dostatečná, ale appka už má `expo-crypto` jako závislost (používá se v `GarminOAuth.ts` pro SHA256), takže není důvod nepoužít kryptograficky bezpečný zdroj, když je dostupný.
   - Proč vadí: Best practice pro CSRF state/PKCE verifier je vždy CSPRNG, i když praktické riziko je tu nízké.
   - Řešení: Zkusit `expo-crypto`'s `getRandomBytesAsync`/`getRandomValues`, s fallbackem na současný `Math.random()` jen když crypto modul není dostupný (stejný pattern jako `sha256Base64Url` v `GarminOAuth.ts:146-160`).
