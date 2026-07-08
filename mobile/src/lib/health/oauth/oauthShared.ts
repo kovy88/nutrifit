@@ -5,11 +5,29 @@
 // verifier) and of deep-link query parsing. Consolidated here so there's
 // one implementation instead of four.
 
-/** Random hex string of `length` chars. Not crypto.getRandomValues-backed
- *  (not available on all Hermes versions) — Math.random is sufficient
- *  entropy for CSRF state and a PKCE verifier (~1e19 combinations at
- *  length 16, astronomically more at length 64). */
-export function generateRandomHex(length: number): string {
+const HEX_CHARS = '0123456789abcdef';
+
+/** Random hex string of `length` chars. Prefers `expo-crypto`'s CSPRNG
+ *  (same optional-dependency pattern as `sha256Base64Url` in
+ *  GarminOAuth.ts), falling back to Math.random() if the native module
+ *  isn't resolvable. Math.random's entropy was already sufficient in
+ *  practice for CSRF state / PKCE verifier (~1e19 combinations at length
+ *  16), but a CSPRNG is the correct primitive when available. */
+export async function generateRandomHex(length: number): Promise<string> {
+  try {
+    // @ts-ignore — optional native dep, not a declared dependency; falls
+    // through to Math.random below if it isn't installed/resolvable.
+    // eslint-disable-next-line import/no-unresolved -- intentionally optional, see above
+    const mod = await import('expo-crypto');
+    if (mod?.getRandomBytesAsync) {
+      const bytes = await mod.getRandomBytesAsync(length);
+      let s = '';
+      for (let i = 0; i < length; i++) s += HEX_CHARS[bytes[i] % 16];
+      return s;
+    }
+  } catch {
+    /* fall through to Math.random */
+  }
   let s = '';
   for (let i = 0; i < length; i++) s += Math.floor(Math.random() * 16).toString(16);
   return s;

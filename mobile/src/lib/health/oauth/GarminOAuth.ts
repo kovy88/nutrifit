@@ -44,8 +44,7 @@ export class GarminOAuth {
     if (!this.config.clientId) {
       throw new Error('Garmin client ID není nastavený (env EXPO_PUBLIC_GARMIN_CLIENT_ID).');
     }
-    const state = generateRandomHex(16);
-    const verifier = generateRandomHex(64);
+    const [state, verifier] = await Promise.all([generateRandomHex(16), generateRandomHex(64)]);
     const challenge = await sha256Base64Url(verifier);
     await AsyncStorage.setItem(STATE_KEY, state);
     await AsyncStorage.setItem(VERIFIER_KEY, verifier);

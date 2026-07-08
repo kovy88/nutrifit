@@ -53,7 +53,7 @@ export class StravaOAuth {
     if (!this.config.clientId) {
       throw new Error('Strava client ID není nastavený (env EXPO_PUBLIC_STRAVA_CLIENT_ID).');
     }
-    const state = generateRandomHex(16);
+    const state = await generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
 
     const params = new URLSearchParams({

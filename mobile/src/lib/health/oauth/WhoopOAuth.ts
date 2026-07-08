@@ -39,7 +39,7 @@ export class WhoopOAuth {
     if (!this.config.clientId) {
       throw new Error('Whoop client ID není nastavený (env EXPO_PUBLIC_WHOOP_CLIENT_ID).');
     }
-    const state = generateRandomHex(16);
+    const state = await generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
     const params = new URLSearchParams({
       response_type: 'code',
