@@ -38,7 +38,8 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
   - Dotčené soubory: `mobile/src/lib/health/oauth/oauthShared.ts`.
   - Riziko: nízké — musí zůstat synchronní/asynchronní kontrakt kompatibilní se současnými volajícími (state generation je dnes synchronní, změna na async by vyžadovala update všech 4 OAuth handlerů).
 
-- [ ] **Explicitně posílat `redirect_uri` při OAuth token exchange**
+- [x] **Explicitně posílat `redirect_uri` při OAuth token exchange** — vyřešeno bez změny kódu, security posture je už správná.
+  - **Poznámka z 2026-07-10 běhu:** ověřeno proti reálnému kódu. `api/oura/exchange.js` (řádky 27-33) i `api/whoop/exchange.js` (řádky 33-39) `redirect_uri` **už posílají** (a navíc ho validují přes `isAllowedRedirectUri`). Zbýval jen `api/strava/exchange.js`, jenže Strava je nestandardní OAuth2 provider: její `/oauth/token` endpoint `redirect_uri` při code-exchange **nepřijímá ani nevaliduje** (validuje ho jen v authorize kroku). Ověřeno proti udržovanému OSS klientovi `stravalib` (`src/stravalib/protocol.py`, `exchange_code_for_token`), který posílá jen `client_id`, `client_secret`, `code`, `grant_type` — přesně jako náš stávající kód. Přidání `redirect_uri` by tedy nepřineslo žádný bezpečnostní zisk a neslo by riziko rozbití produkčního Strava flow. Task uzavřen jako neaplikovatelný pro Stravu, hotový pro Oura/WHOOP.
   - Problém: `api/strava/exchange.js` (a pravděpodobně `api/oura/exchange.js`, `api/whoop/*`) posílá na token endpoint `client_id`, `client_secret`, `code`, `grant_type`, ale bez `redirect_uri`.
   - Proč vadí: OAuth2 spec doporučuje providerům ověřovat `redirect_uri` shodu i při token exchange (ne jen při authorize kroku) — bez explicitního posílání se appka spoléhá na to, že provider tuto validaci dělá volitelně/vůbec.
   - Řešení: Přidat `redirect_uri` (hodnotu hosted bridge URL, viz komentář v souboru) do request body pro Strava/Oura/WHOOP token exchange volání.
@@ -51,7 +52,8 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
 
 ## Quick wins
 
-- [ ] **Přidat index na `profiles.stripe_customer_id`**
+- [x] **Přidat index na `profiles.stripe_customer_id`** — hotovo 2026-07-10 (`20260710000000_profiles_stripe_customer_id_index.sql`).
+  - **Poznámka z 2026-07-10 běhu:** přidán partial index `idx_profiles_stripe_customer_id ... where stripe_customer_id is not null`. Upřesnění oproti původnímu popisu: `create-portal.js` i `stripe-webhook.js` dnes filtrují podle `user_id` (PK), takže index nezrychluje jejich hot path — reálný přínos je pro **reverse lookup** (webhook reconciliation a plánovaná customer-ownership validace na email-search fallbacku), který jinak dělá full-table scan. Partial index (sloupec je NULL pro každého neplatícího uživatele) je menší a pokrývá přesně tyhle equality lookupy. Není unique kvůli případným NULL/historickým duplicitám.
   - Problém: `supabase/migrations/20260703210000_stripe_customer_id.sql` přidal sloupec bez indexu.
   - Proč vadí: Lookup v `create-portal.js` (a budoucí webhook reconciliation) dělá full-table scan, jak roste počet uživatelů.
   - Řešení: Nová migrace `CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer_id ON public.profiles(stripe_customer_id);`.
