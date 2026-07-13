@@ -49,7 +49,7 @@ async function postJsonWithRetry<T>(path: string, body: unknown, retries = 1, de
   }
 }
 
-export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null, locale: Locale = 'cs'): Promise<Meal[]> {
+export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null, locale: Locale = 'en'): Promise<Meal[]> {
   // First attempt. If the result fails validation, we re-prompt ONCE with the
   // concrete errors fed back (self-correction) before surfacing a hard error —
   // a single bad generation no longer breaks the core flow.
@@ -77,7 +77,7 @@ async function requestAndNormalizeMealPlan(
   macros: Macros,
   session?: TrainingSession | null,
   repairErrors?: string[],
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): Promise<Meal[]> {
   const request = buildMealPlanRequest(profile, macros, session, repairErrors, locale);
   const data = await postJsonWithRetry<any>('/api/generate', request);
@@ -99,7 +99,7 @@ async function repairAllergenViolations(
   meals: Meal[],
   profile: UserProfile,
   session?: TrainingSession | null,
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): Promise<Meal[]> {
   const allergens = parseAllergensFromFreeText(profile.dislikes);
   if (!allergens.length) return meals;
@@ -139,7 +139,7 @@ async function repairAllergenViolations(
   return repaired;
 }
 
-function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Locale = 'cs'): Meal[] {
+function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Locale = 'en'): Meal[] {
   const names = namesForMealCount(profile.mealCount, locale);
   const weights = mealWeights(names.length);
   const protein = splitMacro(macros.protein, weights);
@@ -208,7 +208,7 @@ export async function regenerateMeal(opts: {
   const parsed = parseJson(text);
   // Some AI runs wrap the object in {"meals":[…]} or {"meal":{…}}; handle both.
   const rawMeal = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
-  const locale = opts.locale ?? 'cs';
+  const locale = opts.locale ?? 'en';
   const meal = normalizeMeal(rawMeal || {}, opts.current.mealType, locale);
 
   // Don't accept a near-duplicate of the rejected one.
@@ -245,7 +245,7 @@ export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<
   return summary;
 }
 
-export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'cs'): Promise<FoodEstimate> {
+export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'en'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType, locale });
   if (data.estimate) return normalizeFoodEstimate(data.estimate, locale);

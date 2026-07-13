@@ -49,7 +49,7 @@ describe('applyReadinessToSession', () => {
 
   it('downgrades hard intervals to easy_run on red day', () => {
     const assessment = evaluateReadiness({ todaySleepMinutes: 240 }); // red
-    const out = applyReadinessToSession(hardIntervals(), assessment);
+    const out = applyReadinessToSession(hardIntervals(), assessment, 'cs');
     expect(out.adjusted).toBe(true);
     expect(out.session.intensity).toBe('easy');
     expect(out.session.kind).toBe('easy_run');

@@ -112,7 +112,7 @@ describe('describeSleepDebt', () => {
   it('< 1h debt → "v normě"', () => {
     const sleeps = Array.from({ length: 7 }, (_, i) => sleep(`2026-05-${22 + i}`, 480));
     const r = computeSleepDebt({ sleeps, days: 7 });
-    expect(describeSleepDebt(r).toLowerCase()).toMatch(/v normě/);
+    expect(describeSleepDebt(r, 'cs').toLowerCase()).toMatch(/v normě/);
   });
 
   it('5–10h debt → suggests catch-up', () => {
@@ -124,7 +124,7 @@ describe('describeSleepDebt', () => {
   it('> 10h debt → flags it as priority', () => {
     const sleeps = Array.from({ length: 7 }, (_, i) => sleep(`2026-05-${22 + i}`, 360));
     const r = computeSleepDebt({ sleeps, days: 7 }); // 14h debt
-    expect(describeSleepDebt(r).toLowerCase()).toMatch(/priorita|projevuje/);
+    expect(describeSleepDebt(r, 'cs').toLowerCase()).toMatch(/priorita|projevuje/);
   });
 
   it('supports English descriptions', () => {
@@ -144,12 +144,12 @@ describe('describeRecoveryDebt', () => {
   it('mild current debt → easy training suggestion', () => {
     // Need ≥ 3 days for describe to skip the onboarding message
     const r = computeRecoveryDebt({ readinessLevels: ['green', 'yellow', 'yellow'] });
-    expect(describeRecoveryDebt(r).toLowerCase()).toMatch(/lehčí|brzo|spát/);
+    expect(describeRecoveryDebt(r, 'cs').toLowerCase()).toMatch(/lehčí|brzo|spát/);
   });
 
   it('high current debt → rest days recommendation', () => {
     const r = computeRecoveryDebt({ readinessLevels: ['red', 'red', 'red'] });
-    expect(describeRecoveryDebt(r).toLowerCase()).toMatch(/pauzy|dny/);
+    expect(describeRecoveryDebt(r, 'cs').toLowerCase()).toMatch(/pauzy|dny/);
   });
 
   it('supports English descriptions', () => {

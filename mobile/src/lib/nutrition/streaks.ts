@@ -93,7 +93,7 @@ function todayKey(): string {
 }
 
 /** Lidský label pro streak — zdůrazněný jen pokud current >= 3. */
-export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence', locale: Locale = 'cs'): string {
+export function describeStreak(streak: StreakInfo, kind: 'log' | 'adherence', locale: Locale = 'en'): string {
   const en = locale === 'en';
   const n = streak.current;
   const day = (k: number) => (en ? (k === 1 ? 'day' : 'days') : pluralDay(k));

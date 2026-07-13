@@ -76,7 +76,7 @@ export function hasCustomSchedule(profile: { weeklyActivities?: WeeklyActivityTe
 export function materializeWeeklyTemplate(
   profile: Pick<UserProfile, 'weeklyActivities' | 'mainSport' | 'trainingGoal'>,
   weekStartISO: string,
-  locale: string = 'cs',
+  locale: string = 'en',
 ): TrainingPlan {
   const template = profile.weeklyActivities ?? {};
   const sportLbl = sportName(profile.mainSport?.id, profile.mainSport?.label, locale);

@@ -105,7 +105,7 @@ describe('computeDailyStrain — HR-based intensity scaling', () => {
 
 describe('computeDailyStrain — recommendations', () => {
   it('moderate band recommends post-workout protein', () => {
-    const r = computeDailyStrain({ plannedSession: null, todaysWorkouts: [workout(75, 150, 180)] });
+    const r = computeDailyStrain({ plannedSession: null, todaysWorkouts: [workout(75, 150, 180)], locale: 'cs' });
     if (r.band === 'moderate') {
       expect(r.recommendation.toLowerCase()).toMatch(/bílkovin|regenerac|spánek/);
     }
@@ -115,6 +115,7 @@ describe('computeDailyStrain — recommendations', () => {
     const r = computeDailyStrain({
       plannedSession: null,
       todaysWorkouts: [workout(180, 175, 185), workout(120, 170, 185)],
+      locale: 'cs',
     });
     if (r.band === 'all_out') {
       expect(r.recommendation.toLowerCase()).toMatch(/volno|regenerační|zítra|vydatněji/);
@@ -122,7 +123,7 @@ describe('computeDailyStrain — recommendations', () => {
   });
 
   it('recovery band suggests light activity for tomorrow', () => {
-    const r = computeDailyStrain({ plannedSession: null, todaysWorkouts: [] });
+    const r = computeDailyStrain({ plannedSession: null, todaysWorkouts: [], locale: 'cs' });
     expect(r.band).toBe('recovery');
     expect(r.recommendation.toLowerCase()).toMatch(/lehkou|zítra/);
   });

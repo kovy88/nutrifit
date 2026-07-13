@@ -29,7 +29,7 @@ const MOBILITY_KINDS = ['mobility', 'recovery'];
 /** 0–2 volitelné tipy kolem uživatelova týdne. */
 export function complementarySuggestions(input: ComplementaryInput): string[] {
   const { sessions, todayISO } = input;
-  const locale = input.locale ?? 'cs';
+  const locale = input.locale ?? 'en';
   const en = locale === 'en';
   const L = (cs: string, e: string) => (en ? e : cs);
   const sport = sportName(input.mainSport?.id, input.mainSport?.label, locale) || L('tvůj sport', 'your sport');

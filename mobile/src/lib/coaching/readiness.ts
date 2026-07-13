@@ -84,7 +84,7 @@ function L(locale: Locale, cs: string, en: string): string {
 export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const factors: ReadinessFactor[] = [];
   const baseline = input.baseline ?? {};
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
   const hrs = (m: number) => formatHours(m, loc);
 
   // ── Sleep ──────────────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ function formatHours(minutes: number, locale: Locale): string {
 
 const SCORE_WEIGHTS = { sleep: 0.4, hrv: 0.3, rhr: 0.3 };
 
-export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): ReadinessScore {
+export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'en'): ReadinessScore {
   const loc = locale;
   const baseline = input.baseline ?? {};
   const drivers: string[] = [];

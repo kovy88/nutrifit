@@ -32,7 +32,7 @@ const matchDay: TrainingSession = {
 
 describe('composeMorningBriefing — match day', () => {
   it('match → headline obsahuje název zápasu + match-specifické doporučení', () => {
-    const b = composeMorningBriefing({ session: matchDay, readiness: null, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: matchDay, readiness: null, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.headline).toContain('Zápas');
     expect(b.recommendation).toMatch(/[Zz]ápas/);
   });
@@ -48,6 +48,7 @@ describe('composeMorningBriefing — headline shape', () => {
       trainingLoad: null,
       macros,
       baselineMacros: macros,
+      locale: 'cs',
     });
     expect(b.headline.toLowerCase()).toContain('volný den');
   });
@@ -59,6 +60,7 @@ describe('composeMorningBriefing — headline shape', () => {
       trainingLoad: null,
       macros,
       baselineMacros: macros,
+      locale: 'cs',
     });
     expect(b.headline.toLowerCase()).toContain('volný den');
   });
@@ -66,20 +68,20 @@ describe('composeMorningBriefing — headline shape', () => {
   it('green readiness + long run → "podle plánu" + 🟢', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 480, todayRhrBpm: 58, todayHrvMs: 60 });
     expect(readiness.level).toBe('green');
-    const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.headline).toContain('Long run');
     expect(b.headline.toLowerCase()).toMatch(/podle plánu|můžeš jet/);
   });
 
   it('yellow readiness → headline mentions reduced readiness + 🟡', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 390 });
-    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.headline.toLowerCase()).toMatch(/snížen|mírně/);
   });
 
   it('red readiness → headline urges regeneration + 🔴', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 240 });
-    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.headline.toLowerCase()).toMatch(/regeneraci|regenera/);
   });
 
@@ -101,7 +103,7 @@ describe('composeMorningBriefing — headline shape', () => {
 describe('composeMorningBriefing — recommendation priority', () => {
   it('red readiness recommendation overrides everything else', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 200 });
-    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.recommendation.toLowerCase()).toMatch(/lehk|spát|easy/);
   });
 
@@ -113,7 +115,7 @@ describe('composeMorningBriefing — recommendation priority', () => {
     const trainingLoad = computeTrainingLoad({ workouts });
     if (trainingLoad.status === 'overreaching' || trainingLoad.status === 'high_risk') {
       const readiness = evaluateReadiness({ todaySleepMinutes: 470, todayRhrBpm: 60, todayHrvMs: 55 });
-      const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad, macros, baselineMacros: macros });
+      const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad, macros, baselineMacros: macros, locale: 'cs' });
       expect(b.recommendation.toLowerCase()).toMatch(/zkrátit|sniž|deload|průměr|jednotku/);
     }
   });
@@ -126,6 +128,7 @@ describe('composeMorningBriefing — recommendation priority', () => {
       trainingLoad: null,
       macros: adjusted,
       baselineMacros: macros,
+      locale: 'cs',
     });
     expect(b.recommendation).toContain('95');
     expect(b.recommendation.toLowerCase()).toContain('sachari');
@@ -149,6 +152,7 @@ describe('composeMorningBriefing — recommendation priority', () => {
       trainingLoad: null,
       macros: adjusted,
       baselineMacros: macros,
+      locale: 'cs',
     });
     // restDay headline wins, but recommendation still reflects rest day character
     expect(b.recommendation.toLowerCase()).toMatch(/voda|tuk|bílkovin|kávy|lehčí/);
@@ -161,13 +165,14 @@ describe('composeMorningBriefing — recommendation priority', () => {
       trainingLoad: null,
       macros,
       baselineMacros: macros,
+      locale: 'cs',
     });
     expect(b.recommendation.toLowerCase()).toMatch(/long.?run|snídan|vod/);
   });
 
   it('yellow readiness without overrides → "drž HR v zóně 2"', () => {
     const readiness = evaluateReadiness({ todaySleepMinutes: 390 });
-    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: intervals, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     expect(b.recommendation.toLowerCase()).toMatch(/zóně 2|neforsír|hr/);
   });
 });
@@ -181,7 +186,7 @@ describe('composeMorningBriefing — detail facts', () => {
       todayRhrBpm: 60,                // green
       todayHrvMs: 18,                 // red
     });
-    const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros });
+    const b = composeMorningBriefing({ session: longRun, readiness, trainingLoad: null, macros, baselineMacros: macros, locale: 'cs' });
     // First-shown signal should still reflect the worst driver, but without raw HRV values.
     expect(b.detail.toLowerCase()).toContain('regenerace');
     expect(b.detail).not.toMatch(/\bHRV\b|\d+\s*ms/i);

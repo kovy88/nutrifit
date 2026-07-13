@@ -100,7 +100,7 @@ export function computeTrainingLoad(input: TrainingLoadInput): TrainingLoadAsses
   const hasMeaningfulBaseline = chronicCount >= 4 && chronicAvgPerDay >= 1;
   const acwr = hasMeaningfulBaseline ? acuteAvgPerDay / chronicAvgPerDay : null;
 
-  const { status, message, recommendation } = classify(acwr, acuteCount, input.locale ?? 'cs');
+  const { status, message, recommendation } = classify(acwr, acuteCount, input.locale ?? 'en');
 
   return {
     acute: Math.round(acuteAvgPerDay * 10) / 10,

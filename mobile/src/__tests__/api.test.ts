@@ -29,8 +29,8 @@ describe('services/api meal-plan fallback', () => {
     });
 
     const macros = calculateMacros(DEFAULT_PROFILE);
-    const meals = await generateMealPlan(DEFAULT_PROFILE, macros, null);
-    const validation = validateMealPlan(meals, macros, namesForMealCount(DEFAULT_PROFILE.mealCount).length);
+    const meals = await generateMealPlan(DEFAULT_PROFILE, macros, null, 'cs');
+    const validation = validateMealPlan(meals, macros, namesForMealCount(DEFAULT_PROFILE.mealCount, 'cs').length, 'cs');
 
     expect(meals).toHaveLength(DEFAULT_PROFILE.mealCount);
     expect(validation.valid).toBe(true);

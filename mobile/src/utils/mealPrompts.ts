@@ -18,7 +18,7 @@ const mealNamesEn: Record<number, string[]> = {
   6: ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack', 'Dinner', 'Evening snack'],
 };
 
-export function namesForMealCount(count: number, locale: Locale = 'cs') {
+export function namesForMealCount(count: number, locale: Locale = 'en') {
   const names = locale === 'en' ? mealNamesEn : mealNamesCs;
   return names[count] || names[5];
 }
@@ -30,7 +30,7 @@ export function buildMealPlanRequest(
   /** When a previous attempt failed validation, the errors are fed back so the
    *  model can self-correct on a single retry before we surface a hard error. */
   repairErrors?: string[],
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ) {
   const names = namesForMealCount(profile.mealCount, locale);
   const lang = locale === 'en' ? 'English' : 'Czech';
@@ -109,7 +109,7 @@ export function buildAllergenRepairRequest(opts: {
   otherMeals?: Meal[];
   locale?: Locale;
 }): SingleMealRequest {
-  const { profile, session, current, forbidden, otherMeals = [], locale = 'cs' } = opts;
+  const { profile, session, current, forbidden, otherMeals = [], locale = 'en' } = opts;
   const lang = locale === 'en' ? 'English' : 'Czech';
 
   const systemPrompt = [
@@ -177,7 +177,7 @@ export function buildSingleMealRequest(opts: {
   otherMeals?: Meal[];
   locale?: Locale;
 }): SingleMealRequest {
-  const { profile, session, current, otherMeals = [], locale = 'cs' } = opts;
+  const { profile, session, current, otherMeals = [], locale = 'en' } = opts;
   const lang = locale === 'en' ? 'English' : 'Czech';
 
   const systemPrompt = [

@@ -11,7 +11,7 @@ export function validateNutritionSafety(
   kcal: number,
   protein: number,
   fat: number,
-  locale: Locale = 'cs'
+  locale: Locale = 'en'
 ): string[] {
   const warnings: string[] = [];
 

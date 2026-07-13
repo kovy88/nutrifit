@@ -47,7 +47,7 @@ export const DEFAULT_PROFILE: UserProfile = {
 };
 
 /** Human-readable label for a primary goal, used in prompts and fallback text. */
-export function primaryGoalLabel(goal: PrimaryGoal, locale: Locale = 'cs'): string {
+export function primaryGoalLabel(goal: PrimaryGoal, locale: Locale = 'en'): string {
   if (locale === 'en') {
     switch (goal) {
       case 'lose_fat':           return 'Fat loss';
@@ -121,7 +121,7 @@ export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' 
   return { allowed: true, level: 'ok' as const, bmi };
 }
 
-export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'cs'): { macros: Macros; adjustment: DailyAdjustment } {
+export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'en'): { macros: Macros; adjustment: DailyAdjustment } {
   const en = locale === 'en';
   if (!session || session.kind === 'rest' || session.intensity === 'rest') {
     const carbs = Math.max(0, Math.round(baseline.carbs * 0.9));
@@ -256,7 +256,7 @@ export function remainingMacros(macros: Macros, items: FoodLogItem[]) {
   };
 }
 
-export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: Locale = 'cs'): FoodEstimate {
+export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: Locale = 'en'): FoodEstimate {
   return {
     foodName: String(raw.foodName || (locale === 'en' ? 'Unknown food' : 'Neznámé jídlo')).slice(0, 80),
     portionGuess: String(raw.portionGuess || (locale === 'en' ? 'Estimated portion' : 'Orientační porce')).slice(0, 120),
@@ -270,7 +270,7 @@ export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: Locale
   };
 }
 
-export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, locale: Locale = 'cs'): Meal {
+export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, locale: Locale = 'en'): Meal {
   const protein = clampInt(raw.protein, 0, 250);
   const carbs = clampInt(raw.carbs, 0, 500);
   const fat = clampInt(raw.fat, 0, 250);
@@ -289,7 +289,7 @@ export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, loc
   };
 }
 
-export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCount: number, locale: Locale = 'cs'): MealPlanValidationResult {
+export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCount: number, locale: Locale = 'en'): MealPlanValidationResult {
   const errors: string[] = [];
   const totals = meals.reduce((sum, meal) => ({
     kcal: sum.kcal + safeNumber(meal.kcal),
@@ -335,7 +335,7 @@ export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCoun
   return { valid: errors.length === 0, errors, totals };
 }
 
-export function mealToFoodEstimate(meal: Meal, locale: Locale = 'cs'): FoodEstimate {
+export function mealToFoodEstimate(meal: Meal, locale: Locale = 'en'): FoodEstimate {
   return normalizeFoodEstimate({
     foodName: meal.name,
     portionGuess: meal.mealType,
@@ -353,7 +353,7 @@ export function plannedMealKey(meal: Pick<Meal, 'mealType' | 'name'>) {
   return `${meal.mealType.trim().toLowerCase()}::${meal.name.trim().toLowerCase()}`;
 }
 
-export function buildShoppingList(meals: Meal[], locale: Locale = 'cs'): ShoppingListGroup[] {
+export function buildShoppingList(meals: Meal[], locale: Locale = 'en'): ShoppingListGroup[] {
   const groups = new Map<string, Map<string, string>>();
   meals.flatMap(meal => meal.ingredients || []).forEach(ingredient => {
     const item = String(ingredient).trim();
@@ -419,7 +419,7 @@ function categoryAt(index: number, locale: Locale) {
   return shoppingCategories(locale)[index];
 }
 
-function categorizeIngredient(ingredient: string, locale: Locale = 'cs') {
+function categorizeIngredient(ingredient: string, locale: Locale = 'en') {
   const text = ingredient.toLocaleLowerCase('cs-CZ');
   if (/(jabl|apple|banán|banan|banana|avok|avocado|rajč|rajc|tomato|paprik|pepper|okurk|cucumber|salát|salat|lettuce|spinach|špenát|spenat|broccoli|brokolic|mrkev|carrot|cibul|onion|česnek|cesnek|garlic|ovoce|fruit|zelenin|vegetable|brambor|potato)/.test(text)) return categoryAt(0, locale);
   if (/(jogurt|yogurt|tvaroh|mlék|mlek|milk|sýr|syr|cheese|vejce|egg|kefír|kefir|skyr|mozzarella|cottage)/.test(text)) return categoryAt(1, locale);
@@ -566,7 +566,7 @@ export function isToday(dateKey: string): boolean {
   return dateKey === toDateKey(new Date());
 }
 
-export function formatDateLabel(dateKey: string, locale: string = 'cs'): string {
+export function formatDateLabel(dateKey: string, locale: string = 'en'): string {
   const today = toDateKey(new Date());
   
   const dToday = new Date();

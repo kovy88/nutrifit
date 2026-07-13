@@ -129,9 +129,9 @@ describe('describeAdherence', () => {
   });
 
   it('95-105% → "Skvělé"', () => {
-    expect(describeAdherence(1.0).toLowerCase()).toContain('skvělé');
-    expect(describeAdherence(0.97).toLowerCase()).toContain('skvělé');
-    expect(describeAdherence(1.04).toLowerCase()).toContain('skvělé');
+    expect(describeAdherence(1.0, 'cs').toLowerCase()).toContain('skvělé');
+    expect(describeAdherence(0.97, 'cs').toLowerCase()).toContain('skvělé');
+    expect(describeAdherence(1.04, 'cs').toLowerCase()).toContain('skvělé');
   });
 
   it('< 85% → warns about crash deficit', () => {

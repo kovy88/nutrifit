@@ -38,7 +38,7 @@ describe('scoreReadiness', () => {
       todayRhrBpm: 92,
       sleepDebtHours: 12,
       baseline: { sleepMeanMinutes: 460, hrvMeanMs: 55, rhrMeanBpm: 54 },
-    });
+    }, 'cs');
     const text = r.drivers.join(' ');
 
     expect(text).toContain('Regenerace');

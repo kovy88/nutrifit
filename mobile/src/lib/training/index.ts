@@ -65,7 +65,7 @@ export function weekIndexFor(programStartISO: string | undefined, weekStartISO: 
 }
 
 /** Vygeneruje týdenní plán pro týden obsahující `date`, na základě profilu. */
-export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'cs'): TrainingPlan {
+export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'en'): TrainingPlan {
   const weekStartISO = mondayOf(date);
   // "Můj týden" custom režim: materializuj uživatelskou šablonu místo generování plánu.
   if (hasCustomSchedule(profile)) {
@@ -99,7 +99,7 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
 }
 
 /** Drop-in náhrada za buildTrainingSessionForDate — jednotka pro konkrétní den. */
-export function planSessionForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'cs'): TrainingSession {
+export function planSessionForDate(profile: PlannerProfile, date: Date, ctx: PlanContext = {}, locale: string = 'en'): TrainingSession {
   const plan = planForDate(profile, date, ctx, locale);
   const key = toDateKey(date);
   return (
@@ -122,7 +122,7 @@ export type AdjustedTrainingPlan = {
 export function adjustPlanForTrainingCompletions(
   plan: TrainingPlan,
   completions: TrainingCompletionRecordMap,
-  locale: string = 'cs',
+  locale: string = 'en',
 ): AdjustedTrainingPlan {
   const originalByDate = new Map(plan.sessions.map(session => [session.date, session]));
   const skippedDates = plan.sessions
@@ -163,7 +163,7 @@ export function adjustedPlanForDate(
   date: Date,
   completions: TrainingCompletionRecordMap,
   ctx: PlanContext = {},
-  locale: string = 'cs',
+  locale: string = 'en',
 ): AdjustedTrainingPlan {
   const plan = planForDate(profile, date, ctx, locale);
   // Custom týden je uživatelův pevný rytmus — nepřeskupuj ho po vynechání tréninku.
@@ -178,7 +178,7 @@ export function adjustedPlanSessionForDate(
   date: Date,
   completions: TrainingCompletionRecordMap,
   ctx: PlanContext = {},
-  locale: string = 'cs',
+  locale: string = 'en',
 ): TrainingSession {
   const adjusted = adjustedPlanForDate(profile, date, completions, ctx, locale);
   const key = toDateKey(date);

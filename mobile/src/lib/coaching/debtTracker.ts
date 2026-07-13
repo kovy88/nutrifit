@@ -118,7 +118,7 @@ export function computeRecoveryDebt(input: RecoveryDebtInput): RecoveryDebtSumma
 }
 
 /** Human-readable sleep debt summary. */
-export function describeSleepDebt(summary: SleepDebtSummary, locale: Locale = 'cs'): string {
+export function describeSleepDebt(summary: SleepDebtSummary, locale: Locale = 'en'): string {
   const en = locale === 'en';
   if (summary.daysWithData < 3) {
     return en
@@ -146,7 +146,7 @@ export function describeSleepDebt(summary: SleepDebtSummary, locale: Locale = 'c
 }
 
 /** Human-readable recovery debt summary. */
-export function describeRecoveryDebt(summary: RecoveryDebtSummary, locale: Locale = 'cs'): string {
+export function describeRecoveryDebt(summary: RecoveryDebtSummary, locale: Locale = 'en'): string {
   const en = locale === 'en';
   if (summary.totalDays < 3) {
     return en

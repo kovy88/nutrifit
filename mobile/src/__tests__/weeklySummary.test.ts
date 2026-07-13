@@ -12,9 +12,14 @@ const baseInput: WeeklySummaryInput = {
 };
 
 describe('buildWeeklySummaryRequest — system prompt', () => {
-  it('instructs Czech-only output', () => {
-    const r = buildWeeklySummaryRequest(baseInput);
+  it('instructs Czech-only output when locale is cs', () => {
+    const r = buildWeeklySummaryRequest({ ...baseInput, locale: 'cs' });
     expect(r.systemPrompt).toContain('Czech');
+  });
+
+  it('instructs English-only output by default', () => {
+    const r = buildWeeklySummaryRequest(baseInput);
+    expect(r.systemPrompt).toContain('English');
   });
 
   it('instructs not to recompute metrics', () => {

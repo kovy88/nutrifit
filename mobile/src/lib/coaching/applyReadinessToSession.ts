@@ -32,7 +32,7 @@ export type AppliedSession = {
 export function applyReadinessToSession(
   original: TrainingSession,
   assessment: ReadinessAssessment | null,
-  locale: string = 'cs',
+  locale: string = 'en',
 ): AppliedSession {
   if (!assessment || assessment.trainingAdjustment === null) {
     return { session: original, adjusted: false };

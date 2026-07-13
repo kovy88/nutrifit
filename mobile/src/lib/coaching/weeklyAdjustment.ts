@@ -23,7 +23,7 @@ export type WeeklyAdjustmentInput = {
 
 export function planWeeklyAdjustment(input: WeeklyAdjustmentInput): PlanAdjustment {
   const { goalKind, recentCheckIns } = input;
-  const en = (input.locale ?? 'cs') === 'en';
+  const en = (input.locale ?? 'en') === 'en';
   const L = (cs: string, enStr: string) => (en ? enStr : cs);
   const warnings: string[] = [];
 

@@ -48,7 +48,7 @@ export type WeeklyMiniReview = {
 };
 
 export function generateWeeklyReview(input: WeeklyReviewInput): WeeklyReview {
-  const loc = input.locale ?? 'cs';
+  const loc = input.locale ?? 'en';
   const checkins = input.recentCheckIns ?? [];
   const latestCheckin = checkins[checkins.length - 1];
 

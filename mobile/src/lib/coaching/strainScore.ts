@@ -132,7 +132,7 @@ export function computeDailyStrain(input: StrainInput): StrainAssessment {
 
   const score = trimpToScore(totalTrimp);
   const band = bandFromScore(score);
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
 
   return {
     score,

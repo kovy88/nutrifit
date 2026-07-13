@@ -18,6 +18,7 @@ const baseInput = (over: Partial<DailyCoachInput> = {}): DailyCoachInput => ({
   baselineMacros: makeMacros(2200),
   todayMacros: makeMacros(2300),
   trainingLoad: null,
+  locale: 'cs',
   ...over,
 });
 

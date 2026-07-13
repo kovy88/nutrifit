@@ -67,7 +67,7 @@ export type WeeklySummaryRequest = {
 };
 
 export function buildWeeklySummaryRequest(input: WeeklySummaryInput): WeeklySummaryRequest {
-  const lang = (input.locale ?? 'cs') === 'en' ? 'English' : 'Czech';
+  const lang = (input.locale ?? 'en') === 'en' ? 'English' : 'Czech';
   const unitsHint = (input.units ?? 'metric') === 'imperial' ? 'Use imperial units (lb, miles).' : 'Use metric units (kg, km).';
   const systemPrompt = [
     'You are Trenr AI, a sport-nutrition + recovery coach.',

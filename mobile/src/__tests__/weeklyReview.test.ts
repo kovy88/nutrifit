@@ -31,9 +31,9 @@ describe('Weekly Review Compilation & Adjustments', () => {
       { weekStartISO: '2026-05-27', weightKg: 80, energyLevel: 3 as SubjectiveLevel, hungerLevel: 3 as SubjectiveLevel, adherence: 0.8, createdAt: '2026-05-27T08:00:00.000Z' },
     ];
 
-    const adjustment = adjustPlanFromCheckIn({ goalKind: 'fat_loss', recentCheckIns: checkins });
+    const adjustment = adjustPlanFromCheckIn({ goalKind: 'fat_loss', recentCheckIns: checkins, locale: 'cs' });
 
     expect(adjustment.kcalDelta).toBe(-150); // weight stagnated on fat_loss
-    expect(adjustment.reason).toMatch(/stagnuje|stagnates/i);
+    expect(adjustment.reason).toMatch(/stagnuje|stalled/i);
   });
 });

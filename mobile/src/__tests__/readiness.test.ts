@@ -73,7 +73,7 @@ describe('evaluateReadiness — aggregation rules', () => {
 
 describe('evaluateReadiness — missing data', () => {
   it('all signals missing → green with "no data" recommendation', () => {
-    const r = evaluateReadiness({});
+    const r = evaluateReadiness({ locale: 'cs' });
     expect(r.level).toBe('green');
     expect(r.recommendation).toContain('Nemáme');
     expect(r.trainingAdjustment).toBeNull();
@@ -102,17 +102,17 @@ describe('evaluateReadiness — missing data', () => {
 
 describe('evaluateReadiness — recommendations', () => {
   it('red day mentions regeneration', () => {
-    const r = evaluateReadiness({ todaySleepMinutes: 240 });
+    const r = evaluateReadiness({ todaySleepMinutes: 240, locale: 'cs' });
     expect(r.recommendation.toLowerCase()).toMatch(/regeneraci|sniž|zkrať/);
   });
 
   it('yellow day suggests caution but lets user train', () => {
-    const r = evaluateReadiness({ todaySleepMinutes: 390, todayRhrBpm: 60, todayHrvMs: 50 });
+    const r = evaluateReadiness({ todaySleepMinutes: 390, todayRhrBpm: 60, todayHrvMs: 50, locale: 'cs' });
     expect(r.recommendation.toLowerCase()).toMatch(/poslouchej|mírně|zvládneš/);
   });
 
   it('green day clears for planned training', () => {
-    const r = evaluateReadiness({ todaySleepMinutes: 480, todayRhrBpm: 60, todayHrvMs: 50 });
+    const r = evaluateReadiness({ todaySleepMinutes: 480, todayRhrBpm: 60, todayHrvMs: 50, locale: 'cs' });
     expect(r.recommendation.toLowerCase()).toMatch(/připraven|podle plánu|trénuj/);
   });
 });

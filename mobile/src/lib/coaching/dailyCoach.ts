@@ -56,7 +56,7 @@ export type TodayClassification = {
 export function classifyToday(
   session: TrainingSession | null,
   ceiling: RecommendedIntensity,
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): TodayClassification {
   if (!session || session.kind === 'rest' || session.intensity === 'rest') {
     return { intensity: 'rest', focus: L(locale, 'Regenerace', 'Recovery') };
@@ -87,7 +87,7 @@ function focusFor(session: TrainingSession, intensity: RecommendedIntensity, loc
 }
 
 export function generateDailyCoachRecommendation(input: DailyCoachInput): DailyCoachRecommendation {
-  const loc = input.locale ?? 'cs';
+  const loc = input.locale ?? 'en';
   const scope = resolveCoachScope(input.profile);
   const hasTraining = scopeHasTraining(scope);
   const hasNutrition = scopeHasNutrition(scope);
@@ -308,7 +308,7 @@ function intensityLabel(intensity: RecommendedIntensity, loc: Locale): string {
 export function validateCoachRecommendationSafety(
   rec: DailyCoachRecommendation,
   input: DailyCoachInput,
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): DailyCoachRecommendation {
   const loc = locale;
   const warnings = [...rec.warnings];

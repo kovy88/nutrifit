@@ -141,7 +141,7 @@ describe('describeStreak', () => {
   });
 
   it('< 3 streak is encouraging', () => {
-    expect(describeStreak({ current: 2, longest: 5, startDate: '2026-05-27' }, 'log').toLowerCase())
+    expect(describeStreak({ current: 2, longest: 5, startDate: '2026-05-27' }, 'log', 'cs').toLowerCase())
       .toMatch(/pokračuj|2 dny/);
   });
 
@@ -152,7 +152,7 @@ describe('describeStreak', () => {
   });
 
   it('current = longest is celebrated', () => {
-    expect(describeStreak({ current: 7, longest: 7, startDate: '2026-05-22' }, 'log').toLowerCase())
+    expect(describeStreak({ current: 7, longest: 7, startDate: '2026-05-22' }, 'log', 'cs').toLowerCase())
       .toMatch(/nejdelší|tvůj/);
   });
 
@@ -162,8 +162,8 @@ describe('describeStreak', () => {
   });
 
   it('handles correct Czech plural (1 den / 2-4 dny / 5+ dní)', () => {
-    expect(describeStreak({ current: 1, longest: 1, startDate: '2026-05-28' }, 'log')).toContain('1 den');
-    expect(describeStreak({ current: 3, longest: 3, startDate: '2026-05-26' }, 'log')).toContain('3 dny');
-    expect(describeStreak({ current: 7, longest: 7, startDate: '2026-05-22' }, 'log')).toContain('7 dní');
+    expect(describeStreak({ current: 1, longest: 1, startDate: '2026-05-28' }, 'log', 'cs')).toContain('1 den');
+    expect(describeStreak({ current: 3, longest: 3, startDate: '2026-05-26' }, 'log', 'cs')).toContain('3 dny');
+    expect(describeStreak({ current: 7, longest: 7, startDate: '2026-05-22' }, 'log', 'cs')).toContain('7 dní');
   });
 });

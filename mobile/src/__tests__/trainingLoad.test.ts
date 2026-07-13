@@ -129,14 +129,14 @@ describe('computeTrainingLoad — messages + recommendations', () => {
   it('optimal status mentions safe progression', () => {
     const workouts: WorkoutSummary[] = [];
     for (let i = 1; i <= 27; i += 2) workouts.push(workout(i, 60));
-    const r = computeTrainingLoad({ workouts });
+    const r = computeTrainingLoad({ workouts, locale: 'cs' });
     expect(r.recommendation.toLowerCase()).toMatch(/pokračuj|forma|rytmu/);
   });
 
   it('high_risk status suggests deload', () => {
     const workouts: WorkoutSummary[] = [workout(20, 30)];
     for (let i = 1; i <= 7; i++) workouts.push(workout(i, 90, { avgHeartRate: 170 }));
-    const r = computeTrainingLoad({ workouts });
+    const r = computeTrainingLoad({ workouts, locale: 'cs' });
     if (r.status === 'high_risk' || r.status === 'overreaching') {
       expect(r.recommendation.toLowerCase()).toMatch(/sniž|deload|uvolnit/);
     }

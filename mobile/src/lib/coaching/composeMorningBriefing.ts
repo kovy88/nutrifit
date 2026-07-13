@@ -47,7 +47,7 @@ export type ComposeBriefingInput = {
 
 export function composeMorningBriefing(input: ComposeBriefingInput): MorningBriefing {
   const { session, readiness, trainingLoad, macros, baselineMacros } = input;
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
 
   const headline = buildHeadline(session, readiness, loc);
   const detail = buildDetail(readiness, trainingLoad, loc);
