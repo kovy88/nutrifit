@@ -112,6 +112,7 @@ const PATTERNS: Array<[RegExp, Handler]> = [
   [/^Náhradní lehký běh ([\d.]+) km \(přesun kvality kvůli únavě\)$/, m => `Substitute easy run ${m[1]} km (quality moved due to fatigue)`],
   // Quality
   [/^(Běh\/chůze: )?Intervaly ([\d.]+) km$/, m => `${m[1] ? 'Run/walk: ' : ''}Intervals ${m[2]} km`],
+  [/^Intervaly (.+)$/, m => `Intervals ${m[1]}`],
   [/^Intervaly ([\d.]+) km \(např\. 6×800 m s pauzou na klus\)$/, m => `Intervals ${m[1]} km (e.g. 6×800 m with jog recovery)`],
   [/^(Běh\/chůze: )?Tempo běh ([\d.]+) km$/, m => `${m[1] ? 'Run/walk: ' : ''}Tempo run ${m[2]} km`],
   [/^Tempo běh ([\d.]+) km \(cca 20 min v komfortně silném tempu\)$/, m => `Tempo run ${m[1]} km (~20 min at comfortably hard pace)`],

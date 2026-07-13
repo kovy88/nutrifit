@@ -177,10 +177,10 @@ const styles = StyleSheet.create({
   minMax: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 6 },
   dateLabel: { fontSize: 10, fontWeight: '700' },
-  latestLabel: { fontSize: 13, fontWeight: '900' },
+  latestLabel: { fontSize: 13, fontWeight: '700' },
   emptyBox: {
     height: 90,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderStyle: 'dashed',
     borderRadius: 10,
     justifyContent: 'center',

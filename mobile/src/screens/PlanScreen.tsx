@@ -76,7 +76,7 @@ export function PlanScreen() {
 
   const activeProfile = profile;
   const activeMacros = currentMacros;
-  const shoppingGroups = buildShoppingList(meals);
+  const shoppingGroups = buildShoppingList(meals, locale);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
   const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
   const customSchedule = hasCustomSchedule(activeProfile);
@@ -122,7 +122,7 @@ export function PlanScreen() {
 
     setLoading(true);
     try {
-      const next = await generateMealPlan(activeProfile, activeMacros, selectedSession);
+      const next = await generateMealPlan(activeProfile, activeMacros, selectedSession, locale);
       await setMeals(next);
     } catch (err) {
       Alert.alert(t('plan.generateFailed'), err instanceof Error ? err.message : t('plan.tryAgain'));
@@ -143,7 +143,7 @@ export function PlanScreen() {
       });
       if (!confirm) return;
     }
-    await addFood(mealToFoodEstimate(meal), 'planned');
+    await addFood(mealToFoodEstimate(meal, locale), 'planned');
     Alert.alert(t('plan.logged'), t('plan.loggedToast', { meal: meal.name, date: formatDateLabel(selectedDate, locale) }));
   }
 
@@ -165,7 +165,7 @@ export function PlanScreen() {
     }
     setRegeneratingIndex(index);
     try {
-      const next = await regenerateMeal({ profile: activeProfile, session: selectedSession, current: meal, otherMeals: meals });
+      const next = await regenerateMeal({ profile: activeProfile, session: selectedSession, current: meal, otherMeals: meals, locale });
       const nextMeals = meals.slice();
       nextMeals[index] = next;
       await setMeals(nextMeals);
@@ -427,7 +427,7 @@ function IconAction({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.mealAction, { borderColor: colors.border }, disabled && { opacity: 0.45 }]}>
+    <Pressable disabled={disabled} onPress={onPress} style={[styles.mealAction, { borderColor: colors.border, backgroundColor: colors.bgElev }, disabled && { opacity: 0.45 }]}>
       <Ionicons name={icon} size={18} color={colors.accent} />
       <Text style={[styles.mealActionText, { color: colors.ink }]}>{label}</Text>
     </Pressable>
@@ -456,7 +456,7 @@ function WeekDayChip({
         styles.dayChip,
         {
           borderColor: selected ? colors.accent : colors.border,
-          backgroundColor: selected ? colors.accent + '18' : colors.bgElev,
+          backgroundColor: selected ? colors.accent + '14' : colors.bgElev,
         },
         pressed && { opacity: 0.82, transform: [{ scale: 0.98 }] },
       ]}
@@ -601,32 +601,32 @@ function selectedTrainingTitle(locale: 'cs' | 'en'): string {
 const styles = StyleSheet.create({
   screen: { gap: 12 },
   weekStrip: { gap: 7, paddingRight: 4 },
-  dayChip: { width: 70, minHeight: 68, borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 8, justifyContent: 'space-between' },
-  dayName: { fontSize: 10.5, lineHeight: 13, fontWeight: '900' },
-  dayNum: { fontSize: 20, lineHeight: 23, fontWeight: '900' },
-  daySession: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
-  fueling: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
+  dayChip: { width: 70, minHeight: 68, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 8, justifyContent: 'space-between' },
+  dayName: { fontSize: 10.5, lineHeight: 13, fontWeight: '600' },
+  dayNum: { fontSize: 20, lineHeight: 23, fontWeight: '700' },
+  daySession: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
+  fueling: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
   moreOptions: { gap: 9 },
-  mealRow: { borderTopWidth: 1, paddingTop: 14, gap: 9 },
+  mealRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, gap: 9 },
   mealTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  mealType: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
-  mealName: { fontSize: 17, lineHeight: 22, fontWeight: '900' },
-  mealKcal: { fontSize: 15, fontWeight: '900' },
+  mealType: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+  mealName: { fontSize: 17, lineHeight: 22, fontWeight: '700' },
+  mealKcal: { fontSize: 15, fontWeight: '700' },
   mealMeta: { fontSize: 13, lineHeight: 18 },
   mealActions: { flexDirection: 'row', gap: 8 },
-  mealAction: { flex: 1, minHeight: 42, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 8 },
-  mealActionText: { fontSize: 12, fontWeight: '800' },
+  mealAction: { flex: 1, minHeight: 42, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 8 },
+  mealActionText: { fontSize: 12, fontWeight: '600' },
   disclaimer: { fontSize: 12, lineHeight: 17, fontStyle: 'italic', marginTop: 4 },
-  link: { fontSize: 13, fontWeight: '900' },
-  shoppingGroup: { borderTopWidth: 1, paddingTop: 10, gap: 4 },
-  shoppingTitle: { fontSize: 14, fontWeight: '900' },
+  link: { fontSize: 13, fontWeight: '600' },
+  shoppingGroup: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, gap: 4 },
+  shoppingTitle: { fontSize: 14, fontWeight: '700' },
   shoppingItems: { fontSize: 13, lineHeight: 19 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.48)' },
+  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.72)' },
   modalSheet: { maxHeight: '84%', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
   modalContent: { gap: 12, paddingBottom: 8 },
-  modalTitle: { fontSize: 22, lineHeight: 28, fontWeight: '900' },
+  modalTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
   detailLine: { fontSize: 14, lineHeight: 21 },
   mealStepper: { gap: 10 },
-  mealCount: { textAlign: 'center', fontSize: 14, fontWeight: '900' },
+  mealCount: { textAlign: 'center', fontSize: 14, fontWeight: '600' },
 });

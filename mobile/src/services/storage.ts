@@ -12,6 +12,7 @@ import type {
   TrainingCompletionRecordMap,
 } from '../types';
 import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
+import type { OnboardingChatMessage } from '../lib/onboarding/chatState';
 import type { CoachMessage, CoachMemory, CoachThreadRecord, CoachThreadRecordMap, DailyCoachHistoryMap, DailyCoachRecommendation } from '../types/coach';
 import type { HealthDataSummary } from '../types/health';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
@@ -412,6 +413,9 @@ export type OnboardingDraft = {
   draft: UserProfile;
   updatedAt: string;
   touchedFields?: TouchedOnboardingFields;
+  messages?: OnboardingChatMessage[];
+  missingFields?: string[];
+  confidence?: 'low' | 'medium' | 'high';
 };
 
 export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {

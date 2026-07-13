@@ -143,9 +143,9 @@ export function HistoryScreen() {
           <Pressable
             key={item}
             onPress={() => setTab(item)}
-            style={[styles.segmentItem, tab === item && { backgroundColor: colors.accent }]}
+            style={[styles.segmentItem, tab === item && { backgroundColor: colors.accent + '16' }]}
           >
-            <Text style={[styles.segmentText, { color: tab === item ? colors.accentText : colors.muted }]}>
+            <Text style={[styles.segmentText, { color: tab === item ? colors.accent : colors.muted }]}>
               {t(`history.tab.${item}` as TranslationKey)}
             </Text>
           </Pressable>
@@ -248,16 +248,16 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, padding: 4, gap: 4 },
-  segmentItem: { flex: 1, minHeight: 40, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: 13, fontWeight: '900' },
+  segment: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 4, gap: 4 },
+  segmentItem: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 13, fontWeight: '600' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 8 },
-  emptyCopy: { fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  meta: { fontSize: 12, lineHeight: 16, fontWeight: '800', marginTop: 6, letterSpacing: 0 },
-  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '900', marginVertical: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: 1 },
-  dateLabel: { fontSize: 15, fontWeight: '900' },
+  emptyCopy: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
+  meta: { fontSize: 12, lineHeight: 16, fontWeight: '600', marginTop: 6, letterSpacing: 0 },
+  heroValue: { textAlign: 'center', fontSize: 38, lineHeight: 44, fontWeight: '700', marginVertical: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth },
+  dateLabel: { fontSize: 15, fontWeight: '700' },
   dateSub: { fontSize: 12, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
   kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },

@@ -1,64 +1,36 @@
-// ── Trenr design system — "Midnight Athletic" ───────────────────────────────
-// Dark-first, WHOOP/Strava-premium. Near-black canvas, electric-lime accent,
-// big Archivo numerals over a refined Hanken Grotesk body. Existing color keys
-// are preserved (nothing breaks); new tokens (accent / bgElev / glow / hairline /
-// shadow) power the upgraded components. `green` stays a white-text-safe emerald
-// for legacy fills (bubbles/badges); `accent` is the lime signature.
+// ── Trenr design system — premium dark coach UI ────────────────────────────
+// The whole mobile app now shares the same athletic, calm dark surface as the
+// chat onboarding. Existing keys are preserved so component APIs stay stable.
 
-export const lightColors = {
-  isDark: false as boolean,
-  ink: '#10160D',
-  muted: '#586555',
-  faint: '#909c87',
-  bg: '#edf0e6',
-  card: '#ffffff',
-  border: '#e0e5d6',
-  green: '#2f7d32',
-  blue: '#1f73c4',
-  orange: '#c4781a',
-  red: '#cc4034',
-  yellow: '#e6b32c',
-  // — Midnight Athletic extended tokens —
-  accent: '#4ea51f', // grass-lime that holds contrast on off-white
-  accentText: '#0a0c0b',
-  bgElev: '#f6f8f1',
-  hairline: 'rgba(16,22,13,0.06)',
-  glow: 'rgba(78,165,31,0.18)',
-  shadow: 'rgba(24,34,16,0.10)',
-  // Macro data-viz tints — distinct from status colors so red/green stay alerts.
-  macroProtein: '#1f9e7a',
-  macroCarb: '#b3801f',
-  macroFat: '#4a63c4',
-};
-
-export const darkColors = {
+const premiumDarkColors = {
   isDark: true as boolean,
-  ink: '#eaf2e2',
-  muted: '#93a38b',
-  faint: '#5d6c57',
-  bg: '#0a0c0b', // near-black canvas
-  card: '#11150f', // elevated surface, faint green-black
-  border: '#222b20',
-  green: '#34c06b', // emerald — safe with white text (bubbles/badges) + reads on dark
-  blue: '#6cc8ff',
-  orange: '#ffb454',
-  red: '#ff6257',
-  yellow: '#f1d44c',
-  // — Midnight Athletic extended tokens —
-  accent: '#c8f250', // electric lime — the signature (CTAs, rings, focus)
-  accentText: '#0a0c0b', // ink on lime
-  bgElev: '#161d14', // raised panels / inputs
-  hairline: 'rgba(255,255,255,0.05)',
-  glow: 'rgba(200,242,80,0.20)', // accent halo for glows
-  shadow: 'rgba(0,0,0,0.45)',
-  // Macro data-viz tints — distinct from status colors so red/green stay alerts.
-  macroProtein: '#7ce0c3',
-  macroCarb: '#e8c27a',
-  macroFat: '#9db4ff',
+  ink: '#F4F7EF',
+  muted: '#A2AD9B',
+  faint: '#6E7868',
+  bg: '#050806',
+  card: '#101710',
+  border: 'rgba(232,241,224,0.12)',
+  green: '#42D77D',
+  blue: '#7CCBFF',
+  orange: '#FFB454',
+  red: '#FF6B5E',
+  yellow: '#FFD166',
+  accent: '#C8F250',
+  accentText: '#071008',
+  bgElev: '#0B110D',
+  hairline: 'rgba(232,241,224,0.10)',
+  glow: 'rgba(200,242,80,0.14)',
+  shadow: 'rgba(0,0,0,0.48)',
+  macroProtein: '#B899FF',
+  macroCarb: '#FFCF70',
+  macroFat: '#7CCBFF',
 };
+
+export const lightColors = premiumDarkColors;
+export const darkColors = premiumDarkColors;
 
 // Default colors fallbacks for static styling compatibility
-export const colors = lightColors;
+export const colors = premiumDarkColors;
 
 export const spacing = {
   xs: 6,
@@ -71,9 +43,9 @@ export const spacing = {
 
 export const radius = {
   sm: 8,
-  md: 12,
+  md: 14,
   lg: 16,
-  xl: 20,
+  xl: 22,
   pill: 999,
 };
 
@@ -83,9 +55,9 @@ export const typography = {
   body: 14,
   bodyLarge: 16,
   title: 20,
-  screenTitle: 30,
-  metric: 44,
-  heroMetric: 56,
+  screenTitle: 32,
+  metric: 40,
+  heroMetric: 52,
 };
 
 export const sizes = {
@@ -95,16 +67,16 @@ export const sizes = {
 };
 
 export const statusColors = {
-  ready: '#c8f250',
-  caution: '#ffb454',
-  risk: '#ff6257',
-  recovery: '#6cc8ff',
-  nutrition: '#34c06b',
-  training: '#9fd7ff',
+  ready: '#C8F250',
+  caution: '#FFB454',
+  risk: '#FF6B5E',
+  recovery: '#7CCBFF',
+  nutrition: '#42D77D',
+  training: '#B899FF',
 };
 
-// Font family handles. Real families are loaded in ThemeContext (Archivo for
-// display/numerals, Hanken Grotesk for body) and exposed via useTheme().fonts.
+// Font family handles. ThemeContext maps these to platform system fonts while
+// component styles provide the requested weights.
 export const fonts = {
   regular: 'System',
   medium: 'System',

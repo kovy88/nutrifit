@@ -52,12 +52,12 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.85)' }]}>
+      <View style={[styles.overlay, { backgroundColor: 'rgba(0, 0, 0, 0.72)' }]}>
         <View style={[styles.container, { backgroundColor: colors.bg, borderColor: colors.border }]}>
           
           {/* Header */}
           <View style={styles.header}>
-            <View style={[styles.crownIcon, { backgroundColor: colors.accent + '18' }]}>
+            <View style={[styles.crownIcon, { backgroundColor: colors.accent + '14', borderColor: colors.border }]}>
               <Ionicons name="sparkles-outline" size={28} color={colors.accent} />
             </View>
             <Text style={[styles.title, { color: colors.ink, fontFamily: fonts.display }]}>
@@ -103,7 +103,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 style={[
                   styles.planCard,
                   {
-                    backgroundColor: colors.bgElev,
+                    backgroundColor: selectedPlan === 'monthly' ? colors.accent + '12' : colors.card,
                     borderColor: selectedPlan === 'monthly' ? colors.accent : colors.border,
                   },
                 ]}
@@ -127,12 +127,12 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                 style={[
                   styles.planCard,
                   {
-                    backgroundColor: colors.bgElev,
+                    backgroundColor: selectedPlan === 'yearly' ? colors.accent + '12' : colors.card,
                     borderColor: selectedPlan === 'yearly' ? colors.accent : colors.border,
                   },
                 ]}
               >
-                <View style={styles.badge}>
+                <View style={[styles.badge, { backgroundColor: colors.green }]}>
                   <Text style={[styles.badgeText, { color: colors.accentText }]}>{t('paywall.savePct')}</Text>
                 </View>
                 <View style={styles.planHeader}>
@@ -181,7 +181,7 @@ function FeatureRow({ icon, title, description }: { icon: any; title: string; de
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.featureRow}>
-      <View style={[styles.iconWrapper, { backgroundColor: colors.accent + '12' }]}>
+      <View style={[styles.iconWrapper, { backgroundColor: colors.accent + '14' }]}>
         <Ionicons name={icon} size={22} color={colors.accent} />
       </View>
       <View style={styles.featureText}>
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
     height: '90%',
     paddingTop: 24,
@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     lineHeight: 32,
-    fontWeight: '900',
+    fontWeight: '700',
     marginBottom: 6,
     textAlign: 'center',
   },
@@ -268,6 +269,7 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontSize: 15.5,
+    fontWeight: '600',
   },
   featureDesc: {
     fontSize: 13,
@@ -278,8 +280,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   planCard: {
-    borderRadius: 18,
-    borderWidth: 2,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     position: 'relative',
   },
@@ -287,14 +289,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: -11,
-    backgroundColor: '#00cc66',
-    borderRadius: 6,
+    borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   planHeader: {
     flexDirection: 'row',
@@ -304,9 +305,11 @@ const styles = StyleSheet.create({
   },
   planTitle: {
     fontSize: 15,
+    fontWeight: '600',
   },
   planPrice: {
     fontSize: 24,
+    fontWeight: '700',
     lineHeight: 29,
     marginBottom: 4,
   },
@@ -316,6 +319,7 @@ const styles = StyleSheet.create({
   },
   planTrial: {
     fontSize: 12.5,
+    fontWeight: '600',
   },
   actionContainer: {
     alignItems: 'center',
@@ -335,6 +339,7 @@ const styles = StyleSheet.create({
   },
   restoreText: {
     fontSize: 13,
+    fontWeight: '600',
     textDecorationLine: 'underline',
   },
 });

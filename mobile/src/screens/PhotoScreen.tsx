@@ -72,7 +72,7 @@ export function PhotoScreen() {
     setLoading(true);
     setError(null);
     try {
-      const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg');
+      const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg', locale);
       setEstimate(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : t('photo.tryAnother');
@@ -85,7 +85,7 @@ export function PhotoScreen() {
 
   async function save() {
     if (!estimate) return;
-    await addFood(normalizeFoodEstimate(estimate), 'photo');
+    await addFood(normalizeFoodEstimate(estimate, locale), 'photo');
     setImage(null);
     setEstimate(null);
     setError(null);
@@ -235,9 +235,9 @@ function MetricInput({
 
 const styles = StyleSheet.create({
   screen: { gap: 14 },
-  image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 8 },
-  emptyPreview: { minHeight: 132, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  emptyPreviewTitle: { fontSize: 15, lineHeight: 20, textAlign: 'center' },
+  image: { width: '100%', aspectRatio: 4 / 3, borderRadius: 16 },
+  emptyPreview: { minHeight: 132, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  emptyPreviewTitle: { fontSize: 15, fontWeight: '600', lineHeight: 20, textAlign: 'center' },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricInput: { width: '47%', flexGrow: 1, gap: 6 },
   note: { fontSize: 14, lineHeight: 20 },

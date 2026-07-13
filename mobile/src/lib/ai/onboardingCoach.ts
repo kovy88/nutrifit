@@ -98,6 +98,7 @@ export function buildOnboardingCoachRequest(opts: {
   history: OnboardingCoachMessage[];
   userText: string;
   locale: Locale;
+  missingFields?: string[];
 }): OnboardingCoachRequest {
   const lang = opts.locale === 'en' ? 'English' : 'Czech';
   const systemPrompt = [
@@ -106,6 +107,7 @@ export function buildOnboardingCoachRequest(opts: {
     'Return ONLY valid JSON with shape {"reply":"...","extracted":{...},"confidence":"low|medium|high","missingFields":["..."]}.',
     'Extract only fields the user clearly stated or strongly implied. Do not invent body metrics, race dates, calories, macros, readiness, or training volume.',
     'The app will validate extracted fields deterministically; if something is missing, ask one concise follow-up.',
+    'If DETERMINISTIC MISSING FIELDS is provided, steer the follow-up to the first listed field. Do not skip ahead.',
     'Use raw enum ids and field names only inside "extracted" and "missingFields". The user-facing "reply" must use plain language, not labels like primaryGoal, trainingGoal, nutritionMode, planIntensity, lose_fat, run_10k, easy, moderate, or ambitious_but_safe.',
     'Keep onboarding light. Do not offer advanced events or sports like marathon, triathlon, Hyrox, Ironman, or OCR unless the user explicitly mentions that exact goal.',
     `Allowed coachScope: ${COACH_SCOPE_VALUES.join(', ')}`,
@@ -121,6 +123,9 @@ export function buildOnboardingCoachRequest(opts: {
   const prompt = [
     'CURRENT DRAFT:',
     JSON.stringify(summarizeDraft(opts.draft)),
+    '',
+    'DETERMINISTIC MISSING FIELDS:',
+    opts.missingFields?.length ? opts.missingFields.join(', ') : 'none',
     '',
     'RECENT CHAT:',
     ...opts.history.slice(-8).map(m => `${m.role}: ${m.text}`),

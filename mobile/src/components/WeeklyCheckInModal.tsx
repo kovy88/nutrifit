@@ -158,7 +158,7 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
                   </Text>
                 )}
                 {pending.adjustedGoalKind && (
-                  <Text style={[styles.resultText, { color: colors.orange, marginTop: 6, fontWeight: '900' }]}>
+                  <Text style={[styles.resultText, { color: colors.orange, marginTop: 6, fontWeight: '700' }]}>
                     {t('checkin.temporaryGoal', { goal: pending.adjustedGoalKind })}
                   </Text>
                 )}
@@ -194,12 +194,12 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end' },
-  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25, 33, 29, 0.38)' },
+  modalScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.72)' },
   modalSheet: { maxHeight: '82%', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
   modalContent: { gap: 12, paddingBottom: 6 },
-  modalTitle: { fontSize: 22, fontWeight: '900' },
+  modalTitle: { fontSize: 22, fontWeight: '700' },
   small: { fontSize: 13, lineHeight: 18 },
-  resultBox: { marginTop: 12, padding: 12, borderRadius: 12, borderWidth: 1 },
+  resultBox: { marginTop: 12, padding: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth },
   resultText: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
   resultActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   resultAction: { flex: 1 },

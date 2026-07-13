@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTrenr } from '../context/TrenrContext';
+import { useLanguage } from '../context/LanguageContext';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import { createNotificationScheduler, type NotificationMode } from '../lib/notifications';
 import type { TrainingSession } from '../types';
@@ -47,6 +48,7 @@ function estimatedStartTime(session: TrainingSession, today: Date = new Date()):
 
 export function usePostWorkoutReminder(mode: NotificationMode = 'auto'): PostWorkoutReminderState {
   const { profile, currentSession: todaySession } = useTrenr();
+  const { locale } = useLanguage();
   const [settings, setSettings] = useState<PostWorkoutReminderSettings>(DEFAULT_SETTINGS);
   const [isReady, setIsReady] = useState(false);
   const scheduler = createNotificationScheduler(mode);
@@ -84,10 +86,14 @@ export function usePostWorkoutReminder(mode: NotificationMode = 'auto'): PostWor
       void scheduler.cancel(NOTIFICATION_ID);
       return;
     }
-    const fueling = computeFueling({ workout: { kind: workoutKindOfSession(todaySession.kind), durationMinutes: todaySession.durationMinutes }, weightKg: profile.weight });
+    const fueling = computeFueling({ workout: { kind: workoutKindOfSession(todaySession.kind), durationMinutes: todaySession.durationMinutes }, weightKg: profile.weight, locale });
     const postNote = fueling.post
-      ? `Sneď ${fueling.post.carbsG} g sacharidů + ${fueling.post.proteinG} g bílkovin do ${fueling.post.timingMinAfter} min. ${fueling.post.note}`
-      : `Hydratuj se a sneď vyvážené jídlo během hodiny.`;
+      ? (locale === 'en'
+        ? `Eat ${fueling.post.carbsG} g carbs + ${fueling.post.proteinG} g protein within ${fueling.post.timingMinAfter} min. ${fueling.post.note}`
+        : `Sneď ${fueling.post.carbsG} g sacharidů + ${fueling.post.proteinG} g bílkovin do ${fueling.post.timingMinAfter} min. ${fueling.post.note}`)
+      : (locale === 'en'
+        ? 'Hydrate and eat a balanced meal within the hour.'
+        : 'Hydratuj se a sneď vyvážené jídlo během hodiny.');
     void scheduler.scheduleAt({
       id: NOTIFICATION_ID,
       title: `Post-workout refuel: ${todaySession.title}`,
@@ -95,7 +101,7 @@ export function usePostWorkoutReminder(mode: NotificationMode = 'auto'): PostWor
       triggerInSeconds: secondsFromNow,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, settings.enabled, settings.minutesAfter, todaySession?.kind, todaySession?.durationMinutes, profile?.weight]);
+  }, [isReady, settings.enabled, settings.minutesAfter, todaySession?.kind, todaySession?.durationMinutes, profile?.weight, locale]);
 
   const update = useCallback(async (patch: Partial<PostWorkoutReminderSettings>) => {
     setSettings(prev => {

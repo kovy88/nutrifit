@@ -4,14 +4,26 @@ const { method, rateLimit, requireUser, sendError } = require('./_lib/store-read
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
 const EMPTY_ESTIMATE = {
-  foodName: 'Jídlo se nepodařilo rozpoznat',
-  portionGuess: 'porce nerozpoznána',
-  kcal: 0,
-  protein: 0,
-  carbs: 0,
-  fat: 0,
-  confidence: 'nízká',
-  note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
+  cs: {
+    foodName: 'Jídlo se nepodařilo rozpoznat',
+    portionGuess: 'porce nerozpoznána',
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 'nízká',
+    note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
+  },
+  en: {
+    foodName: 'Food could not be recognized',
+    portionGuess: 'portion not recognized',
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 'low',
+    note: 'The food is not clearly visible. Try better light, a top-down angle, and the full plate.',
+  },
 };
 
 module.exports = async function handler(req, res) {
@@ -20,25 +32,27 @@ module.exports = async function handler(req, res) {
   if (!(await rateLimit(req, res, 'analyze-food-photo', 20))) return;
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return sendError(res, 500, 'missing_gemini_key', 'GEMINI_API_KEY není nastavený v prostředí serveru.');
-  }
-
   const { imageBase64, mimeType } = req.body || {};
+  const locale = req.body?.locale === 'en' ? 'en' : 'cs';
+  const lang = locale === 'en' ? 'English' : 'Czech';
+  const emptyEstimate = EMPTY_ESTIMATE[locale];
+  if (!apiKey) {
+    return sendError(res, 500, 'missing_gemini_key', locale === 'en' ? 'GEMINI_API_KEY is not configured on the server.' : 'GEMINI_API_KEY není nastavený v prostředí serveru.');
+  }
   if (!imageBase64 || !mimeType) {
-    return sendError(res, 400, 'missing_image', 'Chybí imageBase64 nebo mimeType.');
+    return sendError(res, 400, 'missing_image', locale === 'en' ? 'imageBase64 or mimeType is missing.' : 'Chybí imageBase64 nebo mimeType.');
   }
   if (typeof imageBase64 !== 'string' || typeof mimeType !== 'string') {
-    return sendError(res, 400, 'invalid_image', 'Neplatný formát obrázku.');
+    return sendError(res, 400, 'invalid_image', locale === 'en' ? 'Invalid image format.' : 'Neplatný formát obrázku.');
   }
   if (!mimeType.startsWith('image/')) {
-    return sendError(res, 400, 'invalid_mime', 'Soubor musí být obrázek.');
+    return sendError(res, 400, 'invalid_mime', locale === 'en' ? 'The file must be an image.' : 'Soubor musí být obrázek.');
   }
   if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
-    return sendError(res, 400, 'image_too_large', 'Fotka je moc velká. Maximum je 5 MB.');
+    return sendError(res, 400, 'image_too_large', locale === 'en' ? 'The photo is too large. Maximum size is 5 MB.' : 'Fotka je moc velká. Maximum je 5 MB.');
   }
   if (!/^[A-Za-z0-9+/=]+$/.test(imageBase64)) {
-    return sendError(res, 400, 'invalid_base64', 'Obrázek není validní base64.');
+    return sendError(res, 400, 'invalid_base64', locale === 'en' ? 'The image is not valid base64.' : 'Obrázek není validní base64.');
   }
 
   const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
@@ -50,17 +64,17 @@ module.exports = async function handler(req, res) {
   const prompt = `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
 Return ONLY valid JSON with no markdown, comments, or extra text.
-All user-facing JSON string values must be in Czech.
+All user-facing JSON string values must be in ${lang}.
 If there is no food in the image or the portion cannot be recognized, return JSON with zero macros and low confidence.
 {
-  "foodName": "Název jídla",
-  "portionGuess": "Krátký odhad porce",
+  "foodName": "${locale === 'en' ? 'Meal name' : 'Název jídla'}",
+  "portionGuess": "${locale === 'en' ? 'Short portion estimate' : 'Krátký odhad porce'}",
   "kcal": 0,
   "protein": 0,
   "carbs": 0,
   "fat": 0,
-  "confidence": "nízká|střední|vysoká",
-  "note": "Krátké upozornění, že jde o orientační odhad"
+  "confidence": "${locale === 'en' ? 'low|medium|high' : 'nízká|střední|vysoká'}",
+  "note": "${locale === 'en' ? 'Short note that this is an estimate' : 'Krátké upozornění, že jde o orientační odhad'}"
 }
 Use integers for kcal/protein/carbs/fat.
 `;
@@ -102,7 +116,7 @@ Use integers for kcal/protein/carbs/fat.
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const estimate = normalizeEstimate(parseJSONLoose(text) || EMPTY_ESTIMATE);
+  const estimate = normalizeEstimate(parseJSONLoose(text) || emptyEstimate, locale);
   return res.status(200).json({ ...data, estimate });
 };
 
@@ -143,18 +157,29 @@ function coalesceCandidateText(data) {
   };
 }
 
-function normalizeEstimate(raw) {
-  const confidence = String(raw.confidence || EMPTY_ESTIMATE.confidence).toLowerCase();
+function normalizeEstimate(raw, locale) {
+  const fallback = EMPTY_ESTIMATE[locale] || EMPTY_ESTIMATE.cs;
+  const confidence = normalizeConfidence(raw.confidence, locale);
   return {
-    foodName: text(raw.foodName, EMPTY_ESTIMATE.foodName),
-    portionGuess: text(raw.portionGuess, EMPTY_ESTIMATE.portionGuess),
+    foodName: text(raw.foodName, fallback.foodName),
+    portionGuess: text(raw.portionGuess, fallback.portionGuess),
     kcal: number(raw.kcal),
     protein: number(raw.protein),
     carbs: number(raw.carbs),
     fat: number(raw.fat),
-    confidence: ['nízká', 'střední', 'vysoká'].includes(confidence) ? confidence : 'střední',
-    note: text(raw.note, EMPTY_ESTIMATE.note),
+    confidence,
+    note: text(raw.note, fallback.note),
   };
+}
+
+function normalizeConfidence(value, locale) {
+  const raw = String(value || '').toLowerCase();
+  const level =
+    ['nízká', 'nizka', 'low'].includes(raw) ? 'low' :
+    ['vysoká', 'vysoka', 'high'].includes(raw) ? 'high' :
+    'medium';
+  if (locale === 'en') return level;
+  return level === 'low' ? 'nízká' : level === 'high' ? 'vysoká' : 'střední';
 }
 
 function text(value, fallback) {

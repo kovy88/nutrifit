@@ -126,6 +126,13 @@ describe('describeSleepDebt', () => {
     const r = computeSleepDebt({ sleeps, days: 7 }); // 14h debt
     expect(describeSleepDebt(r).toLowerCase()).toMatch(/priorita|projevuje/);
   });
+
+  it('supports English descriptions', () => {
+    const sleeps = Array.from({ length: 7 }, (_, i) => sleep(`2026-05-${22 + i}`, 420));
+    const r = computeSleepDebt({ sleeps, days: 7 });
+    expect(describeSleepDebt(r, 'en')).toMatch(/sleep debt|catch-up|longer nights/i);
+    expect(describeSleepDebt(r, 'en')).not.toMatch(/[ěščřžýáíéůúňťďó]/i);
+  });
 });
 
 describe('describeRecoveryDebt', () => {
@@ -143,5 +150,11 @@ describe('describeRecoveryDebt', () => {
   it('high current debt → rest days recommendation', () => {
     const r = computeRecoveryDebt({ readinessLevels: ['red', 'red', 'red'] });
     expect(describeRecoveryDebt(r).toLowerCase()).toMatch(/pauzy|dny/);
+  });
+
+  it('supports English descriptions', () => {
+    const r = computeRecoveryDebt({ readinessLevels: ['green', 'yellow', 'yellow'] });
+    expect(describeRecoveryDebt(r, 'en')).toMatch(/recovery debt|lighter|bed early/i);
+    expect(describeRecoveryDebt(r, 'en')).not.toMatch(/[ěščřžýáíéůúňťďó]/i);
   });
 });

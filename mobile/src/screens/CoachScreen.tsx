@@ -157,7 +157,7 @@ export function CoachScreen() {
                 styles.bubble,
                 m.role === 'user'
                   ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
-                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
               ]}
             >
               {m.role === 'coach' ? <StructuredCoachText text={m.text} /> : (
@@ -296,18 +296,18 @@ function isEasySessionTitle(title: string): boolean {
 const styles = StyleSheet.create({
   screen: { gap: 14 },
   promptList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 84, minHeight: 58, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 8 },
-  promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '800', textAlign: 'center' },
+  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 84, minHeight: 58, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 8 },
+  promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
   thread: { gap: 10 },
-  bubble: { maxWidth: '90%', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11 },
+  bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
   bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
   structured: { gap: 6 },
-  coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '900' },
+  coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '700' },
   coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
   composer: { gap: 6 },
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   composerField: { flex: 1, maxHeight: 92 },
-  sendButton: { width: 50, height: 50, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  sendButton: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: 0.45 },
   disclaimer: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' },
 });

@@ -48,4 +48,19 @@ describe('buildOnboardingCoachRequest', () => {
     expect(request.prompt).toContain('coach: Kolik dní týdně chceš trénovat?');
     expect(request.prompt).toContain('USER: Tři dny týdně.');
   });
+
+  it('passes deterministic missing fields so the coach asks the next needed question', () => {
+    const request = buildOnboardingCoachRequest({
+      draft: { ...DEFAULT_PROFILE, coachScope: 'training', primaryGoal: 'improve_running' },
+      history: [{ role: 'user', text: 'Chci běhat.' }],
+      userText: 'Jen trénink.',
+      locale: 'cs',
+      missingFields: ['sessionsPerWeek', 'experience'],
+    });
+
+    expect(request.systemPrompt).toContain('DETERMINISTIC MISSING FIELDS');
+    expect(request.systemPrompt).toContain('first listed field');
+    expect(request.prompt).toContain('DETERMINISTIC MISSING FIELDS');
+    expect(request.prompt).toContain('sessionsPerWeek, experience');
+  });
 });

@@ -36,7 +36,7 @@ export class WhoopOAuth {
 
   async beginConnect(): Promise<void> {
     if (!this.config.clientId) {
-      throw new Error('Whoop client ID není nastavený (env EXPO_PUBLIC_WHOOP_CLIENT_ID).');
+      throw new Error('Whoop client ID is not configured (env EXPO_PUBLIC_WHOOP_CLIENT_ID).');
     }
     const state = generateState();
     await AsyncStorage.setItem(STATE_KEY, state);

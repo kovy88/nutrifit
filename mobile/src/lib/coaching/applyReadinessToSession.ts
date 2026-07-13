@@ -11,6 +11,7 @@
 
 import type { TrainingSession } from '../../types';
 import type { ReadinessAssessment } from './readiness';
+import { localizeTrainingText } from '../training/localizeTitle';
 
 const intensityRank: Record<TrainingSession['intensity'], number> = {
   rest: 0,
@@ -56,10 +57,11 @@ export function applyReadinessToSession(
     target === 'easy' && isHardKind ? 'easy_run' : original.kind;
 
   const en = locale === 'en';
+  const originalTitle = localizeTrainingText(original.title, locale);
   const nextTitle =
     target === 'easy' && nextKind === 'easy_run' && original.kind !== 'easy_run'
       ? (en ? 'Easy run (reduced intensity)' : 'Lehký běh (snížená intenzita)')
-      : `${original.title} ${en ? '(reduced intensity)' : '(snížená intenzita)'}`;
+      : `${originalTitle} ${en ? '(reduced intensity)' : '(snížená intenzita)'}`;
 
   // Reduce duration too — red day = both intensity AND volume drop ~30 %
   const durationFactor = target === 'easy' ? 0.7 : 0.85;

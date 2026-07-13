@@ -41,7 +41,7 @@ export class GarminOAuth {
 
   async beginConnect(): Promise<void> {
     if (!this.config.clientId) {
-      throw new Error('Garmin client ID není nastavený (env EXPO_PUBLIC_GARMIN_CLIENT_ID).');
+      throw new Error('Garmin client ID is not configured (env EXPO_PUBLIC_GARMIN_CLIENT_ID).');
     }
     const state = generateRandom(16);
     const verifier = generateRandom(64);

@@ -31,8 +31,8 @@ export function createBottomNavigationOptions(
     tabBarActiveTintColor: colors.accent,
     tabBarInactiveTintColor: colors.faint,
     tabBarLabelStyle: {
-      fontFamily: 'HankenGrotesk_700Bold',
       fontSize: 11,
+      fontWeight: '700',
       letterSpacing: 0,
       marginTop: 1,
     },
@@ -42,26 +42,25 @@ export function createBottomNavigationOptions(
     },
     tabBarStyle: {
       borderTopColor: colors.border,
-      borderTopWidth: 1,
-      backgroundColor: colors.card,
-      height: 74,
-      paddingBottom: 10,
+      borderTopWidth: 0.5,
+      backgroundColor: colors.bgElev,
+      height: 78,
+      paddingBottom: 12,
       paddingTop: 8,
       shadowColor: colors.shadow,
-      shadowOpacity: 1,
-      shadowRadius: 18,
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
       shadowOffset: { width: 0, height: -6 },
-      elevation: 12,
+      elevation: 4,
     },
     tabBarIcon: ({ color, focused, size }) => {
       const item = items[route.name];
       const icon = focused ? item?.activeIcon : item?.icon;
-      const isCoach = route.name === 'Coach';
       return (
         <Ionicons
           name={icon ?? 'ellipse-outline'}
-          size={isCoach ? size + 3 : size}
-          color={isCoach || focused ? colors.accent : color}
+          size={size}
+          color={focused ? colors.accent : color}
         />
       );
     },

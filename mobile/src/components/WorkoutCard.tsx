@@ -47,7 +47,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       ]}
     >
       <View style={styles.headerRow}>
-        <View style={[styles.iconWrap, { backgroundColor: colors.accent + '14' }]}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.accent + '10' }]}>
           <Ionicons name={icon} size={22} color={colors.accent} />
         </View>
         <View style={styles.titleCol}>
@@ -99,32 +99,32 @@ function formatDateTime(iso: string, t: Translate): string {
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     padding: 14,
     gap: 10,
-    shadowOpacity: 1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1 },
-  title: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: '700' },
   subtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   sourceBadge: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     letterSpacing: 0,
     maxWidth: 92,
   },
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metric: { minWidth: 76, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  metricLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0 },
-  metricValue: { fontSize: 14, fontWeight: '900', marginTop: 2 },
+  metric: { minWidth: 76, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
+  metricLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0 },
+  metricValue: { fontSize: 14, fontWeight: '700', marginTop: 2 },
 });

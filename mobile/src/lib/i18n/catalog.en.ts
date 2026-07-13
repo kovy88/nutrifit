@@ -470,6 +470,10 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'onb.weightField': 'Weight',
   'common.yes': 'Yes',
   'common.no': 'No',
+  'loading.coach': 'Loading your coach...',
+  'aiConsent.title': 'Before using AI',
+  'aiConsent.body': 'Trenr provides guidance only and does not replace medical care. Plans and photos are sent to the server for AI processing. Do not use the app for diagnosis or treatment.',
+  'aiConsent.accept': 'I understand',
   'onb.dietPrefs': 'Dietary preferences and diets',
   'onb.nutritionMode': 'Nutrition style',
   'onb.planIntensity': 'Plan pace',
@@ -952,11 +956,18 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'profile.exportData': 'Export data',
   'profile.signOut': 'Sign out',
   'profile.deleteAccount': 'Delete account & data',
+  'profile.weeklySummaryTitle': 'Weekly AI summary',
+  'profile.weeklySummaryWins': '✓ What went well',
+  'profile.weeklySummaryWatch': 'Watch',
+  'profile.weeklySummaryNext': '→ Next week',
+  'profile.weeklySummaryGenerated': ({ date, week }) => `Generated ${date} for week ${week}`,
+  'profile.weeklySummaryError': ({ error }) => `Error generating AI summary: ${error}`,
   'profile.namePlaceholder': 'Name for registration',
   'profile.emailPlaceholder': 'Email',
   'profile.passwordPlaceholder': 'Password',
   'profile.signIn': 'Sign in',
   'profile.register': 'Register',
+  'profile.medicalDisclaimer': 'Trenr is not a medical device, does not diagnose or treat conditions, and does not replace professional care.',
   'profile.privacyPolicy': 'Privacy policy',
   'profile.publicDeleteRequest': 'Public account deletion request',
 
@@ -1005,7 +1016,6 @@ export const en: Record<TranslationKey, CatalogValue> = {
   'trainingGoal.strength_basics': 'Strength',
   'trainingGoal.hyrox': 'Hyrox',
 
-  // ── Pluralized helpers ─────────────────────────────────────────────────────────
   // ── Paywall (Premium) ──────────────────────────────────────────────────────────
   'paywall.subtitle': 'Free covers your first week and the Today recommendation. Premium unlocks the adaptive plan and deeper coaching.',
   'paywall.featFreeTitle': 'Free',

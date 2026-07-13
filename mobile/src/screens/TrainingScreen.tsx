@@ -110,7 +110,7 @@ export function TrainingScreen() {
                 styles.dayChip,
                 {
                   borderColor: item.isSelected ? colors.accent : colors.border,
-                  backgroundColor: item.isSelected ? colors.accent + '18' : colors.bgElev,
+                  backgroundColor: item.isSelected ? colors.accent + '14' : colors.bgElev,
                 },
               ]}
             >
@@ -261,19 +261,19 @@ const styles = StyleSheet.create({
   screen: { gap: 18 },
   weekMetrics: { flexDirection: 'row', gap: 8 },
   weekStrip: { gap: 8, paddingTop: 2 },
-  dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  dayDow: { maxWidth: 48, fontSize: 11, lineHeight: 14, letterSpacing: 0 },
-  dayNumber: { fontSize: 24, lineHeight: 28 },
+  dayChip: { width: 62, minHeight: 82, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayDow: { maxWidth: 48, fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
+  dayNumber: { fontSize: 24, fontWeight: '700', lineHeight: 28 },
   dayDot: { width: 7, height: 7, borderRadius: 4 },
   selectedBody: { gap: 10 },
   selectedTitleRow: { gap: 8 },
-  selectedTitle: { fontSize: 20, lineHeight: 25 },
+  selectedTitle: { fontSize: 20, fontWeight: '700', lineHeight: 25 },
   selectedNote: { fontSize: 14, lineHeight: 20 },
   adjustedNote: { fontSize: 13, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1 },
   historyDetail: { gap: 8, paddingTop: 2 },
-  historyTitle: { fontSize: 14, lineHeight: 19 },
+  historyTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
   historyBody: { fontSize: 13, lineHeight: 18 },
   workoutsList: { gap: 10 },
 });

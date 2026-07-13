@@ -32,7 +32,7 @@ export function HeroDecisionCard({
   const hasChildren = Children.count(children) > 0;
 
   return (
-    <Card style={[styles.hero, { borderColor: tone, backgroundColor: colors.card }]}>
+    <Card style={[styles.hero, { borderColor: colors.border, backgroundColor: colors.card }]}>
       <View style={styles.heroTop}>
         <View style={styles.heroCopy}>
           {eyebrow ? <Text style={[styles.eyebrow, { color: tone, fontFamily: fonts.bold }]}>{eyebrow}</Text> : null}
@@ -185,23 +185,23 @@ export function CollapsibleDetails({
 }
 
 const styles = StyleSheet.create({
-  hero: { borderRadius: 8, padding: 18, gap: 14, minHeight: 132 },
+  hero: { borderRadius: 18, padding: 18, gap: 14, minHeight: 132 },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   heroCopy: { flex: 1, gap: 6, minWidth: 0 },
-  eyebrow: { fontSize: 11, lineHeight: 15, letterSpacing: 0 },
-  heroTitle: { fontSize: 24, lineHeight: 30, letterSpacing: 0 },
+  eyebrow: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0 },
+  heroTitle: { fontSize: 25, fontWeight: '700', lineHeight: 31, letterSpacing: 0 },
   body: { fontSize: 14, lineHeight: 20 },
-  sectionCard: { borderRadius: 8, padding: 15, gap: 10 },
+  sectionCard: { borderRadius: 16, padding: 15, gap: 10 },
   cardActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 },
   cardButton: { minHeight: 46, flexGrow: 1 },
   actionStrip: { flexDirection: 'row', gap: 8, width: '100%' },
-  actionButton: { flex: 1, minWidth: 0, minHeight: 56, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 8 },
-  actionText: { fontSize: 12, lineHeight: 15, textAlign: 'center' },
-  detailToggle: { alignSelf: 'flex-start', minHeight: 42, borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11, minWidth: 0, flexGrow: 0, flexShrink: 1 },
-  detailToggleText: { fontSize: 13, lineHeight: 17, flexShrink: 1 },
+  actionButton: { flex: 1, minWidth: 0, minHeight: 56, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 8 },
+  actionText: { fontSize: 12, fontWeight: '600', lineHeight: 15, textAlign: 'center' },
+  detailToggle: { alignSelf: 'flex-start', minHeight: 42, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11, minWidth: 0, flexGrow: 0, flexShrink: 1 },
+  detailToggleText: { fontSize: 13, fontWeight: '600', lineHeight: 17, flexShrink: 1 },
   detailBody: { gap: 8, paddingTop: 2 },
-  infoRow: { borderBottomWidth: 1, paddingVertical: 10, gap: 4 },
-  infoLabel: { fontSize: 12, lineHeight: 16, letterSpacing: 0 },
-  infoValue: { fontSize: 14, lineHeight: 19, minWidth: 0 },
+  infoRow: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 10, gap: 4 },
+  infoLabel: { fontSize: 12, fontWeight: '600', lineHeight: 16, letterSpacing: 0 },
+  infoValue: { fontSize: 14, fontWeight: '700', lineHeight: 19, minWidth: 0 },
   collapsible: { gap: 8 },
 });

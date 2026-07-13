@@ -70,6 +70,13 @@ describe('applyReadinessToSession', () => {
     expect(out.session.durationMinutes).toBe(Math.round(60 * 0.85));
   });
 
+  it('localizes preserved titles when downgrading in English', () => {
+    const assessment = evaluateReadiness({ todaySleepMinutes: 390, todayRhrBpm: 60, todayHrvMs: 50 });
+    const out = applyReadinessToSession(hardIntervals(), assessment, 'en');
+    expect(out.adjusted).toBe(true);
+    expect(out.session.title).toBe('Intervals 6×400 m (reduced intensity)');
+  });
+
   it('does NOT modify a moderate session on yellow day', () => {
     const assessment = evaluateReadiness({ todaySleepMinutes: 390 });
     const out = applyReadinessToSession(moderateRun(), assessment);

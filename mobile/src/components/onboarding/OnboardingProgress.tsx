@@ -16,7 +16,7 @@ export function OnboardingProgress({ current, total, label }: { current: number;
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  text: { fontFamily: 'Archivo_800ExtraBold', fontSize: 13, flexShrink: 1, maxWidth: '58%' },
+  text: { fontSize: 13, fontWeight: '600', flexShrink: 1, maxWidth: '58%' },
   bg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3 },
 });

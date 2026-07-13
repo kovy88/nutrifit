@@ -47,7 +47,7 @@ export class StravaOAuth {
    *  aby zachytilo callback i kdyby přišel rychle. */
   async beginConnect(): Promise<void> {
     if (!this.config.clientId) {
-      throw new Error('Strava client ID není nastavený (env EXPO_PUBLIC_STRAVA_CLIENT_ID).');
+      throw new Error('Strava client ID is not configured (env EXPO_PUBLIC_STRAVA_CLIENT_ID).');
     }
     const state = generateState();
     await AsyncStorage.setItem(STATE_KEY, state);

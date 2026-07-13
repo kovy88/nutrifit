@@ -16,7 +16,7 @@ export function GoalChip({
         styles.chip,
         {
           borderColor: active ? colors.accent : colors.border,
-          backgroundColor: active ? colors.accent + '1F' : colors.bgElev,
+          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
         },
         pressed && { opacity: 0.88 },
       ]}
@@ -43,13 +43,13 @@ const styles = StyleSheet.create({
     flexBasis: '47%',
     flexGrow: 1,
     minHeight: 64,
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 11,
     justifyContent: 'center',
     gap: 6,
   },
-  text: { fontSize: 15.5, lineHeight: 20, textAlign: 'left' },
+  text: { fontSize: 15.5, fontWeight: '600', lineHeight: 20, textAlign: 'left' },
   subtitle: { fontSize: 12, lineHeight: 15, textAlign: 'left' },
 });
