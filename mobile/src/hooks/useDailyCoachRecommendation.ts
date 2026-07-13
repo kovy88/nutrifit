@@ -3,6 +3,7 @@ import { useDailyCoaching, type DailyCoachingState } from './useDailyCoaching';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
 import { generateDailyCoachRecommendation } from '../lib/coaching/dailyCoach';
+import { getProfileGoalSummary } from '../lib/profile/profile-labels';
 import { toDateKey } from '../utils/nutrition';
 import type { DailyCoachRecommendation, RecoveryInputs , CoachMemory } from '../types/coach';
 import { saveDailyCoachRecommendationForDate } from '../services/storage';
@@ -22,7 +23,7 @@ export type UseDailyCoachRecommendation = {
 export function useDailyCoachRecommendation(date: Date): UseDailyCoachRecommendation {
   const coaching = useDailyCoaching(date);
   const { profile, currentSession, baselineMacros, currentMacros, checkIns, baselineKcalDelta } = useTrenr();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const dKey = toDateKey(date);
 
   const recommendation = useMemo(() => {
@@ -60,11 +61,11 @@ export function useDailyCoachRecommendation(date: Date): UseDailyCoachRecommenda
   const memory: CoachMemory | null = useMemo(() => {
     if (!profile) return null;
     return {
-      goalSummary: `${profile.primaryGoal} + ${profile.trainingGoal}`,
+      goalSummary: getProfileGoalSummary(profile, t),
       lastAdjustmentKcal: baselineKcalDelta || null,
       updatedAt: new Date().toISOString(),
     };
-  }, [profile, baselineKcalDelta]);
+  }, [profile, baselineKcalDelta, t]);
 
   useEffect(() => {
     if (!recommendation || !memory) return;

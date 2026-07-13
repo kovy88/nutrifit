@@ -84,7 +84,7 @@ function L(locale: Locale, cs: string, en: string): string {
 export function evaluateReadiness(input: ReadinessInput): ReadinessAssessment {
   const factors: ReadinessFactor[] = [];
   const baseline = input.baseline ?? {};
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
   const hrs = (m: number) => formatHours(m, loc);
 
   // ── Sleep ──────────────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ function formatHours(minutes: number, locale: Locale): string {
 
 const SCORE_WEIGHTS = { sleep: 0.4, hrv: 0.3, rhr: 0.3 };
 
-export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): ReadinessScore {
+export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'en'): ReadinessScore {
   const loc = locale;
   const baseline = input.baseline ?? {};
   const drivers: string[] = [];
@@ -235,17 +235,17 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): Re
   if (input.todaySleepMinutes != null) {
     const s = sleepSubScore(input.todaySleepMinutes, baseline.sleepMeanMinutes);
     parts.push({ w: SCORE_WEIGHTS.sleep, v: s });
-    if (s < 50) drivers.push(L(loc, `Málo spánku (${formatHours(input.todaySleepMinutes, loc)})`, `Low sleep (${formatHours(input.todaySleepMinutes, loc)})`));
+    if (s < 50) drivers.push(L(loc, 'Málo spánku.', 'Low sleep.'));
   }
   if (input.todayHrvMs != null) {
     const s = hrvSubScore(input.todayHrvMs, baseline.hrvMeanMs);
     parts.push({ w: SCORE_WEIGHTS.hrv, v: s });
-    if (s < 50) drivers.push(L(loc, `Snížené HRV (${Math.round(input.todayHrvMs)} ms)`, `Low HRV (${Math.round(input.todayHrvMs)} ms)`));
+    if (s < 50) drivers.push(L(loc, 'Regenerace je slabší než obvykle.', 'Recovery looks weaker than usual.'));
   }
   if (input.todayRhrBpm != null) {
     const s = rhrSubScore(input.todayRhrBpm, baseline.rhrMeanBpm);
     parts.push({ w: SCORE_WEIGHTS.rhr, v: s });
-    if (s < 50) drivers.push(L(loc, `Zvýšený klidový tep (${input.todayRhrBpm} bpm)`, `Elevated resting HR (${input.todayRhrBpm} bpm)`));
+    if (s < 50) drivers.push(L(loc, 'Tělo je dnes víc zatížené.', 'Your body looks more stressed today.'));
   }
 
   const objectiveCount = parts.length;
@@ -255,16 +255,16 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): Re
     score = parts.reduce((acc, p) => acc + p.v * p.w, 0) / totalW;
   } else {
     score = 55; // neutral-conservative default when we have no wearable data
-    drivers.push(L(loc, 'Chybí data spánku, HRV a klidového tepu', 'Missing sleep, HRV and resting-HR data'));
+    drivers.push(L(loc, 'Chybí data o regeneraci.', 'Recovery data is missing.'));
   }
 
   // ── Modifiers ──────────────────────────────────────────────────────────────
   if (input.acwr != null) {
-    if (input.acwr > 1.5) { score -= 12; drivers.push(L(loc, `Vysoká zátěž (ACWR ${input.acwr.toFixed(2)})`, `High load (ACWR ${input.acwr.toFixed(2)})`)); }
+    if (input.acwr > 1.5) { score -= 12; drivers.push(L(loc, 'Zátěž roste rychleji než obvykle', 'Training load is rising faster than usual')); }
     else if (input.acwr > 1.3) { score -= 6; }
   }
   if (input.sleepDebtHours != null) {
-    if (input.sleepDebtHours >= 10) { score -= 10; drivers.push(L(loc, `Spánkový dluh ${Math.round(input.sleepDebtHours)} h`, `Sleep debt ${Math.round(input.sleepDebtHours)} h`)); }
+    if (input.sleepDebtHours >= 10) { score -= 10; drivers.push(L(loc, 'Nahromadil se spánkový dluh.', 'Sleep debt has built up.')); }
     else if (input.sleepDebtHours >= 5) { score -= 5; }
   }
   if (input.recoveryDebt != null) {
@@ -291,7 +291,7 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'cs'): Re
     objectiveCount >= 3 ? 'high' : objectiveCount >= 2 ? 'medium' : 'low';
 
   if (objectiveCount > 0 && objectiveCount < 3) {
-    drivers.push(L(loc, `Nízká jistota: ${objectiveCount}/3 recovery signálů`, `Low confidence: ${objectiveCount}/3 recovery signals`));
+    drivers.push(L(loc, 'Doporučení je dnes orientační.', "Today's guidance is approximate."));
   }
 
   if (drivers.length === 0) {

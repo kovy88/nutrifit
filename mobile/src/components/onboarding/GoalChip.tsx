@@ -2,7 +2,12 @@ import { PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
-export function GoalChip({ active, children, onPress }: PropsWithChildren<{ active?: boolean; onPress?: () => void }>) {
+export function GoalChip({
+  active,
+  children,
+  subtitle,
+  onPress,
+}: PropsWithChildren<{ active?: boolean; subtitle?: string; onPress?: () => void }>) {
   const { colors, fonts } = useTheme();
   return (
     <Pressable
@@ -11,26 +16,40 @@ export function GoalChip({ active, children, onPress }: PropsWithChildren<{ acti
         styles.chip,
         {
           borderColor: active ? colors.accent : colors.border,
-          backgroundColor: active ? colors.accent + '1F' : colors.bgElev,
+          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
         },
         pressed && { opacity: 0.88 },
       ]}
     >
-      <Text style={[styles.text, { color: active ? colors.accent : colors.ink, fontFamily: fonts.bold }]}>
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.9}
+        style={[styles.text, { color: active ? colors.accent : colors.ink, fontFamily: fonts.bold }]}
+      >
         {children}
       </Text>
+      {subtitle ? (
+        <Text numberOfLines={1} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>
+          {subtitle}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 42,
-    borderWidth: 1,
-    borderRadius: 999,
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 64,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     justifyContent: 'center',
+    gap: 6,
   },
-  text: { fontSize: 13, lineHeight: 16 },
+  text: { fontSize: 15.5, fontWeight: '600', lineHeight: 20, textAlign: 'left' },
+  subtitle: { fontSize: 12, lineHeight: 15, textAlign: 'left' },
 });

@@ -5,20 +5,8 @@ const { method, rateLimit, requireUser, sendError, msg, getLocale } = require('.
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
 const GEMINI_TIMEOUT_MS = 25000;
 
-function emptyEstimate(locale) {
-  if (locale === 'en') {
-    return {
-      foodName: 'Could not recognize the food',
-      portionGuess: 'portion not recognized',
-      kcal: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      confidence: 'low',
-      note: 'The food is not clearly visible in the photo. Try better lighting, a top-down shot, and the whole plate.',
-    };
-  }
-  return {
+const EMPTY_ESTIMATE = {
+  cs: {
     foodName: 'Jídlo se nepodařilo rozpoznat',
     portionGuess: 'porce nerozpoznána',
     kcal: 0,
@@ -27,8 +15,18 @@ function emptyEstimate(locale) {
     fat: 0,
     confidence: 'nízká',
     note: 'Na fotce není dost jasně vidět jídlo. Zkus lepší světlo, záběr shora a celý talíř.',
-  };
-}
+  },
+  en: {
+    foodName: 'Food could not be recognized',
+    portionGuess: 'portion not recognized',
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    confidence: 'low',
+    note: 'The food is not clearly visible. Try better light, a top-down angle, and the full plate.',
+  },
+};
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
@@ -41,6 +39,9 @@ module.exports = async function handler(req, res) {
   }
 
   const { imageBase64, mimeType } = req.body || {};
+  const locale = getLocale(req);
+  const lang = locale === 'en' ? 'English' : 'Czech';
+  const emptyEstimate = EMPTY_ESTIMATE[locale];
   if (!imageBase64 || !mimeType) {
     return sendError(res, 400, 'missing_image', msg(req, 'Chybí imageBase64 nebo mimeType.', 'Missing imageBase64 or mimeType.'));
   }
@@ -63,7 +64,6 @@ module.exports = async function handler(req, res) {
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
 
-  const locale = getLocale(req);
   const prompt = locale === 'en'
     ? `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
@@ -85,17 +85,17 @@ Use integers for kcal/protein/carbs/fat.
     : `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
 Return ONLY valid JSON with no markdown, comments, or extra text.
-All user-facing JSON string values must be in Czech.
+All user-facing JSON string values must be in ${lang}.
 If there is no food in the image or the portion cannot be recognized, return JSON with zero macros and low confidence.
 {
-  "foodName": "Název jídla",
-  "portionGuess": "Krátký odhad porce",
+  "foodName": "${locale === 'en' ? 'Meal name' : 'Název jídla'}",
+  "portionGuess": "${locale === 'en' ? 'Short portion estimate' : 'Krátký odhad porce'}",
   "kcal": 0,
   "protein": 0,
   "carbs": 0,
   "fat": 0,
-  "confidence": "nízká|střední|vysoká",
-  "note": "Krátké upozornění, že jde o orientační odhad"
+  "confidence": "${locale === 'en' ? 'low|medium|high' : 'nízká|střední|vysoká'}",
+  "note": "${locale === 'en' ? 'Short note that this is an estimate' : 'Krátké upozornění, že jde o orientační odhad'}"
 }
 Use integers for kcal/protein/carbs/fat.
 `;
@@ -148,7 +148,7 @@ Use integers for kcal/protein/carbs/fat.
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const estimate = normalizeEstimate(parseJSONLoose(text) || emptyEstimate(locale), locale);
+  const estimate = normalizeEstimate(parseJSONLoose(text) || emptyEstimate, locale);
   return res.status(200).json({ ...data, estimate });
 };
 
@@ -189,11 +189,9 @@ function coalesceCandidateText(data) {
   };
 }
 
-const CONFIDENCE_LEVELS = ['nízká', 'střední', 'vysoká', 'low', 'medium', 'high'];
-
 function normalizeEstimate(raw, locale) {
-  const fallback = emptyEstimate(locale);
-  const confidence = String(raw.confidence || fallback.confidence).toLowerCase();
+  const fallback = EMPTY_ESTIMATE[locale] || EMPTY_ESTIMATE.cs;
+  const confidence = normalizeConfidence(raw.confidence, locale);
   return {
     foodName: text(raw.foodName, fallback.foodName),
     portionGuess: text(raw.portionGuess, fallback.portionGuess),
@@ -201,9 +199,19 @@ function normalizeEstimate(raw, locale) {
     protein: number(raw.protein),
     carbs: number(raw.carbs),
     fat: number(raw.fat),
-    confidence: CONFIDENCE_LEVELS.includes(confidence) ? confidence : (locale === 'en' ? 'medium' : 'střední'),
+    confidence,
     note: text(raw.note, fallback.note),
   };
+}
+
+function normalizeConfidence(value, locale) {
+  const raw = String(value || '').toLowerCase();
+  const level =
+    ['nízká', 'nizka', 'low'].includes(raw) ? 'low' :
+    ['vysoká', 'vysoka', 'high'].includes(raw) ? 'high' :
+    'medium';
+  if (locale === 'en') return level;
+  return level === 'low' ? 'nízká' : level === 'high' ? 'vysoká' : 'střední';
 }
 
 function text(value, fallback) {

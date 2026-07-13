@@ -125,7 +125,7 @@ type TrenrContextValue = {
 const Context = createContext<TrenrContextValue | null>(null);
 
 export function TrenrProvider({ children }: PropsWithChildren) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   
@@ -569,11 +569,11 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     if (hasAiConsent) return true;
     const accepted = await new Promise<boolean>(resolve => {
       Alert.alert(
-        'Než použiješ AI',
-        'Trenr dává orientační doporučení, nenahrazuje lékařskou péči. Plány a fotky se kvůli AI zpracování posílají na server. Nepoužívej appku pro diagnózu ani léčbu.',
+        t('aiConsent.title'),
+        t('aiConsent.body'),
         [
-          { text: 'Zrušit', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Rozumím', onPress: () => resolve(true) },
+          { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('aiConsent.accept'), onPress: () => resolve(true) },
         ],
       );
     });

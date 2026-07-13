@@ -49,7 +49,7 @@ describe('applyReadinessToSession', () => {
 
   it('downgrades hard intervals to easy_run on red day', () => {
     const assessment = evaluateReadiness({ todaySleepMinutes: 240 }); // red
-    const out = applyReadinessToSession(hardIntervals(), assessment);
+    const out = applyReadinessToSession(hardIntervals(), assessment, 'cs');
     expect(out.adjusted).toBe(true);
     expect(out.session.intensity).toBe('easy');
     expect(out.session.kind).toBe('easy_run');
@@ -68,6 +68,13 @@ describe('applyReadinessToSession', () => {
     // Hard kind preserved as kind, only intensity drops
     expect(out.session.kind).toBe('intervals');
     expect(out.session.durationMinutes).toBe(Math.round(60 * 0.85));
+  });
+
+  it('localizes preserved titles when downgrading in English', () => {
+    const assessment = evaluateReadiness({ todaySleepMinutes: 390, todayRhrBpm: 60, todayHrvMs: 50 });
+    const out = applyReadinessToSession(hardIntervals(), assessment, 'en');
+    expect(out.adjusted).toBe(true);
+    expect(out.session.title).toBe('Intervals 6×400 m (reduced intensity)');
   });
 
   it('does NOT modify a moderate session on yellow day', () => {

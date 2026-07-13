@@ -1,7 +1,8 @@
 // ── I18N CORE
 //
 // createTranslator(locale) → t(key, params?) function.
-// Fallback: pokud klíč chybí v locale → cs → klíč samotný (debug-friendly).
+// Fallback: if a key is missing in the target locale → en → the key itself (debug-friendly).
+// English is the primary/default catalog (English-speaking market is primary).
 
 import { cs, type TranslationKey } from './catalog.cs';
 import { en } from './catalog.en';
@@ -15,7 +16,7 @@ export type Translate = (key: TranslationKey, params?: TranslateParams) => strin
 export function createTranslator(locale: Locale): Translate {
   const primary = CATALOGS[locale];
   return (key: TranslationKey, params?: TranslateParams): string => {
-    const value = (primary as Record<string, unknown>)[key] ?? (cs as Record<string, unknown>)[key];
+    const value = (primary as Record<string, unknown>)[key] ?? (en as Record<string, unknown>)[key];
     if (value == null) return key; // missing → show key for debugging
     if (typeof value === 'function') {
       return (value as (p: TranslateParams) => string)(params ?? {});

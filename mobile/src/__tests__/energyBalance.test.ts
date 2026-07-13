@@ -67,7 +67,7 @@ describe('computeEnergyBalance — basic', () => {
 describe('describeEnergyBalance — goal-aware', () => {
   it('< 3 logged days → asks for more data', () => {
     const empty = computeEnergyBalance({ logs: {}, tdee: 2000, days: 14 });
-    expect(describeEnergyBalance(empty, 'fat_loss').toLowerCase()).toMatch(/zaznamenej|spolehlivý/);
+    expect(describeEnergyBalance(empty, 'fat_loss', 'cs').toLowerCase()).toMatch(/zaznamenej|spolehlivý/);
   });
 
   it('fat_loss + deficit → praises', () => {
@@ -116,7 +116,7 @@ describe('describeEnergyBalance — goal-aware', () => {
       logs[`2026-05-${String(i).padStart(2, '0')}`] = [log(2000)];
     }
     const r = computeEnergyBalance({ logs, tdee: 2000, days: 7, endDate: new Date('2026-05-28') });
-    const msg = describeEnergyBalance(r, 'endurance').toLowerCase();
+    const msg = describeEnergyBalance(r, 'endurance', 'cs').toLowerCase();
     expect(msg).toMatch(/stabilní|ideální/);
   });
 
@@ -136,7 +136,7 @@ describe('describeEnergyBalance — goal-aware', () => {
       logs[`2026-05-${String(i).padStart(2, '0')}`] = [log(2010)];
     }
     const r = computeEnergyBalance({ logs, tdee: 2000, days: 7, endDate: new Date('2026-05-28') });
-    const msg = describeEnergyBalance(r, 'maintenance').toLowerCase();
+    const msg = describeEnergyBalance(r, 'maintenance', 'cs').toLowerCase();
     expect(msg).toMatch(/rovnováze|stabilní/);
   });
 });

@@ -73,29 +73,29 @@ function bandFromScore(score: number): StrainBand {
 function labelForBand(band: StrainBand, loc: Locale): string {
   const cs: Record<StrainBand, string> = {
     recovery: 'Regenerační den', light: 'Lehká aktivita', moderate: 'Středně náročné',
-    high: 'Vysoká zátěž', all_out: 'Extrémní zátěž',
+    high: 'Vysoká zátěž', all_out: 'Velmi vysoká zátěž',
   };
   const en: Record<StrainBand, string> = {
-    recovery: 'Recovery day', light: 'Light activity', moderate: 'Moderate',
-    high: 'High strain', all_out: 'All-out',
+    recovery: 'Recovery day', light: 'Light activity', moderate: 'Steady load',
+    high: 'High load', all_out: 'Very high load',
   };
   return (loc === 'en' ? en : cs)[band];
 }
 
 function recommendationForBand(band: StrainBand, loc: Locale): string {
   const cs: Record<StrainBand, string> = {
-    recovery: 'Dnes málo. Pokud nemáš deload, zařaď zítra lehkou aktivitu.',
-    light: 'Zdravá udržovací zátěž. Pokud trénuješ cíl, můžeš si dovolit jednu kvalitnější jednotku tento týden.',
-    moderate: 'Tělo se po dnešku potřebuje regenerovat. Spánek 7–9 h, hydratace, 30 g bílkovin do 30 min po tréninku.',
-    high: 'Velká zátěž. Zítra easy + extra spánek + carb refuel. Sleduj klidový tep + HRV.',
-    all_out: 'Extrém. Zítra rest day NEBO max 30 min recovery walk. Vyšší energetický příjem, vyšší příjem solí.',
+    recovery: 'Klidný den. Pokud to není záměrné volno, dej zítra lehký pohyb.',
+    light: 'Lehký udržovací den. Drž plán a nepřidávej navíc jen proto, že se cítíš dobře.',
+    moderate: 'Dnes už máš odpracováno. Dej spánek, hydrataci a bílkoviny po tréninku.',
+    high: 'Velká zátěž. Zítra zvol lehčí den, víc spánku a doplň energii.',
+    all_out: 'Velmi vysoká zátěž. Zítra dej volno nebo krátkou regenerační chůzi a jez vydatněji.',
   };
   const en: Record<StrainBand, string> = {
-    recovery: 'Light day. Unless this is a deload, add some easy activity tomorrow.',
-    light: 'Healthy maintenance load. If you train for a goal, you can afford one quality session this week.',
-    moderate: 'Your body needs to recover after today. 7–9 h sleep, hydration, 30 g protein within 30 min post-workout.',
-    high: 'Big load. Tomorrow go easy + extra sleep + carb refuel. Watch resting HR + HRV.',
-    all_out: 'Extreme. Tomorrow take a rest day OR max 30 min recovery walk. Higher energy + salt intake.',
+    recovery: 'Quiet day. Unless this is intentional rest, add light movement tomorrow.',
+    light: 'Light maintenance day. Follow the plan and do not add more just because you feel good.',
+    moderate: 'You have done enough today. Prioritize sleep, hydration and protein after training.',
+    high: 'Big load. Make tomorrow lighter, sleep more and refuel well.',
+    all_out: 'Very high load. Take tomorrow off or keep it to a short recovery walk, and eat more generously.',
   };
   return (loc === 'en' ? en : cs)[band];
 }
@@ -132,7 +132,7 @@ export function computeDailyStrain(input: StrainInput): StrainAssessment {
 
   const score = trimpToScore(totalTrimp);
   const band = bandFromScore(score);
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
 
   return {
     score,

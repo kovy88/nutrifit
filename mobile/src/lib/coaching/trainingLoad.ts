@@ -100,7 +100,7 @@ export function computeTrainingLoad(input: TrainingLoadInput): TrainingLoadAsses
   const hasMeaningfulBaseline = chronicCount >= 4 && chronicAvgPerDay >= 1;
   const acwr = hasMeaningfulBaseline ? acuteAvgPerDay / chronicAvgPerDay : null;
 
-  const { status, message, recommendation } = classify(acwr, acuteCount, input.locale ?? 'cs');
+  const { status, message, recommendation } = classify(acwr, acuteCount, input.locale ?? 'en');
 
   return {
     acute: Math.round(acuteAvgPerDay * 10) / 10,
@@ -147,35 +147,34 @@ function classify(acwr: number | null, acuteCount: number, loc: Locale): { statu
   if (acwr == null) {
     return {
       status: 'optimal',
-      message: en ? "Building your baseline. Keep your current pace." : 'Stavíme tvůj baseline. Pokračuj v aktuálním tempu.',
+      message: en ? "Learning your usual rhythm. Keep your current pace." : 'Učíme se tvůj běžný rytmus. Pokračuj v aktuálním tempu.',
       recommendation: en ? 'In a few weeks we can give more precise guidance.' : 'Za pár týdnů budeme schopni ti dát přesnější doporučení.',
     };
   }
-  const a = acwr.toFixed(2);
   if (acwr < 0.8) {
     return {
       status: 'detraining',
-      message: en ? `Weekly volume dropped below 80% of average (ACWR ${a}).` : `Týdenní objem klesl pod 80 % průměru (ACWR ${a}).`,
+      message: en ? 'This week is clearly lighter than your usual rhythm.' : 'Tento týden je výrazně lehčí než tvůj běžný rytmus.',
       recommendation: en ? 'Fitness is slowly declining. Add 1–2 easy sessions to maintain.' : 'Forma postupně klesá. Přidej 1–2 lehké jednotky pro udržení.',
     };
   }
   if (acwr <= 1.3) {
     return {
       status: 'optimal',
-      message: en ? `Load in the optimal range (ACWR ${a}).` : `Zátěž v optimálním rozsahu (ACWR ${a}).`,
+      message: en ? 'Training load is in a steady range.' : 'Tréninková zátěž je ve stabilním rozsahu.',
       recommendation: en ? 'Keep this rhythm — fitness builds safely.' : 'Pokračuj v tomto rytmu, forma roste bezpečně.',
     };
   }
   if (acwr <= 1.5) {
     return {
       status: 'overreaching',
-      message: en ? `This week well above average (ACWR ${a}).` : `Tento týden výrazně víc než průměr (ACWR ${a}).`,
+      message: en ? 'This week is well above your usual rhythm.' : 'Tento týden je výrazně nad tvým běžným rytmem.',
       recommendation: en ? 'Add a deload — cut weekly volume ~20% next week and watch your sleep.' : 'Zařaď deload — sniž týdenní objem o ~20 % příští týden a hlídej spánek.',
     };
   }
   return {
     status: 'high_risk',
-    message: en ? `Very fast load increase (ACWR ${a}) — elevated injury risk.` : `Velmi rychlý nárůst zátěže (ACWR ${a}) — zvýšené riziko zranění.`,
+    message: en ? 'Training load jumped very fast this week.' : 'Tréninková zátěž tento týden vyskočila velmi rychle.',
     recommendation: en ? 'We recommend easing off this week. Cut volume ~30% and no new sports.' : 'Doporučujeme tento týden uvolnit. Sniž objem o ~30 % a žádné nové sporty.',
   };
 }

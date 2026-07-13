@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTrenr } from '../context/TrenrContext';
+import { useLanguage } from '../context/LanguageContext';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import { createNotificationScheduler, type NotificationMode } from '../lib/notifications';
 import type { TrainingSession } from '../types';
@@ -57,6 +58,7 @@ function estimatedStartTime(session: TrainingSession, today: Date = new Date()):
 
 export function usePreWorkoutReminder(mode: NotificationMode = 'auto'): PreWorkoutReminderState {
   const { profile, currentSession: todaySession } = useTrenr();
+  const { locale } = useLanguage();
   const [settings, setSettings] = useState<PreWorkoutReminderSettings>(DEFAULT_SETTINGS);
   const [isReady, setIsReady] = useState(false);
   const scheduler = createNotificationScheduler(mode);
@@ -95,10 +97,14 @@ export function usePreWorkoutReminder(mode: NotificationMode = 'auto'): PreWorko
       void scheduler.cancel(NOTIFICATION_ID);
       return;
     }
-    const fueling = computeFueling({ workout: { kind: workoutKindOfSession(todaySession.kind), durationMinutes: todaySession.durationMinutes }, weightKg: profile.weight });
+    const fueling = computeFueling({ workout: { kind: workoutKindOfSession(todaySession.kind), durationMinutes: todaySession.durationMinutes }, weightKg: profile.weight, locale });
     const preNote = fueling.pre
-      ? `Sneď ${fueling.pre.carbsG} g sacharidů + ${fueling.pre.proteinG} g bílkovin. ${fueling.pre.note}`
-      : `Drž lehkou hydrataci a pohyb. Pre-fuel není kritický pro tento trénink.`;
+      ? (locale === 'en'
+        ? `Eat ${fueling.pre.carbsG} g carbs + ${fueling.pre.proteinG} g protein. ${fueling.pre.note}`
+        : `Sneď ${fueling.pre.carbsG} g sacharidů + ${fueling.pre.proteinG} g bílkovin. ${fueling.pre.note}`)
+      : (locale === 'en'
+        ? 'Keep hydration light and movement easy. Pre-fuel is not critical for this workout.'
+        : 'Drž lehkou hydrataci a pohyb. Pre-fuel není kritický pro tento trénink.');
     void scheduler.scheduleAt({
       id: NOTIFICATION_ID,
       title: `Pre-workout: ${todaySession.title}`,
@@ -106,7 +112,7 @@ export function usePreWorkoutReminder(mode: NotificationMode = 'auto'): PreWorko
       triggerInSeconds: secondsFromNow,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, settings.enabled, settings.minutesBefore, todaySession?.kind, todaySession?.durationMinutes, profile?.weight]);
+  }, [isReady, settings.enabled, settings.minutesBefore, todaySession?.kind, todaySession?.durationMinutes, profile?.weight, locale]);
 
   const update = useCallback(async (patch: Partial<PreWorkoutReminderSettings>) => {
     setSettings(prev => {

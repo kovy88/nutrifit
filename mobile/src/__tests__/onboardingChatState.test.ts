@@ -58,4 +58,20 @@ describe('onboarding chat state', () => {
     expect(next.draft.currentWeeklyKm).toBe(250);
     expect(next.draft.preferredRestDays).toEqual([0, 6]);
   });
+
+  it('merges manual patches and marks their fields touched', () => {
+    const next = reduceOnboardingChatState(initial(), {
+      type: 'manual_patch',
+      patch: {
+        coachScope: 'training',
+        sessionsPerWeek: 3,
+      },
+      touched: ['coachScope', 'sessionsPerWeek'],
+    });
+
+    expect(next.draft.coachScope).toBe('training');
+    expect(next.draft.sessionsPerWeek).toBe(3);
+    expect(next.touchedFields.coachScope).toBe(true);
+    expect(next.touchedFields.sessionsPerWeek).toBe(true);
+  });
 });

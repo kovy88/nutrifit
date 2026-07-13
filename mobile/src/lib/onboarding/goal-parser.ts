@@ -1,5 +1,7 @@
 import type { Locale } from '../i18n';
 import type { GoalParseResult, GoalProfile, GoalQuickStart, NutritionMode, PrimaryGoal, RaceGoal } from '../../types/goal-types';
+import type { CoachScope } from '../../types';
+import { normalizeGoalProfile } from '../goals/goal-model';
 import { withGoalProfileDefaults } from './goal-schema';
 
 type GoalSignal = {
@@ -11,14 +13,25 @@ type GoalSignal = {
 };
 
 export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
-  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', textCs: 'Chci zhubnout tuk.' },
-  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', textCs: 'Chci zlepšit kondici.' },
-  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', textCs: 'Chci uběhnout 5 km.' },
-  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', textCs: 'Chci uběhnout 10 km.' },
-  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', textCs: 'Chci uběhnout půlmaraton.' },
-  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', textCs: 'Chci nabrat svaly.' },
-  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', textCs: 'Chci jíst zdravěji.' },
+  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', textCs: 'Chci zhubnout tuk.', scopes: ['both', 'nutrition'] },
+  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', textCs: 'Chci zlepšit kondici.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', textCs: 'Chci uběhnout 5 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', textCs: 'Chci uběhnout 10 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', textCs: 'Chci uběhnout půlmaraton.', scopes: ['both', 'training'] },
+  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', textCs: 'Chci nabrat svaly.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'build_consistency', labelKey: 'onb.quickBuildConsistency', subtitleKey: 'onb.quickBuildConsistencySub', text: 'I want to train consistently.', textCs: 'Chci trénovat pravidelně.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', textCs: 'Chci jíst zdravěji.', scopes: ['both', 'nutrition'] },
 ];
+
+/**
+ * Rychlé starty relevantní pro daný režim kouče. Training-only nezobrazuje čistě
+ * nutriční cíle (jíst zdravěji, zhubnout tuk) — appka tam nemá jídelníček — a
+ * nutrition-only nezobrazuje čistě tréninkové (běžecké závody, kondice). 'both'
+ * vrací vše, protože každý cíl obsahuje scope 'both'.
+ */
+export function quickStartsForScope(scope: CoachScope): GoalQuickStart[] {
+  return GOAL_QUICK_STARTS.filter(q => q.scopes.includes(scope));
+}
 
 /** Locale-appropriate seed text for a quick-start chip. */
 export function goalQuickStartText(quickStart: GoalQuickStart, locale: Locale): string {
@@ -58,10 +71,10 @@ export function updateGoalProfile(current: GoalProfile, patch: Partial<GoalProfi
     summary: buildSummary({ ...current, ...patch }),
     confidence: patch.confidence ?? current.confidence,
   } as GoalProfile;
-  return {
+  return normalizeGoalProfile({
     ...next,
     needsFollowUp: hasMissingCoreFollowUp(next),
-  };
+  });
 }
 
 function detectGoalSignal(text: string): GoalSignal | null {
@@ -70,7 +83,7 @@ function detectGoalSignal(text: string): GoalSignal | null {
   const muscle = hasAny(text, ['build muscle', 'gain muscle', 'muscle gain', 'get stronger', 'strength', 'sval', 'síla', 'silov']);
   const healthyFood = hasAny(text, ['eat healthier', 'healthy eating', 'eat better', 'better food', 'nutrition', 'jídel', 'zdravě', 'zdrave']);
   const recover = hasAny(text, ['recover', 'recovery', 'sleep', 'tired', 'fatigue', 'stress', 'regener', 'spánek', 'spanek', 'únav', 'unav']);
-  const consistency = hasAny(text, ['consistent', 'consistency', 'routine', 'habit', 'stick with', 'feel better', 'move more', 'pravidel', 'konzist', 'cítit líp', 'citit lip']);
+  const consistency = hasAny(text, ['consistent', 'consistently', 'consistency', 'routine', 'habit', 'stick with', 'feel better', 'move more', 'pravidel', 'konzist', 'cítit líp', 'citit lip']);
   const fitness = hasAny(text, ['fitness', 'fit', 'condition', 'conditioning', 'shape', 'kondic', 'forma']);
 
   if (fatLoss && raceGoal !== 'none') {
@@ -119,10 +132,10 @@ function buildGoalProfile(signal: GoalSignal & { rawText?: string }): GoalProfil
     summary: signal.summary || buildSummary({ primaryGoal: signal.primaryGoal, raceGoal: signal.raceGoal ?? 'none' }),
     confidence: signal.matched.length > 1 ? 'high' : 'medium',
   });
-  return {
+  return normalizeGoalProfile({
     ...goalProfile,
     needsFollowUp: hasMissingCoreFollowUp(goalProfile),
-  };
+  });
 }
 
 function detectRaceGoal(text: string): RaceGoal {
@@ -176,16 +189,7 @@ function raceLabel(raceGoal: RaceGoal): string {
 function hasMissingCoreFollowUp(goal: GoalProfile): boolean {
   if (goal.primaryGoal === 'run_race' && goal.raceGoal === 'none') return true;
   if (goal.raceGoal !== 'none') {
-    return !goal.raceDateISO || !goal.currentWeeklyKm || !goal.longestRecentRunKm || !goal.availableTrainingDays || !goal.experienceLevel || !goal.runsPerWeek || goal.injuryFlag === undefined || goal.gymStrengthAvailable === undefined || goal.runWalkPreferred === undefined;
-  }
-  if (goal.primaryGoal === 'lose_fat') {
-    return !goal.currentWeightKg || (!goal.targetWeightKg && !goal.desiredWeightChangeKg);
-  }
-  if (goal.primaryGoal === 'build_muscle') {
-    return !goal.trainingEnvironment || !goal.availableTrainingDays;
-  }
-  if (goal.primaryGoal === 'build_consistency' || goal.primaryGoal === 'improve_fitness' || goal.primaryGoal === 'recover_better') {
-    return !goal.mainWellbeingBlocker;
+    return !goal.raceDateISO;
   }
   return false;
 }

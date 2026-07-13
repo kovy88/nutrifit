@@ -36,7 +36,7 @@ export class OuraOAuth {
 
   async beginConnect(): Promise<void> {
     if (!this.config.clientId) {
-      throw new Error('Oura client ID není nastavený (env EXPO_PUBLIC_OURA_CLIENT_ID).');
+      throw new Error('Oura client ID is not configured (env EXPO_PUBLIC_OURA_CLIENT_ID).');
     }
     const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);

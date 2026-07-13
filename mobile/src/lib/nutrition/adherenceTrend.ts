@@ -135,7 +135,7 @@ export function macroAdherenceBand(ratio: number | null): 'unknown' | 'low' | 'o
 }
 
 /** Vrátí lidský popisek pro průměrné ratio. */
-export function describeAdherence(averageRatio: number | null, locale: Locale = 'cs'): string {
+export function describeAdherence(averageRatio: number | null, locale: Locale = 'en'): string {
   const en = locale === 'en';
   if (averageRatio == null) {
     return en

@@ -33,6 +33,14 @@ describe('goal profile compatibility adapter', () => {
     expect(profile.nutritionMode).toBe('endurance_fueling');
     expect(profile.sessionsPerWeek).toBe(4);
     expect(profile.currentWeeklyKm).toBe(20);
-    expect(profile.goalProfile).toMatchObject({ primaryGoal: 'lose_fat', raceGoal: 'half_marathon' });
+    expect(profile.goalProfile).toMatchObject({
+      primaryGoal: 'lose_fat',
+      raceGoal: 'half_marathon',
+      topLevelGoal: 'lose_fat',
+      race: { distance: 'half_marathon', dateISO: '2026-09-20' },
+      trainingFocus: 'running',
+      canonicalNutritionMode: 'performance',
+      constraints: { sessionsPerWeek: 4, experience: 'beginner' },
+    });
   });
 });

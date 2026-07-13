@@ -41,7 +41,7 @@ function L(locale: Locale, cs: string, en: string): string {
 
 export function computeFueling(input: FuelingInput): FuelingRecommendation {
   const { workout, weightKg } = input;
-  const loc: Locale = input.locale ?? 'cs';
+  const loc: Locale = input.locale ?? 'en';
   const kind = workout.kind;
   const minutes = workout.durationMinutes;
   const intensity = inferIntensity(workout);

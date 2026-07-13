@@ -1,12 +1,12 @@
 // ── LOCALE DETECTION (Hermes-safe, no native dep)
 //
-// Intl.DateTimeFormat().resolvedOptions().locale je dostupný v Hermes
-// (RN JS engine) i Node — vrací něco jako 'en-US' nebo 'cs-CZ'. Žádný
-// expo-localization balíček není potřeba.
+// Intl.DateTimeFormat().resolvedOptions().locale is available in Hermes
+// (RN JS engine) and Node — returns something like 'en-US' or 'cs-CZ'.
+// No expo-localization package needed.
 //
-// Mapování: cokoli začínající 'cs' → 'cs', vše ostatní → 'en'. Default
-// 'cs' protože je to native trh; ale pokud telefon je anglicky, dostane
-// uživatel rovnou angličtinu.
+// Mapping: anything starting with 'cs'/'sk' → 'cs', everything else → 'en'.
+// Default is 'en' — the primary market is English-speaking; Czech/Slovak
+// devices still get their own language.
 
 import type { Locale } from './types';
 
@@ -14,9 +14,9 @@ export function detectDeviceLocale(): Locale {
   try {
     const resolved = Intl.DateTimeFormat().resolvedOptions().locale; // e.g. "en-US"
     const lang = resolved.toLowerCase().split('-')[0];
-    if (lang === 'cs' || lang === 'sk') return 'cs'; // Slováci dostanou češtinu
+    if (lang === 'cs' || lang === 'sk') return 'cs'; // Czech/Slovak devices get Czech
     return 'en';
   } catch {
-    return 'cs';
+    return 'en';
   }
 }

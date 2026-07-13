@@ -15,8 +15,30 @@ export const onboardingRaceGoalSchema = z.enum(['none', 'run_5k', 'run_10k', 'ha
 export const onboardingNutritionModeSchema = z.enum(['fat_loss', 'maintenance', 'muscle_gain', 'performance_fueling', 'healthy_eating', 'simple_meal_prep']);
 export const onboardingPlanIntensitySchema = z.enum(['easy', 'moderate', 'ambitious_but_safe']);
 export const onboardingExperienceLevelSchema = z.enum(['beginner', 'intermediate', 'advanced']);
+export const topLevelGoalSchema = z.enum(['lose_fat', 'build_strength', 'run_race', 'improve_fitness', 'eat_better', 'recover_better', 'build_consistency']);
+export const canonicalRaceDistanceSchema = z.enum(['none', '5k', '10k', 'half_marathon', 'marathon']);
+export const canonicalNutritionModeSchema = z.enum(['fat_loss', 'maintenance', 'muscle_gain', 'performance', 'simple_healthy']);
+export const trainingFocusSchema = z.enum(['none', 'general_fitness', 'walking', 'running', 'strength', 'sport']);
 
 export const goalProfileSchema = z.object({
+  topLevelGoal: topLevelGoalSchema.optional(),
+  race: z.object({
+    distance: canonicalRaceDistanceSchema,
+    dateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    targetTimeSeconds: z.number().int().positive().optional(),
+  }).optional(),
+  trainingFocus: trainingFocusSchema.optional(),
+  canonicalNutritionMode: canonicalNutritionModeSchema.optional(),
+  constraints: z.object({
+    sessionsPerWeek: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
+    experience: onboardingExperienceLevelSchema,
+    currentWeeklyKm: z.number().positive().optional(),
+    longestRecentRunKm: z.number().positive().optional(),
+    injuryFlag: z.boolean().optional(),
+    preferredRestDays: z.array(z.number().int().min(0).max(6)).optional(),
+    dietStyle: z.string().optional(),
+    foodPreferences: z.string().optional(),
+  }).optional(),
   primaryGoal: onboardingPrimaryGoalSchema,
   raceGoal: onboardingRaceGoalSchema.default('none'),
   nutritionMode: onboardingNutritionModeSchema.default('healthy_eating'),

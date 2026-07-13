@@ -81,7 +81,7 @@ describe('buildSingleMealRequest', () => {
   });
 
   it('returns Czech-only output instruction in systemPrompt', () => {
-    const r = buildSingleMealRequest({ profile, current: breakfast });
+    const r = buildSingleMealRequest({ profile, current: breakfast, locale: 'cs' });
     expect(r.systemPrompt).toContain('Czech');
     expect(r.systemPrompt).toMatch(/ONE.*JSON|JSON.*meal object/i);
   });
@@ -107,7 +107,7 @@ describe('buildSingleMealRequest', () => {
     const r = buildSingleMealRequest({ profile, current: breakfast, locale: 'en' });
     expect(r.systemPrompt).toContain('English');
     expect(r.systemPrompt).not.toContain('Czech');
-    expect(r.prompt).toContain('English name');
+    expect(r.prompt).toContain('English meal name');
     expect(r.prompt).not.toContain('Český název');
   });
 });

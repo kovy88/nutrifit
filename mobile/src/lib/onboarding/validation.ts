@@ -6,7 +6,7 @@ import type {
 } from '../../types';
 import { scopeHasNutrition, scopeHasTraining } from '../../types';
 import type { TranslationKey, TranslateParams } from '../i18n';
-import { isRunningGoal, isRunRaceGoal } from '../../constants/goals';
+import { isRunRaceGoal } from '../../constants/goals';
 import type { RaceFeasibilityVerdict } from '../training/feasibility';
 import type { GoalProfile } from '../../types/goal-types';
 import { hasRequiredGoalFollowUps } from './follow-up-question-generator';
@@ -65,41 +65,20 @@ export function buildOnboardingSteps(
   primaryGoal?: UserProfile['primaryGoal'],
   goalProfile?: GoalProfile | null,
 ): StepId[] {
-  if (scope === 'nutrition') {
-    return ['focus', 'goal', 'body', 'nutritionMode', 'planIntensity', 'diet'];
-  }
-  const running = isRunningGoal(trainingGoal);
   const race = isRunRaceGoal(trainingGoal);
-  const goalAlreadyChoseTraining = Boolean(goalProfile);
-  const shouldChooseTrainingGoal = !goalAlreadyChoseTraining && (primaryGoal === 'improve_running' || primaryGoal === 'improve_fitness' || primaryGoal === 'gain_muscle');
   const hasDays = Boolean(goalProfile?.availableTrainingDays);
-  const hasExperience = Boolean(goalProfile?.experienceLevel);
-  const hasWeeklyKm = Boolean(goalProfile?.currentWeeklyKm);
-  const hasLongestRun = Boolean(goalProfile?.longestRecentRunKm);
-  const hasRunsPerWeek = Boolean(goalProfile?.runsPerWeek);
-  // Booleans: `false` is a valid answer, so check "answered" via undefined, not truthiness.
-  const hasRunLimits = goalProfile?.injuryFlag !== undefined && goalProfile?.runWalkPreferred !== undefined;
   const hasRaceDate = Boolean(goalProfile?.raceDateISO && /^\d{4}-\d{2}-\d{2}$/.test(goalProfile.raceDateISO));
+
   const training: StepId[] = [
     'focus',
     'goal',
-    ...(shouldChooseTrainingGoal ? ['trainingGoal' as StepId] : []),
     ...(!hasDays ? ['sessions' as StepId] : []),
-    ...(!hasExperience ? ['experience' as StepId] : []),
-    ...(running ? [
-      ...(!hasWeeklyKm ? ['weeklyKm' as StepId] : []),
-      ...(!hasLongestRun ? ['longestRun' as StepId] : []),
-      ...(!hasRunsPerWeek ? ['runFrequency' as StepId] : []),
-      ...(!hasRunLimits ? ['runLimits' as StepId] : []),
-    ] : []),
-    ...(race ? [
-      ...(!hasRaceDate ? ['raceDate' as StepId] : []),
-      ...(!hasDays ? ['raceSchedule' as StepId] : []),
-      'raceFeasibility' as StepId,
-    ] : []),
+    'experience',
+    ...(race && !hasRaceDate ? ['raceDate' as StepId] : []),
   ];
   if (scope === 'training') return training;
-  return [...training, 'body', 'nutritionMode', 'planIntensity', 'diet'];
+  if (scope === 'nutrition') return ['focus', 'goal', 'body'];
+  return [...training, 'body'];
 }
 
 export function isAutoAdvanceStep(step: StepId): boolean {

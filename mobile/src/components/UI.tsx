@@ -17,8 +17,7 @@ export function Subtitle({ children }: PropsWithChildren) {
   return <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{children}</Text>;
 }
 
-// Big athletic numeral (Archivo Black) + small uppercase caption — the WHOOP-style
-// data read. Use for readiness, kcal, key stats.
+// Large system numeral + small caption for readiness, kcal, and key stats.
 export function Stat({ value, label, color, align = 'center' }: { value: React.ReactNode; label?: string; color?: string; align?: 'center' | 'left' }) {
   const { colors, fonts } = useTheme();
   return (
@@ -100,14 +99,10 @@ export function Button({
         styles.button,
         variant === 'primary' && {
           backgroundColor: colors.accent,
-          shadowColor: colors.accent,
-          shadowOpacity: 0.35,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 4 },
         },
         variant === 'secondary' && {
-          backgroundColor: 'transparent',
-          borderWidth: 1.5,
+          backgroundColor: colors.bgElev,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
         },
         variant === 'danger' && { backgroundColor: colors.red },
@@ -135,7 +130,7 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
         styles.pill,
         {
           borderColor: active ? colors.accent : colors.border,
-          backgroundColor: active ? colors.accent : colors.bgElev,
+          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
         },
       ]}
     >
@@ -143,7 +138,7 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
         style={[
           styles.pillText,
           {
-            color: active ? colors.accentText : colors.muted,
+            color: active ? colors.accent : colors.muted,
             fontFamily: fonts.bold,
           },
         ]}
@@ -161,11 +156,13 @@ export function Choice({
   title,
   subtitle,
   onPress,
+  compact,
 }: {
   active?: boolean;
   title: string;
   subtitle?: string;
   onPress?: () => void;
+  compact?: boolean;
 }) {
   const { colors, fonts } = useTheme();
   return (
@@ -176,17 +173,18 @@ export function Choice({
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
+        compact && styles.choiceCompact,
         {
           borderColor: active ? colors.accent : colors.border,
-          backgroundColor: active ? colors.accent + '14' : colors.bgElev,
+          backgroundColor: active ? colors.accent + '14' : colors.card,
         },
         pressed && { opacity: 0.9 },
       ]}
     >
       <View style={styles.choiceBody}>
-        <Text style={[styles.choiceTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
+        <Text style={[styles.choiceTitle, compact && styles.choiceTitleCompact, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
         {subtitle ? (
-          <Text style={[styles.choiceSub, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
+          <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
         ) : null}
       </View>
       <View
@@ -317,7 +315,7 @@ export function CoachInsightCard({
   const { colors, fonts } = useTheme();
   const color = accent ?? colors.accent;
   return (
-    <Card style={[styles.coachCard, { borderColor: color }]}>
+    <Card style={[styles.coachCard, { borderColor: `${color}4D` }]}>
       <Text style={[styles.coachTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
       <Text style={[styles.coachBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
       {warnings.map((warning, index) => (
@@ -359,8 +357,8 @@ export function NutritionTargetCard({
   return (
     <Card>
       <View style={styles.cardTitleRow}>
-        <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{label}</Text>
-        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent + '44', backgroundColor: colors.accent + '12', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
+        <SectionHeader title={label} />
+        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent, backgroundColor: colors.accent + '12', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
       </View>
       <View style={styles.kcalRow}>
         <Text style={[styles.kcalValue, { color: colors.ink, fontFamily: fonts.number }]}>{kcal}</Text>
@@ -508,14 +506,14 @@ export function PlanDayCard({
   let borderColor = colors.hairline;
 
   if (selected) {
-    backgroundColor = colors.accent + '18';
+    backgroundColor = colors.accent + '14';
     borderColor = colors.accent;
   } else if (isRest) {
     backgroundColor = colors.bgElev;
     borderColor = colors.hairline;
   } else if (isLongRun) {
-    backgroundColor = colors.accent + '06';
-    borderColor = colors.accent + '60';
+    backgroundColor = colors.accent + '0F';
+    borderColor = colors.border;
   }
 
   return (
@@ -648,7 +646,7 @@ export function StatusPill({
 }) {
   const { colors, fonts } = useTheme();
   const toneColor =
-    tone === 'ready' ? colors.accent :
+    tone === 'ready' ? colors.green :
     tone === 'caution' ? colors.orange :
     tone === 'risk' ? colors.red :
     tone === 'info' ? colors.blue :
@@ -660,7 +658,7 @@ export function StatusPill({
         {
           color: tone === 'neutral' ? colors.muted : toneColor,
           borderColor: toneColor,
-          backgroundColor: tone === 'neutral' ? colors.bgElev : toneColor + '16',
+          backgroundColor: tone === 'neutral' ? colors.bgElev : toneColor + '12',
           fontFamily: fonts.bold,
         },
       ]}
@@ -691,9 +689,9 @@ export function SegmentedControl<T extends string>({
             accessibilityLabel={option.label}
             accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
-            style={[styles.segment, active && { backgroundColor: colors.accent }]}
+            style={[styles.segment, active && { backgroundColor: colors.accent + '16' }]}
           >
-            <Text style={[styles.segmentText, { color: active ? colors.accentText : colors.muted, fontFamily: fonts.bold }]}>
+            <Text style={[styles.segmentText, { color: active ? colors.accent : colors.muted, fontFamily: fonts.bold }]}>
               {option.label}
             </Text>
           </Pressable>
@@ -915,88 +913,90 @@ export function FadeInView({
 }
 
 const styles = StyleSheet.create({
-  h1: { fontSize: 24, letterSpacing: 0, lineHeight: 29 },
-  subtitle: { fontSize: 14, lineHeight: 20 },
-  statValue: { fontSize: typography.metric, letterSpacing: 0, lineHeight: 36 },
-  statLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, marginTop: 2 },
+  h1: { fontSize: 32, fontWeight: '800', letterSpacing: 0, lineHeight: 38 },
+  subtitle: { fontSize: 15, lineHeight: 22 },
+  statValue: { fontSize: 42, fontWeight: '700', letterSpacing: 0, lineHeight: 48 },
+  statLabel: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0, marginTop: 2 },
   card: {
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 12,
-    // soft depth (renders on iOS + web via RNW; elevation for Android)
-    shadowOpacity: 1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
-  label: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4 },
-  field: { minHeight: 50, borderWidth: 0.5, borderRadius: 12, paddingHorizontal: 14, fontSize: typography.bodyLarge },
-  button: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  label: { fontSize: 12, fontWeight: '600', lineHeight: 16, letterSpacing: 0 },
+  field: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 14, fontSize: typography.bodyLarge },
+  button: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   disabled: { opacity: 0.45 },
-  buttonText: { fontSize: 15.5, letterSpacing: 0.2 },
-  pill: { minHeight: 42, borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  pillText: { fontSize: 14 },
-  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16 },
+  buttonText: { fontSize: 15.5, fontWeight: '700', letterSpacing: 0 },
+  pill: { minHeight: 42, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  pillText: { fontSize: 14, fontWeight: '600' },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16 },
+  choiceCompact: { gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
   choiceBody: { flex: 1, gap: 2 },
-  choiceTitle: { fontSize: 16.5, letterSpacing: -0.2 },
+  choiceTitle: { fontSize: 16.5, fontWeight: '600', letterSpacing: 0 },
+  choiceTitleCompact: { fontSize: 15.5, lineHeight: 20 },
   choiceSub: { fontSize: 13, lineHeight: 18 },
-  choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
+  choiceSubCompact: { fontSize: 12.5, lineHeight: 17 },
+  choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5 },
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   screenHeaderText: { flex: 1, gap: 3 },
   screenHeaderAction: { alignItems: 'flex-end' },
-  screenHeaderBack: { width: 40, height: 40, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  eyebrow: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1 },
-  screenTitle: { fontSize: typography.screenTitle, lineHeight: 27, letterSpacing: 0 },
+  screenHeaderBack: { width: 40, height: 40, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 0 },
+  screenTitle: { fontSize: typography.screenTitle, fontWeight: '800', lineHeight: 38, letterSpacing: 0 },
   screenSubtitle: { fontSize: typography.body, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  sectionTitle: { fontSize: typography.subhead, lineHeight: 17, textTransform: 'uppercase', letterSpacing: 0.6 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metricCard: { flex: 1, minWidth: '47%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
-  metricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.7 },
+  metricLabel: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0 },
   metricLabelCompact: { fontSize: 9, letterSpacing: 0.2 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  metricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },
-  metricValueCompact: { fontSize: 18, lineHeight: 22 },
-  metricUnit: { fontSize: 11, marginBottom: 4 },
+  metricValue: { fontSize: 25, fontWeight: '700', lineHeight: 30, letterSpacing: 0 },
+  metricValueCompact: { fontSize: 20, lineHeight: 25 },
+  metricUnit: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   metricDetail: { fontSize: 11, lineHeight: 15 },
-  scoreValue: { fontSize: typography.heroMetric, lineHeight: 46, letterSpacing: 0 },
-  scoreLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8 },
-  coachCard: { borderWidth: 1.5 },
-  coachTitle: { fontSize: typography.title, lineHeight: 22 },
+  scoreValue: { fontSize: typography.metric, fontWeight: '700', lineHeight: 46, letterSpacing: 0 },
+  scoreLabel: { fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
+  coachCard: { borderWidth: StyleSheet.hairlineWidth },
+  coachTitle: { fontSize: typography.title, fontWeight: '700', lineHeight: 25 },
   coachBody: { fontSize: 14, lineHeight: 20 },
-  warningLine: { fontSize: 12, lineHeight: 17 },
-  trainingMeta: { fontSize: 18, lineHeight: 23 },
+  warningLine: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
+  trainingMeta: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
   trainingNote: { fontSize: 14, lineHeight: 20 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  cardBadge: { overflow: 'hidden', borderWidth: 0.5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7 },
-  planDayCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 14, gap: 12 },
+  cardBadge: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
+  planDayCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 12 },
   planDayHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  planDayTitle: { fontSize: 16, lineHeight: 21 },
+  planDayTitle: { fontSize: 16, fontWeight: '700', lineHeight: 21 },
   planDaySubtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   markerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'flex-end' },
-  marker: { fontSize: 10, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3, textTransform: 'uppercase' },
+  marker: { fontSize: 10, fontWeight: '600', borderRadius: 999, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
   quickAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1, minWidth: '47%' },
-  quickActionText: { fontSize: 13, lineHeight: 17 },
+  quickActionText: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
   actionIconButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1 },
   actionIconText: { fontSize: 13, lineHeight: 17 },
-  statusPill: { alignSelf: 'flex-start', fontSize: 10, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.7, borderWidth: 0.5, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
+  statusPill: { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
   segmented: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 4, gap: 4 },
   segment: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  segmentText: { fontSize: 13, lineHeight: 17, textAlign: 'center' },
+  segmentText: { fontSize: 13, fontWeight: '600', lineHeight: 17, textAlign: 'center' },
   settingRow: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 10 },
   settingText: { flex: 1, gap: 3 },
-  settingTitle: { fontSize: 15, lineHeight: 20 },
+  settingTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
   settingBody: { fontSize: 13, lineHeight: 18 },
-  settingMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  settingMeta: { fontSize: 12, lineHeight: 16, letterSpacing: 0, marginTop: 2 },
   settingAction: { alignSelf: 'flex-start' },
   settingChildren: { gap: 8 },
   sourceCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 8 },
   sourceCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
-  sourceCardTitle: { flex: 1, fontSize: 15, lineHeight: 20 },
+  sourceCardTitle: { flex: 1, fontSize: 15, fontWeight: '700', lineHeight: 20 },
   sourceCardBody: { fontSize: 13, lineHeight: 18 },
-  sourceCardMeta: { fontSize: 11, lineHeight: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sourceCardMeta: { fontSize: 12, lineHeight: 16, letterSpacing: 0 },
   sourceCardError: { fontSize: 12, lineHeight: 17 },
   sourceCardAction: { marginTop: 2 },
   sectionCardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
   collapsibleLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.7 },
   collapsibleBody: { gap: 6 },
   stateCard: { alignItems: 'stretch' },
-  stateTitle: { fontSize: 17, lineHeight: 23, textAlign: 'center' },
+  stateTitle: { fontSize: 17, fontWeight: '700', lineHeight: 23, textAlign: 'center' },
   stateBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   skeletonRow: { gap: 10, width: '100%' },
   skeletonBlock: { height: 88, borderRadius: 16, opacity: 0.8 },

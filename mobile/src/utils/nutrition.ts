@@ -14,6 +14,7 @@ import type {
   ShoppingListGroup,
 } from '../types';
 import { resolveCoachScope, scopeHasNutrition } from '../types';
+import type { Locale } from '../lib/i18n';
 
 const SAFETY = {
   MIN_KCAL_FEMALE: 1200,
@@ -42,8 +43,19 @@ export const DEFAULT_PROFILE: UserProfile = {
   units: 'metric',
 };
 
-/** Human-readable Czech label for a primary goal, used for UI display. */
-export function primaryGoalLabel(goal: PrimaryGoal): string {
+/** Human-readable label for a primary goal, used in prompts and fallback text. */
+export function primaryGoalLabel(goal: PrimaryGoal, locale: Locale = 'en'): string {
+  if (locale === 'en') {
+    switch (goal) {
+      case 'lose_fat':           return 'Fat loss';
+      case 'maintain_weight':    return 'Maintain weight';
+      case 'gain_muscle':        return 'Build muscle';
+      case 'improve_fitness':    return 'Improve fitness';
+      case 'improve_running':    return 'Improve running';
+      case 'improve_recovery':   return 'Improve recovery';
+      case 'build_consistency':  return 'Build consistency';
+    }
+  }
   switch (goal) {
     case 'lose_fat':           return 'Hubnutí tuku';
     case 'maintain_weight':    return 'Udržení váhy';
@@ -106,7 +118,7 @@ export function assessProfileSafety(profile: Pick<UserProfile, 'age' | 'height' 
   return { allowed: true, level: 'ok' as const, bmi };
 }
 
-export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'cs'): { macros: Macros; adjustment: DailyAdjustment } {
+export function adjustForDay(baseline: Macros, session: TrainingSession | null, profile: Pick<UserProfile, 'weight'>, locale: string = 'en'): { macros: Macros; adjustment: DailyAdjustment } {
   const en = locale === 'en';
   if (!session || session.kind === 'rest' || session.intensity === 'rest') {
     const carbs = Math.max(0, Math.round(baseline.carbs * 0.9));
@@ -241,46 +253,40 @@ export function remainingMacros(macros: Macros, items: FoodLogItem[]) {
   };
 }
 
-const CONFIDENCE_LEVELS_CS = ['nízká', 'střední', 'vysoká'];
-const CONFIDENCE_LEVELS_EN = ['low', 'medium', 'high'];
-
-export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: string = 'cs'): FoodEstimate {
-  const isEn = locale === 'en';
-  const levels = isEn ? CONFIDENCE_LEVELS_EN : CONFIDENCE_LEVELS_CS;
+export function normalizeFoodEstimate(raw: Partial<FoodEstimate>, locale: Locale = 'en'): FoodEstimate {
   return {
-    foodName: String(raw.foodName || (isEn ? 'Unknown food' : 'Neznámé jídlo')).slice(0, 80),
-    portionGuess: String(raw.portionGuess || (isEn ? 'Approximate portion' : 'Orientační porce')).slice(0, 120),
+    foodName: String(raw.foodName || (locale === 'en' ? 'Unknown food' : 'Neznámé jídlo')).slice(0, 80),
+    portionGuess: String(raw.portionGuess || (locale === 'en' ? 'Estimated portion' : 'Orientační porce')).slice(0, 120),
     kcal: clampInt(raw.kcal, 0, 3000),
     protein: clampInt(raw.protein, 0, 250),
     carbs: clampInt(raw.carbs, 0, 500),
     fat: clampInt(raw.fat, 0, 250),
-    confidence: [...CONFIDENCE_LEVELS_CS, ...CONFIDENCE_LEVELS_EN].includes(String(raw.confidence)) ? String(raw.confidence) : levels[1],
-    note: String(raw.note || (isEn ? 'This is an approximate estimate. Adjust the values to match the actual portion.' : 'Jde o orientační odhad. Uprav hodnoty podle skutečné porce.')).slice(0, 180),
+    confidence: normalizeConfidence(raw.confidence, locale),
+    note: String(raw.note || (locale === 'en' ? 'This is an estimate. Adjust values to match the actual portion.' : 'Jde o orientační odhad. Uprav hodnoty podle skutečné porce.')).slice(0, 180),
     plannedMealKey: raw.plannedMealKey ? String(raw.plannedMealKey).slice(0, 160) : undefined,
   };
 }
 
-export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, locale: string = 'cs'): Meal {
-  const isEn = locale === 'en';
+export function normalizeMeal(raw: Partial<Meal> = {}, fallbackType: string, locale: Locale = 'en'): Meal {
   const protein = clampInt(raw.protein, 0, 250);
   const carbs = clampInt(raw.carbs, 0, 500);
   const fat = clampInt(raw.fat, 0, 250);
   return {
     mealType: String(raw.mealType || fallbackType),
-    name: String(raw.name || (isEn ? 'Unnamed meal' : 'Jídlo bez názvu')),
+    name: String(raw.name || (locale === 'en' ? 'Untitled meal' : 'Jídlo bez názvu')),
     kcal: clampInt(raw.kcal || protein * 4 + carbs * 4 + fat * 9, 0, 3000),
     protein,
     carbs,
     fat,
     fiber: clampInt(raw.fiber, 0, 80),
     prepTime: clampInt(raw.prepTime || 15, 1, 180),
-    difficulty: String(raw.difficulty || (isEn ? 'Easy' : 'Jednoduchá')),
+    difficulty: String(raw.difficulty || (locale === 'en' ? 'Simple' : 'Jednoduchá')),
     ingredients: Array.isArray(raw.ingredients) ? raw.ingredients.map(String) : [],
     steps: Array.isArray(raw.steps) ? raw.steps.map(String) : [],
   };
 }
 
-export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCount: number): MealPlanValidationResult {
+export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCount: number, locale: Locale = 'en'): MealPlanValidationResult {
   const errors: string[] = [];
   const totals = meals.reduce((sum, meal) => ({
     kcal: sum.kcal + safeNumber(meal.kcal),
@@ -290,38 +296,43 @@ export function validateMealPlan(meals: Meal[], macros: Macros, expectedMealCoun
   }), emptyTotals());
 
   if (!Array.isArray(meals) || meals.length !== expectedMealCount) {
-    errors.push(`AI vrátila ${meals.length} jídel místo ${expectedMealCount}.`);
+    errors.push(locale === 'en' ? `AI returned ${meals.length} meals instead of ${expectedMealCount}.` : `AI vrátila ${meals.length} jídel místo ${expectedMealCount}.`);
   }
 
   meals.forEach((meal, index) => {
-    const label = meal.mealType || `Jídlo ${index + 1}`;
-    if (!meal.name || meal.name === 'Jídlo bez názvu') errors.push(`${label}: chybí název.`);
+    const untitled = locale === 'en' ? 'Untitled meal' : 'Jídlo bez názvu';
+    const label = meal.mealType || (locale === 'en' ? `Meal ${index + 1}` : `Jídlo ${index + 1}`);
+    if (!meal.name || meal.name === untitled) errors.push(locale === 'en' ? `${label}: missing name.` : `${label}: chybí název.`);
     if (!isPositiveFinite(meal.kcal) || !isPositiveFinite(meal.protein) || !isPositiveFinite(meal.carbs) || !isPositiveFinite(meal.fat)) {
-      errors.push(`${label}: makra nejsou kompletní.`);
+      errors.push(locale === 'en' ? `${label}: macros are incomplete.` : `${label}: makra nejsou kompletní.`);
     }
     if (!Array.isArray(meal.ingredients) || meal.ingredients.filter(Boolean).length === 0) {
-      errors.push(`${label}: chybí suroviny.`);
+      errors.push(locale === 'en' ? `${label}: missing ingredients.` : `${label}: chybí suroviny.`);
     }
     if (!Array.isArray(meal.steps) || meal.steps.filter(Boolean).length === 0) {
-      errors.push(`${label}: chybí postup.`);
+      errors.push(locale === 'en' ? `${label}: missing steps.` : `${label}: chybí postup.`);
     }
     // Per-meal internal macro consistency: kcal ≈ p*4 + c*4 + f*9 (±15 kcal)
     const expectedKcal = safeNumber(meal.protein) * 4 + safeNumber(meal.carbs) * 4 + safeNumber(meal.fat) * 9;
     if (isPositiveFinite(meal.kcal) && Math.abs(safeNumber(meal.kcal) - expectedKcal) > 15) {
-      errors.push(`${label}: kcal ${meal.kcal} neodpovídá makrům (${Math.round(expectedKcal)} z B/S/T).`);
+      errors.push(locale === 'en'
+        ? `${label}: kcal ${meal.kcal} does not match macros (${Math.round(expectedKcal)} from P/C/F).`
+        : `${label}: kcal ${meal.kcal} neodpovídá makrům (${Math.round(expectedKcal)} z B/S/T).`);
     }
   });
 
   // Daily kcal tolerance: 7% (was 30% — AI was free to invent ±600 kcal)
   const tolerance = Math.max(100, Math.round(macros.kcal * 0.07));
   if (Math.abs(totals.kcal - macros.kcal) > tolerance) {
-    errors.push(`Denní kalorie nesedí na cíl (${totals.kcal} vs. ${macros.kcal} kcal, povolená odchylka ±${tolerance}).`);
+    errors.push(locale === 'en'
+      ? `Daily calories miss the target (${totals.kcal} vs. ${macros.kcal} kcal, allowed tolerance ±${tolerance}).`
+      : `Denní kalorie nesedí na cíl (${totals.kcal} vs. ${macros.kcal} kcal, povolená odchylka ±${tolerance}).`);
   }
 
   return { valid: errors.length === 0, errors, totals };
 }
 
-export function mealToFoodEstimate(meal: Meal, locale: string = 'cs'): FoodEstimate {
+export function mealToFoodEstimate(meal: Meal, locale: Locale = 'en'): FoodEstimate {
   return normalizeFoodEstimate({
     foodName: meal.name,
     portionGuess: meal.mealType,
@@ -339,18 +350,18 @@ export function plannedMealKey(meal: Pick<Meal, 'mealType' | 'name'>) {
   return `${meal.mealType.trim().toLowerCase()}::${meal.name.trim().toLowerCase()}`;
 }
 
-export function buildShoppingList(meals: Meal[]): ShoppingListGroup[] {
+export function buildShoppingList(meals: Meal[], locale: Locale = 'en'): ShoppingListGroup[] {
   const groups = new Map<string, Map<string, string>>();
   meals.flatMap(meal => meal.ingredients || []).forEach(ingredient => {
     const item = String(ingredient).trim();
     if (!item) return;
-    const category = categorizeIngredient(item);
+    const category = categorizeIngredient(item, locale);
     const key = item.toLocaleLowerCase('cs-CZ');
     if (!groups.has(category)) groups.set(category, new Map());
     groups.get(category)?.set(key, item);
   });
 
-  return SHOPPING_CATEGORIES
+  return shoppingCategories(locale)
     .map(category => ({
       category,
       items: Array.from(groups.get(category)?.values() || []).sort((a, b) => a.localeCompare(b, 'cs-CZ')),
@@ -387,15 +398,43 @@ const SHOPPING_CATEGORIES = [
   'Ostatní',
 ];
 
-function categorizeIngredient(ingredient: string) {
+const SHOPPING_CATEGORIES_EN = [
+  'Fruit & vegetables',
+  'Dairy & eggs',
+  'Meat & fish',
+  'Sides & grains',
+  'Legumes',
+  'Fats, nuts & seeds',
+  'Other',
+];
+
+function shoppingCategories(locale: Locale) {
+  return locale === 'en' ? SHOPPING_CATEGORIES_EN : SHOPPING_CATEGORIES;
+}
+
+function categoryAt(index: number, locale: Locale) {
+  return shoppingCategories(locale)[index];
+}
+
+function categorizeIngredient(ingredient: string, locale: Locale = 'en') {
   const text = ingredient.toLocaleLowerCase('cs-CZ');
-  if (/(jabl|banán|banan|avok|rajč|rajc|paprik|okurk|salát|salat|špenát|spenat|brokolic|mrkev|cibul|česnek|cesnek|ovoce|zelenin|brambor)/.test(text)) return 'Ovoce a zelenina';
-  if (/(jogurt|tvaroh|mlék|mlek|sýr|syr|vejce|kefír|kefir|skyr|mozzarella|cottage)/.test(text)) return 'Mléčné a vejce';
-  if (/(kuř|kur|hověz|hovez|krůt|krut|losos|tuňák|tunak|tresk|šunka|sunka|maso|ryb|tofu|tempeh)/.test(text)) return 'Maso a ryby';
-  if (/(rýž|ryz|těst|test|oves|vločky|vlocky|pečiv|peciv|chléb|chleb|tortill|kuskus|bulgur|quinoa|mouka)/.test(text)) return 'Přílohy a obiloviny';
-  if (/(čočk|cock|fazole|cizr|hrách|hrach|luštěn)/.test(text)) return 'Luštěniny';
-  if (/(olej|ořech|orech|mandl|kešu|kesu|semín|semin|máslo|maslo|tahini|arašíd|arasid)/.test(text)) return 'Tuky, ořechy a semínka';
-  return 'Ostatní';
+  if (/(jabl|apple|banán|banan|banana|avok|avocado|rajč|rajc|tomato|paprik|pepper|okurk|cucumber|salát|salat|lettuce|spinach|špenát|spenat|broccoli|brokolic|mrkev|carrot|cibul|onion|česnek|cesnek|garlic|ovoce|fruit|zelenin|vegetable|brambor|potato)/.test(text)) return categoryAt(0, locale);
+  if (/(jogurt|yogurt|tvaroh|mlék|mlek|milk|sýr|syr|cheese|vejce|egg|kefír|kefir|skyr|mozzarella|cottage)/.test(text)) return categoryAt(1, locale);
+  if (/(kuř|kur|chicken|hověz|hovez|beef|krůt|krut|turkey|losos|salmon|tuňák|tunak|tuna|tresk|cod|šunka|sunka|ham|maso|meat|ryb|fish|tofu|tempeh)/.test(text)) return categoryAt(2, locale);
+  if (/(rýž|ryz|rice|těst|test|pasta|oves|oat|vločky|vlocky|pečiv|peciv|bread|chléb|chleb|tortill|kuskus|couscous|bulgur|quinoa|mouka|flour)/.test(text)) return categoryAt(3, locale);
+  if (/(čočk|cock|lentil|fazole|bean|cizr|chickpea|hrách|hrach|pea|luštěn|legume)/.test(text)) return categoryAt(4, locale);
+  if (/(olej|oil|ořech|orech|nut|mandl|almond|kešu|kesu|cashew|semín|semin|seed|máslo|maslo|butter|tahini|arašíd|arasid|peanut)/.test(text)) return categoryAt(5, locale);
+  return categoryAt(6, locale);
+}
+
+function normalizeConfidence(value: unknown, locale: Locale): string {
+  const raw = String(value || '').toLocaleLowerCase('cs-CZ');
+  const level =
+    ['nízká', 'nizka', 'low'].includes(raw) ? 'low' :
+    ['vysoká', 'vysoka', 'high'].includes(raw) ? 'high' :
+    'medium';
+  if (locale === 'en') return level;
+  return level === 'low' ? 'nízká' : level === 'high' ? 'vysoká' : 'střední';
 }
 
 function clampInt(value: unknown, min: number, max: number) {
@@ -524,7 +563,7 @@ export function isToday(dateKey: string): boolean {
   return dateKey === toDateKey(new Date());
 }
 
-export function formatDateLabel(dateKey: string, locale: string = 'cs'): string {
+export function formatDateLabel(dateKey: string, locale: string = 'en'): string {
   const today = toDateKey(new Date());
   
   const dToday = new Date();

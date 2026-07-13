@@ -4,8 +4,9 @@ import { buildAllergenRepairRequest, buildMealPlanRequest, buildSingleMealReques
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
 import { parseAllergensFromFreeText, validateMealsAgainstAllergens } from '../lib/nutrition/allergens';
 import { buildWeeklySummaryRequest, parseWeeklySummary, type WeeklySummary, type WeeklySummaryInput } from '../lib/ai/weeklySummary';
-import { parseMealPlanResponse, parseWeeklySummarySafe, parseStructuredCoachReply } from '../lib/ai/schemas';
+import { parseMealPlanResponse, parseWeeklySummarySafe, parseStructuredCoachReply, parseOnboardingCoachReply, type OnboardingCoachReplyParsed } from '../lib/ai/schemas';
 import { buildCoachChatRequest, type CoachChatContext } from '../lib/ai/coachChat';
+import { buildOnboardingCoachRequest, type OnboardingCoachMessage } from '../lib/ai/onboardingCoach';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
 import type { CoachMessage , CoachProposedAction } from '../types/coach';
 import type { Locale } from '../lib/i18n';
@@ -44,16 +45,16 @@ async function postJsonWithRetry<T>(path: string, body: unknown, locale: Locale 
   }
 }
 
-export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null, locale: Locale = 'cs'): Promise<Meal[]> {
+export async function generateMealPlan(profile: UserProfile, macros: Macros, session?: TrainingSession | null, locale: Locale = 'en'): Promise<Meal[]> {
   // First attempt. If the result fails validation, we re-prompt ONCE with the
   // concrete errors fed back (self-correction) before surfacing a hard error —
   // a single bad generation no longer breaks the core flow.
   try {
     let meals = await requestAndNormalizeMealPlan(profile, macros, session, undefined, locale);
-    let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length);
+    let validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length, locale);
     if (!validation.valid) {
       meals = await requestAndNormalizeMealPlan(profile, macros, session, validation.errors, locale);
-      validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length);
+      validation = validateMealPlan(meals, macros, namesForMealCount(profile.mealCount, locale).length, locale);
     }
     if (validation.valid) {
       return await repairAllergenViolations(meals, profile, session, locale);
@@ -72,7 +73,7 @@ async function requestAndNormalizeMealPlan(
   macros: Macros,
   session?: TrainingSession | null,
   repairErrors?: string[],
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): Promise<Meal[]> {
   const request = buildMealPlanRequest(profile, macros, session, repairErrors, locale);
   const data = await postJsonWithRetry<any>('/api/generate', request, locale);
@@ -94,7 +95,7 @@ async function repairAllergenViolations(
   meals: Meal[],
   profile: UserProfile,
   session?: TrainingSession | null,
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): Promise<Meal[]> {
   const allergens = parseAllergensFromFreeText(profile.dislikes);
   if (!allergens.length) return meals;
@@ -127,15 +128,14 @@ async function repairAllergenViolations(
       .join(' | ');
     throw new Error(
       locale === 'en'
-        ? `AI couldn't avoid your allergens (${stuckList}). Try again or adjust your profile preferences.`
+        ? `AI could not avoid your allergens (${stuckList}). Try again or adjust preferences in your profile.`
         : `AI nedokázala vyhnout se tvým alergenům (${stuckList}). Zkus to znovu nebo uprav preference v profilu.`,
     );
   }
   return repaired;
 }
 
-function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Locale = 'cs'): Meal[] {
-  const isEn = locale === 'en';
+function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Locale = 'en'): Meal[] {
   const names = namesForMealCount(profile.mealCount, locale);
   const weights = mealWeights(names.length);
   const protein = splitMacro(macros.protein, weights);
@@ -147,34 +147,23 @@ function buildFallbackMealPlan(profile: UserProfile, macros: Macros, locale: Loc
     const kcal = protein[index] * 4 + carbs[index] * 4 + fat[index] * 9;
     return {
       mealType,
-      name: isEn ? `${mealType} - simple backup plate` : `${mealType} - jednoduchý záložní talíř`,
+      name: locale === 'en' ? `${mealType} - simple fallback plate` : `${mealType} - jednoduchý záložní talíř`,
       kcal,
       protein: protein[index],
       carbs: carbs[index],
       fat: fat[index],
       fiber: fiber[index],
       prepTime: 15,
-      difficulty: isEn ? 'Easy' : 'Jednoduchá',
-      ingredients: isEn
-        ? [
-            `${protein[index]} g protein from a tolerated source`,
-            `${carbs[index]} g carbs from a regular side`,
-            `${fat[index]} g fat from a tolerated source`,
-          ]
-        : [
-            `${protein[index]} g bílkovin z tolerovaného zdroje`,
-            `${carbs[index]} g sacharidů z běžné přílohy`,
-            `${fat[index]} g tuků z tolerovaného zdroje`,
-          ],
-      steps: isEn
-        ? [
-            'Pick ingredients you know and tolerate well.',
-            'Portion according to the macro targets above and adjust the amounts in the app to match reality.',
-          ]
-        : [
-            'Zvol suroviny, které máš ověřené a snášíš.',
-            'Slož porci podle uvedených makro cílů a uprav gramáž v aplikaci podle reality.',
-          ],
+      difficulty: locale === 'en' ? 'Simple' : 'Jednoduchá',
+      ingredients: [
+        locale === 'en' ? `${protein[index]} g protein from a tolerated source` : `${protein[index]} g bílkovin z tolerovaného zdroje`,
+        locale === 'en' ? `${carbs[index]} g carbs from a common side` : `${carbs[index]} g sacharidů z běžné přílohy`,
+        locale === 'en' ? `${fat[index]} g fat from a tolerated source` : `${fat[index]} g tuků z tolerovaného zdroje`,
+      ],
+      steps: [
+        locale === 'en' ? 'Choose ingredients you know you tolerate.' : 'Zvol suroviny, které máš ověřené a snášíš.',
+        locale === 'en' ? 'Build the portion around these macro targets and adjust grams in the app if needed.' : 'Slož porci podle uvedených makro cílů a uprav gramáž v aplikaci podle reality.',
+      ],
     };
   });
 }
@@ -209,7 +198,7 @@ export async function regenerateMeal(opts: {
   otherMeals?: Meal[];
   locale?: Locale;
 }): Promise<Meal> {
-  const locale = opts.locale ?? 'cs';
+  const locale = opts.locale ?? 'en';
   const isEn = locale === 'en';
   const request = buildSingleMealRequest(opts);
   const data = await postJsonWithRetry<any>('/api/generate', request, locale);
@@ -255,7 +244,7 @@ export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<
   return summary;
 }
 
-export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'cs'): Promise<FoodEstimate> {
+export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'en'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType }, locale);
   if (data.estimate) return normalizeFoodEstimate(data.estimate, locale);
@@ -263,7 +252,7 @@ export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', loc
   return normalizeFoodEstimate(parseJson(text, locale), locale);
 }
 
-export async function exportAccountData(locale: Locale = 'cs') {
+export async function exportAccountData(locale: Locale = 'en') {
   const response = await fetch(`${apiBaseUrl}/api/export-data`, {
     headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
   });
@@ -274,7 +263,7 @@ export async function exportAccountData(locale: Locale = 'cs') {
   return data;
 }
 
-export async function deleteAccount(locale: Locale = 'cs') {
+export async function deleteAccount(locale: Locale = 'en') {
   const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
     method: 'DELETE',
     headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
@@ -311,14 +300,41 @@ export async function askCoach(opts: {
   return { reply: fallback, followups: [], actions: [] };
 }
 
+export async function askOnboardingCoach(opts: {
+  draft: UserProfile;
+  history: OnboardingCoachMessage[];
+  userText: string;
+  locale: Locale;
+  missingFields?: string[];
+}): Promise<OnboardingCoachReplyParsed> {
+  const request = buildOnboardingCoachRequest(opts);
+  try {
+    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = text ? parseOnboardingCoachReply(parseJson(text)) : null;
+    if (parsed) return parsed;
+  } catch {
+    // Fall through to deterministic onboarding fallback.
+  }
+
+  return {
+    reply: opts.locale === 'en'
+      ? "I couldn't read that reliably. Tell me in a simpler sentence, or pick one of the options below."
+      : 'Nedokázal jsem to teď spolehlivě přečíst. Napiš to prosím jednodušeji, nebo vyber jednu z možností níže.',
+    extracted: {},
+    confidence: 'low',
+    missingFields: [],
+  };
+}
+
 export async function callAiCoachProxy(request: { systemPrompt: string; prompt: string; maxTokens: number }): Promise<string> {
   const data = await postJsonWithRetry<any>('/api/generate', request);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No response from AI.');
+  if (!text) throw new Error('AI returned no text.');
   return text;
 }
 
-function parseJson(text: string, locale: Locale = 'cs') {
+function parseJson(text: string, locale: Locale = 'en') {
   const isEn = locale === 'en';
   if (!text) throw new Error(isEn ? 'No AI response.' : 'AI neodpověděla.');
   const cleaned = String(text).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
@@ -328,4 +344,3 @@ function parseJson(text: string, locale: Locale = 'cs') {
     throw new Error(isEn ? 'Could not parse the AI response.' : 'Odpověď AI se nepodařilo zpracovat.');
   }
 }
-

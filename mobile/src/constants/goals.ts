@@ -70,25 +70,18 @@ export function trainingGoalsFor(primaryGoal: PrimaryGoal): TrainingGoalOption[]
     { value: 'run_5k', labelKey: 'onb.tgRun5k' },
     { value: 'run_10k', labelKey: 'onb.tgRun10k' },
     { value: 'half_marathon', labelKey: 'onb.tgHalf' },
-    { value: 'marathon', labelKey: 'onb.tgMarathon' },
   ];
   if (primaryGoal === 'gain_muscle') return [
     { value: 'strength_basics', labelKey: 'onb.tgStrengthBasics' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitnessAlt' },
   ];
   if (primaryGoal === 'improve_fitness') return [
-    { value: 'play_sport', labelKey: 'onb.tgPlaySport' },
-    { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
-    { value: 'hyrox', labelKey: 'onb.tgHyrox' },
-    { value: 'sprint_triathlon', labelKey: 'onb.tgSprintTri' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
   ];
   return [
-    { value: 'play_sport', labelKey: 'onb.tgPlaySport' },
     { value: 'walking_more', labelKey: 'onb.tgWalking' },
     { value: 'couch_to_5k', labelKey: 'onb.tgCouch' },
     { value: 'general_fitness', labelKey: 'onb.tgGeneralFitness' },
-    { value: 'sports_conditioning', labelKey: 'onb.tgSportsConditioning' },
   ];
 }
 

@@ -15,7 +15,7 @@ function workout(opts: Partial<WorkoutSummary> & Pick<WorkoutSummary, 'kind' | '
 
 describe('computeFueling — easy / light → no explicit fuel', () => {
   it('walk 30 min → no pre/intra/post', () => {
-    const r = computeFueling({ workout: workout({ kind: 'walk', durationMinutes: 30 }), weightKg: 75 });
+    const r = computeFueling({ workout: workout({ kind: 'walk', durationMinutes: 30 }), weightKg: 75, locale: 'cs' });
     expect(r.pre).toBeNull();
     expect(r.intra).toBeNull();
     expect(r.post).toBeNull();

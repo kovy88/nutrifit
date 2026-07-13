@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTrenr } from '../context/TrenrContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   loadCoachThreadsByDate,
   saveCoachThreadForDate,
 } from '../services/storage';
 import type { CoachMemory, CoachMessage, CoachThreadRecord } from '../types/coach';
+import { getProfileGoalSummary } from '../lib/profile/profile-labels';
 
 function defaultMemory(goalSummary: string): CoachMemory {
   return { goalSummary, updatedAt: new Date().toISOString() };
@@ -12,7 +14,8 @@ function defaultMemory(goalSummary: string): CoachMemory {
 
 export function useCoachThread(date: string, memory?: CoachMemory) {
   const { profile } = useTrenr();
-  const goalSummary = profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness';
+  const { t } = useLanguage();
+  const goalSummary = profile ? getProfileGoalSummary(profile, t) : t('trainingGoal.general_fitness');
   const fallbackMemory = useMemo(() => memory ?? defaultMemory(goalSummary), [goalSummary, memory]);
   const [thread, setThread] = useState<CoachThreadRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);

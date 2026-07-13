@@ -22,6 +22,7 @@ describe('buildCoachChatRequest', () => {
     expect(r.systemPrompt).toMatch(/NEVER invent/i);
     expect(r.systemPrompt).toMatch(/JSON/);
     expect(r.systemPrompt).toMatch(/medical/i);
+    expect(r.systemPrompt).toMatch(/Do not repeat stored enum ids/i);
   });
 
   it('embeds the deterministic plan context and the question', () => {
@@ -30,6 +31,14 @@ describe('buildCoachChatRequest', () => {
     expect(r.prompt).toContain('2300 kcal');
     expect(r.prompt).toContain('lose_fat + run_10k');
     expect(r.prompt).toContain('Co k obědu?');
+  });
+
+  it('humanizes readiness and intensity labels in the model context', () => {
+    const r = buildCoachChatRequest({ context, history: [], question: 'Mám dnes běžet?', locale: 'cs' });
+    expect(r.prompt).toContain('Readiness: 58/100 (steady)');
+    expect(r.prompt).toContain('Today\'s session: Lehký běh (40 min, light)');
+    expect(r.prompt).not.toContain('Readiness: 58/100 (medium)');
+    expect(r.prompt).not.toContain('Today\'s session: Lehký běh (40 min, easy)');
   });
 
   it('includes main sport + next match context when provided', () => {

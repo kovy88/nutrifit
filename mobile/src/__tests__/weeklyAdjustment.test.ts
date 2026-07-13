@@ -17,7 +17,7 @@ function checkIn(weekStartISO: string, weightKg: number, overrides: Partial<Week
 
 describe('planWeeklyAdjustment — empty / single input', () => {
   it('empty check-ins → no adjustment, neutral reason', () => {
-    const r = planWeeklyAdjustment({ goalKind: 'fat_loss', recentCheckIns: [] });
+    const r = planWeeklyAdjustment({ goalKind: 'fat_loss', recentCheckIns: [], locale: 'cs' });
     expect(r.kcalDelta).toBe(0);
     expect(r.reason).toMatch(/dost dat|drž/i);
   });
@@ -39,6 +39,7 @@ describe('planWeeklyAdjustment — fat_loss goal', () => {
         checkIn('2026-05-04', 80),
         checkIn('2026-05-11', 80),
       ],
+      locale: 'cs',
     });
     expect(r.kcalDelta).toBe(-150);
     expect(r.reason).toContain('stagnuje');
@@ -88,6 +89,7 @@ describe('planWeeklyAdjustment — muscle_gain goal', () => {
         checkIn('2026-05-04', 80),
         checkIn('2026-05-11', 80.05),
       ],
+      locale: 'cs',
     });
     expect(r.kcalDelta).toBe(150);
     expect(r.reason).toContain('neroste');
@@ -164,6 +166,7 @@ describe('planWeeklyAdjustment — adherence + subjective signals', () => {
         checkIn('2026-04-27', 80.2, { plannedSessions: 4, completedSessions: 4 }),
         checkIn('2026-05-04', 80.4, { plannedSessions: 4, completedSessions: 1 }),
       ],
+      locale: 'cs',
     });
     expect(r.warnings.some(w => /trénink|objem|polovinu/i.test(w))).toBe(true);
   });
@@ -190,6 +193,7 @@ describe('planWeeklyAdjustment — chronic low energy auto-switch', () => {
         checkIn('2026-04-27', 80, { energyLevel: 2 }),
         checkIn('2026-05-04', 80, { energyLevel: 1 }),
       ],
+      locale: 'cs',
     });
     expect(r.adjustedGoalKind).toBe('maintenance');
     expect(r.kcalDelta).toBe(0); // override handles it
@@ -217,6 +221,7 @@ describe('planWeeklyAdjustment — chronic hunger', () => {
         checkIn('2026-04-27', 80, { hungerLevel: 4 }),
         checkIn('2026-05-04', 80, { hungerLevel: 5 }),
       ],
+      locale: 'cs',
     });
     expect(r.warnings.some(w => /hlad|bílkovin|vláknin/i.test(w))).toBe(true);
   });

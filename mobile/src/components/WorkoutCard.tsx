@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
-import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
+import { formatHealthSourceLabel } from '../lib/ui/health-source-labels';
+import type { WorkoutSummary, WorkoutKind } from '../lib/health';
 
 const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   run: 'fitness-outline',
@@ -23,23 +24,6 @@ const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   other: 'ellipse-outline',
 };
 
-const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   'Apple',
-  apple_watch:    'Watch',
-  health_connect: 'HC',
-  google_fit:     'GFit',
-  strava:         'Strava',
-  whoop:          'Whoop',
-  garmin:         'Garmin',
-  polar:          'Polar',
-  oura:           'Oura',
-  fitbit:         'Fitbit',
-  zepp:           'Zepp',
-  suunto:         'Suunto',
-  mock:           'Mock',
-  manual:         'Manual',
-};
-
 export type WorkoutCardProps = {
   workout: WorkoutSummary;
   onPress?: () => void;
@@ -47,10 +31,10 @@ export type WorkoutCardProps = {
 
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const icon = KIND_ICON[workout.kind];
   const kindLabel = t(`wkind.${workout.kind}` as TranslationKey);
-  const sourceBadge = SOURCE_LABEL[workout.source] || workout.source;
+  const sourceBadge = formatHealthSourceLabel(workout.source, locale, 'compact');
   const dateLabel = formatDateTime(workout.startedAt, t);
 
   return (
@@ -63,14 +47,14 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       ]}
     >
       <View style={styles.headerRow}>
-        <View style={[styles.iconWrap, { backgroundColor: colors.accent + '14' }]}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.accent + '10' }]}>
           <Ionicons name={icon} size={22} color={colors.accent} />
         </View>
         <View style={styles.titleCol}>
           <Text style={[styles.title, { color: colors.ink }]}>{kindLabel}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>{dateLabel}</Text>
         </View>
-        <Text style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
+        <Text numberOfLines={1} style={[styles.sourceBadge, { color: colors.muted, borderColor: colors.border, backgroundColor: colors.bgElev }]}>
           {sourceBadge}
         </Text>
       </View>
@@ -115,14 +99,14 @@ function formatDateTime(iso: string, t: Translate): string {
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     padding: 14,
     gap: 10,
-    shadowOpacity: 1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -134,12 +118,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
-    letterSpacing: 0.3,
+    letterSpacing: 0,
+    maxWidth: 92,
   },
   metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metric: { minWidth: 76, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
-  metricLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  metric: { minWidth: 76, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
+  metricLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0 },
   metricValue: { fontSize: 14, fontWeight: '700', marginTop: 2 },
 });

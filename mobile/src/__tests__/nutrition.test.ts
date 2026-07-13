@@ -51,7 +51,7 @@ describe('nutrition utilities', () => {
   });
 
   it('normalizes AI food estimates', () => {
-    const estimate = normalizeFoodEstimate({ foodName: '', kcal: 9999, confidence: 'maybe' });
+    const estimate = normalizeFoodEstimate({ foodName: '', kcal: 9999, confidence: 'maybe' }, 'cs');
     expect(estimate.foodName).toBe('Neznámé jídlo');
     expect(estimate.kcal).toBe(3000);
     expect(estimate.confidence).toBe('střední');
@@ -114,7 +114,7 @@ describe('nutrition utilities', () => {
 
   it('rejects missing meals and incomplete meal content', () => {
     const macros = calculateMacros(DEFAULT_PROFILE);
-    const result = validateMealPlan([{ ...validMeals()[0], ingredients: [], steps: [] }], macros, 2);
+    const result = validateMealPlan([{ ...validMeals()[0], ingredients: [], steps: [] }], macros, 2, 'cs');
     expect(result.valid).toBe(false);
     expect(result.errors.join(' ')).toContain('místo 2');
     expect(result.errors.join(' ')).toContain('chybí suroviny');
@@ -123,11 +123,11 @@ describe('nutrition utilities', () => {
 
   it('rejects non-positive macro values and extreme kcal mismatch', () => {
     const macros = { ...calculateMacros(DEFAULT_PROFILE), kcal: 2200 };
-    const brokenMacros = validateMealPlan([{ ...validMeals()[0], kcal: 0, protein: 0 }], macros, 1);
+    const brokenMacros = validateMealPlan([{ ...validMeals()[0], kcal: 0, protein: 0 }], macros, 1, 'cs');
     expect(brokenMacros.valid).toBe(false);
     expect(brokenMacros.errors.join(' ')).toContain('makra nejsou kompletní');
 
-    const mismatch = validateMealPlan(validMeals().map(meal => ({ ...meal, kcal: 100 })), macros, 2);
+    const mismatch = validateMealPlan(validMeals().map(meal => ({ ...meal, kcal: 100 })), macros, 2, 'cs');
     expect(mismatch.valid).toBe(false);
     expect(mismatch.errors.join(' ')).toContain('Denní kalorie nesedí');
   });
@@ -141,7 +141,7 @@ describe('nutrition utilities', () => {
   });
 
   it('builds a grouped shopping list from meal ingredients', () => {
-    const list = buildShoppingList(validMeals());
+    const list = buildShoppingList(validMeals(), 'cs');
     expect(list.find(group => group.category === 'Mléčné a vejce')?.items.join(' ')).toContain('řecký jogurt');
     expect(list.find(group => group.category === 'Ovoce a zelenina')?.items.join(' ')).toContain('banán');
     expect(list.find(group => group.category === 'Přílohy a obiloviny')?.items.join(' ')).toContain('rýže');
@@ -161,17 +161,17 @@ describe('nutrition utilities', () => {
 
   it('formats date labels correctly', () => {
     const todayStr = toDateKey(new Date());
-    expect(formatDateLabel(todayStr)).toBe('Dnes');
+    expect(formatDateLabel(todayStr, 'cs')).toBe('Dnes');
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    expect(formatDateLabel(toDateKey(yesterday))).toBe('Včera');
+    expect(formatDateLabel(toDateKey(yesterday), 'cs')).toBe('Včera');
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    expect(formatDateLabel(toDateKey(tomorrow))).toBe('Zítra');
+    expect(formatDateLabel(toDateKey(tomorrow), 'cs')).toBe('Zítra');
 
-    expect(formatDateLabel('2026-05-15')).toBe('15. 5. 2026');
+    expect(formatDateLabel('2026-05-15', 'cs')).toBe('15. 5. 2026');
   });
 
   it('correctly maps training session frequency to activity factors', () => {

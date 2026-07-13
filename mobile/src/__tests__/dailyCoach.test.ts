@@ -18,6 +18,7 @@ const baseInput = (over: Partial<DailyCoachInput> = {}): DailyCoachInput => ({
   baselineMacros: makeMacros(2200),
   todayMacros: makeMacros(2300),
   trainingLoad: null,
+  locale: 'cs',
   ...over,
 });
 
@@ -48,6 +49,17 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.nutrition!.deltaVsBaselineKcal).toBe(100);
   });
 
+  it('uses product language in explanation instead of raw readiness/intensity enums', () => {
+    const rec = generateDailyCoachRecommendation(baseInput());
+    const firstReason = rec.explanation?.[0] ?? '';
+    expect(firstReason).toContain('Dnešní signál');
+    expect(firstReason).toMatch(/dobrý den|drž plán|radši uber/);
+    expect(firstReason).not.toMatch(/\d+\/100|score|ceiling|strop/i);
+    expect(firstReason).not.toMatch(/\((low|medium|high)\)/);
+    expect(firstReason).not.toMatch(/\b(rest|easy|moderate|hard)\b/);
+    expect(rec.trainingRecommendation?.intensity).not.toMatch(/\b(rest|easy|moderate|hard)\b/);
+  });
+
   it('downgrades a hard session and sets whatNotToDo when readiness is poor', () => {
     const rec = generateDailyCoachRecommendation(baseInput({
       session: session('intervals', 'hard', 50),
@@ -57,6 +69,32 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.training!.adjusted).toBe(true);
     expect(rec.training!.session?.intensity).not.toBe('hard');
     expect(rec.training!.whatNotToDo).toBeTruthy();
+  });
+
+  it('explains an adjusted workout without internal guardrail language', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({
+      session: session('intervals', 'hard', 50),
+      recovery: { todaySleepMinutes: 300 },
+    }));
+    const explanation = rec.explanation?.join(' ') ?? '';
+    expect(explanation).toMatch(/záměrně lehčí|regenerace/i);
+    expect(explanation).not.toMatch(/readiness guardrails|deterministicky/i);
+  });
+
+  it('keeps visible explanation free of raw recovery measurements', () => {
+    const rec = generateDailyCoachRecommendation(baseInput({
+      session: session('intervals', 'hard', 50),
+      recovery: {
+        todaySleepMinutes: 300,
+        todayHrvMs: 18,
+        todayRhrBpm: 92,
+        baseline: { sleepMeanMinutes: 460, hrvMeanMs: 55, rhrMeanBpm: 54 },
+      },
+    }));
+    const explanation = rec.explanation?.join(' ') ?? '';
+
+    expect(explanation).toContain('Regenerace');
+    expect(explanation).not.toMatch(/\bHRV\b|RHR|klidový tep|\d+\s*ms|\d+\s*bpm|\d+\/3/i);
   });
 
   it('warns when a long-run day is not fueled above baseline', () => {
@@ -101,7 +139,8 @@ describe('generateDailyCoachRecommendation', () => {
     expect(rec.suggestedActions).not.toContain('no_time');
     expect(rec.readiness.score).toBeGreaterThanOrEqual(0);
     expect(rec.readiness.confidence).toBe('low');
-    expect(rec.warnings.some(w => /bez dat|no sleep|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /chybí|bez dat|missing|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /Readiness/i.test(w))).toBe(false);
   });
 
   it('does not present missing recovery data as a fully cleared hard day', () => {
@@ -111,7 +150,7 @@ describe('generateDailyCoachRecommendation', () => {
     }));
     expect(rec.readiness.confidence).toBe('low');
     expect(rec.training!.whatNotToDo).toBeTruthy();
-    expect(rec.warnings.some(w => /bez dat|no sleep|orientační|guidance/i.test(w))).toBe(true);
+    expect(rec.warnings.some(w => /chybí|bez dat|missing|orientační|guidance/i.test(w))).toBe(true);
   });
 });
 

@@ -93,7 +93,7 @@ export function computeEnergyBalance(input: EnergyBalanceInput): EnergyBalanceSu
 export function describeEnergyBalance(
   summary: EnergyBalanceSummary,
   goal: 'fat_loss' | 'maintenance' | 'muscle_gain' | 'endurance' | 'general_fitness',
-  locale: Locale = 'cs',
+  locale: Locale = 'en',
 ): string {
   const en = locale === 'en';
   if (summary.loggedDays < 3) {

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   latestLabel: { fontSize: 13, fontWeight: '700' },
   emptyBox: {
     height: 90,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderStyle: 'dashed',
     borderRadius: 10,
     justifyContent: 'center',

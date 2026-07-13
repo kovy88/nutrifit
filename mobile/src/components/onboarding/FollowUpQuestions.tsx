@@ -22,7 +22,7 @@ export function FollowUpQuestions({
       <Text style={[styles.title, { color: colors.ink, fontFamily: fonts.extraBold }]}>{t('onb.followTitle')}</Text>
       {questions.map(question => (
         <View key={question.id} style={styles.question}>
-          <Text style={[styles.prompt, { color: colors.faint, fontFamily: fonts.bold }]}>{t(question.promptKey as TranslationKey)}</Text>
+          <Text style={[styles.prompt, { color: colors.muted, fontFamily: fonts.bold }]}>{t(question.promptKey as TranslationKey)}</Text>
           {question.kind === 'single_choice' ? (
             <View style={styles.options}>
               {question.options.map(option => (
@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
   wrap: { gap: 12 },
   title: { fontSize: 15, lineHeight: 19 },
   question: { gap: 8 },
-  prompt: { fontSize: 12, lineHeight: 16, textTransform: 'uppercase', letterSpacing: 0.4 },
+  prompt: { fontSize: 13, lineHeight: 18, letterSpacing: 0 },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });

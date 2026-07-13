@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, EmptyState, Field, Label, MetricCard, ScreenHeader, SectionHeader } from '../components/UI';
+import { Field, ScreenHeader } from '../components/UI';
+import { HeroDecisionCard, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTrenr } from '../context/TrenrContext';
-import { resolveCoachScope, scopeHasNutrition } from '../types';
 import { useDailyCoachRecommendation } from '../hooks/useDailyCoachRecommendation';
 import { hasCustomSchedule, nextMatchInfo } from '../lib/training';
 import { sportName } from '../lib/training/sports';
@@ -15,8 +14,9 @@ import { useCoachThread } from '../hooks/useCoachThread';
 import { askCoach } from '../services/api';
 import { incrementCoachTeaserUsed, loadCoachTeaserUsed } from '../services/storage';
 import type { CoachChatContext } from '../lib/ai/coachChat';
-import type { CoachMessage } from '../types/coach';
+import type { CoachMessage, DailyCoachRecommendation } from '../types/coach';
 import { PaywallModal } from '../components/PaywallModal';
+import { getProfileGoalSummary } from '../lib/profile/profile-labels';
 
 function uid(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -28,16 +28,17 @@ const COACH_FREE_LIMIT = 3;
 export function CoachScreen() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
-  const { profile, selectedDate, currentSession, currentMacros, ensureAiConsent, isSubscribed } = useTrenr();
-  const navigation = useNavigation<any>();
-  const showNutrition = profile ? scopeHasNutrition(resolveCoachScope(profile)) : false;
+  const { profile, selectedDate, ensureAiConsent, isSubscribed } = useTrenr();
   const [freeUsed, setFreeUsed] = useState(0);
   useEffect(() => { loadCoachTeaserUsed().then(setFreeUsed).catch(() => {}); }, []);
   const { recommendation } = useDailyCoachRecommendation(new Date(selectedDate));
+  const goalSummary = useMemo(() => (
+    profile ? getProfileGoalSummary(profile, t) : t('trainingGoal.general_fitness')
+  ), [profile, t]);
   const threadMemory = useMemo(() => ({
-    goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
+    goalSummary,
     updatedAt: new Date().toISOString(),
-  }), [profile?.primaryGoal, profile?.trainingGoal]);
+  }), [goalSummary]);
   const { messages, persist } = useCoachThread(selectedDate, threadMemory);
   const [followups, setFollowups] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -48,25 +49,8 @@ export function CoachScreen() {
   // ne „co jíst před během" / „je můj závod reálný".
   const isCustomSport = profile ? hasCustomSchedule(profile) : false;
   const prompts = useMemo(() => {
-    if (isCustomSport) {
-      return [
-        t('coach.promptWhy'),
-        t('coach.promptBadSleep'),
-        t('coach.promptMatchPrep'),
-        t('coach.promptMatchFuel'),
-        t('coach.promptOffField'),
-        t('coach.promptMissedWorkout'),
-      ];
-    }
-    return [
-      t('coach.promptWhy'),
-      t('coach.promptFuel'),
-      t('coach.promptBadSleep'),
-      t('coach.promptSwapDinner'),
-      t('coach.promptMissedWorkout'),
-      t('coach.promptRaceRealistic'),
-    ];
-  }, [isCustomSport, t]);
+    return coachPromptLabels(isCustomSport, locale);
+  }, [isCustomSport, locale]);
 
   async function send(question: string) {
     const q = question.trim();
@@ -87,7 +71,7 @@ export function CoachScreen() {
     try {
       const context: CoachChatContext = {
         recommendation,
-        goalSummary: profile ? `${profile.primaryGoal} + ${profile.trainingGoal}` : 'general_fitness',
+        goalSummary,
         mainSport: profile?.mainSport ? sportName(profile.mainSport.id, profile.mainSport.label, locale) : null,
         nextMatchInDays: profile?.weeklyActivities ? (nextMatchInfo(profile.weeklyActivities, selectedDate)?.daysUntil ?? null) : null,
         units: profile?.units ?? 'metric',
@@ -112,43 +96,60 @@ export function CoachScreen() {
 
   return (
     <Screen
+      contentContainerStyle={styles.screen}
       footer={
         <View style={styles.composer}>
-          <Field value={input} onChangeText={setInput} placeholder={t('coach.inputPlaceholder')} multiline maxLength={2000} />
-          <Button disabled={sending || !input.trim()} onPress={() => send(input)}>{sending ? t('coach.thinking') : t('coach.send')}</Button>
+          <View style={styles.composerRow}>
+            <Field
+              value={input}
+              onChangeText={setInput}
+              placeholder={t('coach.inputPlaceholder')}
+              multiline
+              maxLength={2000}
+              style={styles.composerField}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={sending ? t('coach.thinking') : t('coach.send')}
+              disabled={sending || !input.trim()}
+              onPress={() => send(input)}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { backgroundColor: colors.accent },
+                (sending || !input.trim()) && styles.sendDisabled,
+                pressed && input.trim() && !sending && { opacity: 0.86, transform: [{ scale: 0.97 }] },
+              ]}
+            >
+              <Ionicons name={sending ? 'hourglass-outline' : 'send'} size={18} color={colors.accentText} />
+            </Pressable>
+          </View>
+          <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
         </View>
       }
     >
-      <ScreenHeader eyebrow={t('tab.coach')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
+      <ScreenHeader eyebrow={t('tab.coach')} title={coachScreenTitle(locale)} subtitle={coachScreenSubtitle(locale)} />
 
-      <Card>
-        <SectionHeader title={t('coach.todayContext')} />
-        <View style={styles.contextGrid}>
-          <MetricCard compact label={t('home.readiness')} value={recommendation ? recommendation.readiness.score : '-'} color={readinessColor(recommendation?.readiness.band, colors)} />
-          <MetricCard compact label={t('today.trainingTitle')} value={currentSession?.kind === 'rest' ? t('home.restDay') : currentSession?.durationMinutes ? `${currentSession.durationMinutes}` : '-'} unit={currentSession?.kind !== 'rest' && currentSession?.durationMinutes ? 'min' : undefined} color={colors.orange} />
-          <MetricCard compact label={t('today.nutritionTitle')} value={currentMacros?.kcal ?? '-'} color={colors.accent} />
-          <MetricCard compact label={t('today.focus')} value={recommendation?.readiness.recommendedIntensity ?? '-'} color={colors.blue} />
-        </View>
-        <Text style={[styles.contextNote, { color: colors.muted }]}>
-          {recommendation?.coachNote ?? t('coach.todayContextEmpty')}
-        </Text>
-      </Card>
+      <HeroDecisionCard
+        eyebrow={coachHeroEyebrow(locale)}
+        title={recommendation ? coachHeroTitle(recommendation, locale) : t('coach.title')}
+        body={recommendation ? coachHeroBody(recommendation, locale) : t('coach.todayContextEmpty')}
+        accent={readinessColor(recommendation?.readiness.band, colors)}
+        statusLabel={recommendation ? coachStatusLabel(recommendation, locale) : undefined}
+        statusTone={recommendation?.readiness.band === 'low' ? 'risk' : recommendation?.readiness.band === 'medium' ? 'caution' : 'ready'}
+      />
 
-      <Card>
-        <SectionHeader title={t('coach.suggestedTitle')} />
-        <View style={styles.promptGrid}>
+      <SectionCard
+        title={t('coach.suggestedTitle')}
+        body={coachQuestionsBody(locale)}
+      >
+        <View style={styles.promptList}>
           {prompts.map(prompt => (
             <PromptChip key={prompt} label={prompt} onPress={() => send(prompt)} />
           ))}
         </View>
-        {showNutrition ? (
-          <Button variant="secondary" onPress={() => navigation.navigate('Jídelníček')}>{t('today.meals')}</Button>
-        ) : null}
-      </Card>
+      </SectionCard>
 
-      {messages.length === 0 ? (
-        <EmptyState title={t('coach.emptyTitle')} body={t('coach.empty')} />
-      ) : (
+      {messages.length > 0 ? (
         <View style={styles.thread}>
           {messages.map(m => (
             <View
@@ -157,7 +158,7 @@ export function CoachScreen() {
                 styles.bubble,
                 m.role === 'user'
                   ? { alignSelf: 'flex-end', backgroundColor: colors.accent }
-                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: 0.5, borderColor: colors.hairline },
+                  : { alignSelf: 'flex-start', backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
               ]}
             >
               {m.role === 'coach' ? <StructuredCoachText text={m.text} /> : (
@@ -166,18 +167,16 @@ export function CoachScreen() {
             </View>
           ))}
         </View>
-      )}
-
-      {followups.length > 0 && !sending ? (
-        <Card>
-          <Label>{t('coach.followups')}</Label>
-          <View style={styles.promptGrid}>
-            {followups.map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
-          </View>
-        </Card>
       ) : null}
 
-      <Text style={[styles.disclaimer, { color: colors.faint }]}>{t('coach.disclaimer')}</Text>
+      {followups.length > 0 && !sending ? (
+        <SectionCard title={t('coach.followups')}>
+          <View style={styles.promptList}>
+            {followups.slice(0, 3).map(f => <PromptChip key={f} label={f} onPress={() => send(f)} />)}
+          </View>
+        </SectionCard>
+      ) : null}
+
       <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </Screen>
   );
@@ -188,7 +187,7 @@ function PromptChip({ label, onPress }: { label: string; onPress: () => void }) 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => [styles.promptChip, { borderColor: colors.hairline, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
       <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
-      <Text style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
+      <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9} style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -215,18 +214,101 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
   return colors.muted;
 }
 
+function coachScreenSubtitle(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Get a short explanation of the plan, food, or adjustment.'
+    : 'Dostaň krátké vysvětlení plánu, jídla nebo úpravy.';
+}
+
+function coachScreenTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Ask about today' : 'Zeptej se na dnešek';
+}
+
+function coachHeroEyebrow(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? "Today's question" : 'Dnešní otázka';
+}
+
+function coachPromptLabels(isCustomSport: boolean, locale: 'cs' | 'en'): string[] {
+  if (isCustomSport) {
+    return locale === 'en'
+      ? ['Why this plan today?', 'What if I slept badly?', 'How should I prep for the match?']
+      : ['Proč dnes tenhle plán?', 'Co když jsem špatně spal/a?', 'Jak se připravit na zápas?'];
+  }
+  return locale === 'en'
+    ? ['Why this plan today?', 'How should I fuel today?', 'What if I slept badly?']
+    : ['Proč dnes tenhle plán?', 'Jak dnes načasovat jídlo?', 'Co když jsem špatně spal/a?'];
+}
+
+function coachHeroTitle(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en' ? 'Keep today light' : 'Dnes to drž lehce';
+  }
+  if (rec.training?.adjusted || rec.readiness.band === 'low' || isEasySessionTitle(session.title)) {
+    return locale === 'en' ? 'Easy plan is enough' : 'Lehký plán stačí';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard' && rec.readiness.band === 'high') {
+    return locale === 'en' ? 'Green light today' : 'Dnes máš zelenou';
+  }
+  return locale === 'en' ? "Stay with today's plan" : 'Drž dnešní plán';
+}
+
+function coachStatusLabel(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en' ? 'Rest' : 'Volno';
+  }
+  if (rec.training?.adjusted || rec.readiness.band === 'low' || isEasySessionTitle(session.title)) {
+    return locale === 'en' ? 'Easy today' : 'Lehce';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard' && rec.readiness.band === 'high') {
+    return locale === 'en' ? 'Green light' : 'Jdi na to';
+  }
+  return locale === 'en' ? 'Steady' : 'Normálně';
+}
+
+function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+  const session = rec.training?.session;
+  if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
+    return locale === 'en'
+      ? 'I can explain what still counts today and what to leave for tomorrow.'
+      : 'Vysvětlím, co se dnes počítá a co nechat na zítra.';
+  }
+  if (rec.readiness.recommendedIntensity === 'hard') {
+    return locale === 'en'
+      ? 'Ask how to do the work well without adding extra.'
+      : 'Zeptej se, jak to odtrénovat dobře bez přidávání navíc.';
+  }
+  return locale === 'en'
+    ? 'Ask what matters most, how to fuel it, or how to adjust.'
+    : 'Zeptej se, co je nejdůležitější, jak jíst, nebo jak den upravit.';
+}
+
+function coachQuestionsBody(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? 'Start with one question.'
+    : 'Začni jednou otázkou.';
+}
+
+function isEasySessionTitle(title: string): boolean {
+  return /\b(easy|light|recovery|leh|regener|voln)\b/i.test(title);
+}
+
 const styles = StyleSheet.create({
-  contextGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  contextNote: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
-  promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  promptChip: { minHeight: 42, borderWidth: 0.5, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8 },
-  promptText: { fontSize: 13, lineHeight: 17, fontWeight: '600' },
+  screen: { gap: 14 },
+  promptList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 84, minHeight: 58, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 8 },
+  promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
   bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   structured: { gap: 6 },
   coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '700' },
-  coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
-  composer: { gap: 10 },
+  coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  composer: { gap: 6 },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  composerField: { flex: 1, maxHeight: 92 },
+  sendButton: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  sendDisabled: { opacity: 0.45 },
   disclaimer: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' },
 });

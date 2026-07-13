@@ -1,7 +1,7 @@
 // ── WORKOUT DETAIL MODAL
 //
 // Otevírá se po klepnutí na WorkoutCard v Trénink screen / HomeScreen
-// (recent workouts). Plná breakdown a deep-link na source provider.
+// (recent workouts). User-facing workout detail with optional source deep-link.
 
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,28 +12,13 @@ import { useLanguage } from '../context/LanguageContext';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import { computeFueling } from '../lib/nutrition/workoutFueling';
 import { formatPace } from '../lib/units';
-import type { WorkoutSummary, WorkoutKind, HealthDataSource } from '../lib/health';
+import { formatHealthSourceLabel } from '../lib/ui/health-source-labels';
+import type { WorkoutSummary, WorkoutKind } from '../lib/health';
 
 const KIND_ICON: Record<WorkoutKind, keyof typeof Ionicons.glyphMap> = {
   run: 'fitness-outline', walk: 'walk-outline', cycle: 'bicycle-outline', swim: 'water-outline',
   strength: 'barbell-outline', hiit: 'flash-outline', yoga: 'body-outline',
   functional: 'fitness-outline', rowing: 'boat-outline', other: 'ellipse-outline',
-};
-
-const SOURCE_LABEL: Partial<Record<HealthDataSource, string>> = {
-  apple_health:   'Apple Health',
-  apple_watch:    'Apple Watch',
-  health_connect: 'Health Connect',
-  google_fit:     'Google Fit',
-  strava:         'Strava',
-  whoop:          'Whoop',
-  garmin:         'Garmin Connect',
-  polar:          'Polar Flow',
-  oura:           'Oura Ring',
-  fitbit:         'Fitbit',
-  zepp:           'Zepp',
-  suunto:         'Suunto',
-  mock:           'Mock (dev)',
 };
 
 export type WorkoutDetailModalProps = {
@@ -51,7 +36,7 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
 
   const icon = KIND_ICON[workout.kind] || 'ellipse-outline';
   const kindLabel = t(`wkindFull.${workout.kind}` as TranslationKey);
-  const sourceLabel = workout.source === 'manual' ? t('workout.srcManual') : (SOURCE_LABEL[workout.source] || workout.source);
+  const sourceLabel = formatHealthSourceLabel(workout.source, locale, 'full');
   const startedAt = formatFullDateTime(workout.startedAt, t);
   const endedAt = formatTime(workout.endedAt);
   const pace = workout.avgPaceSecPerKm ? formatPace(workout.avgPaceSecPerKm, profile?.units ?? 'metric') : null;
@@ -150,13 +135,6 @@ export function WorkoutDetailModal({ workout, onClose }: WorkoutDetailModalProps
               </View>
             )}
 
-            {/* External ID footer (debug-ish, useful for support) */}
-            {workout.externalId && (
-              <Text style={[styles.externalId, { color: colors.faint }]}>
-                ID: {workout.externalId}
-              </Text>
-            )}
-
             {/* Source action */}
             {workout.source === 'strava' && workout.externalId && (
               <Button variant="primary" onPress={openSource}>
@@ -201,17 +179,17 @@ function formatTime(iso: string): string {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(25,33,29,0.5)' },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.72)' },
   sheet: {
     maxHeight: '85%',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     gap: 14,
-    shadowOpacity: 1,
-    shadowRadius: 24,
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: -8 },
-    elevation: 8,
+    elevation: 4,
   },
   content: { gap: 16, paddingBottom: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -224,8 +202,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     fontSize: 11,
-    fontWeight: '700',
-    borderWidth: 1,
+    fontWeight: '600',
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     letterSpacing: 0.3,
   },
@@ -234,8 +212,8 @@ const styles = StyleSheet.create({
     gap: 24,
     paddingVertical: 16,
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     justifyContent: 'space-around',
   },
   metricsGrid: {
@@ -243,17 +221,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  metric: { minWidth: 100, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
+  metric: { minWidth: 100, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
   metricBig: { alignItems: 'center', minWidth: 0 },
-  metricLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  metricLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.2, marginBottom: 4 },
   metricValue: { fontSize: 17, fontWeight: '700' },
   metricValueBig: { fontSize: 28, fontWeight: '700' },
-  externalId: { fontSize: 11, fontFamily: 'System', marginTop: 8 },
-  fuelingBox: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
+  fuelingBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 10 },
   fuelingTitle: { fontSize: 15, fontWeight: '700' },
   fuelingSummary: { fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
   fuelingRow: { gap: 2, marginTop: 6 },
-  fuelingLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase' },
+  fuelingLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.2, textTransform: 'uppercase' },
   fuelingValue: { fontSize: 14, fontWeight: '700' },
   fuelingNote: { fontSize: 11, lineHeight: 15, marginTop: 2 },
 });

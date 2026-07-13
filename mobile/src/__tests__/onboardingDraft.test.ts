@@ -48,6 +48,30 @@ describe('onboarding draft storage', () => {
     const got = await loadOnboardingDraft();
     expect(got?.draft.primaryGoal).toBe('improve_running');
     expect(got?.draft.trainingGoal).toBe('half_marathon');
+    expect(got?.messages).toBeUndefined();
+  });
+
+  it('roundtrips optional chat metadata without requiring a migration', async () => {
+    const now = new Date('2026-05-28T10:00:00Z').toISOString();
+    await saveOnboardingDraft({
+      step: 0,
+      draft: { ...DEFAULT_PROFILE, coachScope: 'training' },
+      touchedFields: { coachScope: true },
+      messages: [{
+        id: 'm1',
+        role: 'coach',
+        text: 'Ahoj, jsem Trenr.',
+        createdAt: now,
+      }],
+      missingFields: ['goal'],
+      confidence: 'medium',
+      updatedAt: now,
+    });
+
+    const got = await loadOnboardingDraft();
+    expect(got?.messages?.[0].text).toBe('Ahoj, jsem Trenr.');
+    expect(got?.missingFields).toEqual(['goal']);
+    expect(got?.confidence).toBe('medium');
   });
 
   it('overwrites on re-save (last write wins)', async () => {

@@ -22,12 +22,61 @@ export type NutritionMode =
   | 'healthy_eating'
   | 'simple_meal_prep';
 
+export type TopLevelGoal =
+  | 'lose_fat'
+  | 'build_strength'
+  | 'run_race'
+  | 'improve_fitness'
+  | 'eat_better'
+  | 'recover_better'
+  | 'build_consistency';
+
+export type RaceDistance = 'none' | '5k' | '10k' | 'half_marathon' | 'marathon';
+
+export type RaceGoalDetails = {
+  distance: RaceDistance;
+  dateISO?: string;
+  targetTimeSeconds?: number;
+};
+
+export type CanonicalNutritionMode =
+  | 'fat_loss'
+  | 'maintenance'
+  | 'muscle_gain'
+  | 'performance'
+  | 'simple_healthy';
+
+export type TrainingFocus =
+  | 'none'
+  | 'general_fitness'
+  | 'walking'
+  | 'running'
+  | 'strength'
+  | 'sport';
+
 export type PlanIntensity = 'easy' | 'moderate' | 'ambitious_but_safe';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 export type TrainingEnvironment = 'gym' | 'home' | 'mixed';
 export type WellbeingBlocker = 'energy' | 'fitness' | 'food' | 'sleep' | 'consistency';
 
+export type UserConstraints = {
+  sessionsPerWeek: 1 | 2 | 3 | 4 | 5 | 6;
+  experience: ExperienceLevel;
+  currentWeeklyKm?: number;
+  longestRecentRunKm?: number;
+  injuryFlag?: boolean;
+  preferredRestDays?: number[];
+  dietStyle?: string;
+  foodPreferences?: string;
+};
+
 export type GoalProfile = {
+  /** Canonical public goal taxonomy. Legacy mirror fields below still feed engines. */
+  topLevelGoal?: TopLevelGoal;
+  race?: RaceGoalDetails;
+  trainingFocus?: TrainingFocus;
+  canonicalNutritionMode?: CanonicalNutritionMode;
+  constraints?: UserConstraints;
   primaryGoal: PrimaryGoal;
   raceGoal: RaceGoal;
   nutritionMode: NutritionMode;
@@ -65,6 +114,8 @@ export type GoalQuickStart = {
   text: string;
   /** Czech seed text, shown/written when the app locale is `cs`. */
   textCs: string;
+  /** Which coach scopes this goal makes sense as a quick start for. 'both' = always. */
+  scopes: ('both' | 'training' | 'nutrition')[];
 };
 
 export type GoalParseResult = {

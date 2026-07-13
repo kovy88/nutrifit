@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import {
-  Button,
-  Card,
-  EmptyState,
-  LoadingState,
-  MetricCard,
-  PlanDayCard,
-  ScreenHeader,
-  SectionHeader,
-  StatusPill,
-} from '../components/UI';
+import { ScreenHeader } from '../components/UI';
+import { ActionStrip, CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { WorkoutCard } from '../components/WorkoutCard';
 import { WorkoutDetailModal } from '../components/WorkoutDetailModal';
@@ -49,10 +40,6 @@ export function TrainingScreen() {
     setSelectedDate(dateKey);
   }
 
-  function openSelectedDayToday() {
-    navigation.navigate('Main', { screen: 'Dnes' });
-  }
-
   const selectedCompletion = selectedDay.completionStatus ?? completion?.status;
   const selectedDone = selectedCompletion === 'completed';
   const selectedSkipped = selectedCompletion === 'skipped';
@@ -61,6 +48,20 @@ export function TrainingScreen() {
     selectedDay.session.intensity === 'moderate' ? 'caution' :
     selectedDay.session.intensity === 'easy' ? 'ready' :
     'neutral';
+  const trainingActions = selectedDay.isRest ? [] : [
+    {
+      icon: 'checkmark-circle-outline' as const,
+      label: selectedDone ? t('today.completed') : t('today.markDone'),
+      onPress: () => mark('completed'),
+      disabled: selectedDone,
+      primary: true,
+    },
+    ...(!selectedDone && !selectedSkipped ? [{
+      icon: 'close-circle-outline' as const,
+      label: t('training.markSkipped'),
+      onPress: () => mark('skipped'),
+    }] : []),
+  ];
 
   return (
     <Screen contentContainerStyle={styles.screen}>
@@ -68,18 +69,38 @@ export function TrainingScreen() {
         onBack={() => navigation.goBack()}
         eyebrow={t('training.eyebrow')}
         title={t('training.title')}
-        subtitle={t('training.cleanSubtitle', { goal: formatGoal(profile.trainingGoal) })}
+        subtitle={trainingScreenSubtitle(locale)}
       />
 
-      <Card>
-        <SectionHeader
-          title={t('training.weekOverview')}
-          action={<StatusPill label={t('training.weekStatus', { done: completedCount, total: plannedSessions })} tone={completedCount ? 'ready' : 'neutral'} />}
-        />
-        <View style={styles.weekMetrics}>
-          <MetricCard label={t('training.planned')} value={plannedSessions} detail={t('training.sessions')} color={colors.accent} />
-          <MetricCard label={t('training.done')} value={completedCount} detail={t('training.thisWeek')} color={colors.green} />
-        </View>
+      <HeroDecisionCard
+        eyebrow={selectedDay.isToday ? t('common.today') : selectedDay.dayTitle}
+        title={selectedDay.isRest ? t('training.restTitle') : selectedDay.session.title}
+        body={selectedDay.isRest ? t('training.restSub') : selectedDay.session.notes}
+        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : intensityLabel(selectedDay.session.intensity, locale)}
+        statusTone={selectedDone ? 'ready' : selectedSkipped ? 'caution' : intensityTone}
+      >
+        {selectedDay.isRest ? (
+          <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.dateLabel}</Text>
+        ) : (
+          <CollapsibleDetails label={t('plan.detail')}>
+            <InfoRow label={t('training.duration')} value={`${selectedDay.session.durationMinutes} min`} />
+            <InfoRow label={t('training.distance')} value={selectedDay.session.distanceKm ? `${selectedDay.session.distanceKm} km` : '-'} />
+            {selectedDay.adjustedAfterMissed ? (
+              <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
+            ) : null}
+          </CollapsibleDetails>
+        )}
+        {selectedDay.isRest ? null : (
+          <ActionStrip actions={trainingActions} />
+        )}
+      </HeroDecisionCard>
+
+      <SectionCard
+        title={t('training.weekOverview')}
+        body={trainingWeekStatus(completedCount, plannedSessions, locale)}
+        statusLabel={completedCount ? t('today.completed') : t('training.planned')}
+        statusTone={completedCount ? 'ready' : 'neutral'}
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
           {weekList.map(item => (
             <Pressable
@@ -89,11 +110,11 @@ export function TrainingScreen() {
                 styles.dayChip,
                 {
                   borderColor: item.isSelected ? colors.accent : colors.border,
-                  backgroundColor: item.isSelected ? colors.accent + '18' : colors.bgElev,
+                  backgroundColor: item.isSelected ? colors.accent + '14' : colors.bgElev,
                 },
               ]}
             >
-              <Text style={[styles.dayDow, { color: item.isSelected ? colors.accent : colors.faint, fontFamily: fonts.bold }]}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.dayDow, { color: item.isSelected ? colors.accent : colors.faint, fontFamily: fonts.bold }]}>
                 {item.shortLabel}
               </Text>
               <Text style={[styles.dayNumber, { color: colors.ink, fontFamily: fonts.number }]}>
@@ -103,71 +124,24 @@ export function TrainingScreen() {
             </Pressable>
           ))}
         </ScrollView>
-      </Card>
-
-      <PlanDayCard
-        title={selectedDay.dayTitle}
-        subtitle={selectedDay.dateLabel}
-        selected
-        markers={[
-          selectedDay.isToday ? t('common.today') : '',
-          selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : '',
-          selectedDay.adjustedAfterMissed ? t('training.adjustedAfterMissed') : '',
-        ].filter((marker): marker is string => Boolean(marker))}
-      >
-        {selectedDay.isRest ? (
-          <View style={styles.selectedBody}>
-            <Text style={[styles.selectedTitle, { color: colors.orange, fontFamily: fonts.extraBold }]}>{t('training.restTitle')}</Text>
-            <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{t('training.restSub')}</Text>
-          </View>
-        ) : (
-          <View style={styles.selectedBody}>
-            <View style={styles.selectedTitleRow}>
-              <Text style={[styles.selectedTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{selectedDay.session.title}</Text>
-              <StatusPill label={t('training.intensityValue', { value: selectedDay.session.intensity })} tone={intensityTone} />
-            </View>
-            <View style={styles.weekMetrics}>
-              <MetricCard label={t('training.duration')} value={selectedDay.session.durationMinutes} unit="min" color={colors.accent} />
-              <MetricCard
-                label={t('training.distance')}
-                value={selectedDay.session.distanceKm ? selectedDay.session.distanceKm : '-'}
-                unit={selectedDay.session.distanceKm ? 'km' : undefined}
-                color={colors.blue}
-              />
-            </View>
-            {selectedDay.session.notes ? (
-              <Text style={[styles.selectedNote, { color: colors.muted, fontFamily: fonts.regular }]}>{selectedDay.session.notes}</Text>
-            ) : null}
-            {selectedDay.adjustedAfterMissed ? (
-              <Text style={[styles.adjustedNote, { color: colors.orange, fontFamily: fonts.bold }]}>{t('training.adjustedAfterMissedNote')}</Text>
+        <CollapsibleDetails label={t('plan.detail')}>
+          <InfoRow label={t('training.planned')} value={plannedSessions} />
+          <InfoRow label={t('training.done')} value={completedCount} />
+          <View style={styles.historyDetail}>
+            <Text style={[styles.historyTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{t('training.recentTitle')}</Text>
+            <Text style={[styles.historyBody, { color: colors.muted, fontFamily: fonts.medium }]}>
+              {recentWorkoutBody(recent.isLoading, recent.workouts, locale)}
+            </Text>
+            {recent.workouts.length ? (
+              <View style={styles.workoutsList}>
+                {recent.workouts.slice(0, 6).map((workout, index) => (
+                  <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
+                ))}
+              </View>
             ) : null}
           </View>
-        )}
-        <View style={styles.actions}>
-          <Button style={styles.actionButton} disabled={selectedDone || selectedDay.isRest} onPress={() => mark('completed')}>
-            {selectedDone ? t('today.completed') : t('today.markDone')}
-          </Button>
-          <Button style={styles.actionButton} variant="secondary" disabled={selectedDay.isRest} onPress={() => mark('skipped')}>
-            {t('training.markSkipped')}
-          </Button>
-        </View>
-        <Button variant="secondary" onPress={openSelectedDayToday}>
-          {t('training.openToday')}
-        </Button>
-      </PlanDayCard>
-
-      <SectionHeader title={t('training.recentTitle')} />
-      {recent.isLoading ? (
-        <LoadingState title={t('training.loadingWorkouts')} />
-      ) : recent.workouts.length === 0 ? (
-        <EmptyState title={t('training.noWorkoutsTitle')} body={t('training.noWorkouts')} />
-      ) : (
-        <View style={styles.workoutsList}>
-          {recent.workouts.slice(0, 6).map((workout, index) => (
-            <WorkoutCard key={workout.id || index} workout={workout} onPress={() => setSelectedWorkout(workout)} />
-          ))}
-        </View>
-      )}
+        </CollapsibleDetails>
+      </SectionCard>
 
       <WorkoutDetailModal workout={selectedWorkout} onClose={() => setSelectedWorkout(null)} />
     </Screen>
@@ -231,24 +205,75 @@ function dayDotColor(
   return colors.accent;
 }
 
-function formatGoal(goal: string) {
-  return goal.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+function intensityLabel(intensity: string, locale: string): string {
+  if (intensity === 'rest') return locale === 'en' ? 'Rest' : 'Volno';
+  if (intensity === 'easy') return locale === 'en' ? 'Easy' : 'Lehce';
+  if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
+  if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
+  return locale === 'en' ? 'Training' : 'Trénink';
+}
+
+function trainingScreenSubtitle(locale: string): string {
+  return locale === 'en'
+    ? 'Pick a day and see what to do, what to skip, and why.'
+    : 'Vyber den a uvidíš, co odtrénovat, co vynechat a proč.';
+}
+
+function trainingWeekStatus(done: number, planned: number, locale: string): string {
+  if (planned <= 0) {
+    return locale === 'en'
+      ? 'No workouts are planned for this week.'
+      : 'Na tento týden nejsou plánované tréninky.';
+  }
+  if (done <= 0) {
+    return locale === 'en'
+      ? `${planned} planned this week, none done yet.`
+      : `${planned} v plánu tento týden, zatím nic hotovo.`;
+  }
+  if (done >= planned) {
+    return locale === 'en'
+      ? `All ${planned} planned workouts are done.`
+      : `Všech ${planned} plánovaných tréninků je hotovo.`;
+  }
+  return locale === 'en'
+    ? `${done} of ${planned} planned workouts are done.`
+    : `${done} z ${planned} plánovaných tréninků je hotovo.`;
+}
+
+function recentWorkoutBody(isLoading: boolean, workouts: WorkoutSummary[], locale: string): string {
+  if (isLoading) {
+    return locale === 'en'
+      ? 'Checking recent training history.'
+      : 'Kontroluji nedávnou tréninkovou historii.';
+  }
+  if (!workouts.length) {
+    return locale === 'en'
+      ? 'Completed workouts will show here after you mark a session done or connect a source.'
+      : 'Hotové tréninky se tady objeví po odkliknutí tréninku nebo připojení zdroje.';
+  }
+  const count = workouts.length;
+  return locale === 'en'
+    ? `${count} recent ${count === 1 ? 'workout' : 'workouts'} found. Latest session is logged.`
+    : `${count} nedávných tréninků. Poslední je zapsaný.`;
 }
 
 const styles = StyleSheet.create({
   screen: { gap: 18 },
   weekMetrics: { flexDirection: 'row', gap: 8 },
   weekStrip: { gap: 8, paddingTop: 2 },
-  dayChip: { width: 62, minHeight: 82, borderWidth: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  dayDow: { fontSize: 11, lineHeight: 14, textTransform: 'uppercase', letterSpacing: 0.6 },
-  dayNumber: { fontSize: 24, lineHeight: 28 },
+  dayChip: { width: 62, minHeight: 82, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayDow: { maxWidth: 48, fontSize: 11, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
+  dayNumber: { fontSize: 24, fontWeight: '700', lineHeight: 28 },
   dayDot: { width: 7, height: 7, borderRadius: 4 },
   selectedBody: { gap: 10 },
   selectedTitleRow: { gap: 8 },
-  selectedTitle: { fontSize: 20, lineHeight: 25 },
+  selectedTitle: { fontSize: 20, fontWeight: '700', lineHeight: 25 },
   selectedNote: { fontSize: 14, lineHeight: 20 },
   adjustedNote: { fontSize: 13, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1 },
+  historyDetail: { gap: 8, paddingTop: 2 },
+  historyTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  historyBody: { fontSize: 13, lineHeight: 18 },
   workoutsList: { gap: 10 },
 });

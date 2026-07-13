@@ -4,15 +4,12 @@ import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   Button,
-  Card,
   Pill,
   ScreenHeader,
-  SectionHeader,
-  SegmentedControl,
   SettingRow,
   SourceStatusCard,
-  StatusPill,
 } from '../components/UI';
+import { CollapsibleDetails, InfoRow, SectionCard } from '../components/SimpleUX';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -33,8 +30,6 @@ import type { OAuthService } from '../lib/health';
 
 const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
 const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
-
-type SettingsTab = 'coach' | 'data' | 'privacy';
 
 type OAuthSourceMeta = {
   service: OAuthService;
@@ -65,9 +60,11 @@ export function SettingsScreen() {
   const garmin = useGarminConnect();
   const oura = useOuraConnect();
   const { user, profile, setProfile, purgeAllUserData, signOut, isSubscribed, setIsSubscribed } = useTrenr();
-  const [tab, setTab] = useState<SettingsTab>('coach');
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const healthMode = profile?.healthProviderMode ?? 'auto';
+  const healthModeOptions: Array<'manual' | 'mock' | 'auto'> = __DEV__ ? ['manual', 'mock', 'auto'] : ['manual', 'auto'];
+  const nativeConnected = isNativeHealthConnected(native.available, native.permission);
 
   // Re-fetch connected sources once a provider flips to "connected" after an
   // OAuth round-trip. Runs as an effect (not inline in the render body) so it
@@ -121,7 +118,7 @@ export function SettingsScreen() {
   function handleConnectNative() {
     Alert.alert(
       native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
-      native.platform === 'ios' ? t('settings.iosInstrMsg') : t('settings.androidInstrMsg'),
+      nativeConnectMessage(native.platform, native.available, locale),
     );
   }
 
@@ -200,21 +197,17 @@ export function SettingsScreen() {
   return (
     <Screen contentContainerStyle={styles.screen}>
       <ScreenHeader onBack={() => navigation.goBack()} eyebrow={t('settings.eyebrow')} title={t('settings.title')} subtitle={t('settings.cleanSubtitle')} />
-      <SegmentedControl
-        value={tab}
-        options={[
-          { value: 'coach', label: t('settings.tabCoach') },
-          { value: 'data', label: t('settings.tabData') },
-          { value: 'privacy', label: t('settings.tabPrivacy') },
-        ]}
-        onChange={setTab}
-      />
 
-      {tab === 'coach' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.language')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.languageDesc')}</Text>
+      <SectionCard
+        title={t('settings.eyebrow')}
+        body={[
+          t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
+          t('profile.unitsValue', { units: profile?.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric') }),
+        ]}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
+            <InfoRow label={t('settings.language')} value={LOCALE_LABELS[locale]} />
             <View style={styles.wrap}>
               {SUPPORTED_LOCALES.map(loc => (
                 <Pill key={loc} active={locale === loc} onPress={() => setLocale(loc)}>
@@ -222,11 +215,8 @@ export function SettingsScreen() {
                 </Pill>
               ))}
             </View>
-          </Card>
 
-          <Card>
-            <SectionHeader title={t('settings.units')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.unitsDesc')}</Text>
+            <InfoRow label={t('settings.units')} value={profile?.units === 'imperial' ? t('settings.unitsImperial') : t('settings.unitsMetric')} />
             <View style={styles.wrap}>
               {(['metric', 'imperial'] as const).map(us => (
                 <Pill key={us} active={(profile?.units ?? 'metric') === us} onPress={() => profile && setProfile({ ...profile, units: us })}>
@@ -234,20 +224,30 @@ export function SettingsScreen() {
                 </Pill>
               ))}
             </View>
-          </Card>
 
-          {__DEV__ && (
-            <Card>
-              <SectionHeader title={t('settings.devSettings')} />
-              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.devSettingsDesc')}</Text>
+            {__DEV__ ? (
+              <CollapsibleDetails label={t('settings.debugTitle')}>
+              <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.debugPremiumBody')}</Text>
               <View style={styles.wrap}>
                 <Pill active={isSubscribed} onPress={() => setIsSubscribed(!isSubscribed)}>
-                  {isSubscribed ? t('settings.premiumActive') : t('settings.premiumInactive')}
+                  {isSubscribed ? t('settings.debugPremiumOn') : t('settings.debugPremiumOff')}
                 </Pill>
               </View>
-            </Card>
-          )}
+              </CollapsibleDetails>
+            ) : null}
+          </>
+        )}
+      />
 
+      <SectionCard
+        title={settingsNotificationsTitle(locale)}
+        body={[
+          morningReminderSummary(briefing.settings.enabled, briefing.settings.hour, briefing.settings.minute, locale),
+          workoutReminderSummary(preWorkout.settings.enabled, postWorkout.settings.enabled, locale),
+        ]}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
           <ReminderRow
             title={t('settings.morningCoaching')}
             body={t('settings.morningBodyShort')}
@@ -313,22 +313,28 @@ export function SettingsScreen() {
               </>
             ) : null}
           </ReminderRow>
-        </>
-      )}
+          </>
+        )}
+      />
 
-      {tab === 'data' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.healthSourceTitle')} />
-            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular, marginBottom: 12 }]}>
+      <SectionCard
+        title={settingsHealthTitle(locale)}
+        body={[
+          healthSourceSummary(healthMode, connectedOAuth.length, nativeConnected, locale),
+          healthSourceState(healthMode, connectedOAuth.length, native.available, native.permission, t, locale),
+        ]}
+        statusLabel={healthSourceStatus(healthMode, connectedOAuth.length, nativeConnected, t, locale)}
+        statusTone={healthSourceTone(healthMode, connectedOAuth.length, nativeConnected)}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
+            <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>
               {t('settings.healthSourceDesc')}
             </Text>
             <View style={styles.wrap}>
-              {(['manual', 'mock', 'auto'] as const).map(mode => {
-                const label = mode === 'manual' ? t('settings.healthModeManual') 
-                            : mode === 'mock' ? t('settings.healthModeMock') 
-                            : t('settings.healthModeAuto');
-                const isSelected = (profile?.healthProviderMode || 'auto') === mode;
+              {healthModeOptions.map(mode => {
+                const label = healthModeLabel(mode, t, locale);
+                const isSelected = healthMode === mode;
                 return (
                   <Pill key={mode} active={isSelected} onPress={() => handleSelectMode(mode)}>
                     {label}
@@ -336,28 +342,17 @@ export function SettingsScreen() {
                 );
               })}
             </View>
-            <Text style={[styles.note, { color: colors.faint, marginTop: 10 }]}>
-              {t('settings.healthSourceExplain')}
-            </Text>
-          </Card>
 
           <SourceStatusCard
-            title={native.platform === 'ios' ? t('settings.nativeIos') : native.platform === 'android' ? t('settings.nativeAndroid') : t('settings.nativeGeneric')}
-            body={native.platform === 'unsupported'
-              ? t('settings.nativeUnsupported')
-              : native.available
-                ? t('settings.nativeStatus', { status: formatPermission(native.permission, t) })
-                : native.platform === 'ios'
-                  ? t('settings.nativeIosSoon')
-                  : t('settings.nativeAndroidSoon')}
-            meta={native.platform !== 'unsupported' ? t('settings.nativeTipShort', { platform: native.platform === 'ios' ? 'Apple Health' : 'Health Connect' }) : undefined}
-            status={native.available ? t('settings.available') : t('settings.pending')}
-            statusTone={native.available ? 'ready' : 'caution'}
+            title={nativeSourceTitle(native.platform, t, locale)}
+            body={nativeHealthBody(native.platform, native.available, native.permission, locale)}
+            meta={native.platform !== 'unsupported' ? nativeHealthMeta(native.platform, native.available, locale) : undefined}
+            status={nativeHealthStatus(native.platform, native.available, native.permission, t, locale)}
+            statusTone={nativeHealthStatusTone(native.platform, native.available, native.permission)}
             action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
           />
 
-          <Card>
-            <SectionHeader title={t('settings.oauthTitle')} action={isLoading ? <StatusPill label={t('settings.loadingSources')} tone="info" /> : null} />
+          <CollapsibleDetails label={isLoading ? t('settings.loadingSources') : t('settings.oauthTitle')}>
             <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.oauthBodyShort')}</Text>
             <View style={styles.sourceList}>
               {OAUTH_SOURCES.map(src => {
@@ -387,7 +382,7 @@ export function SettingsScreen() {
                 );
               })}
             </View>
-          </Card>
+          </CollapsibleDetails>
 
           <SourceStatusCard
             title={t('settings.noApiTitle')}
@@ -395,13 +390,16 @@ export function SettingsScreen() {
             status={t('settings.info')}
             statusTone="info"
           />
-        </>
-      )}
+          </>
+        )}
+      />
 
-      {tab === 'privacy' && (
-        <>
-          <Card>
-            <SectionHeader title={t('settings.privacyTitle')} />
+      <SectionCard
+        title={t('settings.privacyTitle')}
+        body={t('settings.privacyBodyShort')}
+        detailLabel={t('plan.detail')}
+        detailChildren={(
+          <>
             <Text style={[styles.copy, { color: colors.muted, fontFamily: fonts.regular }]}>{t('settings.privacyBodyShort')}</Text>
             <View style={styles.privacyActions}>
               <Button variant="secondary" onPress={() => openUrl(PRIVACY_URL)}>{t('settings.privacyPolicy')}</Button>
@@ -414,9 +412,9 @@ export function SettingsScreen() {
               </Button>
             </View>
             {!user ? <Text style={[styles.note, { color: colors.faint }]}>{t('settings.notSignedInNote')}</Text> : null}
-          </Card>
-        </>
-      )}
+          </>
+        )}
+      />
     </Screen>
   );
 }
@@ -460,15 +458,185 @@ function confirmDisconnect(src: OAuthSourceMeta, disconnect: (s: OAuthService) =
   );
 }
 
-function formatPermission(p: string, t: Translate): string {
-  switch (p) {
-    case 'granted': return t('settings.permGranted');
-    case 'partial': return t('settings.permPartial');
-    case 'denied': return t('settings.permDenied');
-    case 'not_determined': return t('settings.permNotDetermined');
-    case 'unavailable': return t('settings.permUnavailable');
-    default: return p;
+function settingsHealthTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Health data' : 'Zdravotní data';
+}
+
+function settingsNotificationsTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Notifications' : 'Připomínky';
+}
+
+function nativeSourceTitle(platform: 'ios' | 'android' | 'unsupported', t: Translate, locale: 'cs' | 'en'): string {
+  if (platform === 'ios') return t('settings.nativeIos');
+  if (platform === 'android') return t('settings.nativeAndroid');
+  return locale === 'en' ? 'Health data' : 'Zdravotní data';
+}
+
+function nativeHealthBody(platform: 'ios' | 'android' | 'unsupported', available: boolean, permission: string, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') {
+    return locale === 'en'
+      ? 'This device cannot connect health data here. Manual check-ins still work.'
+      : 'Tohle zařízení tady zdravotní data nepřipojí. Ruční check-iny pořád fungují.';
   }
+  if (isNativeHealthConnected(available, permission)) {
+    return locale === 'en'
+      ? 'Connected health data can support sleep, recovery and workouts.'
+      : 'Připojená zdravotní data pomáhají se spánkem, regenerací a tréninky.';
+  }
+  if (available) {
+    return locale === 'en'
+      ? 'Available, but not connected yet. Manual check-ins still work.'
+      : 'Dostupné, ale zatím nepřipojené. Ruční check-iny pořád fungují.';
+  }
+  return locale === 'en'
+    ? 'Not available in this build. You can keep using manual check-ins.'
+    : 'V tomhle buildu zatím nedostupné. Můžeš dál používat ruční check-iny.';
+}
+
+function nativeHealthMeta(platform: 'ios' | 'android' | 'unsupported', available: boolean, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') return '';
+  if (available) {
+    return locale === 'en'
+      ? 'Optional. Trenr works without it.'
+      : 'Volitelné. Trenr funguje i bez toho.';
+  }
+  return locale === 'en'
+    ? 'Use this later when the native build supports it.'
+    : 'Použiješ později, až to bude podporovat nativní build.';
+}
+
+function nativeConnectMessage(platform: 'ios' | 'android' | 'unsupported', available: boolean, locale: 'cs' | 'en'): string {
+  if (platform === 'unsupported') {
+    return locale === 'en'
+      ? 'Health data is not available on this device. Manual check-ins are enough to start.'
+      : 'Zdravotní data na tomhle zařízení nejsou dostupná. Pro start stačí ruční check-iny.';
+  }
+  if (available) {
+    return locale === 'en'
+      ? 'Connect it only if you want Trenr to use sleep, recovery and workout data automatically.'
+      : 'Připoj to jen pokud chceš, aby Trenr automaticky používal spánek, regeneraci a tréninky.';
+  }
+  return locale === 'en'
+    ? 'This build cannot connect it yet. Manual check-ins are enough for the daily recommendation.'
+    : 'Tenhle build to zatím nepřipojí. Pro denní doporučení stačí ruční check-iny.';
+}
+
+function morningReminderSummary(enabled: boolean, hour: number, minute: number, locale: 'cs' | 'en'): string {
+  if (!enabled) return locale === 'en' ? 'Morning reminder off' : 'Ranní připomínka vypnutá';
+  const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return locale === 'en' ? `Morning reminder at ${time}` : `Ranní připomínka v ${time}`;
+}
+
+function workoutReminderSummary(preEnabled: boolean, postEnabled: boolean, locale: 'cs' | 'en'): string {
+  if (preEnabled && postEnabled) {
+    return locale === 'en' ? 'Workout reminders before and after' : 'Připomínky před i po tréninku';
+  }
+  if (preEnabled) return locale === 'en' ? 'Pre-workout reminder on' : 'Připomínka před tréninkem zapnutá';
+  if (postEnabled) return locale === 'en' ? 'Post-workout reminder on' : 'Připomínka po tréninku zapnutá';
+  return locale === 'en' ? 'Workout reminders off' : 'Tréninkové připomínky vypnuté';
+}
+
+function healthModeLabel(mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect', t: Translate, locale: 'cs' | 'en'): string {
+  if (mode === 'manual') return t('profile.healthManual');
+  if (mode === 'mock') return t('profile.healthMock');
+  if (mode === 'apple_health') return t('settings.nativeIos');
+  if (mode === 'health_connect') return t('settings.nativeAndroid');
+  return locale === 'en' ? 'Health data later' : 'Zdravotní data později';
+}
+
+function nativeHealthStatus(
+  platform: 'ios' | 'android' | 'unsupported',
+  available: boolean,
+  permission: string,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (platform === 'unsupported') return locale === 'en' ? 'Unavailable' : 'Nedostupné';
+  if (isNativeHealthConnected(available, permission)) return t('settings.connectedShort');
+  if (available) return locale === 'en' ? 'Available' : 'Dostupné';
+  return t('settings.notConnected');
+}
+
+function nativeHealthStatusTone(
+  platform: 'ios' | 'android' | 'unsupported',
+  available: boolean,
+  permission: string,
+): 'neutral' | 'ready' | 'caution' | 'risk' | 'info' {
+  if (isNativeHealthConnected(available, permission)) return 'ready';
+  if (platform === 'unsupported') return 'neutral';
+  if (available) return 'info';
+  return 'caution';
+}
+
+function healthSourceSummary(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeConnected: boolean,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0 || nativeConnected) {
+    return locale === 'en' ? 'Health data' : 'Zdravotní data';
+  }
+  if (mode === 'mock') return locale === 'en' ? 'Demo data' : 'Demo data';
+  if (mode === 'manual') return locale === 'en' ? 'Manual data' : 'Ruční data';
+  return locale === 'en' ? 'Manual check-ins are active' : 'Ruční check-iny jsou aktivní';
+}
+
+function healthSourceState(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeAvailable: boolean,
+  permission: string,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0) {
+    return locale === 'en' ? 'Connected sources can support sleep, recovery and workouts.' : 'Připojené zdroje pomáhají se spánkem, regenerací a tréninky.';
+  }
+  if (isNativeHealthConnected(nativeAvailable, permission)) {
+    return locale === 'en'
+      ? 'Native health data can support sleep, recovery and workouts.'
+      : 'Nativní zdravotní data pomáhají se spánkem, regenerací a tréninky.';
+  }
+  if (nativeAvailable) {
+    return locale === 'en'
+      ? 'Health data is available to connect, but not connected yet.'
+      : 'Zdravotní data můžeš připojit, ale zatím připojená nejsou.';
+  }
+  if (mode === 'mock') {
+    return locale === 'en' ? 'Useful for trying the app without real health data.' : 'Hodí se na vyzkoušení appky bez reálných zdravotních dat.';
+  }
+  return locale === 'en'
+    ? 'Connect a source later if you want sleep, recovery, and workout imports.'
+    : 'Zdroj připoj později, pokud chceš import spánku, regenerace a tréninků.';
+}
+
+function healthSourceStatus(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeConnected: boolean,
+  t: Translate,
+  locale: 'cs' | 'en',
+): string {
+  if (connectedCount > 0) return t('settings.connectedShort');
+  if (nativeConnected) return t('settings.connectedShort');
+  if (mode === 'mock') return locale === 'en' ? 'Demo' : 'Demo';
+  if (mode === 'manual') return locale === 'en' ? 'Manual' : 'Ručně';
+  return t('settings.notConnected');
+}
+
+function healthSourceTone(
+  mode: 'auto' | 'mock' | 'manual' | 'apple_health' | 'health_connect',
+  connectedCount: number,
+  nativeConnected: boolean,
+): 'neutral' | 'ready' | 'caution' | 'risk' | 'info' {
+  if (connectedCount > 0 || nativeConnected || mode === 'manual') return 'ready';
+  if (mode === 'mock') return 'info';
+  return 'caution';
+}
+
+function isNativeHealthConnected(available: boolean, permission: string): boolean {
+  return available && (permission === 'granted' || permission === 'partial');
 }
 
 const styles = StyleSheet.create({

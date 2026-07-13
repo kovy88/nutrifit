@@ -190,7 +190,7 @@ describe('adjustPlanForTrainingCompletions', () => {
     const plan = fixturePlan();
     const result = adjustPlanForTrainingCompletions(plan, {
       '2026-01-05': completion('2026-01-05', 'completed', plan.sessions[0]),
-    });
+    }, 'cs');
 
     expect(result.plan).toBe(plan);
     expect(result.skippedDates).toEqual([]);
@@ -237,6 +237,8 @@ describe('adjustPlanForTrainingCompletions', () => {
       {
         '2026-01-05': completion('2026-01-05', 'skipped', null),
       },
+      {},
+      'cs',
     );
 
     expect(session.date).toBe('2026-01-07');

@@ -193,6 +193,7 @@ describe('evaluateReadiness — relative mode (with baseline)', () => {
     const r = evaluateReadiness({
       todayHrvMs: 30,
       baseline: { hrvMeanMs: 50 },
+      locale: 'cs',
     });
     const hrv = r.factors.find(f => f.key === 'hrv_moderate' || f.key === 'hrv_low');
     expect(hrv?.message).toContain('50'); // baseline value visible
