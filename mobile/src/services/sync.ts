@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import type {
   DailyFoodLogRecord,
@@ -7,6 +6,7 @@ import type {
   FoodLogItem,
   Macros,
   Meal,
+  NutritionGoalKind,
   SyncConflict,
   TrainingCompletionRecordMap,
   UserProfile,
@@ -14,15 +14,6 @@ import type {
 import type { WeeklyCheckIn } from '../types/checkin';
 import type { CoachThreadRecordMap, DailyCoachHistoryMap } from '../types/coach';
 import type { HealthDataSummary } from '../types/health';
-
-const PENDING_KEY = 'nutrifit.sync.pendingWrites.v1';
-
-export type PendingSyncWrite = {
-  id: string;
-  entity: SyncConflict['entity'];
-  payload: unknown;
-  createdAt: string;
-};
 
 export type LocalSyncSnapshot = {
   profile: UserProfile | null;
@@ -36,6 +27,11 @@ export type LocalSyncSnapshot = {
   coachThreadsByDate?: CoachThreadRecordMap;
   dailyCoachHistory?: DailyCoachHistoryMap;
   dailyHealthSummaries?: Record<string, HealthDataSummary>;
+  /** Cumulative kcal delta from accepted weekly adjustments. Piggybacks on
+   *  the `profiles` row (as extra JSON keys, not dedicated columns) since
+   *  that table's schema isn't tracked in supabase/migrations/ here. */
+  baselineKcalDelta?: number;
+  overrideGoalKind?: NutritionGoalKind | null;
 };
 
 export type SyncRows = ReturnType<typeof buildSyncRows>;
@@ -70,33 +66,28 @@ export function resolveByUpdatedAt<T extends { updatedAt?: string | null }>(
   };
 }
 
-export async function loadPendingSyncWrites(): Promise<PendingSyncWrite[]> {
-  const raw = await AsyncStorage.getItem(PENDING_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+/** Merges a whole local/remote record map key-by-key via resolveByUpdatedAt.
+ *  Only surfaces a conflict when both sides exist AND actually disagree —
+ *  resolveByUpdatedAt reports a decision any time both are present, even
+ *  when they're identical (e.g. an already-synced, unchanged record). */
+export function mergeRecordsByUpdatedAt<T extends { updatedAt?: string | null }>(
+  entity: SyncConflict['entity'],
+  local: Record<string, T>,
+  remote: Record<string, T>,
+): { merged: Record<string, T>; conflicts: SyncConflict<T>[] } {
+  const keys = new Set([...Object.keys(remote), ...Object.keys(local)]);
+  const merged: Record<string, T> = {};
+  const conflicts: SyncConflict<T>[] = [];
+  for (const key of keys) {
+    const localValue = local[key] ?? null;
+    const remoteValue = remote[key] ?? null;
+    const { value, conflict } = resolveByUpdatedAt(entity, key, localValue, remoteValue);
+    if (value) merged[key] = value;
+    if (conflict && localValue && remoteValue && JSON.stringify(localValue) !== JSON.stringify(remoteValue)) {
+      conflicts.push(conflict);
+    }
   }
-}
-
-export async function savePendingSyncWrites(writes: PendingSyncWrite[]): Promise<void> {
-  await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(writes.slice(-100)));
-}
-
-export async function queuePendingSyncWrite(write: Omit<PendingSyncWrite, 'id' | 'createdAt'>): Promise<PendingSyncWrite> {
-  const next: PendingSyncWrite = {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    createdAt: nowISO(),
-    ...write,
-  };
-  await savePendingSyncWrites([...(await loadPendingSyncWrites()), next]);
-  return next;
-}
-
-export async function clearPendingSyncWrites(): Promise<void> {
-  await AsyncStorage.removeItem(PENDING_KEY);
+  return { merged, conflicts };
 }
 
 export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, timestamp = nowISO()) {
@@ -131,7 +122,7 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
     completed_sessions: checkIn.completedSessions ?? null,
     planned_sessions: checkIn.plannedSessions ?? null,
     notes: checkIn.notes ?? null,
-    updated_at: timestamp,
+    updated_at: checkIn.updatedAt ?? timestamp,
   }));
 
   const trainingCompletions = Object.values(snapshot.trainingCompletionsByDate ?? {}).map(record => ({
@@ -184,7 +175,17 @@ export function buildSyncRows(snapshot: LocalSyncSnapshot, userId: string, times
   }));
 
   const profile = snapshot.profile
-    ? [{ user_id: userId, profile: snapshot.profile, updated_at: timestamp }]
+    ? [{
+        user_id: userId,
+        // `profile` is a jsonb blob — piggyback the weekly-adjustment state on
+        // it under a `_sync` sub-key so it travels with the profile row
+        // without needing dedicated columns on an untracked table schema.
+        profile: {
+          ...snapshot.profile,
+          _sync: { baselineKcalDelta: snapshot.baselineKcalDelta ?? 0, overrideGoalKind: snapshot.overrideGoalKind ?? null },
+        },
+        updated_at: timestamp,
+      }]
     : [];
 
   const dailyTargets = Object.entries(snapshot.baselineTargetsByDate ?? {}).map(([date, macros]) => ({
@@ -258,8 +259,13 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
     .find(res => res.error)?.error;
   if (firstError) throw new Error(firstError.message);
 
+  const remoteProfileRaw = (profileRes.data as any)?.profile ?? null;
+  const { _sync, ...remoteProfile } = remoteProfileRaw ?? { _sync: undefined };
+
   return {
-    profile: (profileRes.data as any)?.profile ?? null,
+    profile: remoteProfileRaw ? (remoteProfile as UserProfile) : null,
+    baselineKcalDelta: _sync?.baselineKcalDelta,
+    overrideGoalKind: _sync?.overrideGoalKind,
     plansByDate: Object.fromEntries(((plansRes.data as any[]) ?? []).map(row => [row.plan_date, row.meals ?? []])),
     foodLogsByDate: groupFoodLogs((logsRes.data as any[]) ?? []),
     weightsByDate: Object.fromEntries(((weightsRes.data as any[]) ?? []).map(row => [row.entry_date, Number(row.weight_kg)])),
@@ -274,6 +280,7 @@ export async function pullRemoteSnapshotFromSupabase(userId: string): Promise<Re
       plannedSessions: row.planned_sessions ?? undefined,
       notes: row.notes ?? undefined,
       createdAt: row.created_at ?? nowISO(),
+      updatedAt: row.updated_at ?? row.created_at ?? nowISO(),
     })),
     trainingCompletionsByDate: Object.fromEntries(((completionsRes.data as any[]) ?? []).map(row => [row.completion_date, {
       date: row.completion_date,

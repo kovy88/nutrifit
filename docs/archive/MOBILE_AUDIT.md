@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-05-27 → 2026-07-02.** Popisuje `mobile/` appku v době, kdy měla 3 653 LOC / 24 souborů. Dnes má `mobile/src` přes 31 000 LOC — většina zde popsaných problémů (duplicitní `HomeScreen`, chybějící HealthKit, chybějící backend pro user data) už je vyřešená. Neber jako popis současného stavu. Aktuální architektura: [`docs/architecture.md`](../architecture.md).
+
 # NutriFit Mobile — Brutální Technický Audit
 
 **Scope:** `/mobile` (Expo 56, React Native 0.85, TypeScript strict, Vitest)

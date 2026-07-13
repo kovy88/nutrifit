@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   dayName: { fontSize: 16, marginBottom: 10 },
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   detail: { marginTop: 12, gap: 4 },
-  secondBlock: { marginTop: 14, paddingTop: 12, borderTopWidth: 1 },
+  secondBlock: { marginTop: 14, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   secondHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   secondTitle: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
   addSecondRow: { marginTop: 12, flexDirection: 'row' },

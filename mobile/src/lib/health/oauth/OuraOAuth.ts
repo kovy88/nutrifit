@@ -7,8 +7,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
+import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
-import { parseQuery } from './StravaOAuth';
+import { generateRandomHex, parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.oura.state.v1';
 const BRIDGE_URL = 'https://nutri-fit-omega.vercel.app/oura-callback.html';
@@ -37,7 +38,7 @@ export class OuraOAuth {
     if (!this.config.clientId) {
       throw new Error('Oura client ID is not configured (env EXPO_PUBLIC_OURA_CLIENT_ID).');
     }
-    const state = generateState();
+    const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
     const params = new URLSearchParams({
       response_type: 'code',
@@ -73,7 +74,7 @@ export class OuraOAuth {
     try {
       res = await fetch(EXCHANGE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ code: parsed.code, redirectUri: BRIDGE_URL }),
       });
     } catch {
@@ -93,33 +94,36 @@ export class OuraOAuth {
     return { ok: true };
   }
 
+  /** Pokud token vypršel, požádej backend o nový skrz refresh_token. */
   async refresh(): Promise<boolean> {
-    const token = await this.tokens.getToken('oura');
-    if (!token?.refreshToken) return false;
-    let res: Response;
-    try {
-      res = await fetch(REFRESH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: token.refreshToken }),
-      });
-    } catch {
-      return false;
-    }
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.accessToken) return false;
-    await this.tokens.setToken('oura', {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresAt: data.expiresAt,
-      scope: token.scope,
-    });
-    return true;
+    return refreshOuraToken(this.tokens);
   }
 }
 
-function generateState(): string {
-  let s = '';
-  for (let i = 0; i < 16; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
+/** Standalone (class-independent) refresh so OuraProvider's data-fetching
+ *  path can call it without needing a full OuraOAuth instance (which
+ *  requires a clientId it has no use for here — refresh only needs the
+ *  refreshToken already in the token store). Mirrors refreshStravaToken. */
+export async function refreshOuraToken(tokens: OAuthTokenStore): Promise<boolean> {
+  const token = await tokens.getToken('oura');
+  if (!token?.refreshToken) return false;
+  let res: Response;
+  try {
+    res = await fetch(REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ refreshToken: token.refreshToken }),
+    });
+  } catch {
+    return false;
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.accessToken) return false;
+  await tokens.setToken('oura', {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    scope: token.scope,
+  });
+  return true;
 }

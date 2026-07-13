@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTrenr } from '../context/TrenrContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Button, Card, FadeInView } from './UI';
+import { Button, FadeInView } from './UI';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -115,7 +115,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                   {selectedPlan === 'monthly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  {monthly?.priceString ?? '149 Kč'} <Text style={styles.planUnit}>{t('paywall.perMonth')}</Text>
+                  {monthly?.priceString} <Text style={styles.planUnit}>{t('paywall.perMonth')}</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
                   {t('paywall.monthlyTrial')}
@@ -142,7 +142,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                   {selectedPlan === 'yearly' && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
                 </View>
                 <Text style={[styles.planPrice, { color: colors.ink, fontFamily: fonts.number }]}>
-                  {yearly?.priceString ?? '1 290 Kč'} <Text style={styles.planUnit}>{t('paywall.perYear')}</Text>
+                  {yearly?.priceString} <Text style={styles.planUnit}>{t('paywall.perYear')}</Text>
                 </Text>
                 <Text style={[styles.planTrial, { color: colors.accent, fontFamily: fonts.bold }]}>
                   {t('paywall.yearlyTrial')}

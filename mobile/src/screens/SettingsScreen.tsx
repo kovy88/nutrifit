@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Alert, Linking, Share, StyleSheet, Text, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -66,10 +66,18 @@ export function SettingsScreen() {
   const healthModeOptions: Array<'manual' | 'mock' | 'auto'> = __DEV__ ? ['manual', 'mock', 'auto'] : ['manual', 'auto'];
   const nativeConnected = isNativeHealthConnected(native.available, native.permission);
 
-  if (strava.status === 'connected' && !connectedOAuth.includes('strava')) refreshSources();
-  if (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) refreshSources();
-  if (garmin.status === 'connected' && !connectedOAuth.includes('garmin')) refreshSources();
-  if (oura.status === 'connected' && !connectedOAuth.includes('oura')) refreshSources();
+  // Re-fetch connected sources once a provider flips to "connected" after an
+  // OAuth round-trip. Runs as an effect (not inline in the render body) so it
+  // fires once per actual status change instead of on every render while the
+  // two states are momentarily out of sync.
+  useEffect(() => {
+    const justConnected =
+      (strava.status === 'connected' && !connectedOAuth.includes('strava')) ||
+      (whoop.status === 'connected' && !connectedOAuth.includes('whoop')) ||
+      (garmin.status === 'connected' && !connectedOAuth.includes('garmin')) ||
+      (oura.status === 'connected' && !connectedOAuth.includes('oura'));
+    if (justConnected) void refreshSources();
+  }, [strava.status, whoop.status, garmin.status, oura.status, connectedOAuth, refreshSources]);
 
   function handleConnect(service: OAuthService) {
     if (service === 'strava') {
@@ -127,7 +135,7 @@ export function SettingsScreen() {
     }
     setExporting(true);
     try {
-      const data = await exportAccountData();
+      const data = await exportAccountData(locale);
       const json = JSON.stringify(data, null, 2);
       const fileUri = `${FileSystem.cacheDirectory}nutrifit-export-${new Date().toISOString().slice(0, 10)}.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
@@ -151,7 +159,7 @@ export function SettingsScreen() {
           onPress: async () => {
             setDeleting(true);
             try {
-              if (user) await deleteAccount();
+              if (user) await deleteAccount(locale);
               await purgeAllUserData();
               if (user) await signOut();
             } catch (err) {

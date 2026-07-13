@@ -1,11 +1,12 @@
-const { method, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, sendError, isValidEmail } = require('./_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await rateLimit(req, res, 'delete-request', 5))) return;
 
   const email = String(req.body?.email || '').trim().toLowerCase();
   const message = String(req.body?.message || '').trim();
-  if (!email || !email.includes('@') || !email.includes('.')) {
+  if (!isValidEmail(email)) {
     return sendError(res, 400, 'invalid_email', 'Zadej platný e-mail k účtu.');
   }
 

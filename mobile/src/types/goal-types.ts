@@ -110,8 +110,11 @@ export type GoalQuickStart = {
   id: PrimaryGoal;
   labelKey: string;
   subtitleKey: string;
+  /** English seed text — used by tests and as the `en` locale value. */
   text: string;
-  /** Ve kterých režimech kouče dává cíl smysl jako rychlý start. 'both' = vždy. */
+  /** Czech seed text, shown/written when the app locale is `cs`. */
+  textCs: string;
+  /** Which coach scopes this goal makes sense as a quick start for. 'both' = always. */
   scopes: ('both' | 'training' | 'nutrition')[];
 };
 
@@ -126,7 +129,7 @@ export type FollowUpQuestion =
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: RaceGoal; labelKey: string }>;
+      options: { value: RaceGoal; labelKey: string }[];
     }
   | {
       id: 'raceDateISO' | 'dietPreferences';
@@ -147,26 +150,26 @@ export type FollowUpQuestion =
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: ExperienceLevel; labelKey: string }>;
+      options: { value: ExperienceLevel; labelKey: string }[];
     }
   | {
       id: 'trainingEnvironment';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: TrainingEnvironment; labelKey: string }>;
+      options: { value: TrainingEnvironment; labelKey: string }[];
     }
   | {
       id: 'mainWellbeingBlocker';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: WellbeingBlocker; labelKey: string }>;
+      options: { value: WellbeingBlocker; labelKey: string }[];
     }
   | {
       id: 'injuryFlag' | 'gymStrengthAvailable' | 'runWalkPreferred';
       kind: 'single_choice';
       promptKey: string;
       required: boolean;
-      options: Array<{ value: boolean; labelKey: string }>;
+      options: { value: boolean; labelKey: string }[];
     };

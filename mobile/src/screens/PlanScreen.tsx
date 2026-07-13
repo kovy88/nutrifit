@@ -22,6 +22,11 @@ import { trainingPhase, type TrainingPhase } from '../lib/training/phase';
 import { SPORTS, cloneStarter } from '../lib/training/sports';
 import type { Meal, TrainingSession } from '../types';
 import type { TranslationKey } from '../lib/i18n';
+import { useLanguage } from '../context/LanguageContext';
+import { useUnits } from '../hooks/useUnits';
+import { PaywallModal } from '../components/PaywallModal';
+import { loadPlansByDate } from '../services/storage';
+import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
   build: 'phase.build',
@@ -30,10 +35,6 @@ const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
   taper: 'phase.taper',
   race_week: 'phase.race_week',
 };
-import { useLanguage } from '../context/LanguageContext';
-import { useUnits } from '../hooks/useUnits';
-import { PaywallModal } from '../components/PaywallModal';
-import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 export function PlanScreen() {
   const {
@@ -52,7 +53,7 @@ export function PlanScreen() {
     isSubscribed,
   } = useTrenr();
   const { t, locale } = useLanguage();
-  const { showText } = useUnits();
+  const { showText, showDistance, distanceUnit } = useUnits();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
@@ -71,6 +72,13 @@ export function PlanScreen() {
   }, [profile?.likes, profile?.dislikes]);
 
   const weekDays = useMemo(() => buildWeek(selectedDate, locale), [selectedDate, locale]);
+  // Computed unconditionally (before the early return below) so hook order
+  // stays stable across renders — e.g. profile can flip to null mid-session
+  // after account deletion while this screen is still mounted.
+  const weeklyPlanOrNull = useMemo(
+    () => (profile ? planForDate(profile, new Date(selectedDate), {}, locale) : null),
+    [profile, selectedDate, locale],
+  );
 
   if (!profile || !currentMacros) return null;
 
@@ -78,7 +86,7 @@ export function PlanScreen() {
   const activeMacros = currentMacros;
   const shoppingGroups = buildShoppingList(meals, locale);
   const selectedSession = currentSession ?? planSessionForDate(activeProfile, new Date(selectedDate), {}, locale);
-  const weeklyPlan = useMemo(() => planForDate(activeProfile, new Date(selectedDate), {}, locale), [activeProfile, selectedDate, locale]);
+  const weeklyPlan = weeklyPlanOrNull!;
   const customSchedule = hasCustomSchedule(activeProfile);
   const phase: TrainingPhase | null = customSchedule
     ? null
@@ -194,6 +202,11 @@ export function PlanScreen() {
         eyebrow={t('tab.plan')}
         title={t('plan.weekTitle')}
         subtitle={t('plan.weekSubtitle', { date: formatDateLabel(selectedDate, locale) })}
+        action={
+          <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.settings')} style={[styles.iconButton, { borderColor: colors.hairline }]} onPress={() => setPrefsOpen(true)}>
+            <Ionicons name="options-outline" size={20} color={colors.accent} />
+          </Pressable>
+        }
       />
 
       <HeroDecisionCard
@@ -214,6 +227,30 @@ export function PlanScreen() {
             <Button onPress={loadStarterWeek}>{t('myweek.loadStarterFor', { sport: SPORTS[mainSportId].name(locale) })}</Button>
           ) : null}
         </Card>
+      ) : null}
+
+      {weeklyPlan.safetyWarnings && weeklyPlan.safetyWarnings.length > 0 ? (
+        <Card style={{ borderColor: colors.orange, backgroundColor: colors.orange + '10', marginBottom: 12, padding: 14 }}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+            <Ionicons name="warning-outline" size={20} color={colors.orange} />
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.ink, flex: 1 }}>
+              {t('plan.ambitiousWarning')}
+            </Text>
+          </View>
+          {weeklyPlan.safetyWarnings.map((warning, index) => (
+            <Text key={index} style={{ fontSize: 13, color: colors.muted, lineHeight: 18, marginTop: 2 }}>
+              • {warning}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
+
+      {weeklyPlan.weeklyVolume && weeklyPlan.weeklyVolume > 0 ? (
+        <View style={{ marginBottom: 12, paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accent }}>
+            {t('plan.weeklyVolume', { volume: Math.round(showDistance(weeklyPlan.weeklyVolume)), unit: distanceUnit })}
+          </Text>
+        </View>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
@@ -427,7 +464,7 @@ function IconAction({
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.mealAction, { borderColor: colors.border, backgroundColor: colors.bgElev }, disabled && { opacity: 0.45 }]}>
+    <Pressable disabled={disabled} onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={[styles.mealAction, { borderColor: colors.border, backgroundColor: colors.bgElev }, disabled && { opacity: 0.45 }]}>
       <Ionicons name={icon} size={18} color={colors.accent} />
       <Text style={[styles.mealActionText, { color: colors.ink }]}>{label}</Text>
     </Pressable>
@@ -600,6 +637,7 @@ function selectedTrainingTitle(locale: 'cs' | 'en'): string {
 
 const styles = StyleSheet.create({
   screen: { gap: 12 },
+  iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   weekStrip: { gap: 7, paddingRight: 4 },
   dayChip: { width: 70, minHeight: 68, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 8, justifyContent: 'space-between' },
   dayName: { fontSize: 10.5, lineHeight: 13, fontWeight: '600' },

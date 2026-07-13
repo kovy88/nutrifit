@@ -69,4 +69,32 @@ describe('deterministic onboarding goal parser', () => {
       raceGoal: 'half_marathon',
     });
   });
+
+  it('does not match short needles inside unrelated words or numbers', () => {
+    // '25k steps' contains '5k' as a substring — must not be misread as a 5K race goal.
+    expect(parseGoalText('I walk 25k steps a day and want to feel better').goalProfile).toMatchObject({
+      primaryGoal: 'build_consistency',
+    });
+    // 'cutlery' contains 'cut' — must not trigger fat-loss detection.
+    expect(parseGoalText('I need new cutlery for my kitchen').goalProfile).toBeNull();
+    // '110k' contains '10k' — must not be misread as a 10K race goal.
+    expect(parseGoalText('My car has 110k miles and I want to build muscle').goalProfile).toMatchObject({
+      primaryGoal: 'build_muscle',
+      raceGoal: 'none',
+    });
+  });
+
+  it('still matches short needles at real word boundaries', () => {
+    expect(parseGoalText('I want to cut weight').goalProfile).toMatchObject({
+      primaryGoal: 'lose_fat',
+    });
+    expect(parseGoalText('I want to run 5k').goalProfile).toMatchObject({
+      primaryGoal: 'run_race',
+      raceGoal: 'run_5k',
+    });
+    expect(parseGoalText('I want to run 10k').goalProfile).toMatchObject({
+      primaryGoal: 'run_race',
+      raceGoal: 'run_10k',
+    });
+  });
 });

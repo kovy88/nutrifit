@@ -4,7 +4,7 @@
     "slug": "nutrifit",
     "scheme": "nutrifit",
     "version": "0.1.0",
-    "description": "Česká aplikace pro orientační výpočet maker, plánování jídelníčku a zápis jídla ručně nebo z fotky.",
+    "description": "AI coach for daily readiness, training, and nutrition — powered by your sleep and HRV data.",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -15,10 +15,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "cz.nutrifit.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Trenr používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot.",
-        "NSCameraUsageDescription": "Trenr může použít fotoaparát jen pro vyfocení jídla k orientačnímu odhadu nutričních hodnot.",
-        "NSHealthShareUsageDescription": "Trenr čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-        "NSHealthUpdateUsageDescription": "Trenr může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+        "NSPhotoLibraryUsageDescription": "Trenr uses your photo library only to select a food photo for nutritional estimation.",
+        "NSCameraUsageDescription": "Trenr uses the camera only to photograph food for nutritional estimation.",
+        "NSHealthShareUsageDescription": "Trenr reads steps, energy, sleep, resting heart rate, HRV, and workouts from Apple Health to adapt your macros and recommendations to today's load and recovery.",
+        "NSHealthUpdateUsageDescription": "Trenr can write manually logged weight and workouts to Apple Health to keep everything in one place.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
@@ -33,7 +33,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#f7f7f4"
+        "backgroundColor": "#0c0c0c"
       },
       "permissions": [
         "android.permission.READ_MEDIA_IMAGES",
@@ -53,7 +53,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Trenr používá knihovnu fotek jen pro výběr fotografie jídla k odhadu nutričních hodnot."
+          "photosPermission": "Trenr uses your photo library only to select a food photo for nutritional estimation."
         }
       ],
       "expo-status-bar",
@@ -63,7 +63,7 @@
         {
           "image": "./assets/splash.png",
           "resizeMode": "cover",
-          "backgroundColor": "#f7f7f4"
+          "backgroundColor": "#0c0c0c"
         }
       ],
       [
@@ -77,16 +77,17 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Trenr čte z Apple Health kroky, energii, spánek, klidový tep, HRV a tréninky, aby přizpůsobil makra a doporučení tvému dnešnímu zatížení a regeneraci.",
-          "NSHealthUpdateUsageDescription": "Trenr může do Apple Health zapisovat ručně zalogovanou váhu a manuální tréninky, abys měl všechno na jednom místě.",
+          "NSHealthShareUsageDescription": "Trenr reads steps, energy, sleep, resting heart rate, HRV, and workouts from Apple Health to adapt your macros and recommendations to today's load and recovery.",
+          "NSHealthUpdateUsageDescription": "Trenr can write manually logged weight and workouts to Apple Health to keep everything in one place.",
           "background": true
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "react-native-health-connect"
     ],
     "extra": {
       "privacyUrl": "https://nutri-fit-omega.vercel.app/legal.html#privacy",
-      "supportUrl": "mailto:koval.macek@gmail.com?subject=Trenr%20podpora",
+      "supportUrl": "mailto:koval.macek@gmail.com?subject=Trenr%20support",
       "deletionUrl": "https://nutri-fit-omega.vercel.app/delete-account.html",
       "eas": {
         "projectId": "62f6c2fe-df52-45c5-b680-13c8ba2d703e"

@@ -104,7 +104,7 @@ const STATIC: Record<string, string> = {
 type Handler = (m: RegExpMatchArray, locale: string) => string;
 
 /** Templated translations (titles with interpolated km / minutes). */
-const PATTERNS: Array<[RegExp, Handler]> = [
+const PATTERNS: [RegExp, Handler][] = [
   // Easy run (optional "Běh/chůze:" run-walk prefix), plain
   [/^(Běh\/chůze: )?Lehký běh ([\d.]+) km$/, m => `${m[1] ? 'Run/walk: ' : ''}Easy run ${m[2]} km`],
   [/^Lehký běh ([\d.]+) km \+ volitelné plavecké drily$/, m => `Easy run ${m[1]} km + optional swim drills`],

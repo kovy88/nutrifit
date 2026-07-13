@@ -4,6 +4,7 @@
 // build where the package is installed and an API key is configured.
 
 import { Platform } from 'react-native';
+import type { Locale } from '../i18n/types';
 import {
   PREMIUM_ENTITLEMENT,
   type SubscriptionPackage,
@@ -27,6 +28,7 @@ async function loadPurchases(): Promise<any | null> {
   if (purchasesModule) return purchasesModule;
   try {
     // @ts-ignore — optional native dep; installed only for production EAS builds
+    // eslint-disable-next-line import/no-unresolved -- intentionally optional, see above
     const mod = await import('react-native-purchases');
     purchasesModule = mod?.default ?? mod;
     return purchasesModule;
@@ -35,8 +37,27 @@ async function loadPurchases(): Promise<any | null> {
   }
 }
 
-function planFromPackage(pkg: any): SubscriptionPlanId {
-  const id = String(pkg?.identifier ?? pkg?.product?.identifier ?? '').toLowerCase();
+/** Product IDs configured in App Store Connect / Play Console + the
+ *  RevenueCat dashboard — must match FALLBACK_PACKAGES in
+ *  SubscriptionProvider.ts. `purchase()` matches against these exactly;
+ *  never falls back to a heuristic guess when real money is involved. */
+export const KNOWN_PRODUCT_IDS: Record<SubscriptionPlanId, string> = {
+  monthly: 'trenr_premium_monthly',
+  yearly: 'trenr_premium_yearly',
+};
+
+export function packageProductId(pkg: any): string {
+  return String(pkg?.product?.identifier ?? pkg?.identifier ?? '').toLowerCase();
+}
+
+/** Best-effort classification for display only (e.g. the paywall's
+ *  monthly/yearly price labels) — falls back to a substring heuristic if the
+ *  dashboard's product ID doesn't match our exact naming convention. Never
+ *  used to decide what a purchase actually charges; see `purchase()`. */
+export function planFromPackage(pkg: any): SubscriptionPlanId {
+  const id = packageProductId(pkg);
+  if (id === KNOWN_PRODUCT_IDS.yearly) return 'yearly';
+  if (id === KNOWN_PRODUCT_IDS.monthly) return 'monthly';
   return id.includes('year') || id.includes('annual') ? 'yearly' : 'monthly';
 }
 
@@ -75,7 +96,7 @@ export class RevenueCatSubscriptionProvider implements SubscriptionProvider {
     }
   }
 
-  async getOfferings(): Promise<SubscriptionPackage[]> {
+  async getOfferings(_locale?: Locale): Promise<SubscriptionPackage[]> {
     const Purchases = await loadPurchases();
     if (!Purchases) return [];
     try {
@@ -106,7 +127,9 @@ export class RevenueCatSubscriptionProvider implements SubscriptionProvider {
     if (!Purchases) throw new Error('billing_unavailable');
     const offerings = await Purchases.getOfferings();
     const pkgs = offerings?.current?.availablePackages ?? [];
-    const pkg = pkgs.find((p: any) => planFromPackage(p) === planId) ?? pkgs[0];
+    // Exact productId match only — never fall back to a heuristic guess or
+    // "whatever package happened to be first" when actual money is involved.
+    const pkg = pkgs.find((p: any) => packageProductId(p) === KNOWN_PRODUCT_IDS[planId]);
     if (!pkg) throw new Error('no_package');
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     return statusFromInfo(customerInfo);

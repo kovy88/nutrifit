@@ -13,6 +13,7 @@ import { ActionStrip, CollapsibleDetails, InfoRow, SectionCard } from '../compon
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { analyzeFoodPhoto } from '../services/api';
+import { resizeForUpload } from '../lib/media/resizeImage';
 import { normalizeFoodEstimate, formatDateLabel } from '../utils/nutrition';
 import type { FoodEstimate } from '../types';
 import { useNavigation } from '@react-navigation/native';
@@ -72,7 +73,8 @@ export function PhotoScreen() {
     setLoading(true);
     setError(null);
     try {
-      const next = await analyzeFoodPhoto(image.uri, image.mimeType || 'image/jpeg', locale);
+      const resized = await resizeForUpload(image.uri, image.width, image.height);
+      const next = await analyzeFoodPhoto(resized.uri, resized.mimeType, locale);
       setEstimate(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : t('photo.tryAnother');

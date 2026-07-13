@@ -6,7 +6,7 @@ import type {
 } from '../../types';
 import { scopeHasNutrition, scopeHasTraining } from '../../types';
 import type { TranslationKey, TranslateParams } from '../i18n';
-import { isRunningGoal, isRunRaceGoal } from '../../constants/goals';
+import { isRunRaceGoal } from '../../constants/goals';
 import type { RaceFeasibilityVerdict } from '../training/feasibility';
 import type { GoalProfile } from '../../types/goal-types';
 import { hasRequiredGoalFollowUps } from './follow-up-question-generator';

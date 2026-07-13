@@ -22,14 +22,14 @@ import type {
   RecoveryInputs,
 } from '../../types/coach';
 
+import type { WeeklyCheckIn } from '../../types/checkin';
+
 function L(locale: Locale, cs: string, en: string): string {
   return locale === 'en' ? en : cs;
 }
 
 const INTENSITY_ORDER: RecommendedIntensity[] = ['rest', 'easy', 'moderate', 'hard'];
 const rankIntensity = (i: RecommendedIntensity): number => INTENSITY_ORDER.indexOf(i);
-
-import type { WeeklyCheckIn } from '../../types/checkin';
 
 export type DailyCoachInput = {
   date: string;

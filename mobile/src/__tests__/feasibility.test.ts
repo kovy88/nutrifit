@@ -17,7 +17,7 @@ describe('training feasibility', () => {
 
     expect(result.verdict).toBe('unrealistic');
     expect(result.reasons.length).toBeGreaterThan(0);
-    expect(result.recommendation).toMatch(/half marathon|run-walk|later/i);
+    expect(result.recommendation).toBe('unrealistic_marathon');
   });
 
   it('allows an intermediate half marathon with 16 weeks and a solid base', () => {
@@ -69,7 +69,7 @@ describe('training feasibility', () => {
     });
 
     expect(result.verdict).toBe('tight');
-    expect(result.reasons.some(reason => /frequency/i.test(reason))).toBe(true);
+    expect(result.reasons).toContain('low_frequency');
   });
 
   it('flags fat-loss primary goal combined with marathon build', () => {
@@ -95,7 +95,7 @@ describe('training feasibility', () => {
     });
 
     expect(result.verdict).toBe('unrealistic');
-    expect(result.reasons.some(reason => /injury/i.test(reason))).toBe(true);
+    expect(result.reasons).toContain('recent_injury');
   });
 
   it('recommends shorter alternatives for an unrealistic marathon build from low weekly km', () => {
@@ -113,7 +113,7 @@ describe('training feasibility', () => {
 
     expect(result.verdict).toBe('unrealistic');
     expect(result.safePeakByRaceKm).toBeLessThan(result.requiredPeakKm * 0.72);
-    expect(result.recommendation).toMatch(/half marathon|run-walk|later/i);
+    expect(result.recommendation).toBe('unrealistic_marathon');
   });
 
   it('treats invalid race dates as missing instead of producing NaN', () => {

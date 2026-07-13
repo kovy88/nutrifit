@@ -1,8 +1,10 @@
 // Vercel serverless funkce — multimodální odhad maker z fotky jídla (Gemini Vision)
 
-const { method, rateLimit, requireUser, sendError } = require('./_lib/store-readiness');
+const { method, rateLimit, requireUser, sendError, msg, getLocale } = require('./_lib/store-readiness');
 
 const MAX_IMAGE_BASE64_LENGTH = Math.ceil((5 * 1024 * 1024 * 4) / 3);
+const GEMINI_TIMEOUT_MS = 25000;
+
 const EMPTY_ESTIMATE = {
   cs: {
     foodName: 'Jídlo se nepodařilo rozpoznat',
@@ -32,27 +34,28 @@ module.exports = async function handler(req, res) {
   if (!(await rateLimit(req, res, 'analyze-food-photo', 20))) return;
 
   const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return sendError(res, 500, 'missing_gemini_key', msg(req, 'GEMINI_API_KEY není nastavený v prostředí serveru.', 'GEMINI_API_KEY is not configured on the server.'));
+  }
+
   const { imageBase64, mimeType } = req.body || {};
-  const locale = req.body?.locale === 'en' ? 'en' : 'cs';
+  const locale = getLocale(req);
   const lang = locale === 'en' ? 'English' : 'Czech';
   const emptyEstimate = EMPTY_ESTIMATE[locale];
-  if (!apiKey) {
-    return sendError(res, 500, 'missing_gemini_key', locale === 'en' ? 'GEMINI_API_KEY is not configured on the server.' : 'GEMINI_API_KEY není nastavený v prostředí serveru.');
-  }
   if (!imageBase64 || !mimeType) {
-    return sendError(res, 400, 'missing_image', locale === 'en' ? 'imageBase64 or mimeType is missing.' : 'Chybí imageBase64 nebo mimeType.');
+    return sendError(res, 400, 'missing_image', msg(req, 'Chybí imageBase64 nebo mimeType.', 'Missing imageBase64 or mimeType.'));
   }
   if (typeof imageBase64 !== 'string' || typeof mimeType !== 'string') {
-    return sendError(res, 400, 'invalid_image', locale === 'en' ? 'Invalid image format.' : 'Neplatný formát obrázku.');
+    return sendError(res, 400, 'invalid_image', msg(req, 'Neplatný formát obrázku.', 'Invalid image format.'));
   }
   if (!mimeType.startsWith('image/')) {
-    return sendError(res, 400, 'invalid_mime', locale === 'en' ? 'The file must be an image.' : 'Soubor musí být obrázek.');
+    return sendError(res, 400, 'invalid_mime', msg(req, 'Soubor musí být obrázek.', 'The file must be an image.'));
   }
   if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
-    return sendError(res, 400, 'image_too_large', locale === 'en' ? 'The photo is too large. Maximum size is 5 MB.' : 'Fotka je moc velká. Maximum je 5 MB.');
+    return sendError(res, 400, 'image_too_large', msg(req, 'Fotka je moc velká. Maximum je 5 MB.', 'The photo is too large. Maximum is 5 MB.'));
   }
   if (!/^[A-Za-z0-9+/=]+$/.test(imageBase64)) {
-    return sendError(res, 400, 'invalid_base64', locale === 'en' ? 'The image is not valid base64.' : 'Obrázek není validní base64.');
+    return sendError(res, 400, 'invalid_base64', msg(req, 'Obrázek není validní base64.', 'The image is not valid base64.'));
   }
 
   const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
@@ -61,7 +64,25 @@ module.exports = async function handler(req, res) {
     ? { thinkingLevel: 'minimal' }
     : { thinkingBudget: 0 };
 
-  const prompt = `
+  const prompt = locale === 'en'
+    ? `
+You are a nutrition assistant. Estimate the food and approximate macros from the image.
+Return ONLY valid JSON with no markdown, comments, or extra text.
+All user-facing JSON string values must be in English.
+If there is no food in the image or the portion cannot be recognized, return JSON with zero macros and low confidence.
+{
+  "foodName": "Food name",
+  "portionGuess": "Short portion estimate",
+  "kcal": 0,
+  "protein": 0,
+  "carbs": 0,
+  "fat": 0,
+  "confidence": "low|medium|high",
+  "note": "Short note that this is an approximate estimate"
+}
+Use integers for kcal/protein/carbs/fat.
+`
+    : `
 You are a nutrition assistant. Estimate the food and approximate macros from the image.
 Return ONLY valid JSON with no markdown, comments, or extra text.
 All user-facing JSON string values must be in ${lang}.
@@ -79,38 +100,49 @@ If there is no food in the image or the portion cannot be recognized, return JSO
 Use integers for kcal/protein/carbs/fat.
 `;
 
-  const geminiRes = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: imageBase64 } },
-        ],
-      }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          required: ['foodName', 'portionGuess', 'kcal', 'protein', 'carbs', 'fat', 'confidence', 'note'],
-          properties: {
-            foodName: { type: 'STRING' },
-            portionGuess: { type: 'STRING' },
-            kcal: { type: 'INTEGER' },
-            protein: { type: 'INTEGER' },
-            carbs: { type: 'INTEGER' },
-            fat: { type: 'INTEGER' },
-            confidence: { type: 'STRING' },
-            note: { type: 'STRING' },
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let geminiRes;
+  try {
+    geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: imageBase64 } },
+          ],
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            required: ['foodName', 'portionGuess', 'kcal', 'protein', 'carbs', 'fat', 'confidence', 'note'],
+            properties: {
+              foodName: { type: 'STRING' },
+              portionGuess: { type: 'STRING' },
+              kcal: { type: 'INTEGER' },
+              protein: { type: 'INTEGER' },
+              carbs: { type: 'INTEGER' },
+              fat: { type: 'INTEGER' },
+              confidence: { type: 'STRING' },
+              note: { type: 'STRING' },
+            },
           },
+          maxOutputTokens: 900,
+          thinkingConfig,
         },
-        maxOutputTokens: 900,
-        thinkingConfig,
-      },
-    }),
-  });
+      }),
+    });
+  } catch (err) {
+    const code = err?.name === 'AbortError' ? 'gemini_timeout' : 'gemini_unreachable';
+    return sendError(res, 502, code, msg(req, 'AI se nepodařilo kontaktovat. Zkus to prosím znovu.', 'Could not reach the AI. Please try again.'));
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = coalesceCandidateText(await geminiRes.json());
   if (!geminiRes.ok || data.error) return res.status(geminiRes.status).json(data);

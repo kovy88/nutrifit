@@ -10,6 +10,7 @@ function checkIn(weekStartISO: string, weightKg: number, overrides: Partial<Week
     hungerLevel: 3,
     adherence: 0.8,
     createdAt: `${weekStartISO}T08:00:00.000Z`,
+    updatedAt: `${weekStartISO}T08:00:00.000Z`,
     ...overrides,
   };
 }

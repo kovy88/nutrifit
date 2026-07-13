@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, primaryGoalToNutritionKind, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal } from '../utils/nutrition';
-import { DEFAULT_PROFILE } from '../utils/nutrition';
+import { adjustForDay, assessProfileSafety, buildShoppingList, buildTrainingSessionForDate, calculateMacros, mealToFoodEstimate, migrateProfile, normalizeFoodEstimate, primaryGoalToNutritionKind, remainingMacros, sumFoodLog, validateMealPlan, validateProfile, toDateKey, isToday, formatDateLabel, activityFactorForSessions, estimateSessionKcal , DEFAULT_PROFILE } from '../utils/nutrition';
 import { normalizeConsent } from '../services/storage';
 import type { Meal } from '../types';
 
@@ -56,6 +55,12 @@ describe('nutrition utilities', () => {
     expect(estimate.foodName).toBe('Neznámé jídlo');
     expect(estimate.kcal).toBe(3000);
     expect(estimate.confidence).toBe('střední');
+  });
+
+  it('normalizes AI food estimates in English when locale is en', () => {
+    const estimate = normalizeFoodEstimate({ foodName: '', kcal: 9999, confidence: 'maybe' }, 'en');
+    expect(estimate.foodName).toBe('Unknown food');
+    expect(estimate.confidence).toBe('medium');
   });
 
   it('adjusts rest and long-run days', () => {

@@ -65,6 +65,7 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
         completedSessions,
         plannedSessions,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
       await setProfile({ ...profile, weight: nextWeight });
       setPending(adjustment);
@@ -150,7 +151,7 @@ export function WeeklyCheckInModal({ visible, onClose }: { visible: boolean; onC
             />
 
             {pending ? (
-              <View style={[styles.resultBox, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+              <View style={[styles.resultBox, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
                 <Text style={[styles.resultText, { color: colors.green }]}>{pending.reason}</Text>
                 {pending.kcalDelta !== 0 && (
                   <Text style={[styles.resultText, { color: colors.ink, marginTop: 6 }]}>

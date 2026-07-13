@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode, useEffect, useRef } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -36,7 +36,7 @@ export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
+          borderColor: colors.hairline,
           shadowColor: colors.shadow,
         },
         style,
@@ -91,6 +91,8 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -121,6 +123,8 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
       onPress={onPress}
       style={[
         styles.pill,
@@ -163,6 +167,9 @@ export function Choice({
   const { colors, fonts } = useTheme();
   return (
     <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected: !!active }}
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
@@ -208,7 +215,7 @@ export function ScreenHeader({
   return (
     <View style={styles.screenHeader}>
       {onBack ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('a11y.back')} onPress={onBack} hitSlop={10} style={[styles.screenHeaderBack, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
           <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
       ) : null}
@@ -226,10 +233,15 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
       {action}
     </View>
   );
+}
+
+export function Divider() {
+  const { colors } = useTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.hairline }]} />;
 }
 
 export function MetricCard({
@@ -250,8 +262,8 @@ export function MetricCard({
   const { colors, fonts } = useTheme();
   const accent = color ?? colors.accent;
   return (
-    <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
-      <Text style={[styles.metricLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
+    <View style={[styles.metricCard, compact && styles.metricCardCompact, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
+      <Text style={[styles.metricLabel, compact && styles.metricLabelCompact, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text>
       <View style={styles.metricValueRow}>
         <Text style={[styles.metricValue, compact && styles.metricValueCompact, { color: accent, fontFamily: fonts.number }]}>{value}</Text>
         {unit ? <Text style={[styles.metricUnit, { color: colors.muted, fontFamily: fonts.bold }]}>{unit}</Text> : null}
@@ -336,19 +348,34 @@ export function NutritionTargetCard({
   dayLabel?: string;
 }) {
   const { colors, fonts } = useTheme();
+  const totalG = protein + carbs + fat || 1;
+  const macroItems = [
+    { label: macroLabels.protein, value: protein, color: colors.macroProtein },
+    { label: macroLabels.carbs, value: carbs, color: colors.macroCarb },
+    { label: macroLabels.fat, value: fat, color: colors.macroFat },
+  ];
   return (
     <Card>
       <View style={styles.cardTitleRow}>
         <SectionHeader title={label} />
         {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent, backgroundColor: colors.accent + '12', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
       </View>
-      <View style={styles.metricGrid}>
-        <MetricCard label={macroLabels.kcal} value={kcal} color={colors.accent} />
-        <MetricCard label={macroLabels.protein} value={protein} unit="g" color={colors.macroProtein} />
-        <MetricCard label={macroLabels.carbs} value={carbs} unit="g" color={colors.macroCarb} />
-        <MetricCard label={macroLabels.fat} value={fat} unit="g" color={colors.macroFat} />
+      <View style={styles.kcalRow}>
+        <Text style={[styles.kcalValue, { color: colors.ink, fontFamily: fonts.number }]}>{kcal}</Text>
+        <Text style={[styles.kcalUnit, { color: colors.muted, fontFamily: fonts.medium }]}>{macroLabels.kcal}</Text>
       </View>
-      {reason ? <Subtitle>{reason}</Subtitle> : null}
+      <View style={styles.macroBarsRow}>
+        {macroItems.map(m => (
+          <View key={m.label} style={styles.macroBarItem}>
+            <View style={[styles.macroBarBg, { backgroundColor: colors.hairline }]}>
+              <View style={[styles.macroBarFill, { width: `${Math.round(m.value / totalG * 100)}%` as any, backgroundColor: m.color }]} />
+            </View>
+            <Text style={[styles.macroBarValue, { color: colors.ink, fontFamily: fonts.bold }]}>{m.value}g</Text>
+            <Text style={[styles.macroBarLabel, { color: colors.faint, fontFamily: fonts.medium }]}>{m.label}</Text>
+          </View>
+        ))}
+      </View>
+      {reason ? <Text style={[styles.nutritionReason, { color: colors.muted, fontFamily: fonts.regular }]}>{reason}</Text> : null}
     </Card>
   );
 }
@@ -361,7 +388,8 @@ export function TrainingRecommendationCard({
   onPress,
   completed,
   intensity,
-}: {
+  children,
+}: PropsWithChildren<{
   title: string;
   meta: string;
   note?: string;
@@ -369,7 +397,7 @@ export function TrainingRecommendationCard({
   onPress?: () => void;
   completed?: boolean;
   intensity?: string;
-}) {
+}>) {
   const { colors, fonts } = useTheme();
   return (
     <Card>
@@ -377,13 +405,14 @@ export function TrainingRecommendationCard({
         <SectionHeader title={title} />
         {intensity ? <Text style={[styles.cardBadge, { color: colors.orange, borderColor: colors.orange, backgroundColor: colors.orange + '14', fontFamily: fonts.bold }]}>{intensity}</Text> : null}
       </View>
-      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.extraBold }]}>{meta}</Text>
+      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.bold }]}>{meta}</Text>
       {note ? <Text style={[styles.trainingNote, { color: colors.muted, fontFamily: fonts.regular }]}>{note}</Text> : null}
       {cta && onPress ? (
         <Button variant={completed ? 'secondary' : 'primary'} disabled={completed} onPress={onPress}>
           {cta}
         </Button>
       ) : null}
+      {children}
     </Card>
   );
 }
@@ -393,25 +422,43 @@ export function RecoveryCard({
   metrics,
   recommendation,
   status,
+  detailsLabel,
 }: {
   title: string;
-  metrics: Array<{ label: string; value: string; color?: string }>;
+  metrics: { label: string; value: string; color?: string }[];
   recommendation: string;
   status?: string;
+  /** When set, the recommendation copy is tucked behind a collapsible "why" toggle. */
+  detailsLabel?: string;
 }) {
   const { colors, fonts } = useTheme();
   return (
     <Card>
       <View style={styles.cardTitleRow}>
-        <SectionHeader title={title} />
-        {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue, backgroundColor: colors.blue + '14', fontFamily: fonts.bold }]}>{status}</Text> : null}
+        <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
+        {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue + '44', backgroundColor: colors.blue + '12', fontFamily: fonts.bold }]}>{status}</Text> : null}
       </View>
-      <View style={styles.metricGrid}>
-        {metrics.map(metric => (
-          <MetricCard key={metric.label} label={metric.label} value={metric.value} color={metric.color} compact />
+      <View style={styles.recoveryMetricsRow}>
+        {metrics.map((metric, i) => (
+          <View
+            key={metric.label}
+            style={[
+              styles.recoveryMetricCell,
+              i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.recoveryMetricValue, { color: metric.color ?? colors.ink, fontFamily: fonts.number }]}>{metric.value}</Text>
+            <Text style={[styles.recoveryMetricLabel, { color: colors.faint, fontFamily: fonts.medium }]}>{metric.label}</Text>
+          </View>
         ))}
       </View>
-      <Subtitle>{recommendation}</Subtitle>
+      {detailsLabel ? (
+        <CollapsibleDetails label={detailsLabel}>
+          <Subtitle>{recommendation}</Subtitle>
+        </CollapsibleDetails>
+      ) : (
+        <Subtitle>{recommendation}</Subtitle>
+      )}
     </Card>
   );
 }
@@ -421,7 +468,7 @@ export function WeeklyProgressCard({
   items,
 }: {
   title: string;
-  items: Array<{ label: string; value: string; color?: string }>;
+  items: { label: string; value: string; color?: string }[];
 }) {
   return (
     <Card>
@@ -456,14 +503,14 @@ export function PlanDayCard({
   const { colors, fonts } = useTheme();
 
   let backgroundColor = colors.card;
-  let borderColor = colors.border;
+  let borderColor = colors.hairline;
 
   if (selected) {
     backgroundColor = colors.accent + '14';
     borderColor = colors.accent;
   } else if (isRest) {
     backgroundColor = colors.bgElev;
-    borderColor = colors.border;
+    borderColor = colors.hairline;
   } else if (isLongRun) {
     backgroundColor = colors.accent + '0F';
     borderColor = colors.border;
@@ -471,6 +518,9 @@ export function PlanDayCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      accessibilityLabel={`${title}. ${subtitle}`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.planDayCard,
@@ -529,16 +579,19 @@ export function QuickActionButton({
   const { colors, fonts } = useTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.quickAction,
-        { borderColor: colors.border, backgroundColor: colors.bgElev },
+        { borderColor: colors.hairline, backgroundColor: colors.bgElev },
         pressed && !disabled && { opacity: 0.82 },
         disabled && { opacity: 0.45 },
       ]}
     >
-      <Ionicons name={icon} size={20} color={colors.accent} />
+      <Ionicons name={icon} size={20} color={colors.muted} />
       <Text style={[styles.quickActionText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
     </Pressable>
   );
@@ -563,6 +616,9 @@ export function ActionIconButton({
   const foreground = isPrimary ? colors.accentText : isDanger ? '#fff' : colors.ink;
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -618,17 +674,20 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: {
   value: T;
-  options: Array<{ value: T; label: string }>;
+  options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
       {options.map(option => {
         const active = option.value === value;
         return (
           <Pressable
             key={option.value}
+            accessibilityRole="tab"
+            accessibilityLabel={option.label}
+            accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
             style={[styles.segment, active && { backgroundColor: colors.accent + '16' }]}
           >
@@ -656,9 +715,9 @@ export function SettingRow({
 }>) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.settingRow, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.settingRow, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
       <View style={styles.settingText}>
-        <Text style={[styles.settingTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+        <Text style={[styles.settingTitle, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
         {body ? <Text style={[styles.settingBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text> : null}
         {meta ? <Text style={[styles.settingMeta, { color: colors.faint, fontFamily: fonts.bold }]}>{meta}</Text> : null}
       </View>
@@ -687,7 +746,7 @@ export function SourceStatusCard({
 }) {
   const { colors, fonts } = useTheme();
   return (
-    <View style={[styles.sourceCard, { borderColor: colors.border, backgroundColor: colors.bgElev }]}>
+    <View style={[styles.sourceCard, { borderColor: colors.hairline, backgroundColor: colors.bgElev }]}>
       <View style={styles.sourceCardHeader}>
         <Text style={[styles.sourceCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
         {status ? <StatusPill label={status} tone={statusTone} /> : null}
@@ -756,6 +815,63 @@ export function ErrorState({
   );
 }
 
+/** Collapsible settings/section card — a title + one-line summary that expands to its
+ *  editable content on tap. Keeps long forms (Profile) calm: scan summaries, tap to edit. */
+export function SectionCard({
+  title,
+  summary,
+  defaultOpen = false,
+  children,
+}: PropsWithChildren<{ title: string; summary?: string; defaultOpen?: boolean }>) {
+  const { colors, fonts } = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen(value => !value)}
+        style={({ pressed }) => [styles.sectionCardHead, pressed && { opacity: 0.7 }]}
+      >
+        <View style={styles.sectionCardHeadText}>
+          <Text style={[styles.sectionCardTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
+          {summary ? (
+            <Text style={[styles.sectionCardSummary, { color: colors.muted, fontFamily: fonts.regular }]} numberOfLines={1}>
+              {summary}
+            </Text>
+          ) : null}
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.muted} />
+      </Pressable>
+      {open ? <View style={styles.sectionCardBody}>{children}</View> : null}
+    </Card>
+  );
+}
+
+/** Lightweight disclosure — keeps a short "why" / detail behind a tap so the primary
+ *  card stays calm. Used for readiness explanation, recovery recommendation, etc. */
+export function CollapsibleDetails({
+  label,
+  children,
+  defaultOpen = false,
+}: PropsWithChildren<{ label: string; defaultOpen?: boolean }>) {
+  const { colors, fonts } = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <View style={styles.collapsible}>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() => setOpen(value => !value)}
+        style={({ pressed }) => [styles.collapsibleToggle, pressed && { opacity: 0.7 }]}
+      >
+        <Text style={[styles.collapsibleLabel, { color: colors.muted, fontFamily: fonts.bold }]}>{label}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={colors.muted} />
+      </Pressable>
+      {open ? <View style={styles.collapsibleBody}>{children}</View> : null}
+    </View>
+  );
+}
+
 export function FadeInView({
   children,
   delay = 0,
@@ -766,6 +882,8 @@ export function FadeInView({
   duration?: number;
   style?: any;
 }>) {
+  /* eslint-disable react-hooks/refs -- Animated.Value refs are stable mutable
+     animation drivers meant to be read directly here, not React render state. */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
 
@@ -791,6 +909,7 @@ export function FadeInView({
       {children}
     </Animated.View>
   );
+  /* eslint-enable react-hooks/refs */
 }
 
 const styles = StyleSheet.create({
@@ -836,6 +955,7 @@ const styles = StyleSheet.create({
   metricCard: { flex: 1, minWidth: '47%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0 },
+  metricLabelCompact: { fontSize: 9, letterSpacing: 0.2 },
   metricValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   metricValue: { fontSize: 25, fontWeight: '700', lineHeight: 30, letterSpacing: 0 },
   metricValueCompact: { fontSize: 20, lineHeight: 25 },
@@ -879,10 +999,34 @@ const styles = StyleSheet.create({
   sourceCardMeta: { fontSize: 12, lineHeight: 16, letterSpacing: 0 },
   sourceCardError: { fontSize: 12, lineHeight: 17 },
   sourceCardAction: { marginTop: 2 },
+  sectionCardHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sectionCardHeadText: { flex: 1, gap: 2 },
+  sectionCardTitle: { fontSize: 15, lineHeight: 20 },
+  sectionCardSummary: { fontSize: 13, lineHeight: 18 },
+  sectionCardBody: { gap: 12, marginTop: 4 },
+  collapsible: { gap: 8 },
+  collapsibleToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  collapsibleLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.7 },
+  collapsibleBody: { gap: 6 },
   stateCard: { alignItems: 'stretch' },
   stateTitle: { fontSize: 17, fontWeight: '700', lineHeight: 23, textAlign: 'center' },
   stateBody: { fontSize: 13, lineHeight: 19, textAlign: 'center' },
   skeletonRow: { gap: 10, width: '100%' },
   skeletonBlock: { height: 88, borderRadius: 16, opacity: 0.8 },
   skeletonLine: { height: 14, width: '66%', alignSelf: 'center', borderRadius: 999, opacity: 0.8 },
+  divider: { height: StyleSheet.hairlineWidth },
+  kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  kcalValue: { fontSize: 38, lineHeight: 42, letterSpacing: -0.5 },
+  kcalUnit: { fontSize: 14, lineHeight: 18 },
+  macroBarsRow: { flexDirection: 'row', gap: 12 },
+  macroBarItem: { flex: 1, gap: 4 },
+  macroBarBg: { height: 2, borderRadius: 1, overflow: 'hidden' },
+  macroBarFill: { height: 2, borderRadius: 1 },
+  macroBarValue: { fontSize: 15, lineHeight: 20 },
+  macroBarLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  nutritionReason: { fontSize: 12, lineHeight: 17 },
+  recoveryMetricsRow: { flexDirection: 'row', marginVertical: 2 },
+  recoveryMetricCell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  recoveryMetricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },
+  recoveryMetricLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
 });

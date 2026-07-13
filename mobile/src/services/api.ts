@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import { supabase } from './supabase';
+import { getAuthHeaders } from './supabase';
 import { buildAllergenRepairRequest, buildMealPlanRequest, buildSingleMealRequest, namesForMealCount } from '../utils/mealPrompts';
 import { normalizeFoodEstimate, normalizeMeal, validateMealPlan } from '../utils/nutrition';
 import { parseAllergensFromFreeText, validateMealsAgainstAllergens } from '../lib/nutrition/allergens';
@@ -8,42 +8,38 @@ import { parseMealPlanResponse, parseWeeklySummarySafe, parseStructuredCoachRepl
 import { buildCoachChatRequest, type CoachChatContext } from '../lib/ai/coachChat';
 import { buildOnboardingCoachRequest, type OnboardingCoachMessage } from '../lib/ai/onboardingCoach';
 import type { FoodEstimate, Macros, Meal, UserProfile, TrainingSession } from '../types';
-import type { CoachMessage } from '../types/coach';
-import type { CoachProposedAction } from '../types/coach';
+import type { CoachMessage , CoachProposedAction } from '../types/coach';
 import type { Locale } from '../lib/i18n';
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://nutri-fit-omega.vercel.app';
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {};
-}
-
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function postJson<T>(path: string, body: unknown, locale: Locale = 'cs'): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(await authHeaders()),
+      'X-Locale': locale,
+      ...(await getAuthHeaders()),
     },
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.error) {
-    throw new Error(data.error?.message || data.error || `Server error (${response.status})`);
+    const genericError = locale === 'en' ? `Server error (${response.status})` : `Chyba serveru (${response.status})`;
+    throw new Error(data.error?.message || data.error || genericError);
   }
   return data as T;
 }
 
 // Retry wrapper with exponential backoff
-async function postJsonWithRetry<T>(path: string, body: unknown, retries = 1, delay = 1000): Promise<T> {
+async function postJsonWithRetry<T>(path: string, body: unknown, locale: Locale = 'cs', retries = 1, delay = 1000): Promise<T> {
   try {
-    return await postJson<T>(path, body);
+    return await postJson<T>(path, body, locale);
   } catch (err) {
     if (retries > 0) {
       console.warn(`Trenr API: Request to ${path} failed. Retrying in ${delay}ms... Error:`, err);
       await new Promise<void>(resolve => { setTimeout(() => resolve(), delay); });
-      return await postJsonWithRetry<T>(path, body, retries - 1, delay * 2);
+      return await postJsonWithRetry<T>(path, body, locale, retries - 1, delay * 2);
     }
     throw err;
   }
@@ -80,9 +76,9 @@ async function requestAndNormalizeMealPlan(
   locale: Locale = 'en',
 ): Promise<Meal[]> {
   const request = buildMealPlanRequest(profile, macros, session, repairErrors, locale);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const data = await postJsonWithRetry<any>('/api/generate', request, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const parsed = parseJson(text);
+  const parsed = parseJson(text, locale);
   // Zod structural validation first; fall back to the lenient extraction so a
   // slightly-off shape still gets normalized rather than hard-failing.
   const rawMeals = parseMealPlanResponse(parsed) ?? (Array.isArray(parsed?.meals) ? parsed.meals : []);
@@ -118,9 +114,9 @@ async function repairAllergenViolations(
       otherMeals,
       locale,
     });
-    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const data = await postJsonWithRetry<any>('/api/generate', request, locale);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsed = parseJson(text);
+    const parsed = parseJson(text, locale);
     const raw = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
     repaired[hit.mealIndex] = normalizeMeal(raw || {}, hit.meal.mealType, locale);
   }
@@ -202,26 +198,29 @@ export async function regenerateMeal(opts: {
   otherMeals?: Meal[];
   locale?: Locale;
 }): Promise<Meal> {
+  const locale = opts.locale ?? 'en';
+  const isEn = locale === 'en';
   const request = buildSingleMealRequest(opts);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const data = await postJsonWithRetry<any>('/api/generate', request, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const parsed = parseJson(text);
+  const parsed = parseJson(text, locale);
   // Some AI runs wrap the object in {"meals":[…]} or {"meal":{…}}; handle both.
   const rawMeal = Array.isArray(parsed?.meals) ? parsed.meals[0] : parsed?.meal ?? parsed;
-  const locale = opts.locale ?? 'en';
   const meal = normalizeMeal(rawMeal || {}, opts.current.mealType, locale);
 
   // Don't accept a near-duplicate of the rejected one.
   if (meal.name.trim().toLowerCase() === opts.current.name.trim().toLowerCase()) {
-    throw new Error(locale === 'en' ? 'AI returned the same meal. Try again or adjust preferences.' : 'AI vrátila stejné jídlo. Zkus to znovu nebo uprav preference.');
+    throw new Error(isEn ? 'AI returned the same meal. Try again or adjust your preferences.' : 'AI vrátila stejné jídlo. Zkus to znovu nebo uprav preference.');
   }
   // Macro tolerance ±10 % per macro (or ±5 g floor for tiny values)
   const within = (actual: number, target: number) =>
     Math.abs(actual - target) <= Math.max(5, target * 0.1);
   if (!within(meal.kcal, opts.current.kcal)) {
-    throw new Error(locale === 'en'
-      ? `AI returned ${meal.kcal} kcal instead of ${opts.current.kcal} (outside tolerance).`
-      : `AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`);
+    throw new Error(
+      isEn
+        ? `AI returned ${meal.kcal} kcal instead of ${opts.current.kcal} (out of tolerance).`
+        : `AI vrátila ${meal.kcal} kcal místo ${opts.current.kcal} (mimo toleranci).`,
+    );
   }
   return meal;
 }
@@ -234,41 +233,45 @@ export async function regenerateMeal(opts: {
  * Returns null pokud AI vrátí non-parseable nebo invalid JSON.
  */
 export async function generateWeeklySummary(input: WeeklySummaryInput): Promise<WeeklySummary> {
+  const isEn = input.locale === 'en';
   const request = buildWeeklySummaryRequest(input);
-  const data = await postJsonWithRetry<any>('/api/generate', request);
+  const data = await postJsonWithRetry<any>('/api/generate', request, isEn ? 'en' : 'cs');
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const en = input.locale === 'en';
-  if (!text) throw new Error(en ? 'AI returned no text.' : 'AI nevrátila žádný text.');
-  const parsed = parseJson(text);
+  if (!text) throw new Error(isEn ? 'No response from AI.' : 'AI neodpověděla.');
+  const parsed = parseJson(text, isEn ? 'en' : 'cs');
   const summary = parseWeeklySummary(parsed) ?? parseWeeklySummarySafe(parsed);
-  if (!summary) throw new Error(en ? 'AI returned invalid JSON for the weekly summary.' : 'AI vrátila neplatný JSON pro týdenní shrnutí.');
+  if (!summary) throw new Error(isEn ? 'AI returned invalid data for weekly summary.' : 'AI vrátila neplatná data pro týdenní shrnutí.');
   return summary;
 }
 
 export async function analyzeFoodPhoto(uri: string, mimeType = 'image/jpeg', locale: Locale = 'en'): Promise<FoodEstimate> {
   const imageBase64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType, locale });
+  const data = await postJsonWithRetry<any>('/api/analyze-food-photo', { imageBase64, mimeType }, locale);
   if (data.estimate) return normalizeFoodEstimate(data.estimate, locale);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  return normalizeFoodEstimate(parseJson(text), locale);
+  return normalizeFoodEstimate(parseJson(text, locale), locale);
 }
 
-export async function exportAccountData() {
+export async function exportAccountData(locale: Locale = 'en') {
   const response = await fetch(`${apiBaseUrl}/api/export-data`, {
-    headers: await authHeaders(),
+    headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data.error?.message || 'Data export failed.');
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || (locale === 'en' ? 'Data export failed.' : 'Export dat se nepodařil.'));
+  }
   return data;
 }
 
-export async function deleteAccount() {
+export async function deleteAccount(locale: Locale = 'en') {
   const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
     method: 'DELETE',
-    headers: await authHeaders(),
+    headers: { 'X-Locale': locale, ...(await getAuthHeaders()) },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.error) throw new Error(data.error?.message || 'Account deletion failed.');
+  if (!response.ok || data.error) {
+    throw new Error(data.error?.message || (locale === 'en' ? 'Account deletion failed.' : 'Smazání účtu se nepodařilo.'));
+  }
 }
 
 /**
@@ -284,7 +287,7 @@ export async function askCoach(opts: {
 }): Promise<{ reply: string; followups: string[]; actions: CoachProposedAction[] }> {
   const request = buildCoachChatRequest(opts);
   try {
-    const data = await postJsonWithRetry<any>('/api/generate', request);
+    const data = await postJsonWithRetry<any>('/api/generate', request, opts.locale);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     const parsed = text ? parseStructuredCoachReply(parseJson(text)) : null;
     if (parsed) return parsed;
@@ -331,8 +334,13 @@ export async function callAiCoachProxy(request: { systemPrompt: string; prompt: 
   return text;
 }
 
-function parseJson(text: string) {
-  if (!text) throw new Error('AI returned no response.');
+function parseJson(text: string, locale: Locale = 'en') {
+  const isEn = locale === 'en';
+  if (!text) throw new Error(isEn ? 'No AI response.' : 'AI neodpověděla.');
   const cleaned = String(text).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error(isEn ? 'Could not parse the AI response.' : 'Odpověď AI se nepodařilo zpracovat.');
+  }
 }

@@ -1,9 +1,11 @@
 // ── OAUTH TOKEN STORE
 //
 // Centrální místo pro tokeny od externích služeb (Strava, Whoop, Garmin, …).
-// Současná implementace používá AsyncStorage. Až přibude `expo-secure-store`
-// (po `expo install expo-secure-store`), přepneme implementaci tam — tokeny
-// patří do iOS Keychain / Android Keystore, ne do AsyncStorage v plain textu.
+// `AsyncStorageTokenStore` níže je plain-text fallback; produkční cesta je
+// `SecureOAuthTokenStore` (iOS Keychain / Android Keystore přes
+// expo-secure-store) — viz createOAuthTokenStore() tamtéž, které na tuto
+// AsyncStorage variantu spadne jen když expo-secure-store není dostupný
+// (Expo Go / testy).
 //
 // Refresh logiku řeší konkrétní provider; tady jen čteme/píšeme.
 
@@ -39,7 +41,9 @@ export interface OAuthTokenStore {
 const KEY_PREFIX = 'nutrifit.oauth.';
 const ALL_SERVICES: OAuthService[] = ['strava', 'whoop', 'garmin', 'polar', 'oura', 'fitbit'];
 
-/** AsyncStorage-backed implementation. TODO: migrate to expo-secure-store. */
+/** AsyncStorage-backed implementation — plain-text fallback used only when
+ *  expo-secure-store isn't available. See SecureOAuthTokenStore.ts for the
+ *  Keychain/Keystore-backed store actually used in production. */
 export class AsyncStorageTokenStore implements OAuthTokenStore {
   async getToken(service: OAuthService): Promise<OAuthToken | null> {
     const raw = await AsyncStorage.getItem(KEY_PREFIX + service);

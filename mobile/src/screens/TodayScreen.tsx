@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
@@ -23,6 +23,7 @@ export function TodayScreen() {
     profile,
     currentMacros: macros,
     currentSession,
+    dailyAdjustment,
     selectedDate,
     logStreak,
   } = useTrenr();
@@ -42,6 +43,11 @@ export function TodayScreen() {
   const readinessColor = rec ? bandColor(rec.readiness.band, colors) : colors.accent;
   const decision = rec ? dailyDecision(rec.readiness.recommendedIntensity, rec.readiness.band, locale) : null;
   const tomorrow = tomorrowSession(profile, selectedDate, locale);
+
+  const trainingActive = Boolean(currentSession && currentSession.kind !== 'rest');
+  const trainingCompleted = completion?.status === 'completed';
+  const trainingSkipped = completion?.status === 'skipped';
+  const showFueling = currentSession?.kind === 'long_run' && !!dailyAdjustment && dailyAdjustment.carbsDelta > 0;
 
   async function markTodayDone() {
     await mark('completed');
@@ -76,11 +82,11 @@ export function TodayScreen() {
       {coaching.isLoading && !rec ? (
         <LoadingState title={t('today.loadingCoachTitle')} body={todayLoadingBody(locale)} />
       ) : null}
-
       {!coaching.isLoading && !rec ? (
         <EmptyState title={t('today.emptyCoachTitle')} body={t('today.emptyCoachBody')} />
       ) : null}
 
+      {/* 3 — Readiness hero: centered ring, decision below, "why" behind a tap */}
       {rec ? (
         <>
           <HeroDecisionCard
@@ -456,7 +462,7 @@ function titleHasDuration(title: string): boolean {
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 14 },
+  screen: { gap: 20 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 3 },
   greeting: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0 },

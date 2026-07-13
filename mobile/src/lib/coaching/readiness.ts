@@ -230,7 +230,7 @@ export function scoreReadiness(input: RecoveryInputs, locale: Locale = 'en'): Re
   const loc = locale;
   const baseline = input.baseline ?? {};
   const drivers: string[] = [];
-  const parts: Array<{ w: number; v: number }> = [];
+  const parts: { w: number; v: number }[] = [];
 
   if (input.todaySleepMinutes != null) {
     const s = sleepSubScore(input.todaySleepMinutes, baseline.sleepMeanMinutes);

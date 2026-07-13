@@ -62,14 +62,32 @@ export type RaceFeasibilityInput = {
   todayISO?: string;
 };
 
+/** Stable keys, not display strings — localize at the UI layer via `t()`. */
+export type RaceFeasibilityReasonKey =
+  | 'marathon_no_base_volume'
+  | 'missing_race_date'
+  | 'recent_injury'
+  | 'low_frequency'
+  | 'short_timeline'
+  | 'volume_gap'
+  | 'longest_run_too_short';
+
+export type RaceFeasibilityRecommendationKey =
+  | 'fully_feasible'
+  | 'feasible'
+  | 'tight'
+  | 'unrealistic_marathon'
+  | 'unrealistic_half_marathon'
+  | 'unrealistic_generic';
+
 export type RaceFeasibilityResult = {
   verdict: RaceFeasibilityVerdict;
   weeksUntilRace: number;
   requiredPeakKm: number;
   currentBaseKm: number;
   safePeakByRaceKm: number;
-  reasons: string[];
-  recommendation: string;
+  reasons: RaceFeasibilityReasonKey[];
+  recommendation: RaceFeasibilityRecommendationKey;
 };
 
 // ── UTILITIES ──
@@ -198,7 +216,7 @@ export function validateRaceGoalFeasibility(input: RaceFeasibilityInput): RaceFe
     : (profile.longestRecentRunKm ? Math.max(Math.round(profile.longestRecentRunKm * 1.5), 10) : 12);
 
   const safePeakByRaceKm = maxSafePeakByWeek(currentBaseKm, weeksUntilRace, requiredPeakKm);
-  const reasons: string[] = [];
+  const reasons: RaceFeasibilityReasonKey[] = [];
 
   const raceGoalKinds = ['run_5k', 'run_10k', 'half_marathon', 'marathon'];
   if (!raceGoalKinds.includes(trainingGoal)) {
@@ -209,39 +227,39 @@ export function validateRaceGoalFeasibility(input: RaceFeasibilityInput): RaceFe
       currentBaseKm,
       safePeakByRaceKm: requiredPeakKm,
       reasons: [],
-      recommendation: 'Plan is fully feasible.',
+      recommendation: 'fully_feasible',
     };
   }
 
   // Blocking check for marathon: beginners or runners with zero history (weekly km < 10 or missing)
   if (trainingGoal === 'marathon') {
     if (profile.experience === 'beginner' && (!profile.currentWeeklyKm || profile.currentWeeklyKm < 15)) {
-      reasons.push('Marathon is highly demanding. Running a marathon from no background volume is blocked.');
+      reasons.push('marathon_no_base_volume');
     }
   }
 
   if (!hasValidRaceDate) {
-    reasons.push('Race date is missing, so timeline validation cannot run.');
+    reasons.push('missing_race_date');
   }
 
   if (profile.injuryFlag) {
-    reasons.push('Recent injury requires a more conservative build.');
+    reasons.push('recent_injury');
   }
 
   if ((profile.runsPerWeek ?? 0) > 0 && (profile.runsPerWeek ?? 0) < 3 && trainingGoal !== 'couch_to_5k') {
-    reasons.push('Current running frequency is too low for a safe build.');
+    reasons.push('low_frequency');
   }
 
   if (weeksUntilRace < minWeeksForGoal(trainingGoal, profile.experience)) {
-    reasons.push('Timeline to the race date is shorter than the recommended safe build length.');
+    reasons.push('short_timeline');
   }
 
   if (safePeakByRaceKm < requiredPeakKm * 0.72) {
-    reasons.push('A safe 10% volume progression cannot reach the required volume by race day.');
+    reasons.push('volume_gap');
   }
 
   if (profile.longestRecentRunKm && profile.longestRecentRunKm < eventLongRunBaseline(trainingGoal) * 0.4) {
-    reasons.push('Longest recent run is too short to start a training plan of this distance.');
+    reasons.push('longest_run_too_short');
   }
 
   const criticalSignals = [
@@ -269,12 +287,12 @@ export function validateRaceGoalFeasibility(input: RaceFeasibilityInput): RaceFe
   };
 }
 
-function getRecommendation(verdict: RaceFeasibilityVerdict, goal: TrainingGoalKind): string {
-  if (verdict === 'feasible') return 'Your timeline is realistic. Build the plan with a safe progressive ramp.';
-  if (verdict === 'tight') return 'Proceed with caution. Keep your first weeks light and do not skip rest days.';
-  if (goal === 'marathon') return 'Choose a later race date, select a half marathon instead, or use a run-walk plan.';
-  if (goal === 'half_marathon') return 'Select a 10K instead, choose a later race date, or adopt a run-walk progression.';
-  return 'Move the date later or choose a shorter distance.';
+function getRecommendation(verdict: RaceFeasibilityVerdict, goal: TrainingGoalKind): RaceFeasibilityRecommendationKey {
+  if (verdict === 'feasible') return 'feasible';
+  if (verdict === 'tight') return 'tight';
+  if (goal === 'marathon') return 'unrealistic_marathon';
+  if (goal === 'half_marathon') return 'unrealistic_half_marathon';
+  return 'unrealistic_generic';
 }
 
 function maxSafePeakByWeek(currentBaseKm: number, weeks: number, peakKm: number): number {

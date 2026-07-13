@@ -9,10 +9,12 @@
 //      GARMIN_CLIENT_ID = <UUID>
 //      GARMIN_CLIENT_SECRET = <hex string>
 
-const { method, sendError } = require('../_lib/store-readiness');
+const { method, requireUser, sendError, isAllowedRedirectUri, rateLimit } = require('../_lib/store-readiness');
 
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
+  if (!(await requireUser(req, res))) return;
+  if (!(await rateLimit(req, res, 'oauth-exchange', 10))) return;
 
   const clientId = process.env.GARMIN_CLIENT_ID;
   const clientSecret = process.env.GARMIN_CLIENT_SECRET;
@@ -24,6 +26,7 @@ module.exports = async function handler(req, res) {
   if (!code) return sendError(res, 400, 'missing_code', 'Chybí `code`.');
   if (!codeVerifier) return sendError(res, 400, 'missing_code_verifier', 'Chybí `codeVerifier` — Garmin PKCE.');
   if (!redirectUri) return sendError(res, 400, 'missing_redirect_uri', 'Chybí `redirectUri`.');
+  if (!isAllowedRedirectUri(redirectUri)) return sendError(res, 400, 'invalid_redirect_uri', 'Neplatná `redirectUri`.');
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',

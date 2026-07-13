@@ -5,8 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { generateDailyCoachRecommendation } from '../lib/coaching/dailyCoach';
 import { getProfileGoalSummary } from '../lib/profile/profile-labels';
 import { toDateKey } from '../utils/nutrition';
-import type { DailyCoachRecommendation, RecoveryInputs } from '../types/coach';
-import type { CoachMemory } from '../types/coach';
+import type { DailyCoachRecommendation, RecoveryInputs , CoachMemory } from '../types/coach';
 import { saveDailyCoachRecommendationForDate } from '../services/storage';
 
 export type UseDailyCoachRecommendation = {

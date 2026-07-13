@@ -16,7 +16,11 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Linking } from 'react-native';
+import { getAuthHeaders } from '../../../services/supabase';
 import type { OAuthTokenStore } from './OAuthTokenStore';
+import { generateRandomHex, parseQuery } from './oauthShared';
+
+export { parseQuery } from './oauthShared';
 
 const STATE_KEY = 'nutrifit.oauth.strava.state.v1';
 const BRIDGE_URL = 'https://nutri-fit-omega.vercel.app/strava-callback.html';
@@ -49,7 +53,7 @@ export class StravaOAuth {
     if (!this.config.clientId) {
       throw new Error('Strava client ID is not configured (env EXPO_PUBLIC_STRAVA_CLIENT_ID).');
     }
-    const state = generateState();
+    const state = generateRandomHex(16);
     await AsyncStorage.setItem(STATE_KEY, state);
 
     const params = new URLSearchParams({
@@ -95,7 +99,7 @@ export class StravaOAuth {
     try {
       exchangeRes = await fetch(EXCHANGE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ code: parsed.code }),
       });
     } catch {
@@ -121,47 +125,35 @@ export class StravaOAuth {
 
   /** Pokud token vypršel, požádej backend o nový skrz refresh_token. */
   async refresh(): Promise<boolean> {
-    const token = await this.tokens.getToken('strava');
-    if (!token?.refreshToken) return false;
-    let res: Response;
-    try {
-      res = await fetch(REFRESH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: token.refreshToken }),
-      });
-    } catch {
-      return false;
-    }
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.accessToken) return false;
-    await this.tokens.setToken('strava', {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresAt: data.expiresAt,
-      scope: token.scope,
-      metadata: token.metadata,
+    return refreshStravaToken(this.tokens);
+  }
+}
+
+/** Standalone (class-independent) refresh so StravaProvider's data-fetching
+ *  path can call it without needing a full StravaOAuth instance (which
+ *  requires a clientId it has no use for here — refresh only needs the
+ *  refreshToken already in the token store). */
+export async function refreshStravaToken(tokens: OAuthTokenStore): Promise<boolean> {
+  const token = await tokens.getToken('strava');
+  if (!token?.refreshToken) return false;
+  let res: Response;
+  try {
+    res = await fetch(REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ refreshToken: token.refreshToken }),
     });
-    return true;
+  } catch {
+    return false;
   }
-}
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function generateState(): string {
-  // Nepoužíváme crypto.getRandomValues (nemusí být na všech Hermes verzích);
-  // pro CSRF na OAuth flow stačí 16 znaků z Math.random hexadecimálně.
-  let s = '';
-  for (let i = 0; i < 16; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
-}
-
-export function parseQuery(url: string): { code?: string; state?: string; error?: string } {
-  const q = url.split('?')[1] || '';
-  const out: Record<string, string> = {};
-  for (const part of q.split('&')) {
-    const [k, v] = part.split('=');
-    if (k) out[decodeURIComponent(k)] = decodeURIComponent(v ?? '');
-  }
-  return out;
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.accessToken) return false;
+  await tokens.setToken('strava', {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    scope: token.scope,
+    metadata: token.metadata,
+  });
+  return true;
 }

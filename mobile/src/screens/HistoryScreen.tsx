@@ -5,7 +5,7 @@ import { CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../c
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadDailyCoachHistory, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
-import { formatDateLabel } from '../utils/nutrition';
+import { formatDateLabel , primaryGoalToNutritionKind } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { SimpleLineChart } from '../components/premium/SimpleLineChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
@@ -65,10 +65,6 @@ export function HistoryScreen() {
   const logStreak = computeLogStreak(adherence.days);
   const adherenceStreak = computeAdherenceStreak(adherence.days);
 
-  useEffect(() => {
-    if (isFocused) void loadSummaries();
-  }, [isFocused]);
-
   async function loadSummaries() {
     try {
       const dates = await listStoredDates();
@@ -114,6 +110,11 @@ export function HistoryScreen() {
     }
   }
 
+  useEffect(() => {
+    if (isFocused) void loadSummaries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSummaries closes over many values that change every render; only re-run on focus change.
+  }, [isFocused]);
+
   function handleSelectDay(dateKey: string) {
     setSelectedDate(dateKey);
     navigation.navigate('Dnes');
@@ -138,7 +139,7 @@ export function HistoryScreen() {
         statusLabel={progressHeroStatus(adherence.averageRatio, locale)}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
       />
-      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+      <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
         {(['overview', 'trends', 'history'] as ProgressTab[]).map(item => (
           <Pressable
             key={item}
@@ -227,7 +228,9 @@ export function HistoryScreen() {
             summaries.slice(0, 14).map(item => (
               <Pressable
                 key={item.dateKey}
-                style={({ pressed }) => [styles.row, { borderBottomColor: colors.border }, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel={formatDateLabel(item.dateKey, locale)}
+                style={({ pressed }) => [styles.row, { borderBottomColor: colors.hairline }, pressed && { opacity: 0.7 }]}
                 onPress={() => handleSelectDay(item.dateKey)}
               >
                 <View style={{ flex: 1 }}>
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
   dateLabel: { fontSize: 15, fontWeight: '700' },
   dateSub: { fontSize: 12, marginTop: 2 },
   rightCol: { alignItems: 'flex-end' },
-  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
 });
 
 function progressTitle(locale: 'cs' | 'en'): string {

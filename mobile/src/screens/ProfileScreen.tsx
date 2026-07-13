@@ -103,7 +103,7 @@ export function ProfileScreen() {
 
   async function exportData() {
     try {
-      const data = await exportAccountData();
+      const data = await exportAccountData(locale);
       Alert.alert(t('profile.exportReady'), t('profile.exportSummary', { profile: t(data.profile ? 'common.yes' : 'common.no'), count: data.mealHistory?.length || 0 }));
     } catch (err) {
       Alert.alert(t('profile.exportFailed'), err instanceof Error ? err.message : t('profile.signInAgain'));
@@ -118,7 +118,7 @@ export function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteAccount();
+            await deleteAccount(locale);
             await purgeAllUserData();
           } catch (err) {
             Alert.alert(t('profile.deleteFailed'), err instanceof Error ? err.message : t('profile.deleteFailedMsg'));
@@ -507,7 +507,7 @@ function AccountEditor({
   );
 }
 
-const planIntensities: Array<{ value: PlanIntensity; labelKey: TranslationKey }> = [
+const planIntensities: { value: PlanIntensity; labelKey: TranslationKey }[] = [
   { value: 'easy', labelKey: 'planIntensity.easy' },
   { value: 'moderate', labelKey: 'planIntensity.moderate' },
   { value: 'ambitious_but_safe', labelKey: 'planIntensity.ambitious_but_safe' },

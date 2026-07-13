@@ -1,11 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { TranslationKey } from '../../lib/i18n';
+import { useTheme } from '../../context/ThemeContext';
+import type { Locale, TranslationKey } from '../../lib/i18n';
 import { generateGoalFollowUps } from '../../lib/onboarding/follow-up-question-generator';
-import { parseGoalText, updateGoalProfile } from '../../lib/onboarding/goal-parser';
+import { goalQuickStartText, parseGoalText, updateGoalProfile } from '../../lib/onboarding/goal-parser';
 import type { GoalProfile, GoalQuickStart } from '../../types/goal-types';
 import type { CoachScope } from '../../types';
-import type { Locale } from '../../lib/i18n';
-import { useTheme } from '../../context/ThemeContext';
 import { FollowUpQuestions } from './FollowUpQuestions';
 import { GoalQuickStartOptions } from './GoalQuickStartOptions';
 import { GoalTextInput } from './GoalTextInput';
@@ -38,8 +37,9 @@ export function GoalInputStep({
   }
 
   function handleQuickStart(quickStart: GoalQuickStart) {
-    const parsed = parseGoalText(quickStart.text);
-    onTextChange(quickStart.text);
+    const text = goalQuickStartText(quickStart, locale);
+    const parsed = parseGoalText(text);
+    onTextChange(text);
     onGoalProfileChange(parsed.goalProfile);
   }
 
@@ -50,7 +50,7 @@ export function GoalInputStep({
 
   return (
     <View style={styles.wrap}>
-      <GoalQuickStartOptions activeText={goalProfile?.rawText} scope={scope} onSelect={handleQuickStart} t={t} />
+      <GoalQuickStartOptions activeText={goalProfile?.rawText} scope={scope} locale={locale} onSelect={handleQuickStart} t={t} />
       <View style={styles.customGoal}>
         <Text style={[styles.customLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{customGoalLabel(locale)}</Text>
         <GoalTextInput value={value} onChangeText={handleTextChange} placeholder={t('onb.goalInputPlaceholder')} />

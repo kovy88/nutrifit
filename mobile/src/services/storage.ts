@@ -10,6 +10,7 @@ import type {
   DailySessionRecord,
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
+  NutritionGoalKind,
 } from '../types';
 import type { TouchedOnboardingFields } from '../lib/onboarding/validation';
 import type { OnboardingChatMessage } from '../lib/onboarding/chatState';
@@ -18,6 +19,7 @@ import type { HealthDataSummary } from '../types/health';
 import { migrateProfile, toDateKey } from '../utils/nutrition';
 import { ManualHealthDataProvider, AsyncStorageTokenStore, SecureOAuthTokenStore } from '../lib/health';
 import { NoopNotificationScheduler } from '../lib/notifications';
+import type { WeeklyCheckIn } from '../types/checkin';
 
 const keys = {
   profile: 'nutrifit.profile.v2',
@@ -36,9 +38,18 @@ const keys = {
   trainingCompletionsByDate: 'nutrifit.trainingCompletionsByDate.v1',
   dailyCoachHistory: 'nutrifit.dailyCoachHistory.v1',
   dailyHealthSummaries: 'nutrifit.dailyHealthSummaries.v1',
-  coachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
+  /** Legacy single-blob key — every message send used to read/write this
+   *  entire growing history. Only read once, by the one-time migration
+   *  below, then removed; never written again. */
+  legacyCoachThreadsByDate: 'nutrifit.coachThreadsByDate.v1',
+  /** Per-day keys: `${coachThreadKeyPrefix}${date}`. Each day's thread is its
+   *  own AsyncStorage entry so a message send only touches today's key,
+   *  not the whole coach-chat history. */
+  coachThreadKeyPrefix: 'nutrifit.coachThread.byDate.v1:',
   /** Aktuálně aplikované kcal úpravy z weekly adjustment. */
   baselineKcalDelta: 'nutrifit.baselineKcalDelta.v1',
+  /** Nutrition goal override z accepted weekly adjustment (přepíše profile.primaryGoal pro macro calc). */
+  overrideGoalKind: 'nutrifit.overrideGoalKind.v1',
   /** Rozpracovaný onboarding (step + draft profile + last-touched). */
   onboardingDraft: 'nutrifit.onboardingDraft.v1',
   /** Marker so the one-time legacy migration runs once, not on every boot. */
@@ -49,7 +60,7 @@ const keys = {
 };
 
 /** Bump when a NEW one-time migration step is added to runMigration(). */
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 4;
 
 /** Storage retention: drop date-bound entries older than this many days. */
 const RETENTION_DAYS = 90;
@@ -59,10 +70,18 @@ function allNutriFitKeys(): string[] {
   return Object.values(keys);
 }
 
+/** Removes every per-day coach thread key (dynamic — not in the static
+ *  `keys` registry, so `allNutriFitKeys()` can't see them). */
+async function purgeCoachThreadKeys(): Promise<void> {
+  const all = await AsyncStorage.getAllKeys();
+  const ours = all.filter(k => k.startsWith(keys.coachThreadKeyPrefix));
+  if (ours.length) await AsyncStorage.multiRemove(ours);
+}
+
 /** Removes all NutriFit data from the device. Used after account deletion.
  *  Includes core storage keys, every manual health record, every stored OAuth
- *  token (Strava, Whoop, etc.), AND every scheduled notification record so
- *  the device leaves no trace. */
+ *  token (Strava, Whoop, etc.), every per-day coach thread key, AND every
+ *  scheduled notification record so the device leaves no trace. */
 export async function purgeAllLocalData(): Promise<void> {
   await Promise.all([
     AsyncStorage.multiRemove(allNutriFitKeys()),
@@ -70,6 +89,7 @@ export async function purgeAllLocalData(): Promise<void> {
     AsyncStorage.removeItem('nutrifit.preWorkoutReminder.settings.v1'),
     AsyncStorage.removeItem('nutrifit.postWorkoutReminder.settings.v1'),
     AsyncStorage.removeItem('nutrifit.weeklySummary.v1'),
+    purgeCoachThreadKeys(),
     ManualHealthDataProvider.purge(),
     AsyncStorageTokenStore.purge(),
     // SecureStore tokens (iOS Keychain / Android Keystore) — wipe these too
@@ -77,6 +97,15 @@ export async function purgeAllLocalData(): Promise<void> {
     SecureOAuthTokenStore.purge(),
     NoopNotificationScheduler.purge(),
   ]);
+}
+
+/** Removes per-day coach thread keys older than `cutoffKey`, directly by key
+ *  suffix — no need to read/parse the ones being kept, unlike the blob-style
+ *  stores below. */
+async function pruneCoachThreadKeys(cutoffKey: string): Promise<void> {
+  const all = await AsyncStorage.getAllKeys();
+  const stale = all.filter(k => k.startsWith(keys.coachThreadKeyPrefix) && k.slice(keys.coachThreadKeyPrefix.length) < cutoffKey);
+  if (stale.length) await AsyncStorage.multiRemove(stale);
 }
 
 /** Drop date-bound entries older than RETENTION_DAYS to bound AsyncStorage growth. */
@@ -93,14 +122,13 @@ async function pruneDateBoundedStores(): Promise<void> {
     return next;
   };
 
-  const [plans, logs, sessions, weights, completions, coachHistory, coachThreads, healthSummaries] = await Promise.all([
+  const [plans, logs, sessions, weights, completions, coachHistory, healthSummaries] = await Promise.all([
     loadPlansByDate(),
     loadFoodLogsByDate(),
     loadSessionsByDate(),
     loadWeights(),
     loadTrainingCompletionsByDate(),
     loadDailyCoachHistory(),
-    loadCoachThreadsByDate(),
     loadDailyHealthSummaries(),
   ]);
 
@@ -111,8 +139,8 @@ async function pruneDateBoundedStores(): Promise<void> {
     AsyncStorage.setItem(keys.weightsByDate, JSON.stringify(filter(weights))),
     AsyncStorage.setItem(keys.trainingCompletionsByDate, JSON.stringify(filter(completions))),
     AsyncStorage.setItem(keys.dailyCoachHistory, JSON.stringify(filter(coachHistory))),
-    AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(filter(coachThreads))),
     AsyncStorage.setItem(keys.dailyHealthSummaries, JSON.stringify(filter(healthSummaries))),
+    pruneCoachThreadKeys(cutoffKey),
   ]);
 }
 
@@ -254,19 +282,41 @@ export async function saveDailyHealthSummaries(summaries: Record<DateKey, Health
   await AsyncStorage.setItem(keys.dailyHealthSummaries, JSON.stringify(summaries));
 }
 
-export async function loadCoachThreadsByDate(): Promise<CoachThreadRecordMap> {
-  const data = await readJson<CoachThreadRecordMap>(keys.coachThreadsByDate);
-  return data || {};
+function coachThreadKey(date: DateKey): string {
+  return `${keys.coachThreadKeyPrefix}${date}`;
 }
 
+/** Reads every per-day coach thread key and reconstructs the full map.
+ *  Callers that need the whole history (sync push, listStoredDates) still
+ *  get the same shape as before; saveCoachThreadForDate below no longer
+ *  needs to go through this to update a single day. */
+export async function loadCoachThreadsByDate(): Promise<CoachThreadRecordMap> {
+  const all = await AsyncStorage.getAllKeys();
+  const ours = all.filter(k => k.startsWith(keys.coachThreadKeyPrefix));
+  if (!ours.length) return {};
+  const pairs = await AsyncStorage.multiGet(ours);
+  const out: CoachThreadRecordMap = {};
+  for (const [, raw] of pairs) {
+    if (!raw) continue;
+    try {
+      const record = JSON.parse(raw) as CoachThreadRecord;
+      out[record.date] = record;
+    } catch {
+      // skip a corrupt entry rather than fail the whole read
+    }
+  }
+  return out;
+}
+
+/** Only reads/writes today's key — a message send no longer touches every
+ *  other day's coach thread history. */
 export async function saveCoachThreadForDate(
   date: DateKey,
   messages: CoachMessage[],
   memory: CoachMemory,
 ): Promise<CoachThreadRecord> {
-  const all = await loadCoachThreadsByDate();
   const now = new Date().toISOString();
-  const existing = all[date];
+  const existing = await readJson<CoachThreadRecord>(coachThreadKey(date));
   const bounded = messages.slice(-40);
   const next: CoachThreadRecord = {
     date,
@@ -275,13 +325,16 @@ export async function saveCoachThreadForDate(
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
-  all[date] = next;
-  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(all));
+  await AsyncStorage.setItem(coachThreadKey(date), JSON.stringify(next));
   return next;
 }
 
+/** Bulk-writes a full map (used by sync's hydrateFromRemote merge, which
+ *  already computes the union of local+remote keys) — one key per date. */
 export async function saveCoachThreadsByDate(threads: CoachThreadRecordMap): Promise<void> {
-  await AsyncStorage.setItem(keys.coachThreadsByDate, JSON.stringify(threads));
+  const entries = Object.entries(threads);
+  if (!entries.length) return;
+  await AsyncStorage.multiSet(entries.map(([date, record]) => [coachThreadKey(date), JSON.stringify(record)]));
 }
 
 export async function listStoredDates(): Promise<DateKey[]> {
@@ -315,6 +368,7 @@ export async function runMigration(): Promise<void> {
   if (!stored || (stored.version ?? 0) < CURRENT_SCHEMA_VERSION) {
     await migrateLegacyKeys();
     await migrateStoredProfileTaxonomy();
+    await migrateCoachThreadsToPerDayKeys();
     await AsyncStorage.setItem(
       keys.schemaVersion,
       JSON.stringify({ version: CURRENT_SCHEMA_VERSION, migratedAt: new Date().toISOString() }),
@@ -339,6 +393,21 @@ async function migrateStoredProfileTaxonomy(): Promise<void> {
   if (!current && legacy) {
     await saveProfile(legacy);
     await AsyncStorage.removeItem(keys.legacyProfile);
+  }
+}
+
+/** One-time migration from the single coachThreadsByDate blob to one
+ *  AsyncStorage key per day. Idempotent like the other steps here: once the
+ *  legacy blob is gone, this is a no-op on every subsequent run (schema
+ *  version bumps re-run every step in this block, not just the new one). */
+async function migrateCoachThreadsToPerDayKeys(): Promise<void> {
+  const legacy = await readJson<CoachThreadRecordMap>(keys.legacyCoachThreadsByDate);
+  if (legacy) {
+    const entries = Object.entries(legacy);
+    if (entries.length) {
+      await AsyncStorage.multiSet(entries.map(([date, record]) => [coachThreadKey(date), JSON.stringify(record)]));
+    }
+    await AsyncStorage.removeItem(keys.legacyCoachThreadsByDate);
   }
 }
 
@@ -380,8 +449,6 @@ async function migrateLegacyKeys(): Promise<void> {
 }
 
 // ── Weekly check-ins ─────────────────────────────────────────────────────────
-import type { WeeklyCheckIn } from '../types/checkin';
-
 export async function loadCheckIns(): Promise<WeeklyCheckIn[]> {
   return (await readJson<WeeklyCheckIn[]>(keys.checkIns)) || [];
 }
@@ -404,6 +471,17 @@ export async function loadBaselineKcalDelta(): Promise<number> {
 
 export async function saveBaselineKcalDelta(value: number): Promise<void> {
   await AsyncStorage.setItem(keys.baselineKcalDelta, JSON.stringify({ value }));
+}
+
+/** Nutrition goal override from an accepted weekly adjustment. Persisted so
+ *  the override survives an app restart, same as baselineKcalDelta. */
+export async function loadOverrideGoalKind(): Promise<NutritionGoalKind | null> {
+  const raw = await readJson<{ value: NutritionGoalKind | null }>(keys.overrideGoalKind);
+  return raw?.value ?? null;
+}
+
+export async function saveOverrideGoalKind(value: NutritionGoalKind | null): Promise<void> {
+  await AsyncStorage.setItem(keys.overrideGoalKind, JSON.stringify({ value }));
 }
 
 // ── Onboarding draft ────────────────────────────────────────────────────────

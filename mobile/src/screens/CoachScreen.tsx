@@ -105,6 +105,7 @@ export function CoachScreen() {
               onChangeText={setInput}
               placeholder={t('coach.inputPlaceholder')}
               multiline
+              maxLength={2000}
               style={styles.composerField}
             />
             <Pressable
@@ -184,7 +185,7 @@ export function CoachScreen() {
 function PromptChip({ label, onPress }: { label: string; onPress: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.promptChip, { borderColor: colors.border, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => [styles.promptChip, { borderColor: colors.hairline, backgroundColor: colors.bgElev }, pressed && { opacity: 0.82 }]}>
       <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
       <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9} style={[styles.promptText, { color: colors.ink }]}>{label}</Text>
     </Pressable>
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
   promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
   thread: { gap: 10 },
   bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
-  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '700' },
+  bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   structured: { gap: 6 },
   coachLead: { fontSize: 15, lineHeight: 21, fontWeight: '700' },
   coachLine: { fontSize: 13, lineHeight: 19, fontWeight: '600' },

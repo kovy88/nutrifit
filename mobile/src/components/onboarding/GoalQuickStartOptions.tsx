@@ -1,33 +1,38 @@
 import { StyleSheet, View } from 'react-native';
-import { quickStartsForScope } from '../../lib/onboarding/goal-parser';
+import { quickStartsForScope, goalQuickStartText } from '../../lib/onboarding/goal-parser';
 import type { GoalQuickStart } from '../../types/goal-types';
 import type { CoachScope } from '../../types';
-import type { TranslationKey } from '../../lib/i18n';
+import type { Locale, TranslationKey } from '../../lib/i18n';
 import { GoalChip } from './GoalChip';
 
 export function GoalQuickStartOptions({
   activeText,
   scope,
+  locale,
   onSelect,
   t,
 }: {
   activeText?: string;
   scope: CoachScope;
+  locale: Locale;
   onSelect: (quickStart: GoalQuickStart) => void;
   t: (key: TranslationKey) => string;
 }) {
   const options = visibleQuickStartsForScope(scope);
   return (
     <View style={styles.wrap}>
-      {options.map(item => (
-        <GoalChip
-          key={`${item.id}-${item.text}`}
-          active={activeText === item.text}
-          onPress={() => onSelect(item)}
-        >
-          {t(item.labelKey as TranslationKey)}
-        </GoalChip>
-      ))}
+      {options.map(item => {
+        const text = goalQuickStartText(item, locale);
+        return (
+          <GoalChip
+            key={`${item.id}-${item.text}`}
+            active={activeText === text}
+            onPress={() => onSelect(item)}
+          >
+            {t(item.labelKey as TranslationKey)}
+          </GoalChip>
+        );
+      })}
     </View>
   );
 }

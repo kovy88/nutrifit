@@ -15,6 +15,7 @@ vi.mock('../services/supabase', () => ({
       getSession: vi.fn(async () => ({ data: { session: null } })),
     },
   },
+  getAuthHeaders: vi.fn(async () => ({})),
 }));
 
 describe('services/api meal-plan fallback', () => {

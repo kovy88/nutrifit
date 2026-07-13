@@ -42,7 +42,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderColor: colors.border, backgroundColor: colors.card, shadowColor: colors.shadow },
+        { borderColor: colors.hairline, backgroundColor: colors.card, shadowColor: colors.shadow },
         pressed && onPress ? { opacity: 0.75 } : null,
       ]}
     >
@@ -77,7 +77,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.metric, { backgroundColor: colors.bgElev, borderColor: colors.border }]}>
+    <View style={[styles.metric, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
       <Text style={[styles.metricLabel, { color: colors.faint }]}>{label}</Text>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
     </View>

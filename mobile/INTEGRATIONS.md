@@ -64,29 +64,25 @@ plnit a Composite je transparentně přiřadí.
 
 ---
 
-## 2. Android Health Connect — STUB (ready to wire)
+## 2. Android Health Connect — DONE (2026-07-04)
 
-Provider class je stub s TODO(android) markery. Postup:
+`HealthConnectProvider.ts` reads real data via `react-native-health-connect`
+(steps, active calories, distance, workouts, sleep stages, resting HR, HRV,
+body weight). Zepp, Mi Band, Garmin Connect, Samsung Health, Withings všechno
+teče skrz Health Connect, takže tahle jedna implementace odemyká všechny
+najednou na Androidu.
 
-```bash
-cd mobile
-npx expo install react-native-health-connect
-```
+Native module — vyžaduje EAS Build (žádný Expo Go/web support). Config
+plugin + `expo.android.permissions` (READ_STEPS/READ_ACTIVE_CALORIES_BURNED/
+READ_SLEEP/READ_HEART_RATE/READ_RESTING_HEART_RATE/READ_HEART_RATE_VARIABILITY/
+READ_WEIGHT/READ_EXERCISE/READ_DISTANCE/READ_TOTAL_CALORIES_BURNED) už jsou
+v `app.json`.
 
-Add to `app.json` → `expo.android.permissions`:
-```json
-"android.permission.health.READ_STEPS",
-"android.permission.health.READ_ACTIVE_CALORIES_BURNED",
-"android.permission.health.READ_SLEEP",
-"android.permission.health.READ_HEART_RATE",
-"android.permission.health.READ_HEART_RATE_VARIABILITY",
-"android.permission.health.READ_WEIGHT",
-"android.permission.health.READ_EXERCISE"
-```
-
-Then implement the TODO(android) bodies in `HealthConnectProvider.ts` —
-the package's `readRecords()` API maps cleanly to our methods. Zepp, Mi Band,
-Garmin Connect, Samsung Health, Withings všechno teče skrz Health Connect.
+Verifikace: typecheck proti reálným typům balíčku + mockované unit testy
+(`healthConnectProvider.test.ts`, 14 testů). **Bez reálného Android zařízení
+s Health Connect nainstalovaným nejde field-testovat živě** — field
+names/shapes ověřené proti balíčku's vlastním TS typům, ne proti skutečné
+API odpovědi.
 
 ---
 
@@ -105,7 +101,7 @@ V appce: Profil → ⚙️ Zdravotní zdroje → Strava → "Připojit"
 
 ---
 
-## 4. Whoop OAuth — DONE, needs credentials + subscription
+## 4. Whoop — DONE, needs credentials + subscription
 
 1. Register at https://developer.whoop.com/
    - Redirect URL: `https://nutri-fit-omega.vercel.app/whoop-callback.html`
@@ -119,11 +115,46 @@ V appce: Profil → ⚙️ Zdravotní zdroje → Strava → "Připojit"
 
 Uživatel musí mít aktivní Whoop subscription, aby OAuth povolení proběhlo.
 
+`WhoopProvider.ts` (2026-07-04): čte sleep, workouty, resting HR a HRV přes
+v2 API (`/v2/activity/sleep`, `/v2/activity/workout`, `/v2/recovery`), plus
+statickou profile váhu z `/v2/user/measurement/body`. WHOOP migroval v1→v2
+(v1 se deprecuje) — implementace cílí výhradně na v2. HRV/RHR žijí na
+`/v2/recovery`, ne na `/v2/cycle` (cycle dává jen strain/kilojoule/HR).
+Field names ověřené proti reálné, udržované OSS knihovně
+(github.com/hedgertronic/whoop) s doslovnými example JSON v docstringech —
+WHOOP's vlastní tutorial stránky měly na jedné z nich zastaralé v1 field
+names, stejná past jako u Oury. BEZ přístupu k živému WHOOP účtu — považovat
+za ověřené na papíře, ne field-testované. Viz `TODO.md`.
+
 ---
 
-## 5. Garmin / Polar / Oura / Fitbit — TEMPLATE READY
+## 5. Oura — DONE
 
-Stejný pattern jako Strava a Whoop:
+Všech 6 kroků z template patternu hotovo, včetně `OuraProvider.ts`
+(2026-07-04): čte sleep (+ HRV/RHR), daily activity, workouty a statickou
+profile váhu z `/v2/usercollection/{sleep,daily_activity,workout,personal_info}`.
+Field names ověřené proti Oura's oficiálnímu OpenAPI spec (křížově přes
+dva nezávislé zdroje), ale BEZ přístupu k živému Oura účtu — považovat
+za ověřené na papíře, ne field-testované. Viz `TODO.md` pro detaily.
+
+## 6. Garmin — OAUTH DONE, needs a HealthDataProvider
+
+Kroky 1-5 z template patternu (backend exchange/refresh, web bridge,
+`lib/health/oauth/GarminOAuth.ts`, `hooks/useGarminConnect.ts`,
+Settings wiring) jsou už hotové stejně jako u Strava/Whoop/Oura —
+uživatel se dnes reálně může připojit a token se uloží. Chybí jen krok 6:
+žádný `GarminProvider.ts` (HealthDataProvider implementace) zatím
+neexistuje, takže composite provider připojený token zatím nevyužije pro
+čtení dat. Navíc vyžaduje schválení Garmin Connect Developer Program
+(~2 týdny review) — kick off tu žádost brzy, je to delší krok než samotné
+kódování. Vzor viz `OuraProvider.ts` nebo `WhoopProvider.ts` (obě hotové
+implementace).
+
+## 7. Polar / Fitbit — TEMPLATE, NOTHING BUILT YET
+
+Na rozdíl od Garmin/Oura tady neexistuje vůbec nic — jen placeholder
+entry v `OAuthService`/`HealthDataProvider['name']` union types. Stejný
+pattern jako Strava a Whoop, od nuly:
 
 1. Backend: `api/<service>/exchange.js` + `api/<service>/refresh.js`
    - Stejný shape jako `api/strava/exchange.js`
@@ -132,11 +163,11 @@ Stejný pattern jako Strava a Whoop:
 3. Mobile: `lib/health/oauth/<Service>OAuth.ts` (paralelně k `StravaOAuth.ts`)
 4. Hook: `hooks/use<Service>Connect.ts`
 5. Settings: napojení `handleConnect` na nový hook
-6. Provider class už existuje (stuby), stačí doplnit reálné API mapování
+6. `<Service>Provider.ts` (HealthDataProvider implementace) s reálným API mapováním
 
 ---
 
-## 6. Zepp / Mi Fit / Amazfit / Suunto — VIA NATIVE BRIDGE
+## 8. Zepp / Mi Fit / Amazfit / Suunto — VIA NATIVE BRIDGE
 
 Tyto ekosystémy NEMAJÍ public OAuth API. Cesta:
 
@@ -153,11 +184,10 @@ Není potřeba žádný kód navíc — Composite je transparentně sloučí.
 
 ## Token storage
 
-OAuth tokeny se ukládají do AsyncStorage přes `OAuthTokenStore`.
-**TODO**: migrace na `expo-secure-store` (iOS Keychain / Android Keystore).
-Současný stav je v pohodě pro MVP, ale pro release na App Store se to musí
-upgradovat — security pravidla pro health-related apps tlačí na encrypted
-storage.
+OAuth tokeny se ukládají přes `OAuthTokenStore` — produkčně `SecureOAuthTokenStore`
+(iOS Keychain / Android Keystore přes `expo-secure-store`), s `AsyncStorageTokenStore`
+jako plain-text fallback jen když `expo-secure-store` není dostupný (Expo Go / testy).
+Migrace mezi nimi je automatická a jednorázová per token per service.
 
 ## Account deletion
 

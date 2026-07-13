@@ -15,8 +15,7 @@
 //   detail         — 2–3 lidské signály bez raw interních metrik.
 //   recommendation — JEDNA věta s konkrétní akcí pro dnešek.
 
-import type { TrainingSession } from '../../types';
-import type { Macros } from '../../types';
+import type { TrainingSession , Macros } from '../../types';
 import type { Locale } from '../i18n';
 import type { ReadinessAssessment } from './readiness';
 import type { TrainingLoadAssessment } from './trainingLoad';

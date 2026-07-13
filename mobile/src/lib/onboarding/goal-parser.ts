@@ -1,3 +1,4 @@
+import type { Locale } from '../i18n';
 import type { GoalParseResult, GoalProfile, GoalQuickStart, NutritionMode, PrimaryGoal, RaceGoal } from '../../types/goal-types';
 import type { CoachScope } from '../../types';
 import { normalizeGoalProfile } from '../goals/goal-model';
@@ -12,14 +13,14 @@ type GoalSignal = {
 };
 
 export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
-  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', scopes: ['both', 'nutrition'] },
-  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', scopes: ['both', 'training'] },
-  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', scopes: ['both', 'training'] },
-  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', scopes: ['both', 'training'] },
-  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', scopes: ['both', 'training'] },
-  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', scopes: ['both', 'training', 'nutrition'] },
-  { id: 'build_consistency', labelKey: 'onb.quickBuildConsistency', subtitleKey: 'onb.quickBuildConsistencySub', text: 'I want to train consistently.', scopes: ['both', 'training', 'nutrition'] },
-  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', scopes: ['both', 'nutrition'] },
+  { id: 'lose_fat', labelKey: 'onb.quickLoseFat', subtitleKey: 'onb.quickLoseFatSub', text: 'I want to lose fat.', textCs: 'Chci zhubnout tuk.', scopes: ['both', 'nutrition'] },
+  { id: 'improve_fitness', labelKey: 'onb.quickImproveFitness', subtitleKey: 'onb.quickImproveFitnessSub', text: 'I want to improve my fitness.', textCs: 'Chci zlepšit kondici.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun5k', subtitleKey: 'onb.quickRun5kSub', text: 'I want to run 5 km.', textCs: 'Chci uběhnout 5 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickRun10k', subtitleKey: 'onb.quickRun10kSub', text: 'I want to run 10 km.', textCs: 'Chci uběhnout 10 km.', scopes: ['both', 'training'] },
+  { id: 'run_race', labelKey: 'onb.quickHalfMarathon', subtitleKey: 'onb.quickHalfMarathonSub', text: 'I want to run a half marathon.', textCs: 'Chci uběhnout půlmaraton.', scopes: ['both', 'training'] },
+  { id: 'build_muscle', labelKey: 'onb.quickBuildMuscle', subtitleKey: 'onb.quickBuildMuscleSub', text: 'I want to build muscle.', textCs: 'Chci nabrat svaly.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'build_consistency', labelKey: 'onb.quickBuildConsistency', subtitleKey: 'onb.quickBuildConsistencySub', text: 'I want to train consistently.', textCs: 'Chci trénovat pravidelně.', scopes: ['both', 'training', 'nutrition'] },
+  { id: 'eat_healthier', labelKey: 'onb.quickEatHealthier', subtitleKey: 'onb.quickEatHealthierSub', text: 'I want to eat healthier.', textCs: 'Chci jíst zdravěji.', scopes: ['both', 'nutrition'] },
 ];
 
 /**
@@ -30,6 +31,11 @@ export const GOAL_QUICK_STARTS: GoalQuickStart[] = [
  */
 export function quickStartsForScope(scope: CoachScope): GoalQuickStart[] {
   return GOAL_QUICK_STARTS.filter(q => q.scopes.includes(scope));
+}
+
+/** Locale-appropriate seed text for a quick-start chip. */
+export function goalQuickStartText(quickStart: GoalQuickStart, locale: Locale): string {
+  return locale === 'cs' ? quickStart.textCs : quickStart.text;
 }
 
 export function parseGoalText(rawText: string): GoalParseResult {
@@ -77,7 +83,7 @@ function detectGoalSignal(text: string): GoalSignal | null {
   const muscle = hasAny(text, ['build muscle', 'gain muscle', 'muscle gain', 'get stronger', 'strength', 'sval', 'síla', 'silov']);
   const healthyFood = hasAny(text, ['eat healthier', 'healthy eating', 'eat better', 'better food', 'nutrition', 'jídel', 'zdravě', 'zdrave']);
   const recover = hasAny(text, ['recover', 'recovery', 'sleep', 'tired', 'fatigue', 'stress', 'regener', 'spánek', 'spanek', 'únav', 'unav']);
-  const consistency = hasAny(text, ['consistent', 'consistency', 'routine', 'habit', 'stick with', 'feel better', 'move more', 'pravidel', 'konzist', 'cítit líp', 'citit lip']);
+  const consistency = hasAny(text, ['consistent', 'consistently', 'consistency', 'routine', 'habit', 'stick with', 'feel better', 'move more', 'pravidel', 'konzist', 'cítit líp', 'citit lip']);
   const fitness = hasAny(text, ['fitness', 'fit', 'condition', 'conditioning', 'shape', 'kondic', 'forma']);
 
   if (fatLoss && raceGoal !== 'none') {
@@ -144,8 +150,15 @@ function normalize(value: string): string {
   return value.toLocaleLowerCase().replace(/[.,!?;:()[\]{}"'`´]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Matches `needle` only at word boundaries (space or start/end of the
+ *  normalized, space-delimited text) — plain `.includes()` let short
+ *  needles like 'cut' or '5k' match inside unrelated words/numbers
+ *  ('cutlery', '25k steps'). */
 function hasAny(text: string, needles: string[]): boolean {
-  return needles.some(needle => text.includes(needle));
+  return needles.some(needle => {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^| )${escaped}(?: |$)`).test(text);
+  });
 }
 
 function buildSummary(goal: Pick<GoalProfile, 'primaryGoal' | 'raceGoal'>): string {

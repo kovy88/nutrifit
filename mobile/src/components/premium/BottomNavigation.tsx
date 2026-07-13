@@ -5,12 +5,12 @@ import type { darkColors } from '../../constants/theme';
 
 type Palette = typeof darkColors;
 
-export const BOTTOM_NAV_ITEMS: Array<{
+export const BOTTOM_NAV_ITEMS: {
   route: string;
   labelKey: TranslationKey;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   { route: 'Dnes', labelKey: 'tab.home', icon: 'today-outline', activeIcon: 'today' },
   { route: 'Jídelníček', labelKey: 'tab.plan', icon: 'calendar-outline', activeIcon: 'calendar' },
   { route: 'Coach', labelKey: 'tab.coach', icon: 'sparkles-outline', activeIcon: 'sparkles' },

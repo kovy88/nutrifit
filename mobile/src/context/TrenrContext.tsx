@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import type {
   DailyAdjustment,
@@ -11,15 +11,16 @@ import type {
   DailyPlanRecord,
   DailyFoodLogRecord,
   DailySessionRecord,
+  SyncConflict,
   TrainingCompletionRecord,
   TrainingCompletionRecordMap,
   TrainingCompletionStatus,
-} from '../types';
+ NutritionGoalKind } from '../types';
 import { adjustForDay, calculateMacros, DEFAULT_PROFILE, makeFoodLogItem, primaryGoalToNutritionKind, sumFoodLog, toDateKey } from '../utils/nutrition';
 import { computeLogStreak } from '../lib/nutrition/streaks';
 import { adjustedPlanSessionForDate } from '../lib/training';
 import { useLanguage } from './LanguageContext';
-import { getSubscriptionProvider, FALLBACK_PACKAGES, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
+import { getSubscriptionProvider, getFallbackPackages, type SubscriptionPackage, type SubscriptionPlanId } from '../lib/subscription';
 import { planWeeklyAdjustment } from '../lib/coaching/weeklyAdjustment';
 import {
   clearProfile,
@@ -41,6 +42,8 @@ import {
   saveCheckIn,
   loadBaselineKcalDelta,
   saveBaselineKcalDelta,
+  loadOverrideGoalKind,
+  saveOverrideGoalKind,
   clearOnboardingDraft,
   loadTrainingCompletionsByDate,
   loadCoachThreadsByDate,
@@ -55,9 +58,8 @@ import {
   saveSubscriptionStatus,
 } from '../services/storage';
 import type { PlanAdjustment, WeeklyCheckIn } from '../types/checkin';
-import type { NutritionGoalKind } from '../types';
 import { supabase } from '../services/supabase';
-import { loadPendingSyncWrites, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase, queuePendingSyncWrite } from '../services/sync';
+import { mergeRecordsByUpdatedAt, pullRemoteSnapshotFromSupabase, pushLocalSnapshotToSupabase } from '../services/sync';
 import { syncStore } from '../stores/syncStore';
 
 type AuthUser = {
@@ -141,7 +143,13 @@ export function TrenrProvider({ children }: PropsWithChildren) {
   const [baselineKcalDelta, setBaselineKcalDelta] = useState(0);
   const [overrideGoalKind, setOverrideGoalKind] = useState<NutritionGoalKind | null>(null);
   const [isSubscribed, setIsSubscribedState] = useState(false);
-  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(FALLBACK_PACKAGES);
+  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>(() => getFallbackPackages(locale));
+  // Guards syncNow() against overlapping pushes — each call closes over a
+  // React-state snapshot, so two rapid calls (e.g. logging two foods back to
+  // back) could otherwise race, with the later-resolving one carrying the
+  // staler snapshot and overwriting the newer push's result.
+  const syncInFlightRef = useRef(false);
+  const syncQueuedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -158,10 +166,11 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         loadWeights(),
         loadCheckIns(),
         loadBaselineKcalDelta(),
+        loadOverrideGoalKind(),
         loadTrainingCompletionsByDate(),
         loadSubscriptionStatus(),
       ]);
-    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta, storedCompletions, storedSubscription]) => {
+    }).then(([storedProfile, storedPlans, storedLogs, storedSessions, storedConsent, auth, storedWeights, storedCheckIns, storedDelta, storedOverrideGoalKind, storedCompletions, storedSubscription]) => {
       if (!active) return;
       setProfileState(storedProfile);
       setPlansByDate(storedPlans || {});
@@ -172,6 +181,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       setWeightsByDate(storedWeights || {});
       setCheckIns(storedCheckIns || []);
       setBaselineKcalDelta(storedDelta || 0);
+      setOverrideGoalKind(storedOverrideGoalKind);
       setTrainingCompletionsByDate(storedCompletions || {});
       setIsSubscribedState(storedSubscription || false);
       setIsReady(true);
@@ -194,7 +204,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     void (async () => {
       try {
         await provider.configure(user?.id ?? null);
-        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings()]);
+        const [status, packages] = await Promise.all([provider.getStatus(), provider.getOfferings(locale)]);
         setIsSubscribedState(status.isActive);
         await saveSubscriptionStatus(status.isActive);
         if (packages.length) setSubscriptionPackages(packages);
@@ -202,7 +212,7 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         // keep the locally stored flag on any billing/offline error
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, locale]);
 
   const baselineMacros = useMemo(
     () =>
@@ -257,8 +267,22 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     weightsByDate: Record<string, number>;
     checkIns: WeeklyCheckIn[];
     trainingCompletionsByDate: TrainingCompletionRecordMap;
+    baselineKcalDelta: number;
+    overrideGoalKind: NutritionGoalKind | null;
   }> = {}) {
     if (!user?.id) return;
+    // A sync is already running — don't start a second overlapping push
+    // (each call closes over its own React-state snapshot, so the later one
+    // could resolve first and get clobbered by the earlier one, or vice
+    // versa). Just remember one more sync is owed once this one finishes;
+    // by then all pending state updates from the queued call's originating
+    // action will have flushed, so a plain no-overrides retry picks up the
+    // latest state anyway.
+    if (syncInFlightRef.current) {
+      syncQueuedRef.current = true;
+      return;
+    }
+    syncInFlightRef.current = true;
     syncStore.setSyncing();
     try {
       const [storedCoachThreadsByDate, storedDailyCoachHistory, storedDailyHealthSummaries] = await Promise.all([
@@ -278,20 +302,33 @@ export function TrenrProvider({ children }: PropsWithChildren) {
         dailyCoachHistory: storedDailyCoachHistory,
         dailyHealthSummaries: storedDailyHealthSummaries,
         baselineTargetsByDate: currentMacros ? { [selectedDate]: currentMacros } : {},
+        baselineKcalDelta: overrides.baselineKcalDelta ?? baselineKcalDelta,
+        overrideGoalKind: overrides.overrideGoalKind ?? overrideGoalKind,
       }, user.id);
       syncStore.setPendingWrites(0);
       syncStore.setIdle(new Date().toISOString());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sync failed';
       syncStore.setError(message);
-      await queuePendingSyncWrite({ entity: 'profile', payload: { reason: message } });
-      syncStore.setPendingWrites((await loadPendingSyncWrites()).length);
+      // Count of consecutive failed sync attempts since the last success —
+      // not a literal queue of specific writes: syncNow() always pushes the
+      // *current* full state, so the next successful call (triggered by any
+      // subsequent action, or on next app launch) already re-sends
+      // everything. There's nothing granular to persist and replay.
+      syncStore.setPendingWrites(syncStore.getSnapshot().pendingWrites + 1);
+    } finally {
+      syncInFlightRef.current = false;
+      if (syncQueuedRef.current) {
+        syncQueuedRef.current = false;
+        void syncNow();
+      }
     }
   }
 
   async function hydrateFromRemote() {
     if (!user?.id) return;
     const remote = await pullRemoteSnapshotFromSupabase(user.id);
+    const allConflicts: SyncConflict[] = [];
     if (remote.profile && !profile) {
       await saveProfile(remote.profile);
       setProfileState(remote.profile);
@@ -312,20 +349,54 @@ export function TrenrProvider({ children }: PropsWithChildren) {
       await Promise.all(Object.entries(merged).map(([date, weight]) => saveWeightForDate(date, weight)));
     }
     if (remote.checkIns?.length) {
-      const byWeek = new Map(remote.checkIns.map(checkIn => [checkIn.weekStartISO, checkIn]));
-      checkIns.forEach(checkIn => byWeek.set(checkIn.weekStartISO, checkIn));
-      const merged = Array.from(byWeek.values()).sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
+      const localByWeek = Object.fromEntries(checkIns.map(c => [c.weekStartISO, c]));
+      const remoteByWeek = Object.fromEntries(remote.checkIns.map(c => [c.weekStartISO, c]));
+      const { merged: mergedByWeek, conflicts } = mergeRecordsByUpdatedAt('weekly_checkins', localByWeek, remoteByWeek);
+      const merged = Object.values(mergedByWeek).sort((a, b) => a.weekStartISO.localeCompare(b.weekStartISO));
       setCheckIns(merged);
       for (const checkIn of merged) await saveCheckIn(checkIn);
+      allConflicts.push(...conflicts);
     }
     if (remote.trainingCompletionsByDate) {
-      const merged = { ...remote.trainingCompletionsByDate, ...trainingCompletionsByDate };
-      setTrainingCompletionsByDate(merged);
-      await saveTrainingCompletionsByDate(merged);
+      const { merged, conflicts } = mergeRecordsByUpdatedAt(
+        'training_completions',
+        trainingCompletionsByDate,
+        remote.trainingCompletionsByDate,
+      );
+      setTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      await saveTrainingCompletionsByDate(merged as TrainingCompletionRecordMap);
+      allConflicts.push(...conflicts);
     }
-    if (remote.coachThreadsByDate) await saveCoachThreadsByDate(remote.coachThreadsByDate);
-    if (remote.dailyCoachHistory) await saveDailyCoachHistory(remote.dailyCoachHistory);
-    if (remote.dailyHealthSummaries) await saveDailyHealthSummaries(remote.dailyHealthSummaries);
+    if (remote.coachThreadsByDate) {
+      const local = await loadCoachThreadsByDate();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('coach_threads', local, remote.coachThreadsByDate);
+      await saveCoachThreadsByDate(merged);
+      allConflicts.push(...conflicts);
+    }
+    if (remote.dailyCoachHistory) {
+      const local = await loadDailyCoachHistory();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('daily_coach_recommendations', local, remote.dailyCoachHistory);
+      await saveDailyCoachHistory(merged);
+      allConflicts.push(...conflicts);
+    }
+    if (remote.dailyHealthSummaries) {
+      const local = await loadDailyHealthSummaries();
+      const { merged, conflicts } = mergeRecordsByUpdatedAt('daily_health_summaries', local, remote.dailyHealthSummaries);
+      await saveDailyHealthSummaries(merged);
+      allConflicts.push(...conflicts);
+    }
+    // Only adopt the remote weekly-adjustment state when this device hasn't
+    // already applied one locally — same "don't clobber local" policy as the
+    // profile merge above, not last-write-wins.
+    if (remote.baselineKcalDelta != null && remote.baselineKcalDelta !== 0 && baselineKcalDelta === 0) {
+      setBaselineKcalDelta(remote.baselineKcalDelta);
+      await saveBaselineKcalDelta(remote.baselineKcalDelta);
+    }
+    if (remote.overrideGoalKind != null && overrideGoalKind === null) {
+      setOverrideGoalKind(remote.overrideGoalKind);
+      await saveOverrideGoalKind(remote.overrideGoalKind);
+    }
+    if (allConflicts.length) syncStore.setConflicts(allConflicts);
   }
 
   useEffect(() => {
@@ -405,11 +476,16 @@ export function TrenrProvider({ children }: PropsWithChildren) {
    *  Triggers baselineMacros recalculation via state change. */
   async function applyAdjustment(adjustment: PlanAdjustment) {
     const nextDelta = baselineKcalDelta + adjustment.kcalDelta;
+    const nextOverrideGoalKind = adjustment.adjustedGoalKind ?? overrideGoalKind;
     setBaselineKcalDelta(nextDelta);
     await saveBaselineKcalDelta(nextDelta);
     if (adjustment.adjustedGoalKind) {
       setOverrideGoalKind(adjustment.adjustedGoalKind);
+      await saveOverrideGoalKind(adjustment.adjustedGoalKind);
     }
+    // Push to Supabase so the adjustment survives a reinstall or a second
+    // device — previously this only lived in local AsyncStorage.
+    void syncNow({ baselineKcalDelta: nextDelta, overrideGoalKind: nextOverrideGoalKind });
   }
 
   async function addFood(estimate: FoodEstimate, source: FoodLogItem['source']) {
@@ -525,49 +601,65 @@ export function TrenrProvider({ children }: PropsWithChildren) {
     await supabase.auth.signOut();
   }
 
+  // Memoized so consumers of useTrenr() only re-render when something they
+  // could plausibly read actually changed, instead of on every render of
+  // this provider. The functions below are plain closures (recreated each
+  // render), so the dependency list intentionally lists every raw state
+  // value they read — some functions read a map (e.g. foodLogsByDate) that
+  // isn't itself exposed on the context, only a derived value is, but the
+  // function still needs a fresh closure over it.
+  const value = useMemo(() => ({
+    isReady,
+    profile: profile || null,
+    baselineMacros,
+    currentMacros,
+    dailyAdjustment,
+    user,
+    hasAiConsent,
+    selectedDate,
+    setSelectedDate,
+    currentMeals,
+    currentFoodLog,
+    currentSession,
+    trainingCompletions: trainingCompletionsByDate,
+    logStreak,
+    currentTrainingCompletion,
+    weights: weightsByDate,
+    logWeight,
+    ensureAiConsent,
+    setProfile: persistProfile,
+    setTodaySession: persistTodaySession,
+    markTrainingCompletion,
+    resetLocalProfile,
+    purgeAllUserData,
+    checkIns,
+    baselineKcalDelta,
+    overrideGoalKind,
+    recordCheckIn,
+    applyAdjustment,
+    addFood,
+    removeFood,
+    clearFood,
+    setMeals: persistMeals,
+    signIn,
+    signUp,
+    signOut,
+    isSubscribed,
+    setIsSubscribed: updateSubscriptionStatus,
+    purchaseSubscription,
+    restoreSubscription,
+    subscriptionPackages,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    isReady, profile, baselineMacros, currentMacros, dailyAdjustment, user, hasAiConsent,
+    selectedDate, plansByDate, foodLogsByDate, sessionsByDate, currentMeals, currentFoodLog,
+    currentSession, trainingCompletionsByDate, logStreak, currentTrainingCompletion,
+    weightsByDate, checkIns, baselineKcalDelta, overrideGoalKind, isSubscribed,
+    subscriptionPackages, locale,
+  ]);
+
   return (
-    <Context.Provider value={{
-      isReady,
-      profile: profile || null,
-      baselineMacros,
-      currentMacros,
-      dailyAdjustment,
-      user,
-      hasAiConsent,
-      selectedDate,
-      setSelectedDate,
-      currentMeals,
-      currentFoodLog,
-      currentSession,
-      trainingCompletions: trainingCompletionsByDate,
-      logStreak,
-      currentTrainingCompletion,
-      weights: weightsByDate,
-      logWeight,
-      ensureAiConsent,
-      setProfile: persistProfile,
-      setTodaySession: persistTodaySession,
-      markTrainingCompletion,
-      resetLocalProfile,
-      purgeAllUserData,
-      checkIns,
-      baselineKcalDelta,
-      overrideGoalKind,
-      recordCheckIn,
-      applyAdjustment,
-      addFood,
-      removeFood,
-      clearFood,
-      setMeals: persistMeals,
-      signIn,
-      signUp,
-      signOut,
-      isSubscribed,
-      setIsSubscribed: updateSubscriptionStatus,
-      purchaseSubscription,
-      restoreSubscription,
-      subscriptionPackages,
-    }}>
+    <Context.Provider value={value}>
       {children}
     </Context.Provider>
   );

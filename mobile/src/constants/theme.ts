@@ -54,6 +54,7 @@ export const typography = {
   caption: 12,
   body: 14,
   bodyLarge: 16,
+  subhead: 13, // calm, uppercase section titles
   title: 20,
   screenTitle: 32,
   metric: 40,

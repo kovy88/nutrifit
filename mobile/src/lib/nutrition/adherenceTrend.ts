@@ -140,7 +140,7 @@ export function describeAdherence(averageRatio: number | null, locale: Locale = 
   if (averageRatio == null) {
     return en
       ? 'Not enough data yet. The adherence trend needs at least one day with a plan + log.'
-      : 'Zatím dost dat ne. Pro adherence trend potřebujeme alespoň jeden den s plánem + zápisem.';
+      : 'Zatím nemáme dost dat. Pro trend dodržování plánu potřebujeme alespoň jeden den s plánem + zápisem.';
   }
   const pct = Math.round(averageRatio * 100);
   if (averageRatio >= 0.95 && averageRatio <= 1.05) {
