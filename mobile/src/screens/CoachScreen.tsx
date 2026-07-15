@@ -167,7 +167,15 @@ export function CoachScreen() {
             </View>
           ))}
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
+            <Ionicons name="chatbubble-ellipses-outline" size={26} color={colors.faint} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.muted }]}>{coachEmptyTitle(locale)}</Text>
+          <Text style={[styles.emptyBody, { color: colors.faint }]}>{coachEmptyBody(locale)}</Text>
+        </View>
+      )}
 
       {followups.length > 0 && !sending ? (
         <SectionCard title={t('coach.followups')}>
@@ -215,9 +223,7 @@ function readinessColor(band: 'low' | 'medium' | 'high' | undefined, colors: Ret
 }
 
 function coachScreenSubtitle(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'Get a short explanation of the plan, food, or adjustment.'
-    : 'Dostaň krátké vysvětlení plánu, jídla nebo úpravy.';
+  return locale === 'en' ? 'Quick answers about the plan.' : 'Rychlé odpovědi o plánu.';
 }
 
 function coachScreenTitle(locale: 'cs' | 'en'): string {
@@ -270,18 +276,12 @@ function coachStatusLabel(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): s
 function coachHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
   const session = rec.training?.session;
   if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
-    return locale === 'en'
-      ? 'I can explain what still counts today and what to leave for tomorrow.'
-      : 'Vysvětlím, co se dnes počítá a co nechat na zítra.';
+    return locale === 'en' ? 'Ask what counts today.' : 'Zeptej se, co se dnes počítá.';
   }
   if (rec.readiness.recommendedIntensity === 'hard') {
-    return locale === 'en'
-      ? 'Ask how to do the work well without adding extra.'
-      : 'Zeptej se, jak to odtrénovat dobře bez přidávání navíc.';
+    return locale === 'en' ? 'Ask how to do it well.' : 'Zeptej se, jak to odtrénovat dobře.';
   }
-  return locale === 'en'
-    ? 'Ask what matters most, how to fuel it, or how to adjust.'
-    : 'Zeptej se, co je nejdůležitější, jak jíst, nebo jak den upravit.';
+  return locale === 'en' ? 'Ask what matters most today.' : 'Zeptej se, co je dnes nejdůležitější.';
 }
 
 function coachQuestionsBody(locale: 'cs' | 'en'): string {
@@ -290,16 +290,28 @@ function coachQuestionsBody(locale: 'cs' | 'en'): string {
     : 'Začni jednou otázkou.';
 }
 
+function coachEmptyTitle(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Nothing asked yet' : 'Zatím nic';
+}
+
+function coachEmptyBody(locale: 'cs' | 'en'): string {
+  return locale === 'en' ? 'Ask below or tap a quick question.' : 'Zeptej se níže nebo vyber otázku.';
+}
+
 function isEasySessionTitle(title: string): boolean {
   return /\b(easy|light|recovery|leh|regener|voln)\b/i.test(title);
 }
 
 const styles = StyleSheet.create({
-  screen: { gap: 14 },
+  screen: { gap: 14, flexGrow: 1 },
   promptList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   promptChip: { flexBasis: '31%', flexGrow: 1, minWidth: 84, minHeight: 58, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 5, paddingVertical: 8 },
   promptText: { flexShrink: 1, fontSize: 12, lineHeight: 15, fontWeight: '600', textAlign: 'center' },
   thread: { gap: 10 },
+  emptyState: { flex: 1, minHeight: 140, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  emptyIcon: { width: 52, height: 52, borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 15, fontWeight: '700' },
+  emptyBody: { fontSize: 13, lineHeight: 18, fontWeight: '500', textAlign: 'center', maxWidth: 260 },
   bubble: { maxWidth: '90%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11 },
   bubbleText: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   structured: { gap: 6 },

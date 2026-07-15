@@ -58,6 +58,8 @@ export function HistoryScreen() {
     nutritionLoggedDays: 0,
   }));
   const sleepTrend = useTrend('sleep', 14);
+  const hrvTrend = useTrend('hrv', 14);
+  const rhrTrend = useTrend('rhr', 14);
   const strainTrend = useStrainTrend(14);
   const weightProviderTrend = useTrend('weight', 30);
   const weightTrend = mergeWeightTrend(weightProviderTrend.data, buildTrendFromRecord(weights, 30));
@@ -208,6 +210,14 @@ export function HistoryScreen() {
             />
           </Card>
           <Card>
+            <SectionHeader title={t('history.hrv14')} />
+            <SimpleLineChart data={hrvTrend.data} color={colors.green} unit="ms" />
+          </Card>
+          <Card>
+            <SectionHeader title={t('history.rhr14')} />
+            <SimpleLineChart data={rhrTrend.data} color={colors.red} unit="bpm" />
+          </Card>
+          <Card>
             <SectionHeader title={trainingLoadTitle(locale)} />
             <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => trainingLoadValueLabel(v, locale)} />
             <Text style={[styles.meta, { color: colors.faint }]}>{trainingLoadMeta(locale)}</Text>
@@ -271,9 +281,7 @@ function progressTitle(locale: 'cs' | 'en'): string {
 }
 
 function progressSubtitle(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'A calm review of consistency, trends and saved days.'
-    : 'Klidný přehled konzistence, trendů a uložených dní.';
+  return locale === 'en' ? 'Consistency, trends, and history.' : 'Konzistence, trendy a historie.';
 }
 
 function progressHeroBody(
@@ -286,13 +294,9 @@ function progressHeroBody(
 ): string {
   if (averageRatio == null && completedSessions === 0 && nutritionLoggedDays === 0) {
     if (plannedSessions > 0) {
-      return locale === 'en'
-        ? 'Mark one planned workout or log one meal today; tomorrow this review will have a real signal.'
-        : 'Dnes odškrtni jeden trénink nebo zapiš jídlo; zítra už tady bude skutečný signál.';
+      return locale === 'en' ? 'Mark a workout or log a meal.' : 'Odškrtni trénink nebo zapiš jídlo.';
     }
-    return locale === 'en'
-      ? 'Log one useful action today and this review will start guiding the week.'
-      : 'Zapiš dnes jednu užitečnou akci a přehled začne vést týden.';
+    return locale === 'en' ? 'Log one action to get started.' : 'Zapiš jednu akci pro start.';
   }
   return fallback;
 }
@@ -314,73 +318,35 @@ function progressFoodLabel(locale: 'cs' | 'en'): string {
 
 function progressConsistencyBody(averageRatio: number | null, locale: 'cs' | 'en'): string {
   if (averageRatio == null) {
-    return locale === 'en'
-      ? 'Log one planned day and this weekly review will start to fill in.'
-      : 'Zapiš jeden plánovaný den a týdenní přehled se začne plnit.';
+    return locale === 'en' ? 'Log a day to get started.' : 'Zapiš den pro start.';
   }
   if (averageRatio >= 0.9 && averageRatio <= 1.1) {
-    return locale === 'en'
-      ? 'This week is mostly on track. Keep the next day simple.'
-      : 'Tenhle týden jde většinou podle plánu. Další den drž jednoduše.';
+    return locale === 'en' ? 'On track this week.' : 'Tenhle týden podle plánu.';
   }
   if (averageRatio < 0.9) {
-    return locale === 'en'
-      ? 'You are trending a little under the plan. Add one normal meal before making bigger changes.'
-      : 'Jsi trochu pod plánem. Přidej jedno normální jídlo, než budeš dělat větší změny.';
+    return locale === 'en' ? 'A bit under plan.' : 'Trochu pod plánem.';
   }
-  return locale === 'en'
-    ? 'You are trending a little over the plan. Tighten the next meal, not the whole week.'
-    : 'Jsi trochu nad plánem. Zpřesni další jídlo, ne celý týden.';
+  return locale === 'en' ? 'A bit over plan.' : 'Trochu nad plánem.';
 }
 
 function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en'): string {
-  if (done <= 0) {
-    return locale === 'en'
-      ? `${planned} planned, none done yet`
-      : `${planned} v plánu, zatím nic hotovo`;
-  }
-  if (done >= planned) {
-    return locale === 'en'
-      ? `All ${planned} planned workouts done`
-      : `Všech ${planned} plánovaných tréninků hotovo`;
-  }
-  return locale === 'en'
-    ? `${done} of ${planned} planned workouts done`
-    : `${done} z ${planned} plánovaných tréninků hotovo`;
+  return locale === 'en' ? `${done} of ${planned} done` : `${done} z ${planned} hotovo`;
 }
 
 function progressFoodValue(onTarget: number, logged: number, locale: 'cs' | 'en'): string {
-  if (onTarget <= 0) {
-    return locale === 'en'
-      ? `${logged} logged, still finding rhythm`
-      : `${logged} zapsáno, rytmus se teprve hledá`;
-  }
-  if (onTarget >= logged) {
-    return locale === 'en'
-      ? `All ${logged} logged days fit the plan`
-      : `Všech ${logged} zapsaných dní sedí`;
-  }
-  return locale === 'en'
-    ? `${onTarget} of ${logged} logged days fit the plan`
-    : `${onTarget} z ${logged} zapsaných dní sedí`;
+  return locale === 'en' ? `${onTarget} of ${logged} on target` : `${onTarget} z ${logged} v cíli`;
 }
 
 function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'No planned workouts are visible for this week yet.'
-    : 'Tenhle týden zatím nemá viditelné plánované tréninky.';
+  return locale === 'en' ? 'No workouts yet.' : 'Zatím žádné tréninky.';
 }
 
 function progressNoFoodCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'After one logged meal day, your food rhythm will show here.'
-    : 'Po jednom zapsaném jídelním dni se tady ukáže jídelní rytmus.';
+  return locale === 'en' ? 'Log a meal to start.' : 'Zapiš jídlo pro start.';
 }
 
 function progressNoTargetCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'Your first steady day will show here after you log a meal.'
-    : 'První stabilní den se ukáže po zalogování jídla.';
+  return locale === 'en' ? 'Log a meal to start.' : 'Zapiš jídlo pro start.';
 }
 
 function progressStreakLabel(locale: 'cs' | 'en'): string {
@@ -393,13 +359,9 @@ function progressNextSignalTitle(locale: 'cs' | 'en'): string {
 
 function progressNextSignalBody(currentLogStreak: number, locale: 'cs' | 'en'): string {
   if (currentLogStreak > 0) {
-    return locale === 'en'
-      ? 'Keep the streak simple and repeat one useful check-in tomorrow.'
-      : 'Drž streak jednoduše a zítra zopakuj jeden užitečný check-in.';
+    return locale === 'en' ? 'Keep the streak going.' : 'Drž streak dál.';
   }
-  return locale === 'en'
-    ? 'Start logging today and this review will get useful fast.'
-    : 'Začni dnešním zápisem a přehled rychle začne dávat smysl.';
+  return locale === 'en' ? 'Start logging today.' : 'Začni dnešním zápisem.';
 }
 
 function progressFoodTrendTitle(locale: 'cs' | 'en'): string {
@@ -408,18 +370,12 @@ function progressFoodTrendTitle(locale: 'cs' | 'en'): string {
 
 function progressFoodTrendCopy(changeKg: number, locale: 'cs' | 'en'): string {
   if (Math.abs(changeKg) < 0.1) {
-    return locale === 'en'
-      ? 'Your recent logs point to a mostly steady weight trend.'
-      : 'Poslední zápisy ukazují spíš stabilní trend váhy.';
+    return locale === 'en' ? 'Steady weight trend.' : 'Stabilní trend váhy.';
   }
   if (changeKg < 0) {
-    return locale === 'en'
-      ? 'Your recent logs point toward gradual weight loss.'
-      : 'Poslední zápisy směřují k postupnému úbytku váhy.';
+    return locale === 'en' ? 'Gradual weight loss.' : 'Postupný úbytek váhy.';
   }
-  return locale === 'en'
-    ? 'Your recent logs point toward gradual weight gain.'
-    : 'Poslední zápisy směřují k postupnému nárůstu váhy.';
+  return locale === 'en' ? 'Gradual weight gain.' : 'Postupný nárůst váhy.';
 }
 
 function progressFoodTrendMetricLabel(locale: 'cs' | 'en'): string {
@@ -431,9 +387,7 @@ function trainingLoadTitle(locale: 'cs' | 'en'): string {
 }
 
 function trainingLoadMeta(locale: 'cs' | 'en'): string {
-  return locale === 'en'
-    ? 'A simple view of how heavy recent training days felt in the plan.'
-    : 'Jednoduchý pohled na to, jak těžké byly poslední tréninkové dny v plánu.';
+  return locale === 'en' ? 'Recent training intensity.' : 'Poslední tréninková intenzita.';
 }
 
 function trainingLoadValueLabel(value: number, locale: 'cs' | 'en'): string {

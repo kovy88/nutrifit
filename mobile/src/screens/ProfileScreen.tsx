@@ -567,23 +567,15 @@ function profileHealthState(
   locale: 'cs' | 'en',
 ): string {
   if (connectedCount > 0) {
-    return locale === 'en'
-      ? 'Connected sources can support your daily recommendation.'
-      : 'Připojené zdroje pomáhají dennímu doporučení.';
+    return locale === 'en' ? 'Connected.' : 'Připojeno.';
   }
   if (nativeAvailable) {
-    return locale === 'en'
-      ? 'Native health data is available for setup.'
-      : 'Nativní zdravotní data jsou dostupná k nastavení.';
+    return locale === 'en' ? 'Available to set up.' : 'Dostupné k nastavení.';
   }
   if (mode === 'mock') {
-    return locale === 'en'
-      ? 'Demo values are only for trying the app.'
-      : 'Demo hodnoty slouží jen na vyzkoušení appky.';
+    return locale === 'en' ? 'Demo data.' : 'Demo data.';
   }
-  return locale === 'en'
-    ? 'Manual check-ins work now; sources can be connected later.'
-    : 'Ruční check-iny fungují hned, zdroje můžeš připojit později.';
+  return locale === 'en' ? 'Manual check-ins.' : 'Ruční check-iny.';
 }
 
 function toggleRestDay(current: number[] | undefined, day: number): number[] {
