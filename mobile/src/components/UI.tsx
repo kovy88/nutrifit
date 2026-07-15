@@ -1,5 +1,5 @@
 import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -54,9 +54,13 @@ export function Label({ children }: PropsWithChildren) {
 
 export function Field({ style, ...props }: TextInputProps) {
   const { colors, fonts } = useTheme();
+  // Browsers default a <textarea> to 2 rows of intrinsic height, which overrides minHeight
+  // and breaks single-line vertical centering. Pin it to 1 row on web; native has no such default.
+  const webRowsProp = Platform.OS === 'web' && props.multiline ? ({ rows: 1 } as Record<string, number>) : undefined;
   return (
     <TextInput
       placeholderTextColor={colors.faint}
+      {...webRowsProp}
       style={[
         styles.field,
         {
@@ -928,7 +932,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   label: { fontSize: 12, fontWeight: '600', lineHeight: 16, letterSpacing: 0 },
-  field: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 14, fontSize: typography.bodyLarge },
+  field: { minHeight: 52, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 16, fontSize: typography.bodyLarge, lineHeight: 20, textAlignVertical: 'center' },
   button: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   disabled: { opacity: 0.45 },
   buttonText: { fontSize: 15.5, fontWeight: '700', letterSpacing: 0 },
