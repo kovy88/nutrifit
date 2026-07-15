@@ -475,8 +475,8 @@ function introMessage(locale: Locale): OnboardingChatMessage {
     id: `intro-${locale}`,
     role: 'coach',
     text: locale === 'en'
-      ? "Hey, I'm Trenr. I will ask a few quick questions and build your first plan. First: do you want help with food, training, or both?"
-      : 'Ahoj, jsem Trenr. Položím pár rychlých otázek a složím ti první plán. Nejdřív: chceš řešit jídlo, trénink, nebo obojí?',
+      ? "Hey, I'm Trenr. I will ask a few quick questions and build your first plan."
+      : 'Ahoj, jsem Trenr. Položím pár rychlých otázek a složím ti první plán.',
     createdAt: new Date().toISOString(),
   };
 }
