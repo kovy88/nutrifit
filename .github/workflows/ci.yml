@@ -27,6 +27,11 @@ jobs:
 
       - run: npm ci
 
+      # Baseline verified clean on 2026-07-18; a failure here means a new
+      # high-severity advisory landed upstream, not a broken PR.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -49,6 +54,11 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - run: npm ci
+
+      # Baseline verified clean on 2026-07-18; a failure here means a new
+      # high-severity advisory landed upstream, not a broken PR.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       - name: Tests
         run: npm test
