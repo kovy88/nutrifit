@@ -101,11 +101,31 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
   - Dotčené soubory: `.nvmrc` (root, mobile), `package.json`, `mobile/package.json`.
   - Riziko: žádné.
 
+- [ ] **`export const config` ve `stripe-webhook.js` se zahazuje — rozhodnout, jestli tam vůbec patří** *(nález z 2026-07-17)*
+  - Problém: `api/stripe-webhook.js:7` nastaví `module.exports.config = { api: { bodyParser: false } }`, ale řádek 22 pak `module.exports` **celý přepíše** funkcí handleru. Ověřeno spuštěním: `require('./api/stripe-webhook.js').config` je `undefined`. Ta konfigurace se tedy k Vercelu vůbec nedostane.
+  - Proč vadí: Buď je potřeba (a pak webhook závisí na tom, že raw body přežije i bez ní — křehké, tiché), nebo potřeba není (a pak je to matoucí mrtvý kód, který příštího čtenáře přesvědčí, že bodyParser je vypnutý, i když o tom nikdo nerozhodl). Navíc `config.api.bodyParser` je konvence **Next.js API Routes**; tenhle repozitář Next.js nemá (žádný `next.config.*`), takže jde o čistě Vercel serverless funkce, kde tenhle klíč nejspíš stejně nic neznamená.
+  - Řešení: Nejdřív **zjistit fakt**, ne hádat: ověřit v produkčních logech, jestli webhook reálně prochází (přijaté `checkout.session.completed` → `is_premium=true`). Pokud ano, řádek 7 smazat jako mrtvý kód a doplnit komentář, proč raw body funguje i bez něj. Pokud ne, je to živý bug v aktivaci předplatného.
+  - Přínos: buď se zjistí, že aktivace premia stojí na náhodě, nebo zmizí zavádějící mrtvý řádek z revenue-critical souboru.
+  - Náročnost: quick (~30 min) na samotnou změnu, ale **napřed to chce potvrzení z produkce** — proto zatím není hotovo.
+  - Dotčené soubory: `api/stripe-webhook.js:7`.
+  - Riziko: **nedělat naslepo.** Vercel má vlastní parsování body; přesun `config` až za přiřazení handleru by ho poprvé reálně aktivoval a to je změna chování produkčního webhooku. Nejdřív fakta z logů.
+
+- [ ] **`tests/run.js` nečeká na async testy — serializovat je** *(nález z 2026-07-17)*
+  - Problém: `globalThis.test` vrátí promise, ale `run.js` ho nikde neawaituje a testové soubory ho taky nevolají s `await`. Všechny async testy v souboru tedy startují **současně**. Dosud to nevadilo (`js/domain/*` testy jsou čistě výpočetní a nesdílí stav), ale nové `api-*.test.js` musí kvůli tomu psát `await test(...)`, jinak si navzájem přepíšou `globalThis.fetch` a `process.env` (ověřeno — bez `await` testy padaly na cizí mocky).
+  - Proč vadí: Tichý footgun. Kdo napíše další api test a zapomene `await`, dostane flaky test, jehož příčina není nikde vidět. Souběžnost navíc dělá pořadí výpisu nedeterministickým.
+  - Řešení: V `run.js` sbírat `test()` volání do fronty a po `await import(file)` je pustit sériově (`for (const t of queue) await runOne(t)`). Pak `await` v testech není potřeba a nejde ho zapomenout. Nutno projít i stávající soubory, jestli na souběžnosti něco nestojí (nemělo by).
+  - Přínos: odstraní footgun, testy budou deterministické.
+  - Náročnost: quick (~1 h včetně ověření, že všech 139 testů projde).
+  - Dotčené soubory: `tests/run.js`, případně úklid `await test(` v `tests/api-*.test.js`.
+  - Riziko: nízké — mění se sdílená testovací infrastruktura, ale je celá v jednom 90řádkovém souboru bez závislostí a výsledek se hned ověří spuštěním.
+
 ---
 
 ## Důležitá technická zlepšení
 
-- [ ] **Testy pro kritické `api/*.js` endpointy (stripe-webhook, delete-account, create-portal, export-data)**
+- [x] **Testy pro kritické `api/*.js` endpointy (stripe-webhook, delete-account, create-portal, export-data)** — hotovo 2026-07-17 (`1a90cf2`), všechny 4 endpointy najednou.
+  - **Poznámka z 2026-07-17 běhu:** +60 testů (79 → 139), nový `tests/_api-harness.js` (fake req/res, fetch router, PostgREST-like stránkovaná tabulka, env save/restore). Upřesnění oproti popisu: (1) `tests/run.js` **není potřeba měnit** — `readdirSync` si nové `*.test.js` najde sám; (2) Stripe podpisy se **nemockují**, testy podepisují skutečným SDK (`generateTestHeaderString`), takže `constructEvent` ověřuje doopravdy — mockovaný podpis by z klíčového testu udělal atrapu; stubuje se jen Stripe *API* (injektáž továrny do `require.cache`, `webhooks` zůstává skutečné); (3) hodnota testů ověřena **mutačně** — vypnutí ověření podpisu, uvolnění rate limitu zpět na 5, odstranění `isUuid` guardu, ignorování cachovaného customer id i posun offsetu o `pageSize` shodí přesně ty testy, které je pokrývají.
+  - **Pozor — `run.js` nečeká na async testy.** Vrácený promise se nikde neawaituje, takže async testy v jednom souboru běží **souběžně**. Čistě výpočetním testům to nevadí, ale cokoli, co sahá na globální stav (`globalThis.fetch`, `process.env`), si musí testy serializovat přes `await test(...)`. Viz nový task v Quick wins.
   - Problém: `tests/` (root) obsahuje testy jen pro `js/domain/*` logiku (`ai-plan`, `daily-training-session`, `health-provider`, `nutrition`, `training`) — žádný z `api/*.js` handlerů nemá test.
   - Proč vadí: `stripe-webhook.js` je revenue-critical (chybná signature validace nebo chybný handling eventu = ztracené platby nebo neoprávněný přístup k premium), `delete-account.js` je nevratný, `export-data.js` pracuje s PII.
   - Řešení: Napsat node test suite pokrývající: webhook signature verification (platný/neplatný podpis), `checkout.session.completed` → profile update, delete-account happy path + rate limit hit, export-data pagination hranice a chybové stavy. Mockovat Stripe/Supabase REST volání.
