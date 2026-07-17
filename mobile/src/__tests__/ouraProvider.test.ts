@@ -287,3 +287,69 @@ describe('OuraProvider — data mapping', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+// A swallowed failure and "the user genuinely had no data" both surface as []
+// to CompositeHealthDataProvider, so the warning is the only thing that tells
+// the two apart in production logs.
+describe('OuraProvider — failure logging', () => {
+  let store: AsyncStorageTokenStore;
+  let provider: OuraProvider;
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    store = new AsyncStorageTokenStore();
+    provider = new OuraProvider(store);
+    fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await store.setToken('oura', { accessToken: 'VALID', expiresAt: '2099-01-01T00:00:00Z' });
+  });
+
+  afterEach(async () => {
+    await AsyncStorageTokenStore.purge();
+    vi.restoreAllMocks();
+  });
+
+  it('names the endpoint when a paged request throws', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+
+    expect(await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(String(warnSpy.mock.calls[0][0])).toContain('/sleep');
+  });
+
+  it('reports the status code on a non-OK response', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
+
+    expect(await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(String(warnSpy.mock.calls[0][0])).toContain('429');
+  });
+
+  it('warns when the response body is unreadable', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => { throw new Error('bad json'); } });
+
+    expect(await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(String(warnSpy.mock.calls[0][0])).toContain('unreadable');
+  });
+
+  it('warns when getLatestBodyWeight hits a non-OK /personal_info', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) });
+
+    expect(await provider.getLatestBodyWeight()).toBeNull();
+    expect(String(warnSpy.mock.calls[0][0])).toContain('/personal_info');
+  });
+
+  it('stays silent when no token is stored — "not connected" is not a failure', async () => {
+    await AsyncStorageTokenStore.purge();
+
+    expect(await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('stays silent on a successful empty page', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ data: [], next_token: null }) });
+
+    expect(await provider.getSleepSummary(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+});

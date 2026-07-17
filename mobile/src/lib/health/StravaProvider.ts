@@ -109,9 +109,15 @@ export class StravaProvider implements HealthDataProvider {
     let token = await this.tokens.getToken('strava');
     if (!token) return [];
 
+    // Chybějící token je normální "nepřipojeno" stav a mlčí; selhaný refresh
+    // ale vypadá pro volajícího stejně jako "žádná data", přestože ho uživatel
+    // musí spravit reconnectem — proto se loguje.
     if (isExpired(token) && token.refreshToken) {
       const refreshed = await refreshStravaToken(this.tokens);
-      if (!refreshed) return [];
+      if (!refreshed) {
+        console.warn('StravaProvider: token refresh failed — user needs to reconnect Strava');
+        return [];
+      }
       token = await this.tokens.getToken('strava');
       if (!token) return [];
     }
@@ -126,10 +132,14 @@ export class StravaProvider implements HealthDataProvider {
       res = await fetch(`${STRAVA_API_BASE}/athlete/activities?${params}`, {
         headers: { Authorization: `Bearer ${token.accessToken}` },
       });
-    } catch {
+    } catch (err) {
+      console.warn('StravaProvider: /athlete/activities request failed', err);
       return [];
     }
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`StravaProvider: /athlete/activities returned HTTP ${res.status}`);
+      return [];
+    }
     const raw = (await res.json()) as StravaActivity[];
     return raw.map(a => mapActivity(a));
   }

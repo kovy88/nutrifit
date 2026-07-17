@@ -149,13 +149,19 @@ export class WhoopProvider implements HealthDataProvider {
   }
 
   /** Returns auth headers, transparently refreshing an expired token first.
-   *  Returns null if there's no usable token — callers treat that as "no data". */
+   *  Returns null if there's no usable token — callers treat that as "no data".
+   *  A missing token is the normal "not connected" state and stays quiet; a
+   *  *failed refresh* is warned about, because it looks identical to "no data"
+   *  to the caller even though the user has to reconnect to fix it. */
   private async authHeaders(): Promise<Record<string, string> | null> {
     let token = await this.tokens.getToken('whoop');
     if (!token) return null;
     if (isExpired(token) && token.refreshToken) {
       const refreshed = await refreshWhoopToken(this.tokens);
-      if (!refreshed) return null;
+      if (!refreshed) {
+        console.warn('WhoopProvider: token refresh failed — user needs to reconnect Whoop');
+        return null;
+      }
       token = await this.tokens.getToken('whoop');
       if (!token) return null;
     }
@@ -173,12 +179,19 @@ export class WhoopProvider implements HealthDataProvider {
       let res: Response;
       try {
         res = await fetch(`${WHOOP_API_BASE}${path}?${params.toString()}`, { headers });
-      } catch {
+      } catch (err) {
+        console.warn(`WhoopProvider: ${path} request failed`, err);
         return out;
       }
-      if (!res.ok) return out;
+      if (!res.ok) {
+        console.warn(`WhoopProvider: ${path} returned HTTP ${res.status}`);
+        return out;
+      }
       const body = await res.json().catch(() => null) as { records?: T[]; next_token?: string | null } | null;
-      if (!body?.records) return out;
+      if (!body?.records) {
+        console.warn(`WhoopProvider: ${path} returned an unreadable body`);
+        return out;
+      }
       out.push(...body.records);
       if (!body.next_token) return out;
       params.set('nextToken', body.next_token);
@@ -194,11 +207,16 @@ export class WhoopProvider implements HealthDataProvider {
     let res: Response;
     try {
       res = await fetch(`${WHOOP_API_BASE}/v2/user/measurement/body`, { headers });
-    } catch {
+    } catch (err) {
+      console.warn('WhoopProvider: /v2/user/measurement/body request failed', err);
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`WhoopProvider: /v2/user/measurement/body returned HTTP ${res.status}`);
+      return null;
+    }
     const info = await res.json().catch(() => null) as WhoopBodyMeasurement | null;
+    // No recorded body measurement is a legitimate empty result, not a failure.
     if (!info?.weight_kilogram) return null;
     return { date: toDateKey(new Date()), weightKg: info.weight_kilogram, source: 'whoop' };
   }

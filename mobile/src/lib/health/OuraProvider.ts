@@ -129,13 +129,19 @@ export class OuraProvider implements HealthDataProvider {
   }
 
   /** Returns auth headers, transparently refreshing an expired token first.
-   *  Returns null if there's no usable token — callers treat that as "no data". */
+   *  Returns null if there's no usable token — callers treat that as "no data".
+   *  A missing token is the normal "not connected" state and stays quiet; a
+   *  *failed refresh* is warned about, because it looks identical to "no data"
+   *  to the caller even though the user has to reconnect to fix it. */
   private async authHeaders(): Promise<Record<string, string> | null> {
     let token = await this.tokens.getToken('oura');
     if (!token) return null;
     if (isExpired(token) && token.refreshToken) {
       const refreshed = await refreshOuraToken(this.tokens);
-      if (!refreshed) return null;
+      if (!refreshed) {
+        console.warn('OuraProvider: token refresh failed — user needs to reconnect Oura');
+        return null;
+      }
       token = await this.tokens.getToken('oura');
       if (!token) return null;
     }
@@ -156,12 +162,19 @@ export class OuraProvider implements HealthDataProvider {
       let res: Response;
       try {
         res = await fetch(`${OURA_API_BASE}${path}?${params.toString()}`, { headers });
-      } catch {
+      } catch (err) {
+        console.warn(`OuraProvider: ${path} request failed`, err);
         return out;
       }
-      if (!res.ok) return out;
+      if (!res.ok) {
+        console.warn(`OuraProvider: ${path} returned HTTP ${res.status}`);
+        return out;
+      }
       const body = await res.json().catch(() => null) as { data?: T[]; next_token?: string | null } | null;
-      if (!body?.data) return out;
+      if (!body?.data) {
+        console.warn(`OuraProvider: ${path} returned an unreadable body`);
+        return out;
+      }
       out.push(...body.data);
       nextToken = body.next_token ?? null;
     } while (nextToken);
@@ -261,11 +274,16 @@ export class OuraProvider implements HealthDataProvider {
     let res: Response;
     try {
       res = await fetch(`${OURA_API_BASE}/personal_info`, { headers });
-    } catch {
+    } catch (err) {
+      console.warn('OuraProvider: /personal_info request failed', err);
       return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`OuraProvider: /personal_info returned HTTP ${res.status}`);
+      return null;
+    }
     const info = await res.json().catch(() => null) as OuraPersonalInfo | null;
+    // No weight on the Oura profile is a legitimate empty result, not a failure.
     if (!info?.weight) return null;
     return { date: toDateKey(new Date()), weightKg: info.weight, source: 'oura' };
   }
