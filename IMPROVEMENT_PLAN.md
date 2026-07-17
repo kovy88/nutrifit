@@ -83,7 +83,8 @@ Legend: task boxes are `- [ ]` (todo) / `- [x]` (done). One task will be picked 
   - Dotčené soubory: `mobile/src/lib/health/OuraProvider.ts`, `StravaProvider.ts`, `WhoopProvider.ts`.
   - Riziko: žádné.
 
-- [ ] **Přidat `npm audit` krok do CI**
+- [x] **Přidat `npm audit` krok do CI** — hotovo 2026-07-18.
+  - **Poznámka z 2026-07-18 běhu:** krok `npm audit --audit-level=high` přidán do obou jobů hned za `npm ci`. Jedna odchylka od původního návrhu: **bez `continue-on-error: true`** — jediný důvod pro něj byl neověřený baseline, a ten byl při implementaci ověřen jako čistý (`found 0 vulnerabilities` v rootu i `mobile/` na high úrovni). Krok je tedy rovnou vynucující; pokud v budoucnu zčervená na PR, který závislosti nemění, znamená to novou upstream advisory (tj. alert funguje), ne rozbitý PR.
   - Problém: `.github/workflows/ci.yml` spouští typecheck/lint/test, ale ne `npm audit`.
   - Proč vadí: Známé zranitelnosti v závislostech (Stripe SDK, Supabase klient, Expo balíčky) nejsou automaticky detekovány.
   - Řešení: Přidat krok `npm audit --audit-level=high` do obou jobů (mobile i root), `continue-on-error: true` zpočátku, aby nepřerušoval CI dokud se nezajistí čistý baseline.
