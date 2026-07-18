@@ -140,7 +140,11 @@ export class StravaProvider implements HealthDataProvider {
       console.warn(`StravaProvider: /athlete/activities returned HTTP ${res.status}`);
       return [];
     }
-    const raw = (await res.json()) as StravaActivity[];
+    const raw = await res.json().catch(() => null) as StravaActivity[] | null;
+    if (!Array.isArray(raw)) {
+      console.warn('StravaProvider: /athlete/activities returned an unreadable body');
+      return [];
+    }
     return raw.map(a => mapActivity(a));
   }
 }

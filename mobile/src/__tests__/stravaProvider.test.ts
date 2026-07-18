@@ -153,4 +153,12 @@ describe('StravaProvider.getWorkoutSummaries — failure logging', () => {
     expect(await provider.getWorkoutSummaries(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
     expect(warnSpy).not.toHaveBeenCalled();
   });
+
+  it('warns when a 200 response has an unreadable body', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => { throw new Error('bad json'); } });
+
+    expect(await provider.getWorkoutSummaries(new Date('2026-05-01'), new Date('2026-05-07'))).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0][0])).toContain('unreadable body');
+  });
 });
