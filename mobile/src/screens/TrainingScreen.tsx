@@ -12,6 +12,7 @@ import { toDateKey } from '../utils/nutrition';
 import { adjustedPlanForDate } from '../lib/training';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import type { Translate } from '../lib/i18n';
 import { useRecentWorkouts } from '../hooks/useRecentWorkouts';
 import type { WorkoutSummary } from '../lib/health';
 
@@ -69,14 +70,14 @@ export function TrainingScreen() {
         onBack={() => navigation.goBack()}
         eyebrow={t('training.eyebrow')}
         title={t('training.title')}
-        subtitle={trainingScreenSubtitle(locale)}
+        subtitle={trainingScreenSubtitle(t)}
       />
 
       <HeroDecisionCard
         eyebrow={selectedDay.isToday ? t('common.today') : selectedDay.dayTitle}
         title={selectedDay.isRest ? t('training.restTitle') : selectedDay.session.title}
         body={selectedDay.isRest ? t('training.restSub') : selectedDay.session.notes}
-        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : intensityLabel(selectedDay.session.intensity, locale)}
+        statusLabel={selectedDone ? t('today.completed') : selectedSkipped ? t('training.markSkipped') : intensityLabel(selectedDay.session.intensity, t)}
         statusTone={selectedDone ? 'ready' : selectedSkipped ? 'caution' : intensityTone}
       >
         {selectedDay.isRest ? (
@@ -97,7 +98,7 @@ export function TrainingScreen() {
 
       <SectionCard
         title={t('training.weekOverview')}
-        body={trainingWeekStatus(completedCount, plannedSessions, locale)}
+        body={trainingWeekStatus(completedCount, plannedSessions, t)}
         statusLabel={completedCount ? t('today.completed') : t('training.planned')}
         statusTone={completedCount ? 'ready' : 'neutral'}
       >
@@ -130,7 +131,7 @@ export function TrainingScreen() {
           <View style={styles.historyDetail}>
             <Text style={[styles.historyTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{t('training.recentTitle')}</Text>
             <Text style={[styles.historyBody, { color: colors.muted, fontFamily: fonts.medium }]}>
-              {recentWorkoutBody(recent.isLoading, recent.workouts, locale)}
+              {recentWorkoutBody(recent.isLoading, recent.workouts, t)}
             </Text>
             {recent.workouts.length ? (
               <View style={styles.workoutsList}>
@@ -205,56 +206,29 @@ function dayDotColor(
   return colors.accent;
 }
 
-function intensityLabel(intensity: string, locale: string): string {
-  if (intensity === 'rest') return locale === 'en' ? 'Rest' : 'Volno';
-  if (intensity === 'easy') return locale === 'en' ? 'Easy' : 'Lehce';
-  if (intensity === 'moderate') return locale === 'en' ? 'Steady' : 'Normálně';
-  if (intensity === 'hard') return locale === 'en' ? 'Hard' : 'Tvrdě';
-  return locale === 'en' ? 'Training' : 'Trénink';
+function intensityLabel(intensity: string, t: Translate): string {
+  if (intensity === 'rest') return t('training.effortRest');
+  if (intensity === 'easy') return t('training.effortEasy');
+  if (intensity === 'moderate') return t('training.effortSteady');
+  if (intensity === 'hard') return t('training.effortHard');
+  return t('training.effortDefault');
 }
 
-function trainingScreenSubtitle(locale: string): string {
-  return locale === 'en'
-    ? 'Pick a day and see what to do, what to skip, and why.'
-    : 'Vyber den a uvidíš, co odtrénovat, co vynechat a proč.';
+function trainingScreenSubtitle(t: Translate): string {
+  return t('training.screenSubtitle');
 }
 
-function trainingWeekStatus(done: number, planned: number, locale: string): string {
-  if (planned <= 0) {
-    return locale === 'en'
-      ? 'No workouts are planned for this week.'
-      : 'Na tento týden nejsou plánované tréninky.';
-  }
-  if (done <= 0) {
-    return locale === 'en'
-      ? `${planned} planned this week, none done yet.`
-      : `${planned} v plánu tento týden, zatím nic hotovo.`;
-  }
-  if (done >= planned) {
-    return locale === 'en'
-      ? `All ${planned} planned workouts are done.`
-      : `Všech ${planned} plánovaných tréninků je hotovo.`;
-  }
-  return locale === 'en'
-    ? `${done} of ${planned} planned workouts are done.`
-    : `${done} z ${planned} plánovaných tréninků je hotovo.`;
+function trainingWeekStatus(done: number, planned: number, t: Translate): string {
+  if (planned <= 0) return t('training.weekNonePlanned');
+  if (done <= 0) return t('training.weekNoneDone', { planned });
+  if (done >= planned) return t('training.weekAllDone', { planned });
+  return t('training.weekSomeDone', { done, planned });
 }
 
-function recentWorkoutBody(isLoading: boolean, workouts: WorkoutSummary[], locale: string): string {
-  if (isLoading) {
-    return locale === 'en'
-      ? 'Checking recent training history.'
-      : 'Kontroluji nedávnou tréninkovou historii.';
-  }
-  if (!workouts.length) {
-    return locale === 'en'
-      ? 'Completed workouts will show here after you mark a session done or connect a source.'
-      : 'Hotové tréninky se tady objeví po odkliknutí tréninku nebo připojení zdroje.';
-  }
-  const count = workouts.length;
-  return locale === 'en'
-    ? `${count} recent ${count === 1 ? 'workout' : 'workouts'} found. Latest session is logged.`
-    : `${count} nedávných tréninků. Poslední je zapsaný.`;
+function recentWorkoutBody(isLoading: boolean, workouts: WorkoutSummary[], t: Translate): string {
+  if (isLoading) return t('training.recentLoading');
+  if (!workouts.length) return t('training.recentEmpty');
+  return t('training.recentFound', { count: workouts.length });
 }
 
 const styles = StyleSheet.create({

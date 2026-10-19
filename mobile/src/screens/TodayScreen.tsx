@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/Screen';
@@ -17,13 +17,13 @@ import { planSessionForDate } from '../lib/training';
 import { formatGoalProfileSummary } from '../lib/onboarding/goal-summary-labels';
 import type { Translate, TranslationKey } from '../lib/i18n';
 import type { DailyCoachRecommendation } from '../types/coach';
+import { dayDecision } from '../lib/coaching/dayDecision';
 
 export function TodayScreen() {
   const {
     profile,
     currentMacros: macros,
     currentSession,
-    dailyAdjustment,
     selectedDate,
     logStreak,
   } = useTrenr();
@@ -41,13 +41,10 @@ export function TodayScreen() {
   const showTraining = scopeHasTraining(scope);
   const trainingDay = Boolean(currentSession && currentSession.kind !== 'rest');
   const readinessColor = rec ? bandColor(rec.readiness.band, colors) : colors.accent;
-  const decision = rec ? dailyDecision(rec.readiness.recommendedIntensity, rec.readiness.band, locale) : null;
-  const tomorrow = tomorrowSession(profile, selectedDate, locale);
+  const decision = rec ? dayDecision(rec, !trainingDay, t) : null;
+  const tomorrow = tomorrowSession(profile, selectedDate, locale, t);
 
-  const trainingActive = Boolean(currentSession && currentSession.kind !== 'rest');
   const trainingCompleted = completion?.status === 'completed';
-  const trainingSkipped = completion?.status === 'skipped';
-  const showFueling = currentSession?.kind === 'long_run' && !!dailyAdjustment && dailyAdjustment.carbsDelta > 0;
 
   async function markTodayDone() {
     await mark('completed');
@@ -80,7 +77,7 @@ export function TodayScreen() {
       </View>
 
       {coaching.isLoading && !rec ? (
-        <LoadingState title={t('today.loadingCoachTitle')} body={todayLoadingBody(locale)} />
+        <LoadingState title={t('today.loadingCoachTitle')} body={todayLoadingBody(t)} />
       ) : null}
       {!coaching.isLoading && !rec ? (
         <EmptyState title={t('today.emptyCoachTitle')} body={t('today.emptyCoachBody')} />
@@ -92,10 +89,10 @@ export function TodayScreen() {
             <MacroRing size={172} strokeWidth={14} progress={rec.readiness.score / 100} color={readinessColor} backgroundColor={colors.bgElev} glow>
               <Text style={[styles.ringEyebrow, { color: readinessColor }]}>{decision?.label ?? rec.headline}</Text>
               <Text style={[styles.ringScore, { color: colors.ink }]}>{rec.readiness.score}%</Text>
-              <Text style={[styles.ringCaption, { color: colors.faint }]}>{readinessCaption(locale)}</Text>
+              <Text style={[styles.ringCaption, { color: colors.faint }]}>{readinessCaption(t)}</Text>
             </MacroRing>
             <Text style={[styles.ringSummary, { color: colors.muted }]}>
-              {decision?.title ?? rec.headline}. {todayHeroBody(rec, locale)}
+              {decision?.title ?? rec.headline}. {todayHeroBody(rec, t)}
             </Text>
           </View>
 
@@ -119,7 +116,7 @@ export function TodayScreen() {
                 iconColor={colors.accent}
                 label={t('today.trainingTitle')}
                 value={trainingSummary(rec.training?.session ?? currentSession, t)}
-                detail={trainingDetail(rec.training?.session ?? currentSession, rec.training?.whatNotToDo, t, locale)}
+                detail={trainingDetail(rec.training?.session ?? currentSession, rec.training?.whatNotToDo, t)}
                 onPress={() => navigation.navigate('Trénink')}
               />
             ) : null}
@@ -129,12 +126,16 @@ export function TodayScreen() {
                 icon="restaurant-outline"
                 iconColor={colors.orange}
                 label={t('today.nutritionTitle')}
-                value={nutritionGuidance(rec, trainingDay, locale)}
+                // Same shape as the training row above: the concrete number in
+                // the value slot, the coaching sentence as its detail. `macros`
+                // is already loaded here (the screen won't render without it).
+                value={t('today.macroTargets', { kcal: macros.kcal, p: macros.protein })}
+                detail={nutritionGuidance(rec, trainingDay, t)}
                 onPress={() => navigation.navigate('Jídelníček')}
                 trailing={
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={foodPhotoCta(locale)}
+                    accessibilityLabel={foodPhotoCta(t)}
                     hitSlop={8}
                     onPress={() => navigation.navigate('Foto')}
                     style={({ pressed }) => [styles.rowIconButton, { borderColor: colors.hairline }, pressed && { opacity: 0.7 }]}
@@ -145,7 +146,14 @@ export function TodayScreen() {
               />
             ) : null}
 
-            <MetricRow icon="calendar-outline" iconColor={colors.blue} label={tomorrow.title} value={tomorrow.body} last />
+            <MetricRow
+              icon="calendar-outline"
+              iconColor={colors.blue}
+              label={t('today.tomorrowLabel')}
+              value={tomorrow.title}
+              detail={tomorrow.body}
+              last
+            />
           </View>
 
           <RecoveryCard
@@ -265,38 +273,12 @@ function MetricRow({
   );
 }
 
-function readinessCaption(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Readiness' : 'Připravenost';
+function readinessCaption(t: Translate): string {
+  return t('today.readinessCaption');
 }
 
 function bandColor(band: 'low' | 'medium' | 'high', palette: { accent: string; orange: string; red: string }): string {
   return band === 'high' ? palette.accent : band === 'medium' ? palette.orange : palette.red;
-}
-
-function dailyDecision(
-  intensity: 'rest' | 'easy' | 'moderate' | 'hard',
-  band: 'low' | 'medium' | 'high',
-  locale: 'cs' | 'en',
-) {
-  if (intensity === 'rest' || band === 'low') {
-    return {
-      title: locale === 'en' ? 'Make today easier' : 'Dnes uber',
-      label: locale === 'en' ? 'Take it easy' : 'Lehčí den',
-      hint: null,
-    };
-  }
-  if (intensity === 'hard' && band === 'high') {
-    return {
-      title: locale === 'en' ? 'Do the planned workout' : 'Odtrénuj dnešní plán',
-      label: locale === 'en' ? 'Go for it' : 'Jdi na to',
-      hint: null,
-    };
-  }
-  return {
-    title: locale === 'en' ? 'Follow the plan calmly' : 'Drž plán v klidu',
-    label: locale === 'en' ? 'Steady day' : 'Stabilní den',
-    hint: null,
-  };
 }
 
 function formatFullDate(dateKey: string, locale: 'cs' | 'en'): string {
@@ -327,33 +309,30 @@ function trainingSummary(session: TrainingSession | null | undefined, t: (key: T
 function trainingDetail(
   session: TrainingSession | null | undefined,
   whatNotToDo: string | undefined,
-  t: (key: TranslationKey) => string,
-  locale: 'cs' | 'en',
+  t: Translate,
 ): string {
   if (!session || session.kind === 'rest') return t('today.restNote');
-  if (whatNotToDo) {
-    return locale === 'en' ? 'Keep it clean, nothing extra.' : 'Drž to čistě, nic navíc.';
-  }
+  if (whatNotToDo) return t('today.detailKeepClean');
   switch (session.kind) {
     case 'easy_run':
     case 'recovery_run':
     case 'recovery_walk':
-      return locale === 'en' ? 'Conversational pace.' : 'Tempo, u kterého se dá mluvit.';
+      return t('today.detailConversational');
     case 'long_run':
-      return locale === 'en' ? 'Calm time on your feet.' : 'Klidný čas na nohách.';
+      return t('today.detailLongRun');
     case 'tempo':
     case 'intervals':
-      return locale === 'en' ? 'Sharp on quality, no extra volume.' : 'Kvalita ano, objem navíc ne.';
+      return t('today.detailQuality');
     case 'strength':
-      return locale === 'en' ? 'Clean reps, steady effort.' : 'Čisté série, stabilní úsilí.';
+      return t('today.detailStrength');
     case 'mobility':
     case 'recovery':
-      return locale === 'en' ? 'Loosen up, breathe.' : 'Uvolni tělo, dýchej.';
+      return t('today.detailMobility');
     case 'race':
     case 'match':
-      return locale === 'en' ? 'Perform, then protect recovery.' : 'Podej výkon, pak chraň regeneraci.';
+      return t('today.detailRace');
     default:
-      return locale === 'en' ? 'Stop with energy left.' : 'Skonči s rezervou.';
+      return t('today.detailDefault');
   }
 }
 
@@ -371,59 +350,45 @@ function recoveryStatus(
   return t('today.recoveryStatusWatch');
 }
 
-function todayLoadingBody(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? "Preparing today's plan." : 'Připravuju dnešní plán.';
+function todayLoadingBody(t: Translate): string {
+  return t('today.loadingBody');
 }
 
-function todayHeroBody(rec: DailyCoachRecommendation, locale: 'cs' | 'en'): string {
+function todayHeroBody(rec: DailyCoachRecommendation, t: Translate): string {
   const session = rec.training?.session;
   if (!session || session.kind === 'rest' || rec.readiness.recommendedIntensity === 'rest') {
-    return locale === 'en' ? 'Rest today. Recovery first.' : 'Dnes odpočívej. Regenerace na prvním místě.';
+    return t('today.heroRecover');
   }
-  if (rec.readiness.recommendedIntensity === 'hard') {
-    return locale === 'en' ? 'No need to hold back.' : 'Nešetři se.';
-  }
-  if (rec.readiness.recommendedIntensity === 'easy') {
-    return locale === 'en' ? 'Keep it light and conversational.' : 'Drž to lehké a konverzační.';
-  }
-  return locale === 'en' ? 'Nothing extra today.' : 'Nic navíc, jen klid.';
+  if (rec.readiness.recommendedIntensity === 'hard') return t('today.heroHard');
+  if (rec.readiness.recommendedIntensity === 'easy') return t('today.heroEasy');
+  return t('today.heroSteady');
 }
 
-function nutritionGuidance(rec: DailyCoachRecommendation, trainingDay: boolean, locale: 'cs' | 'en'): string {
+function nutritionGuidance(rec: DailyCoachRecommendation, trainingDay: boolean, t: Translate): string {
   const reason = rec.nutrition?.reason ?? '';
   const delta = rec.nutrition?.deltaVsBaselineKcal ?? 0;
-  if (trainingDay && delta > 0) {
-    return locale === 'en' ? 'Fuel around the workout.' : 'Přidej energii kolem tréninku.';
-  }
-  if (delta < 0) {
-    return locale === 'en' ? 'A little lighter today.' : 'Dnes o něco lehčí.';
-  }
-  if (reason.toLowerCase().includes('training')) {
-    return locale === 'en' ? 'Carbs near training.' : 'Sacharidy blíž k tréninku.';
-  }
-  return locale === 'en' ? 'Steady meals, protein first.' : 'Stabilní jídlo, protein na prvním místě.';
+  if (trainingDay && delta > 0) return t('today.fuelAroundWorkout');
+  if (delta < 0) return t('today.eatLighter');
+  if (reason.toLowerCase().includes('training')) return t('today.carbsNearTraining');
+  return t('today.steadyMeals');
 }
 
-function foodPhotoCta(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Log meal photo' : 'Zapsat fotkou';
+function foodPhotoCta(t: Translate): string {
+  return t('today.logMealPhoto');
 }
 
-function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs' | 'en') {
+/** `locale` stays: planSessionForDate localizes the session title itself. The
+ *  returned title no longer carries a "Tomorrow: " prefix — the row renders it
+ *  under a real "Tomorrow" label instead of stuffing it into one. */
+function tomorrowSession(profile: UserProfile, selectedDate: string, locale: 'cs' | 'en', t: Translate) {
   const date = new Date(`${selectedDate}T12:00:00`);
   date.setDate(date.getDate() + 1);
   const session = planSessionForDate(profile, date, {}, locale);
+  const body = t('today.tomorrowCheckIn');
   if (!session || session.kind === 'rest') {
-    return {
-      title: locale === 'en' ? 'Tomorrow: recover well' : 'Zítra: dobře zregeneruj',
-      body: locale === 'en' ? 'Check in tomorrow.' : 'Zítra udělej check-in.',
-    };
+    return { title: t('today.tomorrowRestTitle'), body };
   }
-  const title = titleWithOptionalDuration(session);
-  const body = locale === 'en' ? 'Check in tomorrow.' : 'Zítra udělej check-in.';
-  return {
-    title: locale === 'en' ? `Tomorrow: ${title}` : `Zítra: ${title}`,
-    body,
-  };
+  return { title: titleWithOptionalDuration(session), body };
 }
 
 function titleWithOptionalDuration(session: TrainingSession): string {

@@ -21,11 +21,10 @@ import { planSessionForDate, planForDate, hasCustomSchedule } from '../lib/train
 import { trainingPhase, type TrainingPhase } from '../lib/training/phase';
 import { SPORTS, cloneStarter } from '../lib/training/sports';
 import type { Meal, TrainingSession } from '../types';
-import type { TranslationKey } from '../lib/i18n';
+import type { Translate, TranslationKey } from '../lib/i18n';
 import { useLanguage } from '../context/LanguageContext';
 import { useUnits } from '../hooks/useUnits';
 import { PaywallModal } from '../components/PaywallModal';
-import { loadPlansByDate } from '../services/storage';
 import { useTrainingCompletion } from '../hooks/useTrainingCompletion';
 
 const PHASE_KEY: Record<TrainingPhase, TranslationKey> = {
@@ -95,7 +94,7 @@ export function PlanScreen() {
   const isCustomEmpty = customSchedule && weeklyPlan.sessions.every(s => s.kind === 'rest');
   const mainSportId = activeProfile.mainSport?.id;
   const selectedDayTitle = selectedSession.kind === 'rest' ? t('today.restDayLabel') : showText(sessionLine(selectedSession, t));
-  const selectedDayBody = mergedDayNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, locale);
+  const selectedDayBody = mergedDayNote(selectedSession, dailyAdjustment?.carbsDelta ?? 0, t);
   const heroAction = meals.length > 0 && selectedSession.kind !== 'rest' && completion?.status !== 'completed' && !loading
       ? { label: t('today.markDone'), onPress: markWorkoutDoneForSelectedDay }
       : undefined;
@@ -218,7 +217,7 @@ export function PlanScreen() {
       <DateNav dateKey={selectedDate} locale={locale} onShift={shiftSelectedDate} t={t} />
 
       <HeroDecisionCard
-        eyebrow={planHeroEyebrow(phase, locale, t)}
+        eyebrow={planHeroEyebrow(phase, t)}
         title={selectedDayTitle}
         body={selectedDayBody}
         statusLabel={formatDateLabel(selectedDate, locale)}
@@ -274,7 +273,7 @@ export function PlanScreen() {
         <PlanRow
           icon="restaurant-outline"
           title={t('plan.todayMeals')}
-          subtitle={meals.length ? mealSummary(meals, locale) : t('plan.emptyBody')}
+          subtitle={meals.length ? mealSummary(meals, t) : t(isSubscribed ? 'plan.emptyBodyTap' : 'plan.emptyBodyPremium')}
           expandable={meals.length > 0}
           expanded={mealsExpanded}
           onPress={() => {
@@ -322,8 +321,8 @@ export function PlanScreen() {
 
         <PlanRow
           icon="options-outline"
-          title={moreOptionsTitle(locale)}
-          subtitle={moreOptionsBody(customSchedule, shoppingGroups.length, locale)}
+          title={moreOptionsTitle(t)}
+          subtitle={moreOptionsBody(customSchedule, shoppingGroups.length, t)}
           expanded={optionsExpanded}
           onPress={() => setOptionsExpanded(value => !value)}
           style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}
@@ -540,15 +539,18 @@ function DateNav({
 function formatDayNav(dateKey: string, locale: 'cs' | 'en'): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  const weekday = date.toLocaleDateString(locale === 'en' ? 'en-US' : 'cs-CZ', { weekday: 'short' });
+  // EN gets a real English date ("Fri, Sep 4, 2026"), not the Czech D.M. YYYY
+  // pattern with only the weekday translated.
+  if (locale === 'en') {
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const weekday = date.toLocaleDateString('cs-CZ', { weekday: 'short' });
   return `${weekday} ${day}.${month}. ${year}`;
 }
 
-function planHeroEyebrow(phase: TrainingPhase | null, locale: 'cs' | 'en', t: ReturnType<typeof useLanguage>['t']): string {
+function planHeroEyebrow(phase: TrainingPhase | null, t: Translate): string {
   if (!phase) return t('tab.plan');
-  return locale === 'en'
-    ? `This week · ${t(PHASE_KEY[phase])}`
-    : `Tento týden · ${t(PHASE_KEY[phase])}`;
+  return t('plan.heroEyebrowWeek', { phase: t(PHASE_KEY[phase]) });
 }
 
 function sessionLine(session: TrainingSession, t: ReturnType<typeof useLanguage>['t']): string {
@@ -568,50 +570,38 @@ function titleIncludesDuration(title: string): boolean {
   return /\b\d+\s*(min|mins|minute|minutes|minut|m)\b/i.test(title);
 }
 
-function mealSummary(meals: Meal[], locale: 'cs' | 'en'): string {
-  if (!meals.length) {
-    return locale === 'en' ? 'No meals yet.' : 'Zatím žádná jídla.';
-  }
-  return locale === 'en' ? `${meals.length} meals ready.` : `${meals.length} jídel připraveno.`;
+function mealSummary(meals: Meal[], t: Translate): string {
+  if (!meals.length) return t('plan.noMeals');
+  return t('plan.mealsReady', { count: meals.length });
 }
 
-function nutritionNote(session: TrainingSession, carbsDelta: number, locale: 'cs' | 'en'): string {
-  if (carbsDelta > 0) {
-    return locale === 'en' ? 'Eat a bit more around training.' : 'Kolem tréninku se najez trochu víc.';
-  }
-  if (session.kind === 'rest') {
-    return locale === 'en' ? 'Steady meals, let recovery work.' : 'Stabilní jídlo, nech regeneraci pracovat.';
-  }
-  if (session.intensity === 'hard' || session.kind === 'long_run') {
-    return locale === 'en' ? 'Fuel the hard work.' : 'Doplň energii na náročný trénink.';
-  }
-  return locale === 'en' ? 'Eat normally.' : 'Jez normálně.';
+function nutritionNote(session: TrainingSession, carbsDelta: number, t: Translate): string {
+  if (carbsDelta > 0) return t('plan.noteEatMore');
+  if (session.kind === 'rest') return t('plan.noteSteady');
+  if (session.intensity === 'hard' || session.kind === 'long_run') return t('plan.noteFuelHard');
+  return t('plan.noteNormal');
 }
 
-function intensityNote(session: TrainingSession, locale: 'cs' | 'en'): string {
-  if (session.intensity === 'hard') return locale === 'en' ? 'Warm up well, no extra volume.' : 'Dobře se zahřej, bez objemu navíc.';
-  if (session.intensity === 'moderate') return locale === 'en' ? 'Stay steady, finish with energy left.' : 'Drž tempo, konči s rezervou.';
-  return locale === 'en' ? 'Easy and conversational.' : 'Lehce, v klidném tempu.';
+function intensityNote(session: TrainingSession, t: Translate): string {
+  if (session.intensity === 'hard') return t('plan.effortHard');
+  if (session.intensity === 'moderate') return t('plan.effortModerate');
+  return t('plan.effortEasy');
 }
 
-function mergedDayNote(session: TrainingSession, carbsDelta: number, locale: 'cs' | 'en'): string {
-  const fueling = nutritionNote(session, carbsDelta, locale);
+function mergedDayNote(session: TrainingSession, carbsDelta: number, t: Translate): string {
+  const fueling = nutritionNote(session, carbsDelta, t);
   if (session.kind === 'rest') return fueling;
-  return `${intensityNote(session, locale)} ${fueling}`;
+  return `${intensityNote(session, t)} ${fueling}`;
 }
 
-function moreOptionsTitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'More options' : 'Další možnosti';
+function moreOptionsTitle(t: Translate): string {
+  return t('plan.moreOptionsTitle');
 }
 
-function moreOptionsBody(customSchedule: boolean, shoppingGroupCount: number, locale: 'cs' | 'en'): string {
-  if (customSchedule) {
-    return locale === 'en' ? 'Custom week and preferences.' : 'Vlastní týden a preference.';
-  }
-  if (shoppingGroupCount > 0) {
-    return locale === 'en' ? 'Preferences and shopping list.' : 'Preference a nákupní seznam.';
-  }
-  return locale === 'en' ? 'Preferences and plan notes.' : 'Preference a poznámky k plánu.';
+function moreOptionsBody(customSchedule: boolean, shoppingGroupCount: number, t: Translate): string {
+  if (customSchedule) return t('plan.moreOptionsCustom');
+  if (shoppingGroupCount > 0) return t('plan.moreOptionsShopping');
+  return t('plan.moreOptionsDefault');
 }
 
 const styles = StyleSheet.create({

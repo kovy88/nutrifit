@@ -86,7 +86,7 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
     timelineWeeks: profile.goalProfile?.timelineWeeks,
     primaryGoal: profile.primaryGoal,
   };
-  return localizePlan(generateTrainingPlan({
+  const generated = generateTrainingPlan({
     goal,
     weekStartISO,
     weekIndex: weekIndexFor(profile.programStartISO, weekStartISO),
@@ -94,7 +94,43 @@ export function planForDate(profile: PlannerProfile, date: Date, ctx: PlanContex
     recentSleep: ctx.recentSleep,
     hrvLatest: ctx.hrvLatest,
     hrvBaseline: ctx.hrvBaseline,
-  }), locale);
+  });
+  return localizePlan(fitPlanToSessionsPerWeek(generated, profile.sessionsPerWeek), locale);
+}
+
+/** Kinds that are optional light extras, not one of the user's chosen sessions. */
+const LIGHT_EXTRA_KINDS = new Set<TrainingSession['kind']>(['mobility', 'recovery', 'rest']);
+const KEEP_PRIORITY: Partial<Record<TrainingSession['kind'], number>> = { long_run: 3, race: 3, match: 3 };
+const INTENSITY_PRIORITY: Record<TrainingSession['intensity'], number> = { hard: 2, moderate: 1, easy: 0, rest: -1 };
+
+/**
+ * Templates are fixed weeks; trim them to the sessions/week the user picked so
+ * "2x week" doesn't still schedule four workouts. The least important sessions
+ * (key sessions like the long run last, then easiest first, then later in the
+ * week first) become rest days. Light mobility days stay as optional extras.
+ */
+export function fitPlanToSessionsPerWeek(plan: TrainingPlan, sessionsPerWeek: number | undefined): TrainingPlan {
+  if (!sessionsPerWeek || sessionsPerWeek < 1) return plan;
+  const main = plan.sessions
+    .map((session, index) => ({ session, index }))
+    .filter(({ session }) => !LIGHT_EXTRA_KINDS.has(session.kind) && session.intensity !== 'rest');
+  const excess = main.length - sessionsPerWeek;
+  if (excess <= 0) return plan;
+  const dropIndexes = new Set(
+    [...main]
+      .sort((a, b) =>
+        (KEEP_PRIORITY[a.session.kind] ?? 0) - (KEEP_PRIORITY[b.session.kind] ?? 0)
+        || INTENSITY_PRIORITY[a.session.intensity] - INTENSITY_PRIORITY[b.session.intensity]
+        || b.index - a.index)
+      .slice(0, excess)
+      .map(({ index }) => index),
+  );
+  return {
+    ...plan,
+    sessions: plan.sessions.map((session, index) => (dropIndexes.has(index)
+      ? { date: session.date, kind: 'rest', title: 'Volno', durationMinutes: 0, intensity: 'rest' }
+      : session)),
+  };
 }
 
 /** Drop-in náhrada za buildTrainingSessionForDate — jednotka pro konkrétní den. */

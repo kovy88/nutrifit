@@ -1,14 +1,20 @@
-// ── APPLE HEALTH PROVIDER (drop-in real implementation)
+// ── APPLE HEALTH PROVIDER (real implementation, backed by @kingstinct/react-native-healthkit)
 //
-// Aktivuje se v okamžiku, kdy uživatel doinstaluje native plugin:
-//   npx expo install @kingstinct/react-native-healthkit
-// + přidá do app.json plugin config + udělá EAS prebuild + build.
-// Bez balíčku všechny metody vrátí prázdná data (stejně jako stub), takže
-// app v Expo Go neumře — jen "nemá Apple Health".
+// Only works in a dev-client / EAS build with the HealthKit native module compiled in —
+// in Expo Go (no native module) or in unit tests every method falls back to empty data.
 //
 // Pattern: dynamický `import()` v každé metodě, try/catch, fallback na
-// prázdnou hodnotu. Žádná hard dependency v package.json — uživatel ji
-// přidá až bude chtít HealthKit.
+// prázdnou hodnotu — takže i kdyby se native modul nepodařilo nahrát,
+// app nikdy nespadne, jen "nemá Apple Health".
+//
+// Two HealthKit quirks this file works around:
+//   1. Read-permission grant/deny is never revealed to the app (Apple's
+//      privacy design) — `getPermissionStatus()` can't ask HealthKit, so we
+//      persist a local "did the user complete the request flow" flag instead.
+//   2. `queryQuantitySamples` etc. default to the device's preferred unit
+//      (e.g. lbs vs kg) unless you pass an explicit `unit` — every query below
+//      pins a canonical HealthKit unit string so values never depend on the
+//      user's Health app locale settings.
 //
 // Mapování pro reference:
 //   stepCount             → DailyActivitySummary.steps
@@ -19,9 +25,10 @@
 //   restingHeartRate      → RestingHeartRateSample
 //   heartRateVariabilitySDNN → HrvSample (metric: 'sdnn')
 //   bodyMass              → BodyWeightSample (kg)
-//   HKWorkoutType         → WorkoutSummary (kind mapped from activityType)
+//   workout               → WorkoutSummary (kind mapped from numeric activityType)
 
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HealthDataProvider } from './HealthDataProvider';
 import type {
   BodyWeightSample,
@@ -40,12 +47,25 @@ import type { RecoveryInputs } from '../../types/coach';
 /** Singleton init guard — HealthKit must be initialized once before queries. */
 let initPromise: Promise<any | null> | null = null;
 
+/** Persisted once `requestAuthorization` has been called successfully — see
+ *  the file-header note on why we can't just ask HealthKit for read status. */
+const REQUESTED_KEY = 'nutrifit.appleHealth.requested.v1';
+
 function isUnitTestRuntime(): boolean {
   return Boolean((globalThis as any).__NUTRIFIT_TEST__);
 }
 
 function isExpoGoRuntime(): boolean {
-  return Boolean(NativeModules?.ExponentConstants);
+  try {
+    // Lazy require (not a static import): evaluating expo-constants' module
+    // scope throws outside a real Expo/RN runtime (e.g. under Vitest), so this
+    // must stay behind a try/catch instead of a top-level import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Constants = require('expo-constants').default;
+    return Constants?.appOwnership === 'expo';
+  } catch {
+    return false;
+  }
 }
 
 async function loadHealthKit(): Promise<any | null> {
@@ -66,20 +86,25 @@ async function loadHealthKit(): Promise<any | null> {
   return initPromise;
 }
 
-/** Mapování HKWorkoutActivityType → WorkoutKind.
- *  Kingstinct package vrací string identifier (např. 'HKWorkoutActivityTypeRunning'). */
-function mapWorkoutKind(activityType: string | number | undefined): WorkoutKind {
-  const key = String(activityType ?? '').toLowerCase();
-  if (key.includes('running')) return 'run';
-  if (key.includes('walking')) return 'walk';
-  if (key.includes('cycling')) return 'cycle';
-  if (key.includes('swimming')) return 'swim';
-  if (key.includes('rowing')) return 'rowing';
-  if (key.includes('hiit') || key.includes('highintensityintervaltraining')) return 'hiit';
-  if (key.includes('functionalstrength')) return 'functional';
-  if (key.includes('strength') || key.includes('weightlifting')) return 'strength';
-  if (key.includes('yoga')) return 'yoga';
-  return 'other';
+/** Numeric values mirror `WorkoutActivityType` from @kingstinct/react-native-healthkit.
+ *  Hardcoded (not imported) so this file never pulls a runtime value out of the
+ *  package — only `import type` above, to keep Expo Go from ever touching the
+ *  native module eagerly. */
+const WORKOUT_KIND_BY_ACTIVITY_TYPE: Record<number, WorkoutKind> = {
+  13: 'cycle', // cycling
+  20: 'functional', // functionalStrengthTraining
+  35: 'rowing', // rowing
+  37: 'run', // running
+  46: 'swim', // swimming
+  50: 'strength', // traditionalStrengthTraining
+  52: 'walk', // walking
+  57: 'yoga', // yoga
+  63: 'hiit', // highIntensityIntervalTraining
+};
+
+function mapWorkoutKind(activityType: number | undefined): WorkoutKind {
+  if (activityType == null) return 'other';
+  return WORKOUT_KIND_BY_ACTIVITY_TYPE[activityType] ?? 'other';
 }
 
 function dateKey(d: Date): string {
@@ -112,7 +137,7 @@ export class AppleHealthProvider implements HealthDataProvider {
     const hk = await loadHealthKit();
     if (!hk) return false;
     try {
-      return Boolean(await hk.isHealthDataAvailableAsync?.()) || true;
+      return Boolean(await hk.isHealthDataAvailableAsync?.());
     } catch {
       return false;
     }
@@ -121,10 +146,15 @@ export class AppleHealthProvider implements HealthDataProvider {
   async getPermissionStatus(): Promise<HealthPermissionStatus> {
     const hk = await loadHealthKit();
     if (!hk) return 'unavailable';
-    // HealthKit nedovoluje query authorization status pro READ permissions
-    // (privacy-by-design — appka neví, co uživatel skrýval). Vrátíme
-    // 'not_determined' a UI nechá uživatele kliknout "Povolit".
-    return 'not_determined';
+    // HealthKit never reveals read-permission grant/deny state to the app
+    // (privacy-by-design). We approximate "connected" with a local flag set
+    // once the user has completed the OS permission sheet at least once.
+    try {
+      const requested = await AsyncStorage.getItem(REQUESTED_KEY);
+      return requested ? 'granted' : 'not_determined';
+    } catch {
+      return 'not_determined';
+    }
   }
 
   async requestPermissions(types: HealthDataType[]): Promise<HealthPermissionResult> {
@@ -132,8 +162,10 @@ export class AppleHealthProvider implements HealthDataProvider {
     if (!hk) return { status: 'unavailable', granted: [], denied: types };
     try {
       const readIds = types.map(t => HK_READ_IDS[t]).filter(Boolean);
-      await hk.requestAuthorization?.(readIds, []);
-      // HealthKit nevrátí, které typy byly povoleny — předpokládáme granted.
+      // Apple's requestAuthorization(toShare, toRead) — we only read today, so toShare is empty.
+      await hk.requestAuthorization?.([], readIds);
+      await AsyncStorage.setItem(REQUESTED_KEY, '1');
+      // HealthKit doesn't report which types were actually granted — assume granted.
       return { status: 'granted', granted: types, denied: [] };
     } catch {
       return { status: 'denied', granted: [], denied: types };
@@ -149,12 +181,11 @@ export class AppleHealthProvider implements HealthDataProvider {
       for (const day of dates) {
         const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(day); dayEnd.setHours(23, 59, 59, 999);
-        const opts = { from: dayStart, to: dayEnd };
         const [steps, active, basal, distM] = await Promise.all([
-          sumQuantity(hk, HK_READ_IDS.steps, opts),
-          sumQuantity(hk, HK_READ_IDS.activeEnergy, opts),
-          sumQuantity(hk, HK_READ_IDS.basalEnergy, opts),
-          sumQuantity(hk, HK_READ_IDS.distanceWalkingRunning, opts),
+          sumQuantity(hk, HK_READ_IDS.steps, dayStart, dayEnd, 'count'),
+          sumQuantity(hk, HK_READ_IDS.activeEnergy, dayStart, dayEnd, 'kcal'),
+          sumQuantity(hk, HK_READ_IDS.basalEnergy, dayStart, dayEnd, 'kcal'),
+          sumQuantity(hk, HK_READ_IDS.distanceWalkingRunning, dayStart, dayEnd, 'm'),
         ]);
         if (steps === 0 && active === 0 && basal === 0 && distM === 0) continue;
         out.push({
@@ -176,19 +207,27 @@ export class AppleHealthProvider implements HealthDataProvider {
     const hk = await loadHealthKit();
     if (!hk) return [];
     try {
-      const samples = (await hk.queryWorkouts?.({ from: start, to: end })) ?? [];
-      return samples.map((w: any): WorkoutSummary => ({
-        id: `apple-${w.uuid ?? w.startDate}`,
-        externalId: w.uuid,
-        startedAt: new Date(w.startDate).toISOString(),
-        endedAt: new Date(w.endDate).toISOString(),
-        kind: mapWorkoutKind(w.workoutActivityType),
-        durationMinutes: Math.round(((w.duration ?? 0) as number) / 60),
-        distanceKm: w.totalDistance ? Math.round((w.totalDistance / 1000) * 100) / 100 : undefined,
-        activeEnergyKcal: w.totalEnergyBurned ? Math.round(w.totalEnergyBurned) : undefined,
-        avgHeartRate: w.metadata?.HKAverageHeartRate ? Math.round(w.metadata.HKAverageHeartRate) : undefined,
-        maxHeartRate: w.metadata?.HKMaximumHeartRate ? Math.round(w.metadata.HKMaximumHeartRate) : undefined,
-        source: 'apple_health',
+      const samples = (await hk.queryWorkoutSamples?.({
+        filter: { startDate: start, endDate: end },
+        limit: 500,
+        energyUnit: 'kcal',
+        distanceUnit: 'm',
+      })) ?? [];
+      return await Promise.all(samples.map(async (w: any): Promise<WorkoutSummary> => {
+        const hr = await workoutHeartRateStats(hk, w);
+        return {
+          id: `apple-${w.uuid}`,
+          externalId: w.uuid,
+          startedAt: new Date(w.startDate).toISOString(),
+          endedAt: new Date(w.endDate).toISOString(),
+          kind: mapWorkoutKind(w.workoutActivityType),
+          durationMinutes: Math.round((w.duration?.quantity ?? 0) / 60),
+          distanceKm: w.totalDistance?.quantity ? Math.round((w.totalDistance.quantity / 1000) * 100) / 100 : undefined,
+          activeEnergyKcal: w.totalEnergyBurned?.quantity ? Math.round(w.totalEnergyBurned.quantity) : undefined,
+          avgHeartRate: hr.avg,
+          maxHeartRate: hr.max,
+          source: 'apple_health',
+        };
       }));
     } catch {
       return [];
@@ -201,10 +240,13 @@ export class AppleHealthProvider implements HealthDataProvider {
     try {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - maxDaysOld);
-      const sample = await hk.queryQuantitySamples?.(HK_READ_IDS.bodyMass, {
-        from: cutoff, to: new Date(), limit: 1, ascending: false,
-      });
-      const latest = Array.isArray(sample) ? sample[0] : sample;
+      const samples = (await hk.queryQuantitySamples?.(HK_READ_IDS.bodyMass, {
+        filter: { startDate: cutoff, endDate: new Date() },
+        unit: 'kg',
+        limit: 1,
+        ascending: false,
+      })) ?? [];
+      const latest = samples[0];
       if (!latest) return null;
       return {
         date: dateKey(new Date(latest.endDate ?? latest.startDate)),
@@ -221,7 +263,10 @@ export class AppleHealthProvider implements HealthDataProvider {
     if (!hk) return [];
     try {
       const samples = (await hk.queryQuantitySamples?.(HK_READ_IDS.bodyMass, {
-        from: start, to: end, ascending: true,
+        filter: { startDate: start, endDate: end },
+        unit: 'kg',
+        limit: 2000,
+        ascending: true,
       })) ?? [];
       return samples.map((s: any): BodyWeightSample => ({
         date: dateKey(new Date(s.endDate ?? s.startDate)),
@@ -244,7 +289,8 @@ export class AppleHealthProvider implements HealthDataProvider {
       queryStart.setHours(18, 0, 0, 0);
       queryStart.setDate(queryStart.getDate() - 1);
       const samples = (await hk.queryCategorySamples?.(HK_READ_IDS.sleepAnalysis, {
-        from: queryStart, to: end,
+        filter: { startDate: queryStart, endDate: end },
+        limit: 2000,
       })) ?? [];
       // Aggregate per wake-up date.
       const byDate = new Map<string, { total: number; deep: number; rem: number; awake: number }>();
@@ -255,7 +301,7 @@ export class AppleHealthProvider implements HealthDataProvider {
         const slot = byDate.get(key) ?? { total: 0, deep: 0, rem: 0, awake: 0 };
         // HKCategoryValueSleepAnalysis: 0=in bed, 1=asleep unspecified, 2=awake,
         // 3=core (light), 4=deep, 5=REM
-        const v = s.value ?? s.categoryValue;
+        const v = s.value;
         if (v === 2) slot.awake += dur;
         else if (v === 4) { slot.deep += dur; slot.total += dur; }
         else if (v === 5) { slot.rem += dur; slot.total += dur; }
@@ -290,7 +336,10 @@ export class AppleHealthProvider implements HealthDataProvider {
       const start = new Date(date); start.setHours(0, 0, 0, 0);
       const end = new Date(date); end.setHours(23, 59, 59, 999);
       const samples = (await hk.queryQuantitySamples?.(HK_READ_IDS.restingHeartRate, {
-        from: start, to: end, ascending: false, limit: 1,
+        filter: { startDate: start, endDate: end },
+        unit: 'count/min',
+        ascending: false,
+        limit: 1,
       })) ?? [];
       const latest = samples[0];
       if (!latest) return null;
@@ -307,14 +356,14 @@ export class AppleHealthProvider implements HealthDataProvider {
       const start = new Date(date); start.setHours(0, 0, 0, 0);
       const end = new Date(date); end.setHours(23, 59, 59, 999);
       const samples = (await hk.queryQuantitySamples?.(HK_READ_IDS.hrv, {
-        from: start, to: end, ascending: false, limit: 1,
+        filter: { startDate: start, endDate: end },
+        unit: 'ms',
+        ascending: false,
+        limit: 1,
       })) ?? [];
       const latest = samples[0];
       if (!latest) return null;
-      // HKQuantityTypeIdentifierHeartRateVariabilitySDNN returns SDNN in seconds.
-      // Multiply by 1000 to get milliseconds.
-      const ms = Math.round((latest.quantity ?? 0) * 1000);
-      return { date: dateKey(date), ms, metric: 'sdnn', source: 'apple_health' };
+      return { date: dateKey(date), ms: Math.round(latest.quantity ?? 0), metric: 'sdnn', source: 'apple_health' };
     } catch {
       return null;
     }
@@ -324,8 +373,6 @@ export class AppleHealthProvider implements HealthDataProvider {
     const hk = await loadHealthKit();
     if (!hk) return [];
 
-    // TODO: Implement direct native HealthKit batch recovery query once native plugin is built.
-    // Currently we aggregate sleep, resting heart rate, and HRV samples.
     const sleep = await this.getSleepSummary(start, end);
     const out: RecoveryInputs[] = [];
     const sleepMap = new Map(sleep.map(s => [s.date, s]));
@@ -358,14 +405,36 @@ export class AppleHealthProvider implements HealthDataProvider {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-async function sumQuantity(hk: any, identifier: string, opts: { from: Date; to: Date }): Promise<number> {
+async function sumQuantity(hk: any, identifier: string, start: Date, end: Date, unit: string): Promise<number> {
   try {
-    const samples = (await hk.queryQuantitySamples?.(identifier, opts)) ?? [];
+    const samples = (await hk.queryQuantitySamples?.(identifier, {
+      filter: { startDate: start, endDate: end },
+      unit,
+      limit: 2000,
+    })) ?? [];
     let total = 0;
     for (const s of samples) total += s.quantity ?? 0;
     return total;
   } catch {
     return 0;
+  }
+}
+
+/** Average/max heart rate during a workout, via native statistics aggregation
+ *  scoped to that workout (no need to pull every raw HR sample into JS). */
+async function workoutHeartRateStats(hk: any, workout: any): Promise<{ avg?: number; max?: number }> {
+  try {
+    const stats = await hk.queryStatisticsForQuantity?.(
+      HK_READ_IDS.heartRate,
+      ['discreteAverage', 'discreteMax'],
+      { filter: { workout }, unit: 'count/min' },
+    );
+    return {
+      avg: stats?.averageQuantity?.quantity != null ? Math.round(stats.averageQuantity.quantity) : undefined,
+      max: stats?.maximumQuantity?.quantity != null ? Math.round(stats.maximumQuantity.quantity) : undefined,
+    };
+  } catch {
+    return {};
   }
 }
 

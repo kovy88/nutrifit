@@ -147,7 +147,12 @@ function detectRaceGoal(text: string): RaceGoal {
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().replace(/[.,!?;:()[\]{}"'`´]/g, ' ').replace(/\s+/g, ' ').trim();
+  // toLowerCase(), not toLocaleLowerCase(): this is a canonical form for matching
+  // against fixed keyword lists, so it must not depend on the device locale. The
+  // no-argument locale variant uses the device's locale, and on a Turkish/Azeri
+  // device "I" lowercases to dotless "ı" — "FITNESS" would then stop matching
+  // 'fitness', and likewise for 'fit', 'condition', 'consistency', 'kondic'.
+  return value.toLowerCase().replace(/[.,!?;:()[\]{}"'`´]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Matches `needle` only at word boundaries (space or start/end of the

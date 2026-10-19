@@ -147,6 +147,21 @@ describe('nutrition utilities', () => {
     expect(list.find(group => group.category === 'Přílohy a obiloviny')?.items.join(' ')).toContain('rýže');
   });
 
+  it('sorts shopping items in the reader language, not always Czech', () => {
+    // Czech collation orders "ch" as a single letter after "h", so sorting an
+    // English list with cs-CZ produced "carrot, cucumber, ham, honey, cheese,
+    // chicken" — visibly not alphabetical to an English reader.
+    // Both land in the same (meat) category, so ordering here is the sort alone
+    // rather than the category grouping.
+    const meal = { ...validMeals()[0], ingredients: ['ham', 'chicken'] };
+    const itemsIn = (locale: 'cs' | 'en') =>
+      buildShoppingList([meal], locale).find(group => group.items.includes('chicken'))?.items ?? [];
+
+    expect(itemsIn('en')).toEqual(['chicken', 'ham']);
+    // Czech readers keep Czech ordering: "ch" still sorts after "h".
+    expect(itemsIn('cs')).toEqual(['ham', 'chicken']);
+  });
+
   it('defaults AI consent to false unless explicitly accepted', () => {
     expect(normalizeConsent(null)).toBe(false);
     expect(normalizeConsent({ accepted: false })).toBe(false);
@@ -172,6 +187,19 @@ describe('nutrition utilities', () => {
     expect(formatDateLabel(toDateKey(tomorrow), 'cs')).toBe('Zítra');
 
     expect(formatDateLabel('2026-05-15', 'cs')).toBe('15. 5. 2026');
+  });
+
+  it('formats non-relative dates in English for en, not the Czech pattern', () => {
+    // The relative labels were localized but the fallback was not, so English
+    // readers saw "15. 5. 2026" everywhere the date was not today/±1 day.
+    expect(formatDateLabel('2026-05-15', 'en')).toBe('May 15, 2026');
+
+    const today = new Date();
+    expect(formatDateLabel(toDateKey(today), 'en')).toBe('Today');
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    expect(formatDateLabel(toDateKey(yesterday), 'en')).toBe('Yesterday');
   });
 
   it('correctly maps training session frequency to activity factors', () => {

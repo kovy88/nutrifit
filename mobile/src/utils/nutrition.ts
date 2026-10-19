@@ -142,27 +142,40 @@ export function adjustForDay(baseline: Macros, session: TrainingSession | null, 
   const HARD_KINDS = ['long_run', 'tempo', 'intervals', 'race', 'match'];
   const isHardDay = session.intensity === 'hard' || HARD_KINDS.includes(session.kind)
     || (session.second ? (session.second.intensity === 'hard' || HARD_KINDS.includes(session.second.kind)) : false);
-  const preFuel = isHardDay ? Math.round(profile.weight) : 0;
-  const refuel = Math.round((burn * 0.6) / 4);
-  const addCarbs = preFuel + refuel;
-  const macros = { ...baseline, kcal: baseline.kcal + addCarbs * 4, carbs: baseline.carbs + addCarbs };
+
+  // The baseline TDEE already includes regular training through the activity
+  // factor (sessions/week), so a normal session must not add calories again.
+  // Instead it shifts energy from fat to carbs around the workout. Only burn
+  // beyond a typical ~60 min moderate session (long runs, matches, double
+  // days) is added on top as extra refuel carbs.
+  const preFuel = isHardDay ? Math.round(profile.weight * 0.5) : 0;
+  const wantedShift = preFuel + Math.round((burn * 0.4) / 4);
+  const minFat = Math.round(profile.weight * 0.7);
+  const fatDrop = Math.max(0, Math.min(Math.round((wantedShift * 4) / 9), baseline.fat - minFat));
+  const shiftedCarbs = Math.round((fatDrop * 9) / 4);
+  const includedBurn = 6 * profile.weight; // ~60 min at MET 6
+  const extraCarbs = Math.round((Math.max(0, burn - includedBurn) * 0.6) / 4);
+  const carbs = baseline.carbs + shiftedCarbs + extraCarbs;
+  const fat = baseline.fat - fatDrop;
+  const macros = { ...baseline, kcal: baseline.kcal + extraCarbs * 4, carbs, fat };
+  const addCarbs = carbs - baseline.carbs;
   return {
     macros,
     adjustment: {
       note: session.kind === 'long_run'
         ? (en
-          ? `Long run — pre-fuel +${preFuel} g and refuel +${refuel} g carbs.`
-          : `Long run — pre-fuel +${preFuel} g a refuel +${refuel} g sacharidů.`)
+          ? `Long run — +${addCarbs} g carbs (${extraCarbs} g extra refuel), less fat.`
+          : `Long run — +${addCarbs} g sacharidů (${extraCarbs} g navíc na doplnění), méně tuků.`)
         : isHardDay
           ? (en
-            ? `Hard session (${session.title}) — pre-workout carbs +${preFuel} g and refuel +${refuel} g.`
-            : `Náročný trénink (${session.title}) — předtréninkové sacharidy +${preFuel} g a doplnění +${refuel} g.`)
+            ? `Hard session (${session.title}) — +${addCarbs} g carbs around training, less fat.`
+            : `Náročný trénink (${session.title}) — +${addCarbs} g sacharidů kolem tréninku, méně tuků.`)
           : (en
-            ? `Training day (${session.title}) — added ${addCarbs} g carbs.`
-            : `Tréninkový den (${session.title}) — přidáno ${addCarbs} g sacharidů.`),
+            ? `Training day (${session.title}) — more carbs, less fat (+${addCarbs} g carbs).`
+            : `Tréninkový den (${session.title}) — více sacharidů, méně tuků (+${addCarbs} g sacharidů).`),
       kcalDelta: macros.kcal - baseline.kcal,
-      carbsDelta: macros.carbs - baseline.carbs,
-      fatDelta: 0,
+      carbsDelta: addCarbs,
+      fatDelta: fat - baseline.fat,
       proteinDelta: 0,
       source: 'manual_today_session',
     },
@@ -364,7 +377,13 @@ export function buildShoppingList(meals: Meal[], locale: Locale = 'en'): Shoppin
   return shoppingCategories(locale)
     .map(category => ({
       category,
-      items: Array.from(groups.get(category)?.values() || []).sort((a, b) => a.localeCompare(b, 'cs-CZ')),
+      // Sort in the reader's language, not always Czech. Czech collation treats
+      // "ch" as one letter ordered after "h", so an English list came out
+      // "carrot, cucumber, ham, honey, cheese, chicken" — alphabetically broken
+      // for an English reader. (The toLocaleLowerCase('cs-CZ') calls elsewhere in
+      // this file are deliberate: those are canonical keys for regex matching and
+      // must NOT vary by user locale.)
+      items: Array.from(groups.get(category)?.values() || []).sort((a, b) => a.localeCompare(b, locale)),
     }))
     .filter(group => group.items.length > 0);
 }
@@ -581,5 +600,13 @@ export function formatDateLabel(dateKey: string, locale: string = 'en'): string 
   if (dateKey === tomorrow) return en ? 'Tomorrow' : 'Zítra';
 
   const [year, month, day] = dateKey.split('-');
+  if (en) {
+    // The three relative labels above are already localized, but this fallback
+    // used to drop into the Czech "D. M. YYYY" pattern for every locale — so an
+    // English reader saw "15. 5. 2026" in the history list, which is mostly past
+    // dates and therefore mostly this branch.
+    return new Date(Number(year), Number(month) - 1, Number(day))
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
   return `${parseInt(day, 10)}. ${parseInt(month, 10)}. ${year}`;
 }

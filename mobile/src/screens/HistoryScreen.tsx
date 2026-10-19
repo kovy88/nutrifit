@@ -5,7 +5,7 @@ import { CollapsibleDetails, HeroDecisionCard, InfoRow, SectionCard } from '../c
 import { Screen } from '../components/Screen';
 import { useTrenr } from '../context/TrenrContext';
 import { listStoredDates, loadDailyCoachHistory, loadFoodLogsByDate, loadPlansByDate } from '../services/storage';
-import { formatDateLabel , primaryGoalToNutritionKind } from '../utils/nutrition';
+import { formatDateLabel } from '../utils/nutrition';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { SimpleLineChart } from '../components/premium/SimpleLineChart';
 import { useTrend, buildTrendFromRecord } from '../hooks/useTrend';
@@ -20,7 +20,7 @@ import { generateWeeklyMiniReview } from '../lib/coaching/weekly-review';
 import { planSessionForDate } from '../lib/training';
 import { resolveCoachScope, scopeHasTraining } from '../types';
 import type { TrendPoint } from '../components/MiniTrendChart';
-import type { TranslationKey } from '../lib/i18n';
+import type { Translate, TranslationKey } from '../lib/i18n';
 
 type DaySummary = {
   dateKey: string;
@@ -87,13 +87,16 @@ export function HistoryScreen() {
       if (baselineMacros) setEnergyBalance(computeEnergyBalance({ logs, tdee: baselineMacros.tdee, days: 14 }));
       const weekDates = currentWeekDates(selectedDate);
       const hasTraining = profile ? scopeHasTraining(resolveCoachScope(profile)) : false;
-      const plannedSessions = hasTraining && profile
+      // Mobility days are optional extras the planner adds on top of the user's
+      // chosen sessions/week, so they don't count toward the "X of Y" rhythm.
+      const plannedDates = hasTraining && profile
         ? weekDates.filter(dateKey => {
             const session = planSessionForDate(profile, new Date(`${dateKey}T12:00:00`), {}, locale);
-            return session && session.kind !== 'rest';
-          }).length
-        : 0;
-      const completedSessions = weekDates.filter(dateKey => trainingCompletions[dateKey]?.status === 'completed').length;
+            return session && session.kind !== 'rest' && session.kind !== 'mobility';
+          })
+        : [];
+      const plannedSessions = plannedDates.length;
+      const completedSessions = plannedDates.filter(dateKey => trainingCompletions[dateKey]?.status === 'completed').length;
       const readinessScores = weekDates
         .map(dateKey => coachHistory[dateKey]?.recommendation?.readiness?.score)
         .filter((score): score is number => typeof score === 'number');
@@ -125,7 +128,7 @@ export function HistoryScreen() {
   const adherenceLabel = adherence.averageRatio == null ? '-' : `${Math.round(adherence.averageRatio * 100)}%`;
   return (
     <Screen>
-      <ScreenHeader eyebrow={t('tab.history')} title={progressTitle(locale)} subtitle={progressSubtitle(locale)} />
+      <ScreenHeader eyebrow={t('tab.history')} title={progressTitle(t)} subtitle={progressSubtitle(t)} />
       <HeroDecisionCard
         eyebrow={t('tab.history')}
         title={t('history.weeklyReview')}
@@ -134,11 +137,11 @@ export function HistoryScreen() {
           weeklyReview.completedSessions,
           weeklyReview.plannedSessions,
           weeklyReview.nutritionLoggedDays,
-          locale,
+          t,
           t(weeklyReview.recommendationKey),
         )}
         accent={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? colors.accent : colors.orange}
-        statusLabel={progressHeroStatus(adherence.averageRatio, locale)}
+        statusLabel={progressHeroStatus(adherence.averageRatio, t)}
         statusTone={adherence.averageRatio == null || adherence.averageRatio >= 0.8 ? 'ready' : 'caution'}
       />
       <View style={[styles.segment, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
@@ -157,16 +160,16 @@ export function HistoryScreen() {
 
       {tab === 'overview' ? (
         <>
-          <SectionCard title={t('history.weeklyConsistency')} body={progressConsistencyBody(adherence.averageRatio, locale)}>
+          <SectionCard title={t('history.weeklyConsistency')} body={progressConsistencyBody(adherence.averageRatio, t)}>
             {weeklyReview.plannedSessions > 0 ? (
-              <InfoRow label={progressTrainingLabel(locale)} value={progressTrainingValue(weeklyReview.completedSessions, weeklyReview.plannedSessions, locale)} />
+              <InfoRow label={progressTrainingLabel(t)} value={progressTrainingValue(weeklyReview.completedSessions, weeklyReview.plannedSessions, t)} />
             ) : (
-              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTrainingCopy(locale)}</Text>
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTrainingCopy(t)}</Text>
             )}
             {weeklyReview.nutritionLoggedDays > 0 ? (
-              <InfoRow label={progressFoodLabel(locale)} value={progressFoodValue(weeklyReview.nutritionTargetDays, weeklyReview.nutritionLoggedDays, locale)} />
+              <InfoRow label={progressFoodLabel(t)} value={progressFoodValue(weeklyReview.nutritionTargetDays, weeklyReview.nutritionLoggedDays, t)} />
             ) : (
-              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoFoodCopy(locale)}</Text>
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoFoodCopy(t)}</Text>
             )}
             <CollapsibleDetails label={t('plan.detail')}>
               <InfoRow label={t('history.weeklyReadiness')} value={weeklyReview.averageReadiness == null ? t('history.weeklyNoReadiness') : weeklyReview.averageReadiness} />
@@ -176,18 +179,18 @@ export function HistoryScreen() {
             </CollapsibleDetails>
           </SectionCard>
 
-          <SectionCard title={progressNextSignalTitle(locale)} body={progressNextSignalBody(logStreak.current, locale)}>
+          <SectionCard title={progressNextSignalTitle(t)} body={progressNextSignalBody(logStreak.current, t)}>
             {adherenceStreak.current > 0 ? (
-              <InfoRow label={progressStreakLabel(locale)} value={adherenceStreak.current} />
+              <InfoRow label={progressStreakLabel(t)} value={adherenceStreak.current} />
             ) : (
-              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTargetCopy(locale)}</Text>
+              <Text style={[styles.emptyCopy, { color: colors.muted }]}>{progressNoTargetCopy(t)}</Text>
             )}
           </SectionCard>
 
           {profile && baselineMacros && energyBalance.loggedDays >= 3 ? (
-            <SectionCard title={progressFoodTrendTitle(locale)} body={progressFoodTrendCopy(energyBalance.theoreticalKgChange, locale)}>
+            <SectionCard title={progressFoodTrendTitle(t)} body={progressFoodTrendCopy(energyBalance.theoreticalKgChange, t)}>
               <InfoRow
-                label={progressFoodTrendMetricLabel(locale)}
+                label={progressFoodTrendMetricLabel(t)}
                 value={`${energyBalance.theoreticalKgChange > 0 ? '+' : ''}${showWeight(energyBalance.theoreticalKgChange, 2)} ${weightUnit}`}
               />
             </SectionCard>
@@ -218,9 +221,9 @@ export function HistoryScreen() {
             <SimpleLineChart data={rhrTrend.data} color={colors.red} unit="bpm" />
           </Card>
           <Card>
-            <SectionHeader title={trainingLoadTitle(locale)} />
-            <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => trainingLoadValueLabel(v, locale)} />
-            <Text style={[styles.meta, { color: colors.faint }]}>{trainingLoadMeta(locale)}</Text>
+            <SectionHeader title={trainingLoadTitle(t)} />
+            <SimpleLineChart data={strainTrend.data} color={colors.orange} format={v => trainingLoadValueLabel(v, t)} />
+            <Text style={[styles.meta, { color: colors.faint }]}>{trainingLoadMeta(t)}</Text>
           </Card>
           <Card>
             <SectionHeader title={t('history.adherence14')} />
@@ -276,12 +279,12 @@ const styles = StyleSheet.create({
   kcalInfo: { fontSize: 12, lineHeight: 17, fontWeight: '500' },
 });
 
-function progressTitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'This week' : 'Tento týden';
+function progressTitle(t: Translate): string {
+  return t('progress.title');
 }
 
-function progressSubtitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Consistency, trends, and history.' : 'Konzistence, trendy a historie.';
+function progressSubtitle(t: Translate): string {
+  return t('progress.subtitle');
 }
 
 function progressHeroBody(
@@ -289,112 +292,99 @@ function progressHeroBody(
   completedSessions: number,
   plannedSessions: number,
   nutritionLoggedDays: number,
-  locale: 'cs' | 'en',
+  t: Translate,
   fallback: string,
 ): string {
   if (averageRatio == null && completedSessions === 0 && nutritionLoggedDays === 0) {
-    if (plannedSessions > 0) {
-      return locale === 'en' ? 'Mark a workout or log a meal.' : 'Odškrtni trénink nebo zapiš jídlo.';
-    }
-    return locale === 'en' ? 'Log one action to get started.' : 'Zapiš jednu akci pro start.';
+    return plannedSessions > 0 ? t('progress.heroMarkOrLog') : t('progress.heroLogOne');
   }
   return fallback;
 }
 
-function progressHeroStatus(averageRatio: number | null, locale: 'cs' | 'en'): string | undefined {
+function progressHeroStatus(averageRatio: number | null, t: Translate): string | undefined {
   if (averageRatio == null) return undefined;
-  if (averageRatio >= 0.9 && averageRatio <= 1.1) return locale === 'en' ? 'In rhythm' : 'V rytmu';
-  if (averageRatio < 0.9) return locale === 'en' ? 'A bit low' : 'Spíš nízko';
-  return locale === 'en' ? 'A bit high' : 'Spíš vysoko';
+  if (averageRatio >= 0.9 && averageRatio <= 1.1) return t('progress.statusInRhythm');
+  if (averageRatio < 0.9) return t('progress.statusLow');
+  return t('progress.statusHigh');
 }
 
-function progressTrainingLabel(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Training rhythm' : 'Tréninkový rytmus';
+function progressTrainingLabel(t: Translate): string {
+  return t('progress.trainingLabel');
 }
 
-function progressFoodLabel(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Food rhythm' : 'Jídelní rytmus';
+function progressFoodLabel(t: Translate): string {
+  return t('progress.foodLabel');
 }
 
-function progressConsistencyBody(averageRatio: number | null, locale: 'cs' | 'en'): string {
-  if (averageRatio == null) {
-    return locale === 'en' ? 'Log a day to get started.' : 'Zapiš den pro start.';
-  }
-  if (averageRatio >= 0.9 && averageRatio <= 1.1) {
-    return locale === 'en' ? 'On track this week.' : 'Tenhle týden podle plánu.';
-  }
-  if (averageRatio < 0.9) {
-    return locale === 'en' ? 'A bit under plan.' : 'Trochu pod plánem.';
-  }
-  return locale === 'en' ? 'A bit over plan.' : 'Trochu nad plánem.';
+function progressConsistencyBody(averageRatio: number | null, t: Translate): string {
+  if (averageRatio == null) return t('progress.consistencyEmpty');
+  if (averageRatio >= 0.9 && averageRatio <= 1.1) return t('progress.consistencyOnTrack');
+  if (averageRatio < 0.9) return t('progress.consistencyUnder');
+  return t('progress.consistencyOver');
 }
 
-function progressTrainingValue(done: number, planned: number, locale: 'cs' | 'en'): string {
-  return locale === 'en' ? `${done} of ${planned} done` : `${done} z ${planned} hotovo`;
+function progressTrainingValue(done: number, planned: number, t: Translate): string {
+  return t('progress.trainingValue', { done, planned });
 }
 
-function progressFoodValue(onTarget: number, logged: number, locale: 'cs' | 'en'): string {
-  return locale === 'en' ? `${onTarget} of ${logged} on target` : `${onTarget} z ${logged} v cíli`;
+function progressFoodValue(onTarget: number, logged: number, t: Translate): string {
+  return t('progress.foodValue', { onTarget, logged });
 }
 
-function progressNoTrainingCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'No workouts yet.' : 'Zatím žádné tréninky.';
+function progressNoTrainingCopy(t: Translate): string {
+  return t('progress.noTraining');
 }
 
-function progressNoFoodCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Log a meal to start.' : 'Zapiš jídlo pro start.';
+function progressNoFoodCopy(t: Translate): string {
+  return t('progress.noFood');
 }
 
-function progressNoTargetCopy(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Log a meal to start.' : 'Zapiš jídlo pro start.';
+/** This slot sits under "Steady days" — the count of days that hit the macro
+ *  target — so its empty state is about targets, not logging. It used to be a
+ *  byte-for-byte copy of progressNoFoodCopy, which put the same sentence twice
+ *  on one screen. */
+function progressNoTargetCopy(t: Translate): string {
+  return t('progress.noTarget');
 }
 
-function progressStreakLabel(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Steady days' : 'Stabilní dny';
+function progressStreakLabel(t: Translate): string {
+  return t('progress.streakLabel');
 }
 
-function progressNextSignalTitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Next signal' : 'Další signál';
+function progressNextSignalTitle(t: Translate): string {
+  return t('progress.nextSignalTitle');
 }
 
-function progressNextSignalBody(currentLogStreak: number, locale: 'cs' | 'en'): string {
-  if (currentLogStreak > 0) {
-    return locale === 'en' ? 'Keep the streak going.' : 'Drž streak dál.';
-  }
-  return locale === 'en' ? 'Start logging today.' : 'Začni dnešním zápisem.';
+function progressNextSignalBody(currentLogStreak: number, t: Translate): string {
+  return currentLogStreak > 0 ? t('progress.nextSignalKeep') : t('progress.nextSignalStart');
 }
 
-function progressFoodTrendTitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Food trend' : 'Trend jídla';
+function progressFoodTrendTitle(t: Translate): string {
+  return t('progress.foodTrendTitle');
 }
 
-function progressFoodTrendCopy(changeKg: number, locale: 'cs' | 'en'): string {
-  if (Math.abs(changeKg) < 0.1) {
-    return locale === 'en' ? 'Steady weight trend.' : 'Stabilní trend váhy.';
-  }
-  if (changeKg < 0) {
-    return locale === 'en' ? 'Gradual weight loss.' : 'Postupný úbytek váhy.';
-  }
-  return locale === 'en' ? 'Gradual weight gain.' : 'Postupný nárůst váhy.';
+function progressFoodTrendCopy(changeKg: number, t: Translate): string {
+  if (Math.abs(changeKg) < 0.1) return t('progress.trendSteady');
+  return changeKg < 0 ? t('progress.trendLoss') : t('progress.trendGain');
 }
 
-function progressFoodTrendMetricLabel(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Estimated change' : 'Odhad změny';
+function progressFoodTrendMetricLabel(t: Translate): string {
+  return t('progress.estimatedChange');
 }
 
-function trainingLoadTitle(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Training load (14 days)' : 'Tréninková zátěž (14 dní)';
+function trainingLoadTitle(t: Translate): string {
+  return t('progress.loadTitle');
 }
 
-function trainingLoadMeta(locale: 'cs' | 'en'): string {
-  return locale === 'en' ? 'Recent training intensity.' : 'Poslední tréninková intenzita.';
+function trainingLoadMeta(t: Translate): string {
+  return t('progress.loadMeta');
 }
 
-function trainingLoadValueLabel(value: number, locale: 'cs' | 'en'): string {
-  if (value < 5) return locale === 'en' ? 'Light' : 'Lehce';
-  if (value < 11) return locale === 'en' ? 'Steady' : 'Středně';
-  if (value < 16) return locale === 'en' ? 'Heavy' : 'Těžší';
-  return locale === 'en' ? 'Very heavy' : 'Hodně těžké';
+function trainingLoadValueLabel(value: number, t: Translate): string {
+  if (value < 5) return t('progress.loadLight');
+  if (value < 11) return t('progress.loadSteady');
+  if (value < 16) return t('progress.loadHeavy');
+  return t('progress.loadVeryHeavy');
 }
 
 function currentWeekDates(selectedDate: string): string[] {

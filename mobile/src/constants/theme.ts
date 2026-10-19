@@ -6,7 +6,10 @@ const premiumDarkColors = {
   isDark: true as boolean,
   ink: '#F4F7EF',
   muted: '#A2AD9B',
-  faint: '#6E7868',
+  /** Small-print label colour. Lifted from #6E7868 (3.95:1 on `card`) so it
+   *  clears WCAG AA 4.5:1 — it is used exclusively at 10–12pt, the smallest
+   *  text in the app, which is the worst place to be under contrast. */
+  faint: '#778270',
   bg: '#050806',
   card: '#101710',
   border: 'rgba(232,241,224,0.12)',

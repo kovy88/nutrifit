@@ -26,7 +26,23 @@ import { useOuraConnect } from '../hooks/useOuraConnect';
 import { useLanguage } from '../context/LanguageContext';
 import { SUPPORTED_LOCALES, LOCALE_LABELS } from '../lib/i18n';
 import type { Translate, TranslationKey } from '../lib/i18n';
-import type { OAuthService } from '../lib/health';
+import { AppleHealthProvider, HealthConnectProvider } from '../lib/health';
+import type { HealthDataType, OAuthService } from '../lib/health';
+
+/** Everything AppleHealthProvider/HealthConnectProvider actually read — kept in
+ *  sync with HK_READ_IDS / recordTypeFor in those providers. */
+const NATIVE_HEALTH_TYPES: HealthDataType[] = [
+  'steps',
+  'activeEnergy',
+  'basalEnergy',
+  'distanceWalkingRunning',
+  'heartRate',
+  'restingHeartRate',
+  'hrv',
+  'bodyMass',
+  'sleepAnalysis',
+  'workout',
+];
 
 const PRIVACY_URL = 'https://nutri-fit-omega.vercel.app/legal.html#privacy';
 const TERMS_URL = 'https://nutri-fit-omega.vercel.app/legal.html#terms';
@@ -115,11 +131,18 @@ export function SettingsScreen() {
     Alert.alert(t('settings.connectGenericTitle', { service }), t('settings.connectGenericMsg'));
   }
 
-  function handleConnectNative() {
-    Alert.alert(
-      native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid'),
-      nativeConnectMessage(native.platform, native.available, locale),
-    );
+  async function handleConnectNative() {
+    const title = native.platform === 'ios' ? t('settings.nativeIos') : t('settings.nativeAndroid');
+    if (!native.available) {
+      Alert.alert(title, nativeConnectMessage(native.platform, locale));
+      return;
+    }
+    const provider = native.platform === 'ios' ? new AppleHealthProvider() : new HealthConnectProvider();
+    const result = await provider.requestPermissions(NATIVE_HEALTH_TYPES);
+    await refreshSources();
+    if (result.status === 'denied' || result.status === 'unavailable') {
+      Alert.alert(title, nativeConnectFailedMessage(locale));
+    }
   }
 
   async function handleSelectMode(mode: 'auto' | 'mock' | 'manual') {
@@ -349,7 +372,13 @@ export function SettingsScreen() {
             meta={native.platform !== 'unsupported' ? nativeHealthMeta(native.platform, native.available, locale) : undefined}
             status={nativeHealthStatus(native.platform, native.available, native.permission, t, locale)}
             statusTone={nativeHealthStatusTone(native.platform, native.available, native.permission)}
-            action={native.platform !== 'unsupported' ? <Button variant="secondary" onPress={handleConnectNative}>{t('settings.detailInstructions')}</Button> : undefined}
+            action={
+              native.platform !== 'unsupported' ? (
+                <Button variant="secondary" onPress={handleConnectNative}>
+                  {native.available && !nativeConnected ? t('settings.connect') : t('settings.detailInstructions')}
+                </Button>
+              ) : undefined
+            }
           />
 
           <CollapsibleDetails label={isLoading ? t('settings.loadingSources') : t('settings.oauthTitle')}>
@@ -505,20 +534,23 @@ function nativeHealthMeta(platform: 'ios' | 'android' | 'unsupported', available
     : 'Použiješ později, až to bude podporovat nativní build.';
 }
 
-function nativeConnectMessage(platform: 'ios' | 'android' | 'unsupported', available: boolean, locale: 'cs' | 'en'): string {
+/** Only called when native.available is false — the reachable-when-available
+ *  copy moved to the real requestPermissions() flow in handleConnectNative. */
+function nativeConnectMessage(platform: 'ios' | 'android' | 'unsupported', locale: 'cs' | 'en'): string {
   if (platform === 'unsupported') {
     return locale === 'en'
       ? 'Health data is not available on this device. Manual check-ins are enough to start.'
       : 'Zdravotní data na tomhle zařízení nejsou dostupná. Pro start stačí ruční check-iny.';
   }
-  if (available) {
-    return locale === 'en'
-      ? 'Connect it only if you want Trenr to use sleep, recovery and workout data automatically.'
-      : 'Připoj to jen pokud chceš, aby Trenr automaticky používal spánek, regeneraci a tréninky.';
-  }
   return locale === 'en'
     ? 'This build cannot connect it yet. Manual check-ins are enough for the daily recommendation.'
     : 'Tenhle build to zatím nepřipojí. Pro denní doporučení stačí ruční check-iny.';
+}
+
+function nativeConnectFailedMessage(locale: 'cs' | 'en'): string {
+  return locale === 'en'
+    ? "Couldn't open the permission request. Try again from here, or check Settings app → Privacy → Health."
+    : 'Nepodařilo se otevřít žádost o povolení. Zkus to znovu tady, nebo zkontroluj Nastavení → Soukromí → Zdraví.';
 }
 
 function morningReminderSummary(enabled: boolean, hour: number, minute: number, locale: 'cs' | 'en'): string {

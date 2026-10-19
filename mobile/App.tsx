@@ -6,14 +6,21 @@ import { TrenrProvider, useTrenr } from './src/context/TrenrContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { LoadingScreen } from './src/screens/LoadingScreen';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
-import { LanguageProvider } from './src/context/LanguageContext';
+import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 function AppShell() {
   const { isReady } = useTrenr();
+  const { isReady: localeReady } = useLanguage();
   const { isDark, colors } = useTheme();
 
-  if (!isReady) return <LoadingScreen />;
+  // Hold the splash until BOTH the profile and the persisted locale have loaded.
+  // LanguageProvider starts at detectDeviceLocale() — always 'en' — and swaps in
+  // the stored locale asynchronously, so painting before that lands can show the
+  // wrong language. It matters most in Onboarding, which builds its first coach
+  // message in a useState initialiser that runs exactly once: lose the race there
+  // and the greeting stays English for the whole session.
+  if (!isReady || !localeReady) return <LoadingScreen />;
 
   return (
     <NavigationContainer

@@ -3,29 +3,19 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, TextInputProps, View,
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { MacroRing } from './MacroRing';
 import { typography } from '../constants/theme';
 export * from './premium';
 
-export function H1({ children }: PropsWithChildren) {
-  const { colors, fonts } = useTheme();
-  return <Text style={[styles.h1, { color: colors.ink, fontFamily: fonts.display }]}>{children}</Text>;
-}
-
-export function Subtitle({ children }: PropsWithChildren) {
+/** Muted body line. Not exported — RecoveryCard is the only remaining consumer
+ *  after the unused-component cleanup. */
+function Subtitle({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
   return <Text style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{children}</Text>;
 }
 
-// Large system numeral + small caption for readiness, kcal, and key stats.
-export function Stat({ value, label, color, align = 'center' }: { value: React.ReactNode; label?: string; color?: string; align?: 'center' | 'left' }) {
+export function H1({ children }: PropsWithChildren) {
   const { colors, fonts } = useTheme();
-  return (
-    <View style={{ alignItems: align === 'center' ? 'center' : 'flex-start' }}>
-      <Text style={[styles.statValue, { color: color || colors.ink, fontFamily: fonts.number }]}>{value}</Text>
-      {label ? <Text style={[styles.statLabel, { color: colors.faint, fontFamily: fonts.bold }]}>{label}</Text> : null}
-    </View>
-  );
+  return <Text style={[styles.h1, { color: colors.ink, fontFamily: fonts.display }]}>{children}</Text>;
 }
 
 export function Card({ children, style }: PropsWithChildren<{ style?: any }>) {
@@ -153,54 +143,6 @@ export function Pill({ active, children, onPress }: PropsWithChildren<{ active?:
   );
 }
 
-/** Large selectable option row — title (+ optional subtitle) with a radio dot.
- *  Used by the one-question-per-screen onboarding. */
-export function Choice({
-  active,
-  title,
-  subtitle,
-  onPress,
-  compact,
-}: {
-  active?: boolean;
-  title: string;
-  subtitle?: string;
-  onPress?: () => void;
-  compact?: boolean;
-}) {
-  const { colors, fonts } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected: !!active }}
-      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.choice,
-        compact && styles.choiceCompact,
-        {
-          borderColor: active ? colors.accent : colors.border,
-          backgroundColor: active ? colors.accent + '14' : colors.card,
-        },
-        pressed && { opacity: 0.9 },
-      ]}
-    >
-      <View style={styles.choiceBody}>
-        <Text style={[styles.choiceTitle, compact && styles.choiceTitleCompact, { color: colors.ink, fontFamily: fonts.bold }]}>{title}</Text>
-        {subtitle ? (
-          <Text style={[styles.choiceSub, compact && styles.choiceSubCompact, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
-        ) : null}
-      </View>
-      <View
-        style={[
-          styles.choiceDot,
-          { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accent : 'transparent' },
-        ]}
-      />
-    </Pressable>
-  );
-}
-
 export function ScreenHeader({
   title,
   subtitle,
@@ -237,15 +179,10 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   const { colors, fonts } = useTheme();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts.medium }]}>{title}</Text>
       {action}
     </View>
   );
-}
-
-export function Divider() {
-  const { colors } = useTheme();
-  return <View style={[styles.divider, { backgroundColor: colors.hairline }]} />;
 }
 
 export function MetricCard({
@@ -277,150 +214,6 @@ export function MetricCard({
   );
 }
 
-export function ScoreRing({
-  score,
-  label,
-  color,
-  size = 116,
-}: {
-  score: number;
-  label: string;
-  color?: string;
-  size?: number;
-}) {
-  const { colors, fonts } = useTheme();
-  const accent = color ?? colors.accent;
-  return (
-    <MacroRing
-      size={size}
-      strokeWidth={10}
-      progress={score / 100}
-      color={accent}
-      backgroundColor={colors.border}
-    >
-      <Text style={[styles.scoreValue, { color: colors.ink, fontFamily: fonts.number }]}>{score}</Text>
-      <Text style={[styles.scoreLabel, { color: colors.muted, fontFamily: fonts.bold }]}>{label}</Text>
-    </MacroRing>
-  );
-}
-
-export function CoachInsightCard({
-  title,
-  body,
-  warnings = [],
-  accent,
-  children,
-}: PropsWithChildren<{
-  title: string;
-  body: string;
-  warnings?: string[];
-  accent?: string;
-}>) {
-  const { colors, fonts } = useTheme();
-  const color = accent ?? colors.accent;
-  return (
-    <Card style={[styles.coachCard, { borderColor: `${color}4D` }]}>
-      <Text style={[styles.coachTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
-      <Text style={[styles.coachBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
-      {warnings.map((warning, index) => (
-        <Text key={`${warning}-${index}`} style={[styles.warningLine, { color: colors.orange, fontFamily: fonts.bold }]}>
-          {warning}
-        </Text>
-      ))}
-      {children}
-    </Card>
-  );
-}
-
-export function NutritionTargetCard({
-  kcal,
-  protein,
-  carbs,
-  fat,
-  reason,
-  label,
-  macroLabels,
-  dayLabel,
-}: {
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  reason?: string;
-  label: string;
-  macroLabels: { kcal: string; protein: string; carbs: string; fat: string };
-  dayLabel?: string;
-}) {
-  const { colors, fonts } = useTheme();
-  const totalG = protein + carbs + fat || 1;
-  const macroItems = [
-    { label: macroLabels.protein, value: protein, color: colors.macroProtein },
-    { label: macroLabels.carbs, value: carbs, color: colors.macroCarb },
-    { label: macroLabels.fat, value: fat, color: colors.macroFat },
-  ];
-  return (
-    <Card>
-      <View style={styles.cardTitleRow}>
-        <SectionHeader title={label} />
-        {dayLabel ? <Text style={[styles.cardBadge, { color: colors.accent, borderColor: colors.accent, backgroundColor: colors.accent + '12', fontFamily: fonts.bold }]}>{dayLabel}</Text> : null}
-      </View>
-      <View style={styles.kcalRow}>
-        <Text style={[styles.kcalValue, { color: colors.ink, fontFamily: fonts.number }]}>{kcal}</Text>
-        <Text style={[styles.kcalUnit, { color: colors.muted, fontFamily: fonts.medium }]}>{macroLabels.kcal}</Text>
-      </View>
-      <View style={styles.macroBarsRow}>
-        {macroItems.map(m => (
-          <View key={m.label} style={styles.macroBarItem}>
-            <View style={[styles.macroBarBg, { backgroundColor: colors.hairline }]}>
-              <View style={[styles.macroBarFill, { width: `${Math.round(m.value / totalG * 100)}%` as any, backgroundColor: m.color }]} />
-            </View>
-            <Text style={[styles.macroBarValue, { color: colors.ink, fontFamily: fonts.bold }]}>{m.value}g</Text>
-            <Text style={[styles.macroBarLabel, { color: colors.faint, fontFamily: fonts.medium }]}>{m.label}</Text>
-          </View>
-        ))}
-      </View>
-      {reason ? <Text style={[styles.nutritionReason, { color: colors.muted, fontFamily: fonts.regular }]}>{reason}</Text> : null}
-    </Card>
-  );
-}
-
-export function TrainingRecommendationCard({
-  title,
-  meta,
-  note,
-  cta,
-  onPress,
-  completed,
-  intensity,
-  children,
-}: PropsWithChildren<{
-  title: string;
-  meta: string;
-  note?: string;
-  cta?: string;
-  onPress?: () => void;
-  completed?: boolean;
-  intensity?: string;
-}>) {
-  const { colors, fonts } = useTheme();
-  return (
-    <Card>
-      <View style={styles.cardTitleRow}>
-        <SectionHeader title={title} />
-        {intensity ? <Text style={[styles.cardBadge, { color: colors.orange, borderColor: colors.orange, backgroundColor: colors.orange + '14', fontFamily: fonts.bold }]}>{intensity}</Text> : null}
-      </View>
-      <Text style={[styles.trainingMeta, { color: colors.ink, fontFamily: fonts.bold }]}>{meta}</Text>
-      {note ? <Text style={[styles.trainingNote, { color: colors.muted, fontFamily: fonts.regular }]}>{note}</Text> : null}
-      {cta && onPress ? (
-        <Button variant={completed ? 'secondary' : 'primary'} disabled={completed} onPress={onPress}>
-          {cta}
-        </Button>
-      ) : null}
-      {children}
-    </Card>
-  );
-}
-
 export function RecoveryCard({
   title,
   metrics,
@@ -439,7 +232,7 @@ export function RecoveryCard({
   return (
     <Card>
       <View style={styles.cardTitleRow}>
-        <Text style={[styles.sectionTitle, { color: colors.faint, fontFamily: fonts.medium }]}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.ink, fontFamily: fonts.medium }]}>{title}</Text>
         {status ? <Text style={[styles.cardBadge, { color: colors.blue, borderColor: colors.blue + '44', backgroundColor: colors.blue + '12', fontFamily: fonts.bold }]}>{status}</Text> : null}
       </View>
       <View style={styles.recoveryMetricsRow}>
@@ -464,180 +257,6 @@ export function RecoveryCard({
         <Subtitle>{recommendation}</Subtitle>
       )}
     </Card>
-  );
-}
-
-export function WeeklyProgressCard({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; value: string; color?: string }[];
-}) {
-  return (
-    <Card>
-      <SectionHeader title={title} />
-      <View style={styles.metricGrid}>
-        {items.map(item => (
-          <MetricCard key={item.label} label={item.label} value={item.value} color={item.color} />
-        ))}
-      </View>
-    </Card>
-  );
-}
-
-export function PlanDayCard({
-  title,
-  subtitle,
-  selected,
-  markers = [],
-  onPress,
-  isRest,
-  isLongRun,
-  children,
-}: PropsWithChildren<{
-  title: string;
-  subtitle: string;
-  selected?: boolean;
-  markers?: string[];
-  onPress?: () => void;
-  isRest?: boolean;
-  isLongRun?: boolean;
-}>) {
-  const { colors, fonts } = useTheme();
-
-  let backgroundColor = colors.card;
-  let borderColor = colors.hairline;
-
-  if (selected) {
-    backgroundColor = colors.accent + '14';
-    borderColor = colors.accent;
-  } else if (isRest) {
-    backgroundColor = colors.bgElev;
-    borderColor = colors.hairline;
-  } else if (isLongRun) {
-    backgroundColor = colors.accent + '0F';
-    borderColor = colors.border;
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: !!selected }}
-      accessibilityLabel={`${title}. ${subtitle}`}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.planDayCard,
-        {
-          backgroundColor,
-          borderColor,
-          opacity: !selected && isRest ? 0.75 : 1,
-        },
-        pressed && { opacity: 0.86 },
-      ]}
-    >
-      <View style={styles.planDayHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.planDayTitle, { color: colors.ink, fontFamily: fonts.extraBold }]}>{title}</Text>
-          <Text style={[styles.planDaySubtitle, { color: colors.muted, fontFamily: fonts.regular }]}>{subtitle}</Text>
-        </View>
-        {markers.length ? (
-          <View style={styles.markerRow}>
-            {markers.map(marker => {
-              let bg = colors.accent;
-              let fg = colors.accentText;
-              const isRestMarker = marker === 'Rest' || marker === 'Volno';
-              const isLongMarker = marker === 'Long run' || marker === 'Dlouhý běh' || marker === 'Long';
-              if (isRestMarker) {
-                bg = colors.border;
-                fg = colors.muted;
-              } else if (isLongMarker) {
-                bg = colors.orange;
-                fg = '#fff';
-              }
-              return (
-                <Text key={marker} style={[styles.marker, { color: fg, backgroundColor: bg, fontFamily: fonts.bold }]}>
-                  {marker}
-                </Text>
-              );
-            })}
-          </View>
-        ) : null}
-      </View>
-      {children}
-    </Pressable>
-  );
-}
-
-export function QuickActionButton({
-  icon,
-  label,
-  onPress,
-  disabled,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress?: () => void;
-  disabled?: boolean;
-}) {
-  const { colors, fonts } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.quickAction,
-        { borderColor: colors.hairline, backgroundColor: colors.bgElev },
-        pressed && !disabled && { opacity: 0.82 },
-        disabled && { opacity: 0.45 },
-      ]}
-    >
-      <Ionicons name={icon} size={20} color={colors.muted} />
-      <Text style={[styles.quickActionText, { color: colors.ink, fontFamily: fonts.bold }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-export function ActionIconButton({
-  icon,
-  label,
-  onPress,
-  variant = 'secondary',
-  disabled,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-  disabled?: boolean;
-}) {
-  const { colors, fonts } = useTheme();
-  const isPrimary = variant === 'primary';
-  const isDanger = variant === 'danger';
-  const foreground = isPrimary ? colors.accentText : isDanger ? '#fff' : colors.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionIconButton,
-        {
-          backgroundColor: isPrimary ? colors.accent : isDanger ? colors.red : colors.bgElev,
-          borderColor: isPrimary ? colors.accent : isDanger ? colors.red : colors.border,
-        },
-        pressed && !disabled && { opacity: 0.86, transform: [{ scale: 0.98 }] },
-        disabled && styles.disabled,
-      ]}
-    >
-      <Ionicons name={icon} size={18} color={foreground} />
-      <Text style={[styles.actionIconText, { color: foreground, fontFamily: fonts.bold }]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -669,39 +288,6 @@ export function StatusPill({
     >
       {label}
     </Text>
-  );
-}
-
-export function SegmentedControl<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  const { colors, fonts } = useTheme();
-  return (
-    <View style={[styles.segmented, { backgroundColor: colors.bgElev, borderColor: colors.hairline }]}>
-      {options.map(option => {
-        const active = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="tab"
-            accessibilityLabel={option.label}
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(option.value)}
-            style={[styles.segment, active && { backgroundColor: colors.accent + '16' }]}
-          >
-            <Text style={[styles.segmentText, { color: active ? colors.accent : colors.muted, fontFamily: fonts.bold }]}>
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -794,27 +380,6 @@ export function LoadingState({ title, body }: { title: string; body?: string }) 
       </View>
       <Text style={[styles.stateTitle, { color: colors.ink }]}>{title}</Text>
       {body ? <Text style={[styles.stateBody, { color: colors.muted }]}>{body}</Text> : null}
-    </Card>
-  );
-}
-
-export function ErrorState({
-  title,
-  body,
-  cta,
-  onPress,
-}: {
-  title: string;
-  body: string;
-  cta?: string;
-  onPress?: () => void;
-}) {
-  const { colors, fonts } = useTheme();
-  return (
-    <Card style={[styles.stateCard, { borderColor: colors.red }]}>
-      <Text style={[styles.stateTitle, { color: colors.red, fontFamily: fonts.extraBold }]}>{title}</Text>
-      <Text style={[styles.stateBody, { color: colors.muted, fontFamily: fonts.regular }]}>{body}</Text>
-      {cta && onPress ? <Button variant="secondary" onPress={onPress}>{cta}</Button> : null}
     </Card>
   );
 }
@@ -919,8 +484,6 @@ export function FadeInView({
 const styles = StyleSheet.create({
   h1: { fontSize: 32, fontWeight: '800', letterSpacing: 0, lineHeight: 38 },
   subtitle: { fontSize: 15, lineHeight: 22 },
-  statValue: { fontSize: 42, fontWeight: '700', letterSpacing: 0, lineHeight: 48 },
-  statLabel: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0, marginTop: 2 },
   card: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
@@ -938,14 +501,6 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 15.5, fontWeight: '700', letterSpacing: 0 },
   pill: { minHeight: 42, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 14, fontWeight: '600' },
-  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 16 },
-  choiceCompact: { gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
-  choiceBody: { flex: 1, gap: 2 },
-  choiceTitle: { fontSize: 16.5, fontWeight: '600', letterSpacing: 0 },
-  choiceTitleCompact: { fontSize: 15.5, lineHeight: 20 },
-  choiceSub: { fontSize: 13, lineHeight: 18 },
-  choiceSubCompact: { fontSize: 12.5, lineHeight: 17 },
-  choiceDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5 },
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   screenHeaderText: { flex: 1, gap: 3 },
   screenHeaderAction: { alignItems: 'flex-end' },
@@ -955,7 +510,6 @@ const styles = StyleSheet.create({
   screenSubtitle: { fontSize: typography.body, lineHeight: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metricCard: { flex: 1, minWidth: '47%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, gap: 2 },
   metricCardCompact: { minWidth: '22%', paddingHorizontal: 10, paddingVertical: 10 },
   metricLabel: { fontSize: 11, fontWeight: '600', lineHeight: 15, letterSpacing: 0 },
@@ -965,30 +519,9 @@ const styles = StyleSheet.create({
   metricValueCompact: { fontSize: 20, lineHeight: 25 },
   metricUnit: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   metricDetail: { fontSize: 11, lineHeight: 15 },
-  scoreValue: { fontSize: typography.metric, fontWeight: '700', lineHeight: 46, letterSpacing: 0 },
-  scoreLabel: { fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
-  coachCard: { borderWidth: StyleSheet.hairlineWidth },
-  coachTitle: { fontSize: typography.title, fontWeight: '700', lineHeight: 25 },
-  coachBody: { fontSize: 14, lineHeight: 20 },
-  warningLine: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
-  trainingMeta: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
-  trainingNote: { fontSize: 14, lineHeight: 20 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   cardBadge: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0 },
-  planDayCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 12 },
-  planDayHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  planDayTitle: { fontSize: 16, fontWeight: '700', lineHeight: 21 },
-  planDaySubtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
-  markerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'flex-end' },
-  marker: { fontSize: 10, fontWeight: '600', borderRadius: 999, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
-  quickAction: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1, minWidth: '47%' },
-  quickActionText: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
-  actionIconButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingHorizontal: 12, flex: 1 },
-  actionIconText: { fontSize: 13, lineHeight: 17 },
   statusPill: { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', lineHeight: 14, letterSpacing: 0, borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
-  segmented: { flexDirection: 'row', borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 4, gap: 4 },
-  segment: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  segmentText: { fontSize: 13, fontWeight: '600', lineHeight: 17, textAlign: 'center' },
   settingRow: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 10 },
   settingText: { flex: 1, gap: 3 },
   settingTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
@@ -1018,17 +551,6 @@ const styles = StyleSheet.create({
   skeletonRow: { gap: 10, width: '100%' },
   skeletonBlock: { height: 88, borderRadius: 16, opacity: 0.8 },
   skeletonLine: { height: 14, width: '66%', alignSelf: 'center', borderRadius: 999, opacity: 0.8 },
-  divider: { height: StyleSheet.hairlineWidth },
-  kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  kcalValue: { fontSize: 38, lineHeight: 42, letterSpacing: -0.5 },
-  kcalUnit: { fontSize: 14, lineHeight: 18 },
-  macroBarsRow: { flexDirection: 'row', gap: 12 },
-  macroBarItem: { flex: 1, gap: 4 },
-  macroBarBg: { height: 2, borderRadius: 1, overflow: 'hidden' },
-  macroBarFill: { height: 2, borderRadius: 1 },
-  macroBarValue: { fontSize: 15, lineHeight: 20 },
-  macroBarLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  nutritionReason: { fontSize: 12, lineHeight: 17 },
   recoveryMetricsRow: { flexDirection: 'row', marginVertical: 2 },
   recoveryMetricCell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   recoveryMetricValue: { fontSize: 22, lineHeight: 26, letterSpacing: 0 },

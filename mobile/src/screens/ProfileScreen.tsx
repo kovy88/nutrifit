@@ -13,7 +13,7 @@ import { resolveCoachScope, scopeHasTraining } from '../types';
 import { activityFactorForSessions } from '../utils/nutrition';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { LOCALE_LABELS, type TranslationKey } from '../lib/i18n';
+import { LOCALE_LABELS, type Translate, type TranslationKey } from '../lib/i18n';
 import { USER_PRIMARY_GOALS } from '../constants/goals';
 import { useHealthSources } from '../hooks/useHealthSources';
 import { useUnits } from '../hooks/useUnits';
@@ -68,8 +68,8 @@ export function ProfileScreen() {
     summarizeLikesDislikes(profile.likes, profile.dislikes, t),
   ];
   const healthRows = [
-    profileHealthModeLabel(profile.healthProviderMode, connectedOAuth.length, native.available, locale),
-    profileHealthState(profile.healthProviderMode, connectedOAuth.length, native.available, locale),
+    profileHealthModeLabel(profile.healthProviderMode, connectedOAuth.length, native.available, t),
+    profileHealthState(profile.healthProviderMode, connectedOAuth.length, native.available, t),
   ];
   const settingsRows = [
     t('profile.languageValue', { language: LOCALE_LABELS[locale] }),
@@ -179,7 +179,7 @@ export function ProfileScreen() {
       <ProfileSectionCard
         title={t('profile.healthData')}
         rows={healthRows}
-        ctaLabel={locale === 'en' ? 'Manage' : 'Spravovat'}
+        ctaLabel={t('profile.manageCta')}
         onPress={() => navigation.navigate('Settings')}
       />
 
@@ -550,32 +550,30 @@ function profileHealthModeLabel(
   mode: UserProfile['healthProviderMode'],
   connectedCount: number,
   nativeAvailable: boolean,
-  locale: 'cs' | 'en',
+  t: Translate,
 ): string {
   if (connectedCount > 0 || nativeAvailable || mode === 'apple_health' || mode === 'health_connect') {
-    return locale === 'en' ? 'Health data' : 'Zdravotní data';
+    return t('profile.healthData');
   }
-  if (mode === 'mock') return locale === 'en' ? 'Demo data' : 'Demo data';
-  if (mode === 'manual') return locale === 'en' ? 'Manual check-ins' : 'Ruční check-iny';
-  return locale === 'en' ? 'Health data not connected' : 'Zdravotní data nejsou připojená';
+  if (mode === 'mock') return t('profile.healthMock');
+  if (mode === 'manual') return t('profile.healthManual');
+  return t('profile.healthNotConnected');
 }
 
 function profileHealthState(
   mode: UserProfile['healthProviderMode'],
   connectedCount: number,
   nativeAvailable: boolean,
-  locale: 'cs' | 'en',
+  t: Translate,
 ): string {
-  if (connectedCount > 0) {
-    return locale === 'en' ? 'Connected.' : 'Připojeno.';
-  }
-  if (nativeAvailable) {
-    return locale === 'en' ? 'Available to set up.' : 'Dostupné k nastavení.';
-  }
+  if (connectedCount > 0) return t('profile.healthSourceConnected');
+  if (nativeAvailable) return t('profile.healthAvailable');
   if (mode === 'mock') {
-    return locale === 'en' ? 'Demo data.' : 'Demo data.';
+    // The card title already reads "Demo data" — this line has to add something,
+    // not repeat it.
+    return t('profile.healthNoSource');
   }
-  return locale === 'en' ? 'Manual check-ins.' : 'Ruční check-iny.';
+  return t('profile.healthManualState');
 }
 
 function toggleRestDay(current: number[] | undefined, day: number): number[] {

@@ -157,7 +157,7 @@ export function MiniTrendChart({
       <View style={styles.footerRow}>
         <Text style={[styles.dateLabel, { color: colors.faint }]}>{shortDate(data[0]?.date)}</Text>
         <Text style={[styles.latestLabel, { color: strokeColor }]}>
-          dnes {formatter(last.value as number)}
+          {t('chart.today')} {formatter(last.value as number)}
         </Text>
         <Text style={[styles.dateLabel, { color: colors.faint }]}>{shortDate(data[data.length - 1]?.date)}</Text>
       </View>

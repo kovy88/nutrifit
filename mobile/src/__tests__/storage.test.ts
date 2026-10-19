@@ -258,30 +258,39 @@ describe('date-based storage and migration', () => {
   describe('coach thread per-day storage', () => {
     const memory = { goalSummary: 'lose_fat + general_fitness', updatedAt: '2026-05-30T10:00:00.000Z' };
 
+    // runMigration() also prunes anything older than RETENTION_DAYS, so any test
+    // that calls it must use dates relative to today. Fixed dates rot: they sit
+    // inside the retention window when written and silently fall outside it
+    // later, failing as a function of wall-clock time rather than of the code.
+    const daysAgo = (n: number) => toDateKey(new Date(Date.now() - n * 24 * 60 * 60 * 1000));
+
     it('migrates the legacy single-blob key into per-day keys, then removes it', async () => {
+      const dayA = daysAgo(2);
+      const dayB = daysAgo(1);
       const legacyBlob = {
-        '2026-05-28': { date: '2026-05-28', messages: [{ id: 'a', role: 'user', text: 'hi', createdAt: '2026-05-28T00:00:00.000Z' }], memory, createdAt: '2026-05-28T00:00:00.000Z', updatedAt: '2026-05-28T00:00:00.000Z' },
-        '2026-05-29': { date: '2026-05-29', messages: [{ id: 'b', role: 'user', text: 'hey', createdAt: '2026-05-29T00:00:00.000Z' }], memory, createdAt: '2026-05-29T00:00:00.000Z', updatedAt: '2026-05-29T00:00:00.000Z' },
+        [dayA]: { date: dayA, messages: [{ id: 'a', role: 'user', text: 'hi', createdAt: `${dayA}T00:00:00.000Z` }], memory, createdAt: `${dayA}T00:00:00.000Z`, updatedAt: `${dayA}T00:00:00.000Z` },
+        [dayB]: { date: dayB, messages: [{ id: 'b', role: 'user', text: 'hey', createdAt: `${dayB}T00:00:00.000Z` }], memory, createdAt: `${dayB}T00:00:00.000Z`, updatedAt: `${dayB}T00:00:00.000Z` },
       };
       await AsyncStorage.setItem('nutrifit.coachThreadsByDate.v1', JSON.stringify(legacyBlob));
 
       await runMigration();
 
       const all = await loadCoachThreadsByDate();
-      expect(all['2026-05-28'].messages[0].text).toBe('hi');
-      expect(all['2026-05-29'].messages[0].text).toBe('hey');
+      expect(all[dayA].messages[0].text).toBe('hi');
+      expect(all[dayB].messages[0].text).toBe('hey');
       expect(await AsyncStorage.getItem('nutrifit.coachThreadsByDate.v1')).toBeNull();
     });
 
     it('running the migration twice is a no-op the second time', async () => {
+      const day = daysAgo(2);
       await AsyncStorage.setItem('nutrifit.coachThreadsByDate.v1', JSON.stringify({
-        '2026-05-28': { date: '2026-05-28', messages: [], memory, createdAt: '2026-05-28T00:00:00.000Z', updatedAt: '2026-05-28T00:00:00.000Z' },
+        [day]: { date: day, messages: [], memory, createdAt: `${day}T00:00:00.000Z`, updatedAt: `${day}T00:00:00.000Z` },
       }));
       await runMigration();
       await runMigration();
 
       const all = await loadCoachThreadsByDate();
-      expect(Object.keys(all)).toEqual(['2026-05-28']);
+      expect(Object.keys(all)).toEqual([day]);
     });
 
     it('saving one day does not touch another day already in storage', async () => {

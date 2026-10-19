@@ -31,25 +31,30 @@ import {
   type OnboardingChatState,
 } from '../lib/onboarding/chatState';
 import type { OnboardingCoachReplyParsed } from '../lib/ai/schemas';
-import type { Locale } from '../lib/i18n';
+import { darkColors } from '../constants/theme';
+import type { Locale, Translate, TranslationKey } from '../lib/i18n';
 import type { OnboardingField, TouchedOnboardingFields } from '../lib/onboarding/validation';
 
+// Shared values come from the theme rather than being re-typed here: this object
+// used to copy nine of the theme's hexes verbatim, so any palette change (an
+// accessibility fix, say) silently skipped this screen. Only the chat-specific
+// surfaces and tints below are local.
 const CHAT = {
-  bg: '#050806',
+  bg: darkColors.bg,
   bg2: '#09100C',
-  panel: '#101710',
+  panel: darkColors.card,
   panel2: '#151D14',
-  line: 'rgba(232, 241, 224, 0.12)',
+  line: darkColors.border,
   lineStrong: 'rgba(200, 242, 80, 0.32)',
-  text: '#F4F7EF',
-  muted: '#A2AD9B',
-  faint: '#6E7868',
-  accent: '#C8F250',
+  text: darkColors.ink,
+  muted: darkColors.muted,
+  faint: darkColors.faint,
+  accent: darkColors.accent,
   accentSoft: 'rgba(200, 242, 80, 0.13)',
-  blue: '#7CCBFF',
+  blue: darkColors.blue,
   blueSoft: 'rgba(124, 203, 255, 0.15)',
-  danger: '#FF6B5E',
-  composer: '#0B110D',
+  danger: darkColors.red,
+  composer: darkColors.bgElev,
 };
 
 type QuickReply = {
@@ -61,7 +66,7 @@ type QuickReply = {
 
 export function OnboardingScreen() {
   const { setProfile } = useTrenr();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const hydrated = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const [input, setInput] = useState('');
@@ -69,7 +74,7 @@ export function OnboardingScreen() {
   const [chat, setChat] = useState<OnboardingChatState>(() => withDeterministicMissing({
     draft: emptyDraft(),
     touchedFields: {},
-    messages: [introMessage(locale)],
+    messages: [introMessage(locale, t)],
     missingFields: [],
     confidence: 'low',
   }));
@@ -94,14 +99,14 @@ export function OnboardingScreen() {
       setChat(withDeterministicMissing({
         draft: stored.draft,
         touchedFields: stored.touchedFields ?? {},
-        messages: stored.messages?.length ? stored.messages : [resumeMessage(locale)],
+        messages: stored.messages?.length ? stored.messages : [resumeMessage(locale, t)],
         missingFields: stored.missingFields ?? [],
         confidence: stored.confidence ?? 'low',
       }));
       hydrated.current = true;
     })();
     return () => { cancelled = true; };
-  }, [locale]);
+  }, [locale, t]);
 
   useEffect(() => {
     if (!hydrated.current) return;
@@ -129,10 +134,10 @@ export function OnboardingScreen() {
   const missing = completion.missing;
   const ready = completion.complete;
   const progress = ready ? 1 : progressFromMissing(missing, scope);
-  const summaryItems = profileSummary(chat.draft, chat.touchedFields, locale);
+  const summaryItems = profileSummary(chat.draft, chat.touchedFields, locale, t);
   const firstMissing = missing[0];
   const inputFocus = firstMissing;
-  const quickReplies = repliesFor(missing, scope, locale);
+  const quickReplies = repliesFor(missing, scope, t);
   const showBodyInputs = Boolean(firstMissing && isBodyField(firstMissing));
 
   async function sendMessage(raw: string) {
@@ -141,10 +146,9 @@ export function OnboardingScreen() {
     setInput('');
     setSending(true);
 
-    const next = withDeterministicMissing(applyLocalGoalText(
-      reduceOnboardingChatState(chat, { type: 'user_message', text }),
-      text,
-    ));
+    const withUser = reduceOnboardingChatState(chat, { type: 'user_message', text });
+    const localParsed = applyLocalGoalText(withUser, text);
+    const next = withDeterministicMissing(localParsed);
     setChat(next);
 
     try {
@@ -155,7 +159,14 @@ export function OnboardingScreen() {
         locale,
         missingFields: next.missingFields,
       });
-      setChat(current => reduceCoachReplyWithFollowUp(current, reply, locale));
+      // If the AI call failed but the local parser already understood the answer,
+      // acknowledge it instead of claiming the message could not be read.
+      const aiFailed = reply.confidence === 'low' && Object.keys(reply.extracted).length === 0;
+      if (aiFailed && localParsed !== withUser) {
+        setChat(current => appendCoachMessage(current, mergeCoachText(t('onbChat.ackGeneric'), nextCoachNudge(current, t))));
+      } else {
+        setChat(current => reduceCoachReplyWithFollowUp(current, reply, t));
+      }
     } finally {
       setSending(false);
     }
@@ -183,7 +194,7 @@ export function OnboardingScreen() {
         touched,
       });
       const synced = withDeterministicMissing(patched);
-      return appendCoachMessage(synced, manualCoachReply(synced, patch, touched, locale));
+      return appendCoachMessage(synced, manualCoachReply(synced, patch, touched, t));
     });
   }
 
@@ -201,7 +212,7 @@ export function OnboardingScreen() {
     setChat(current => {
       const withUser = reduceOnboardingChatState(current, { type: 'user_message', text });
       const synced = withDeterministicMissing(withUser);
-      return appendCoachMessage(synced, mergeCoachText(acknowledgement ?? '', nextCoachNudge(synced, locale)));
+      return appendCoachMessage(synced, mergeCoachText(acknowledgement ?? '', nextCoachNudge(synced, t)));
     });
   }
 
@@ -210,7 +221,7 @@ export function OnboardingScreen() {
     if (!checked.complete) {
       setChat(current => appendCoachMessage(
         withDeterministicMissing(current),
-        missingPrompt(checked.missing[0], locale),
+        missingPrompt(checked.missing[0], t),
       ));
       return;
     }
@@ -221,7 +232,7 @@ export function OnboardingScreen() {
     };
     const errors = validateProfile(finalProfile);
     if (errors.length) {
-      Alert.alert(locale === 'en' ? 'Check your profile' : 'Zkontroluj profil', errors.join('\n'));
+      Alert.alert(t('onbChat.checkProfile'), errors.join('\n'));
       return;
     }
     await setProfile(finalProfile);
@@ -238,10 +249,14 @@ export function OnboardingScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.eyebrow}>Trenr</Text>
-            <Text style={styles.title}>{locale === 'en' ? 'Coach setup' : 'Nastavení kouče'}</Text>
+            <Text style={styles.title}>{t('onbChat.title')}</Text>
           </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressText}>{ready ? (locale === 'en' ? 'Ready' : 'Hotovo') : `${missing.length}`}</Text>
+          <View
+            style={styles.progressBadge}
+            accessible
+            accessibilityLabel={ready ? t('onbChat.ready') : t('onbChat.leftCount', { count: missing.length })}
+          >
+            <Text style={styles.progressText}>{ready ? t('onbChat.ready') : t('onbChat.leftCount', { count: missing.length })}</Text>
           </View>
         </View>
 
@@ -267,14 +282,14 @@ export function OnboardingScreen() {
           {sending ? (
             <View style={styles.bubbleRow}>
               <View style={[styles.bubble, styles.coachBubble, styles.typingBubble]}>
-                <Text style={styles.typingText}>{locale === 'en' ? 'Reading your answer...' : 'Čtu tvoji odpověď...'}</Text>
+                <Text style={styles.typingText}>{t('onbChat.typing')}</Text>
               </View>
             </View>
           ) : null}
 
           {summaryItems.length ? (
             <View style={styles.summaryPanel}>
-              <Text style={styles.panelTitle}>{locale === 'en' ? 'So far' : 'Zatím mám'}</Text>
+              <Text style={styles.panelTitle}>{t('onbChat.soFar')}</Text>
               <View style={styles.summaryGrid}>
                 {summaryItems.map(item => (
                   <View key={item.label} style={styles.summaryItem}>
@@ -290,23 +305,21 @@ export function OnboardingScreen() {
         <View style={styles.bottom}>
           {ready ? (
             <View style={styles.readyPanel}>
-              <Text style={styles.readyTitle}>{locale === 'en' ? 'I have enough to build your plan.' : 'Mám dost informací pro první plán.'}</Text>
-              <Text style={styles.readyText}>{locale === 'en' ? 'You can fine-tune details later in Profile.' : 'Detaily můžeš doladit později v profilu.'}</Text>
-              <Pressable style={({ pressed }) => [styles.finishButton, pressed && styles.pressed]} onPress={finish}>
-                <Text style={styles.finishText}>{locale === 'en' ? 'Start Trenr' : 'Spustit Trenr'}</Text>
+              <Text style={styles.readyTitle}>{t('onbChat.readyTitle')}</Text>
+              <Text style={styles.readyText}>{t('onbChat.readyText')}</Text>
+              <Pressable accessibilityRole="button" style={({ pressed }) => [styles.finishButton, pressed && styles.pressed]} onPress={finish}>
+                <Text style={styles.finishText}>{t('onbChat.startTrenr')}</Text>
               </Pressable>
             </View>
           ) : (
             <>
-              <View style={styles.questionPanel}>
-                <Text style={styles.questionKicker}>{locale === 'en' ? 'Coach asks' : 'Kouč se ptá'}</Text>
-                <Text style={styles.questionText}>{missingPrompt(firstMissing, locale)}</Text>
-                <Text style={styles.missingText}>{missingLine(missing, locale)}</Text>
-              </View>
+              <Text style={styles.missingText}>{missingLine(missing, t)}</Text>
               <View style={styles.quickRow}>
                 {quickReplies.map(reply => (
                   <Pressable
                     key={reply.label}
+                    accessibilityRole="button"
+                    accessibilityLabel={reply.label}
                     style={({ pressed }) => [styles.quickChip, pressed && styles.pressed]}
                     onPress={() => chooseReply(reply)}
                   >
@@ -314,10 +327,10 @@ export function OnboardingScreen() {
                   </Pressable>
                 ))}
               </View>
-              {showBodyInputs ? <BodyInputs chat={chat} locale={locale} onPatch={patchSilently} onConfirm={confirmCurrentAnswer} /> : null}
+              {showBodyInputs ? <BodyInputs chat={chat} t={t} onPatch={patchSilently} onConfirm={confirmCurrentAnswer} /> : null}
               {firstMissing === 'raceDateISO' ? (
                 <View style={styles.inlinePanel}>
-                  <Text style={styles.panelTitle}>{locale === 'en' ? 'Race date' : 'Datum závodu'}</Text>
+                  <Text style={styles.panelTitle}>{t('onbChat.raceDate')}</Text>
                   <DateTimePicker
                     value={dateFromISO(chat.draft.raceDateISO)}
                     mode="date"
@@ -326,7 +339,7 @@ export function OnboardingScreen() {
                     onChange={(_, date) => {
                       if (date) {
                         const iso = todayISO(date);
-                        applyManualAnswer(raceDateAnswer(iso, locale), { raceDateISO: iso }, ['raceDateISO']);
+                        applyManualAnswer(raceDateAnswer(iso, t), { raceDateISO: iso }, ['raceDateISO']);
                       }
                     }}
                   />
@@ -339,7 +352,7 @@ export function OnboardingScreen() {
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder={placeholderFor(inputFocus, locale)}
+              placeholder={placeholderFor(inputFocus, t)}
               placeholderTextColor={CHAT.faint}
               style={styles.input}
               multiline
@@ -349,11 +362,13 @@ export function OnboardingScreen() {
               onSubmitEditing={() => { if (Platform.OS !== 'ios') void sendMessage(input); }}
             />
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('onbChat.send')}
               style={({ pressed }) => [styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled, pressed && styles.pressed]}
               onPress={() => void sendMessage(input)}
               disabled={!input.trim() || sending}
             >
-              <Text style={styles.sendText}>{locale === 'en' ? 'Send' : 'Poslat'}</Text>
+              <Text style={styles.sendText}>{t('onbChat.send')}</Text>
             </Pressable>
           </View>
         </View>
@@ -362,23 +377,25 @@ export function OnboardingScreen() {
   );
 }
 
-function BodyInputs({ chat, locale, onPatch, onConfirm }: {
+function BodyInputs({ chat, t, onPatch, onConfirm }: {
   chat: OnboardingChatState;
-  locale: Locale;
+  t: Translate;
   onPatch: (patch: Partial<UserProfile>, touched: OnboardingField[]) => void;
   onConfirm: (text: string, acknowledgement?: string) => void;
 }) {
   const bodyReady = bodyBasicsReady(chat.draft, chat.touchedFields);
   return (
     <View style={styles.inlinePanel}>
-      <Text style={styles.panelTitle}>{locale === 'en' ? 'Body basics' : 'Základ těla'}</Text>
+      <Text style={styles.panelTitle}>{t('onbChat.bodyBasics')}</Text>
       <View style={styles.quickRow}>
         {([
-          ['muz', locale === 'en' ? 'Man' : 'Muž'],
-          ['zena', locale === 'en' ? 'Woman' : 'Žena'],
+          ['muz', t('onbChat.man')],
+          ['zena', t('onbChat.woman')],
         ] as Array<[Gender, string]>).map(([value, label]) => (
           <Pressable
             key={value}
+            accessibilityRole="button"
+            accessibilityState={{ selected: chat.draft.gender === value && Boolean(chat.touchedFields.gender) }}
             style={({ pressed }) => [
               styles.quickChip,
               chat.draft.gender === value && chat.touchedFields.gender && styles.quickChipSelected,
@@ -391,16 +408,18 @@ function BodyInputs({ chat, locale, onPatch, onConfirm }: {
         ))}
       </View>
       <View style={styles.numberGrid}>
-        <NumberInput label={locale === 'en' ? 'Age' : 'Věk'} value={chat.draft.age} onChange={value => onPatch({ age: value }, ['age'])} />
-        <NumberInput label="cm" value={chat.draft.height} onChange={value => onPatch({ height: value }, ['height'])} />
-        <NumberInput label="kg" value={chat.draft.weight} onChange={value => onPatch({ weight: value }, ['weight'])} decimal />
+        <NumberInput label={t('onbChat.age')} value={chat.draft.age} onChange={value => onPatch({ age: value }, ['age'])} />
+        <NumberInput label={t('onbChat.heightCm')} value={chat.draft.height} onChange={value => onPatch({ height: value }, ['height'])} />
+        <NumberInput label={t('onbChat.weightKg')} value={chat.draft.weight} onChange={value => onPatch({ weight: value }, ['weight'])} decimal />
       </View>
       <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !bodyReady }}
         disabled={!bodyReady}
         style={({ pressed }) => [styles.confirmMiniButton, !bodyReady && styles.sendButtonDisabled, pressed && bodyReady && styles.pressed]}
-        onPress={() => onConfirm(bodyBasicsAnswer(chat.draft, locale), bodyBasicsAck(locale))}
+        onPress={() => onConfirm(bodyBasicsAnswer(chat.draft, t), bodyBasicsAck(t))}
       >
-        <Text style={styles.confirmMiniText}>{locale === 'en' ? 'Confirm basics' : 'Potvrdit údaje'}</Text>
+        <Text style={styles.confirmMiniText}>{t('onbChat.confirmBasics')}</Text>
       </Pressable>
     </View>
   );
@@ -412,18 +431,27 @@ function NumberInput({ label, value, onChange, decimal }: {
   onChange: (value: number) => void;
   decimal?: boolean;
 }) {
+  // Keep the raw text locally so partial decimals like "75." survive re-renders.
+  const [text, setText] = useState(value ? String(value) : '');
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    if (Number(text.replace(',', '.')) !== value) setText(value ? String(value) : '');
+  }
   return (
     <View style={styles.numberBox}>
       <Text style={styles.numberLabel}>{label}</Text>
       <TextInput
-        value={value ? String(value) : ''}
-        onChangeText={text => {
-          const normalized = text.replace(',', '.').replace(/[^0-9.]/g, '');
+        value={text}
+        accessibilityLabel={label}
+        onChangeText={raw => {
+          const normalized = raw.replace(',', '.').replace(decimal ? /[^0-9.]/g : /[^0-9]/g, '');
+          setText(normalized);
           const next = decimal ? Number(normalized) : Math.round(Number(normalized));
           onChange(Number.isFinite(next) ? next : 0);
         }}
         keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
-        placeholder="0"
+        placeholder="–"
         placeholderTextColor={CHAT.faint}
         selectionColor={CHAT.accent}
         style={styles.numberInput}
@@ -447,47 +475,38 @@ function bodyBasicsReady(draft: UserProfile, touched: TouchedOnboardingFields): 
   );
 }
 
-function bodyBasicsAnswer(draft: UserProfile, locale: Locale): string {
-  const gender = draft.gender === 'zena'
-    ? (locale === 'en' ? 'woman' : 'žena')
-    : (locale === 'en' ? 'man' : 'muž');
-  return locale === 'en'
-    ? `${gender}, ${draft.age} years, ${draft.height} cm, ${draft.weight} kg.`
-    : `${gender}, ${draft.age} let, ${draft.height} cm, ${draft.weight} kg.`;
+function bodyBasicsAnswer(draft: UserProfile, t: Translate): string {
+  const gender = t(draft.gender === 'zena' ? 'onbChat.genderWoman' : 'onbChat.genderMan');
+  return t('onbChat.bodyAnswer', { gender, age: draft.age, height: draft.height, weight: draft.weight });
 }
 
-function bodyBasicsAck(locale: Locale): string {
-  return locale === 'en'
-    ? 'Thanks, that is enough for safe nutrition targets.'
-    : 'Díky, to stačí pro bezpečné nutriční cíle.';
+function bodyBasicsAck(t: Translate): string {
+  return t('onbChat.bodyAck');
 }
 
-function raceDateAnswer(iso: string, locale: Locale): string {
-  return locale === 'en' ? `The race is on ${iso}.` : `Závod je ${iso}.`;
+function raceDateAnswer(iso: string, t: Translate): string {
+  return t('onbChat.raceAnswer', { iso });
 }
 
 function emptyDraft(): UserProfile {
   return { ...DEFAULT_PROFILE, age: 0, height: 0, weight: 0 };
 }
 
-function introMessage(locale: Locale): OnboardingChatMessage {
+function introMessage(locale: Locale, t: Translate): OnboardingChatMessage {
   return {
     id: `intro-${locale}`,
     role: 'coach',
-    text: locale === 'en'
-      ? "Hey, I'm Trenr. I will ask a few quick questions and build your first plan."
-      : 'Ahoj, jsem Trenr. Položím pár rychlých otázek a složím ti první plán.',
+    // The intro carries the first question too — there is no separate question card.
+    text: mergeCoachText(t('onbChat.intro'), missingPrompt(canCompleteChatOnboarding(emptyDraft(), {}).missing[0], t)),
     createdAt: new Date().toISOString(),
   };
 }
 
-function resumeMessage(locale: Locale): OnboardingChatMessage {
+function resumeMessage(locale: Locale, t: Translate): OnboardingChatMessage {
   return {
     id: `resume-${locale}-${Date.now()}`,
     role: 'coach',
-    text: locale === 'en'
-      ? 'We can continue where you left off. I saved what you already told me and will ask only for what is still missing.'
-      : 'Můžeme pokračovat tam, kde jsi skončil. Co už jsi mi řekl, mám uložené a doptám se jen na to, co ještě chybí.',
+    text: t('onbChat.resume'),
     createdAt: new Date().toISOString(),
   };
 }
@@ -503,11 +522,11 @@ function withDeterministicMissing(state: OnboardingChatState): OnboardingChatSta
 function reduceCoachReplyWithFollowUp(
   state: OnboardingChatState,
   reply: OnboardingCoachReplyParsed,
-  locale: Locale,
+  t: Translate,
 ): OnboardingChatState {
   const reduced = reduceOnboardingChatState(state, { type: 'coach_reply', reply });
   const synced = withDeterministicMissing(reduced);
-  return replaceLastCoachMessage(synced, mergeCoachText(reply.reply, nextCoachNudge(synced, locale)));
+  return replaceLastCoachMessage(synced, mergeCoachText(reply.reply, nextCoachNudge(synced, t)));
 }
 
 function replaceLastCoachMessage(state: OnboardingChatState, text: string): OnboardingChatState {
@@ -524,7 +543,16 @@ function applyLocalGoalText(state: OnboardingChatState, text: string): Onboardin
   const parsed = parseGoalText(text);
   if (!parsed.goalProfile) return state;
 
-  const draft = applyGoalProfileToUserProfile(state.draft, parsed.goalProfile);
+  const applied = applyGoalProfileToUserProfile(state.draft, parsed.goalProfile);
+  // The local parser always defaults experience to beginner; never let that
+  // overwrite a level the user already picked earlier in the chat.
+  const draft = state.touchedFields.experience
+    ? {
+        ...applied,
+        experience: state.draft.experience,
+        goalProfile: applied.goalProfile && { ...applied.goalProfile, experienceLevel: state.draft.experience },
+      }
+    : applied;
   const touched: TouchedOnboardingFields = {
     ...state.touchedFields,
     goalProfile: true,
@@ -579,74 +607,76 @@ function manualCoachReply(
   state: OnboardingChatState,
   patch: Partial<UserProfile>,
   touched: OnboardingField[],
-  locale: Locale,
+  t: Translate,
 ): string {
-  return mergeCoachText(manualAcknowledgement(state, patch, touched, locale), nextCoachNudge(state, locale));
+  return mergeCoachText(manualAcknowledgement(state, patch, touched, t), nextCoachNudge(state, t));
 }
 
 function manualAcknowledgement(
   state: OnboardingChatState,
   patch: Partial<UserProfile>,
   touched: OnboardingField[],
-  locale: Locale,
+  t: Translate,
 ): string {
-  const en = locale === 'en';
   if (touched.includes('coachScope')) {
-    return en
-      ? `Good. I will set this up for ${scopeLabel(resolveCoachScope(state.draft), locale).toLowerCase()}.`
-      : `Dobře. Nastavím to na ${scopeLabel(resolveCoachScope(state.draft), locale).toLowerCase()}.`;
+    return t('onbChat.ackScope', { scope: scopeLabel(resolveCoachScope(state.draft), t).toLowerCase() });
   }
   if (touched.includes('sessionsPerWeek')) {
-    return en
-      ? `Got it: ${state.draft.sessionsPerWeek} training days per week.`
-      : `Beru: ${state.draft.sessionsPerWeek} tréninky týdně.`;
+    return t('onbChat.ackSessions', { count: state.draft.sessionsPerWeek });
   }
   if (touched.includes('experience')) {
-    return en
-      ? `Perfect, I will adapt the start to your ${experienceLabel(state.draft.experience, locale).toLowerCase()} level.`
-      : `Jasně, start přizpůsobím úrovni ${experienceLabel(state.draft.experience, locale).toLowerCase()}.`;
+    return t('onbChat.ackExperience', { level: experienceLabel(state.draft.experience, t).toLowerCase() });
   }
   if (touched.includes('raceDateISO') && patch.raceDateISO) {
-    return en ? `Race date saved: ${patch.raceDateISO}.` : `Datum závodu mám: ${patch.raceDateISO}.`;
+    return t('onbChat.ackRaceDate', { iso: patch.raceDateISO });
   }
-  return en ? 'Got it.' : 'Beru.';
+  return t('onbChat.ackGeneric');
 }
 
-function repliesFor(missing: ChatOnboardingMissingField[], scope: CoachScope, locale: Locale): QuickReply[] {
+/** Goal suggestions carry a stable `kind` so scope filtering keys off that
+ *  rather than off the label text. The old version filtered with
+ *  `label.includes('lose' | 'zhub' | '10')`, which silently depended on the
+ *  wording never changing and would not survive a third locale. */
+const GOAL_REPLIES: { kind: 'lose_fat' | 'run' | 'muscle' | 'fitness'; labelKey: TranslationKey; messageKey: TranslationKey }[] = [
+  { kind: 'lose_fat', labelKey: 'onbChat.goalLoseLabel',    messageKey: 'onbChat.goalLoseMsg' },
+  { kind: 'run',      labelKey: 'onbChat.goalRunLabel',     messageKey: 'onbChat.goalRunMsg' },
+  { kind: 'muscle',   labelKey: 'onbChat.goalMuscleLabel',  messageKey: 'onbChat.goalMuscleMsg' },
+  { kind: 'fitness',  labelKey: 'onbChat.goalFitnessLabel', messageKey: 'onbChat.goalFitnessMsg' },
+];
+
+const EXPERIENCE_REPLIES: [ExperienceLevel, TranslationKey][] = [
+  ['beginner',     'onbChat.levelStarting'],
+  ['intermediate', 'onbChat.levelSome'],
+  ['advanced',     'onbChat.levelAdvanced'],
+];
+
+function repliesFor(missing: ChatOnboardingMissingField[], scope: CoachScope, t: Translate): QuickReply[] {
   const first = missing[0];
   if (!first || isBodyField(first) || first === 'raceDateISO') return [];
   if (first === 'coachScope') {
     return [
-      { label: locale === 'en' ? 'Food + training' : 'Jídlo + trénink', patch: { coachScope: 'both' }, touched: ['coachScope'] },
-      { label: locale === 'en' ? 'Training only' : 'Jen trénink', patch: { coachScope: 'training' }, touched: ['coachScope'] },
-      { label: locale === 'en' ? 'Food only' : 'Jen jídlo', patch: { coachScope: 'nutrition' }, touched: ['coachScope'] },
+      { label: t('onbChat.replyBoth'), patch: { coachScope: 'both' }, touched: ['coachScope'] },
+      { label: t('onbChat.replyTrainingOnly'), patch: { coachScope: 'training' }, touched: ['coachScope'] },
+      { label: t('onbChat.replyFoodOnly'), patch: { coachScope: 'nutrition' }, touched: ['coachScope'] },
     ];
   }
   if (first === 'goal') {
-    const goalReplies: QuickReply[] = [
-      { label: locale === 'en' ? 'Lose fat' : 'Chci zhubnout', message: locale === 'en' ? 'I want to lose fat.' : 'Chci zhubnout tuk.' },
-      { label: locale === 'en' ? 'Run 10 km' : 'Uběhnout 10 km', message: locale === 'en' ? 'I want to run 10 km.' : 'Chci uběhnout 10 km.' },
-      { label: locale === 'en' ? 'Build muscle' : 'Nabrat svaly', message: locale === 'en' ? 'I want to build muscle.' : 'Chci nabrat svaly.' },
-      { label: locale === 'en' ? 'Better fitness' : 'Lepší kondice', message: locale === 'en' ? 'I want better fitness.' : 'Chci lepší kondici.' },
-    ];
-    if (scope === 'training') return goalReplies.filter(reply => !reply.label.toLowerCase().includes(locale === 'en' ? 'lose' : 'zhub'));
-    if (scope === 'nutrition') return goalReplies.filter(reply => !reply.label.includes('10'));
-    return goalReplies;
+    // Training-only coaching drops the fat-loss goal; nutrition-only drops the race goal.
+    const excluded = scope === 'training' ? 'lose_fat' : scope === 'nutrition' ? 'run' : null;
+    return GOAL_REPLIES
+      .filter(reply => reply.kind !== excluded)
+      .map(reply => ({ label: t(reply.labelKey), message: t(reply.messageKey) }));
   }
   if (first === 'sessionsPerWeek') {
     return [2, 3, 4, 5].map(count => ({
-      label: `${count}x ${locale === 'en' ? 'week' : 'týdně'}`,
+      label: t('onbChat.sessionsChip', { count, unit: t('onbChat.perWeekChip') }),
       patch: { sessionsPerWeek: count },
       touched: ['sessionsPerWeek'],
     }));
   }
   if (first === 'experience') {
-    return ([
-      ['beginner', locale === 'en' ? 'Starting' : 'Začínám'],
-      ['intermediate', locale === 'en' ? 'Some base' : 'Něco mám'],
-      ['advanced', locale === 'en' ? 'Advanced' : 'Pokročilý'],
-    ] as Array<[ExperienceLevel, string]>).map(([value, label]) => ({
-      label,
+    return EXPERIENCE_REPLIES.map(([value, labelKey]) => ({
+      label: t(labelKey),
       patch: { experience: value },
       touched: ['experience'],
     }));
@@ -654,107 +684,98 @@ function repliesFor(missing: ChatOnboardingMissingField[], scope: CoachScope, lo
   return [];
 }
 
-function nextCoachNudge(state: OnboardingChatState, locale: Locale): string {
+function nextCoachNudge(state: OnboardingChatState, t: Translate): string {
   const completion = canCompleteChatOnboarding(state.draft, state.touchedFields);
-  if (completion.complete) {
-    return locale === 'en'
-      ? 'Perfect. I have enough for your first plan.'
-      : 'Perfektní. Mám dost informací pro první plán.';
-  }
-  return missingPrompt(completion.missing[0], locale);
+  if (completion.complete) return t('onbChat.nudgeComplete');
+  return missingPrompt(completion.missing[0], t);
 }
 
-function missingPrompt(field: ChatOnboardingMissingField | undefined, locale: Locale): string {
+function missingPrompt(field: ChatOnboardingMissingField | undefined, t: Translate): string {
   if (!field) return '';
-  const en = locale === 'en';
   switch (field) {
-    case 'coachScope': return en ? 'Do you want food, training, or both?' : 'Chceš řešit jídlo, trénink, nebo obojí?';
-    case 'goal': return en ? 'What is the main outcome you want?' : 'Jaký je hlavní výsledek, který chceš?';
-    case 'sessionsPerWeek': return en ? 'How many training days per week feel realistic?' : 'Kolik tréninkových dnů týdně je pro tebe reálných?';
-    case 'experience': return en ? 'What is your current training level?' : 'Jaká je tvoje aktuální tréninková úroveň?';
-    case 'raceDateISO': return en ? 'Pick the race date so I can pace the plan safely.' : 'Vyber datum závodu, ať plán nastavím bezpečně.';
+    case 'coachScope': return t('onbChat.promptScope');
+    case 'goal': return t('onbChat.promptGoal');
+    case 'sessionsPerWeek': return t('onbChat.promptSessions');
+    case 'experience': return t('onbChat.promptExperience');
+    case 'raceDateISO': return t('onbChat.promptRaceDate');
     case 'gender':
     case 'age':
     case 'height':
     case 'weight':
-      return en ? 'For nutrition I need basic body metrics.' : 'Pro jídelníček potřebuji základní tělesné údaje.';
+      return t('onbChat.promptBody');
   }
 }
 
-function missingLine(missing: ChatOnboardingMissingField[], locale: Locale): string {
+function missingLine(missing: ChatOnboardingMissingField[], t: Translate): string {
   if (!missing.length) return '';
-  const labels = missing.slice(0, 3).map(field => missingLabel(field, locale)).join(', ');
-  return locale === 'en' ? `Still needed: ${labels}` : `Ještě potřebuji: ${labels}`;
+  const labels = missing.slice(0, 3).map(field => missingLabel(field, t)).join(', ');
+  return t('onbChat.stillNeeded', { labels });
 }
 
-function missingLabel(field: ChatOnboardingMissingField, locale: Locale): string {
-  const en = locale === 'en';
+function missingLabel(field: ChatOnboardingMissingField, t: Translate): string {
   switch (field) {
-    case 'coachScope': return en ? 'focus' : 'zaměření';
-    case 'goal': return en ? 'goal' : 'cíl';
-    case 'sessionsPerWeek': return en ? 'training days' : 'tréninkové dny';
-    case 'experience': return en ? 'level' : 'úroveň';
-    case 'raceDateISO': return en ? 'race date' : 'datum závodu';
-    case 'gender': return en ? 'gender' : 'pohlaví';
-    case 'age': return en ? 'age' : 'věk';
-    case 'height': return en ? 'height' : 'výška';
-    case 'weight': return en ? 'weight' : 'váha';
+    case 'coachScope': return t('onbChat.labelScope');
+    case 'goal': return t('onbChat.labelGoal');
+    case 'sessionsPerWeek': return t('onbChat.labelSessions');
+    case 'experience': return t('onbChat.labelExperience');
+    case 'raceDateISO': return t('onbChat.labelRaceDate');
+    case 'gender': return t('onbChat.labelGender');
+    case 'age': return t('onbChat.labelAge');
+    case 'height': return t('onbChat.labelHeight');
+    case 'weight': return t('onbChat.labelWeight');
   }
 }
 
-function placeholderFor(field: ChatOnboardingMissingField | undefined, locale: Locale): string {
-  const en = locale === 'en';
+function placeholderFor(field: ChatOnboardingMissingField | undefined, t: Translate): string {
   switch (field) {
-    case 'goal': return en ? 'e.g. I want to run 10 km...' : 'např. chci uběhnout 10 km...';
-    case 'coachScope': return en ? 'food, training, or both...' : 'jídlo, trénink, nebo obojí...';
-    case 'sessionsPerWeek': return en ? 'e.g. 3 days per week...' : 'např. 3 dny týdně...';
-    case 'experience': return en ? 'beginner, intermediate...' : 'začátečník, pokročilý...';
-    case 'raceDateISO': return en ? 'e.g. race is on 2026-09-20...' : 'např. závod je 2026-09-20...';
-    default: return en ? 'Type anything useful...' : 'Napiš cokoliv užitečného...';
+    case 'goal': return t('onbChat.phGoal');
+    case 'coachScope': return t('onbChat.phScope');
+    case 'sessionsPerWeek': return t('onbChat.phSessions');
+    case 'experience': return t('onbChat.phExperience');
+    case 'raceDateISO': return t('onbChat.phRaceDate');
+    default: return t('onbChat.phDefault');
   }
 }
 
-function profileSummary(draft: UserProfile, touched: TouchedOnboardingFields, locale: Locale): Array<{ label: string; value: string }> {
+function profileSummary(draft: UserProfile, touched: TouchedOnboardingFields, locale: Locale, t: Translate): Array<{ label: string; value: string }> {
   const items: Array<{ label: string; value: string }> = [];
   const scope = resolveCoachScope(draft);
   if (touched.coachScope) {
-    items.push({ label: locale === 'en' ? 'Focus' : 'Zaměření', value: scopeLabel(scope, locale) });
+    items.push({ label: t('onbChat.sumFocus'), value: scopeLabel(scope, t) });
   }
   if (touched.goalProfile || touched.primaryGoal || touched.trainingGoal) {
-    items.push({ label: locale === 'en' ? 'Goal' : 'Cíl', value: primaryGoalLabel(draft.primaryGoal, locale) });
+    // primaryGoalLabel still takes a locale — it lives in utils/nutrition.ts,
+    // which has not been migrated yet.
+    items.push({ label: t('onbChat.sumGoal'), value: primaryGoalLabel(draft.primaryGoal, locale) });
   }
   if (scopeHasTraining(scope) && touched.sessionsPerWeek) {
-    items.push({ label: locale === 'en' ? 'Training' : 'Trénink', value: `${draft.sessionsPerWeek}x / ${locale === 'en' ? 'week' : 'týden'}` });
+    items.push({
+      label: t('onbChat.sumTraining'),
+      value: t('onbChat.trainingValue', { count: draft.sessionsPerWeek, unit: t('onbChat.perWeekShort') }),
+    });
   }
   if (scopeHasTraining(scope) && touched.experience) {
-    items.push({ label: locale === 'en' ? 'Level' : 'Úroveň', value: experienceLabel(draft.experience, locale) });
+    items.push({ label: t('onbChat.sumLevel'), value: experienceLabel(draft.experience, t) });
   }
   if (scopeHasNutrition(scope) && touched.age && touched.height && touched.weight) {
-    items.push({ label: locale === 'en' ? 'Body' : 'Tělo', value: `${draft.age} / ${draft.height} cm / ${draft.weight} kg` });
+    items.push({
+      label: t('onbChat.sumBody'),
+      value: t('onbChat.bodyValue', { age: draft.age, height: draft.height, weight: draft.weight }),
+    });
   }
   return items;
 }
 
-function scopeLabel(scope: CoachScope, locale: Locale): string {
-  if (locale === 'en') {
-    if (scope === 'training') return 'Training';
-    if (scope === 'nutrition') return 'Food';
-    return 'Food + training';
-  }
-  if (scope === 'training') return 'Trénink';
-  if (scope === 'nutrition') return 'Jídlo';
-  return 'Jídlo + trénink';
+function scopeLabel(scope: CoachScope, t: Translate): string {
+  if (scope === 'training') return t('onbChat.scopeTraining');
+  if (scope === 'nutrition') return t('onbChat.scopeNutrition');
+  return t('onbChat.scopeBoth');
 }
 
-function experienceLabel(level: ExperienceLevel, locale: Locale): string {
-  if (locale === 'en') {
-    if (level === 'advanced') return 'Advanced';
-    if (level === 'intermediate') return 'Some base';
-    return 'Starting';
-  }
-  if (level === 'advanced') return 'Pokročilý';
-  if (level === 'intermediate') return 'Něco mám';
-  return 'Začínám';
+function experienceLabel(level: ExperienceLevel, t: Translate): string {
+  if (level === 'advanced') return t('onbChat.levelAdvanced');
+  if (level === 'intermediate') return t('onbChat.levelSome');
+  return t('onbChat.levelStarting');
 }
 
 function progressFromMissing(missing: ChatOnboardingMissingField[], scope: CoachScope): number {
@@ -945,29 +966,7 @@ const styles = StyleSheet.create({
     color: CHAT.muted,
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 6,
-  },
-  questionPanel: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 16,
-    backgroundColor: CHAT.panel,
-    borderWidth: 1,
-    borderColor: CHAT.line,
-    marginBottom: 10,
-  },
-  questionKicker: {
-    color: CHAT.accent,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0,
-    marginBottom: 4,
-  },
-  questionText: {
-    color: CHAT.text,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '800',
+    marginBottom: 8,
   },
   quickRow: {
     flexDirection: 'row',

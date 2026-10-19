@@ -171,7 +171,7 @@ function runningPlan(goal: TrainingGoal, weekStartISO: string, weekIndex: number
 
   sessions.push(session(weekStartISO, 2, 'rest', 'Volno / mobilita 15 min', 0, 'rest'));
   sessions.push(session(weekStartISO, 3, 'easy_run', `Lehký běh ${midEasyKm} km`, midEasyKm, 'easy'));
-  sessions.push(session(weekStartISO, 4, 'strength', 'Silový základ 30 min (dřep, mrtvý tah, kliky, plank)', 0, 'moderate'));
+  sessions.push(session(weekStartISO, 4, 'strength', 'Silový základ 30 min (dřep, mrtvý tah, kliky, plank)', 0, 'moderate', 30));
   sessions.push(session(weekStartISO, 5, 'long_run', `Long run ${longKm} km v konverzačním tempu`, longKm, 'moderate'));
   sessions.push(session(weekStartISO, 6, 'recovery_run', `Recovery klus ${Math.max(3, round(longKm * 0.3))} km nebo volno`, Math.max(3, round(longKm * 0.3)), 'easy'));
 
@@ -187,11 +187,14 @@ function strengthPlan(weekStartISO: string, weekIndex: number, readiness: Readin
   const intensity: TrainingSession['intensity'] = readiness === 'red' ? 'moderate' : 'hard';
   const sessions: TrainingSession[] = [
     session(weekStartISO, 0, 'strength', 'Full body A (dřep, lavička, veslování, plank)', 0, intensity),
-    session(weekStartISO, 1, 'mobility', 'Mobilita 25 min + chůze 30 min', 0, 'easy'),
+    session(weekStartISO, 1, 'mobility', 'Mobilita 25 min + chůze 30 min', 0, 'easy', 55),
     session(weekStartISO, 2, 'strength', 'Full body B (mrtvý tah, tlak nad hlavu, shyby, side plank)', 0, intensity),
     session(weekStartISO, 3, 'rest', 'Volno', 0, 'rest'),
     session(weekStartISO, 4, 'strength', 'Full body C (výpady, tlak na šikmé lavici, přítahy, břicho)', 0, intensity),
-    session(weekStartISO, 5, 'cross_training', 'Kardio na výběr 30–40 min, nízká až střední intenzita', 0, 'moderate'),
+    // Ranged titles take the LOW end: durationMinutes feeds the workout-calorie
+    // estimate, and over-crediting burn would quietly raise the day's intake
+    // target — the wrong direction to err in on a fat-loss plan.
+    session(weekStartISO, 5, 'cross_training', 'Kardio na výběr 30–40 min, nízká až střední intenzita', 0, 'moderate', 30),
     session(weekStartISO, 6, 'rest', 'Volno', 0, 'rest'),
   ];
   return { goalKind: 'strength_basics', weekStartISO, weekIndex, sessions, totalKm: 0, warnings };
@@ -199,12 +202,12 @@ function strengthPlan(weekStartISO: string, weekIndex: number, readiness: Readin
 
 function conditioningPlan(weekStartISO: string, weekIndex: number, readiness: ReadinessSignal, warnings: string[]): TrainingPlan {
   const sessions: TrainingSession[] = [
-    session(weekStartISO, 0, 'intervals', 'HIIT 25 min (např. 8×30/30)', 0, readiness === 'red' ? 'moderate' : 'hard'),
-    session(weekStartISO, 1, 'strength', 'Síla 40 min (dolní polovina)', 0, 'moderate'),
-    session(weekStartISO, 2, 'easy_run', 'Lehký běh 5 km nebo kolo 30 min', 5, 'easy'),
-    session(weekStartISO, 3, 'strength', 'Síla 40 min (horní polovina)', 0, 'moderate'),
-    session(weekStartISO, 4, 'mobility', 'Mobilita + core 30 min', 0, 'easy'),
-    session(weekStartISO, 5, 'cross_training', 'Sport / hra 60–90 min', 0, 'moderate'),
+    session(weekStartISO, 0, 'intervals', 'HIIT 25 min (např. 8×30/30)', 0, readiness === 'red' ? 'moderate' : 'hard', 25),
+    session(weekStartISO, 1, 'strength', 'Síla 40 min (dolní polovina)', 0, 'moderate', 40),
+    session(weekStartISO, 2, 'easy_run', 'Lehký běh 5 km nebo kolo 30 min', 5, 'easy', 30),
+    session(weekStartISO, 3, 'strength', 'Síla 40 min (horní polovina)', 0, 'moderate', 40),
+    session(weekStartISO, 4, 'mobility', 'Mobilita + core 30 min', 0, 'easy', 30),
+    session(weekStartISO, 5, 'cross_training', 'Sport / hra 60–90 min', 0, 'moderate', 60),
     session(weekStartISO, 6, 'rest', 'Volno', 0, 'rest'),
   ];
   return { goalKind: 'sports_conditioning', weekStartISO, weekIndex, sessions, totalKm: 5, warnings };
@@ -212,11 +215,11 @@ function conditioningPlan(weekStartISO: string, weekIndex: number, readiness: Re
 
 function generalFitnessPlan(weekStartISO: string, weekIndex: number, readiness: ReadinessSignal, warnings: string[]): TrainingPlan {
   const sessions: TrainingSession[] = [
-    session(weekStartISO, 0, 'strength', 'Síla 30 min (full body)', 0, readiness === 'red' ? 'moderate' : 'hard'),
-    session(weekStartISO, 1, 'easy_run', 'Svižná chůze nebo lehký běh 30 min', 3, 'easy'),
+    session(weekStartISO, 0, 'strength', 'Síla 30 min (full body)', 0, readiness === 'red' ? 'moderate' : 'hard', 30),
+    session(weekStartISO, 1, 'easy_run', 'Svižná chůze nebo lehký běh 30 min', 3, 'easy', 30),
     session(weekStartISO, 2, 'mobility', 'Mobilita 20 min', 0, 'easy'),
-    session(weekStartISO, 3, 'strength', 'Síla 30 min (full body)', 0, 'moderate'),
-    session(weekStartISO, 4, 'easy_run', 'Lehký běh nebo kolo 35 min', 4, 'easy'),
+    session(weekStartISO, 3, 'strength', 'Síla 30 min (full body)', 0, 'moderate', 30),
+    session(weekStartISO, 4, 'easy_run', 'Lehký běh nebo kolo 35 min', 4, 'easy', 35),
     session(weekStartISO, 5, 'cross_training', 'Aktivita podle chuti 45 min', 0, 'moderate'),
     session(weekStartISO, 6, 'rest', 'Volno', 0, 'rest'),
   ];
@@ -227,7 +230,7 @@ function generalFitnessPlan(weekStartISO: string, weekIndex: number, readiness: 
 function walkingPlan(weekStartISO: string, weekIndex: number, warnings: string[]): TrainingPlan {
   const sessions: TrainingSession[] = [
     session(weekStartISO, 0, 'easy_run', 'Svižná chůze (lehké tempo)', 0, 'easy'),
-    session(weekStartISO, 1, 'mobility', 'Mobilita + protažení 15 min', 0, 'easy'),
+    session(weekStartISO, 1, 'mobility', 'Mobilita + protažení 15 min', 0, 'easy', 15),
     session(weekStartISO, 2, 'easy_run', 'Svižná chůze (lehké tempo)', 0, 'easy'),
     session(weekStartISO, 3, 'rest', 'Volno', 0, 'rest'),
     session(weekStartISO, 4, 'easy_run', 'Delší procházka', 0, 'easy'),
@@ -270,11 +273,11 @@ function hyroxPlan(weekStartISO: string, weekIndex: number, goal: TrainingGoal, 
 
   const sessions: TrainingSession[] = [
     session(weekStartISO, 0, 'easy_run',   `Lehký běh ${round(runKm * 0.30)} km (aerobní báze, tempo závodu)`, round(runKm * 0.30), 'easy'),
-    session(weekStartISO, 1, 'functional', `Stanice A ${funcDur} min — SkiErg, farmer carry, wall balls, burpee broad jump`, 0, readiness === 'red' ? 'moderate' : 'hard'),
+    session(weekStartISO, 1, 'functional', `Stanice A ${funcDur} min — SkiErg, farmer carry, wall balls, burpee broad jump`, 0, readiness === 'red' ? 'moderate' : 'hard', funcDur),
     session(weekStartISO, 2, 'strength',   'Silový základ 35 min — výpady, pull-upy, nošení zátěže, plank', 0, 'moderate'),
     session(weekStartISO, 3, 'easy_run',   `Recovery běh ${round(runKm * 0.20)} km`, round(runKm * 0.20), 'easy'),
-    session(weekStartISO, 4, 'functional', `Stanice B ${funcDur} min — RowErg, sled push/pull, box jump, kettlebell carry`, 0, readiness === 'red' ? 'moderate' : 'hard'),
-    session(weekStartISO, 5, 'brick',      `Závod-simulace: ${satRunKm} km běh + funkční dokončovací okruh 20 min`, satRunKm, readiness === 'red' ? 'moderate' : 'hard'),
+    session(weekStartISO, 4, 'functional', `Stanice B ${funcDur} min — RowErg, sled push/pull, box jump, kettlebell carry`, 0, readiness === 'red' ? 'moderate' : 'hard', funcDur),
+    session(weekStartISO, 5, 'brick',      `Závod-simulace: ${satRunKm} km běh + funkční dokončovací okruh 20 min`, satRunKm, readiness === 'red' ? 'moderate' : 'hard', Math.round(satRunKm * 6.2) + 20),
     session(weekStartISO, 6, 'rest',       'Volno — aktivní regenerace (chůze, strečink)', 0, 'rest'),
   ];
 
@@ -364,10 +367,10 @@ function ocrPlan(weekStartISO: string, weekIndex: number, goal: TrainingGoal, re
 
   const sessions: TrainingSession[] = [
     session(weekStartISO, 0, 'easy_run',  `Trail běh ${round(runKm * 0.25)} km (terén, nerovný povrch)`, round(runKm * 0.25), 'easy'),
-    session(weekStartISO, 1, 'functional', `Překážkový okruh 45 min — grip (dead hangs, rope climb), přenášení, burpees`, 0, funcIntensity),
-    session(weekStartISO, 2, 'strength',   'Síla horní poloviny těla 40 min — shyby, farmer carry, sandbag, core', 0, 'moderate'),
+    session(weekStartISO, 1, 'functional', `Překážkový okruh 45 min — grip (dead hangs, rope climb), přenášení, burpees`, 0, funcIntensity, 45),
+    session(weekStartISO, 2, 'strength',   'Síla horní poloviny těla 40 min — shyby, farmer carry, sandbag, core', 0, 'moderate', 40),
     session(weekStartISO, 3, 'easy_run',   `Trail běh ${round(runKm * 0.18)} km`, round(runKm * 0.18), 'easy'),
-    session(weekStartISO, 4, 'mobility',   'Mobilita + příprava 25 min (ramena, kyčle, kotníky)', 0, 'easy'),
+    session(weekStartISO, 4, 'mobility',   'Mobilita + příprava 25 min (ramena, kyčle, kotníky)', 0, 'easy', 25),
     session(weekStartISO, 5, 'long_run',   `Trail long run ${round(runKm * 0.45)} km s převýšením`, round(runKm * 0.45), 'moderate'),
     session(weekStartISO, 6, 'rest',       'Volno', 0, 'rest'),
   ];
@@ -375,13 +378,21 @@ function ocrPlan(weekStartISO: string, weekIndex: number, goal: TrainingGoal, re
   return { goalKind: 'ocr', weekStartISO, weekIndex, sessions, totalKm: runKm, warnings };
 }
 
-function session(weekStartISO: string, dayOffset: number, kind: SessionKind, title: string, distanceKm: number, intensity: TrainingSession['intensity']): TrainingSession {
+/** `durationMinutes` is the session's single source of truth: it drives the
+ *  workout-calorie estimate, strain/load, and the AI meal prompt, and the UI
+ *  renders it. Whenever a title states a duration in prose, pass that same
+ *  number here explicitly — `estimateMinutes` is only a fallback for sessions
+ *  defined purely by distance, and it flattens every strength session to 35 min
+ *  regardless of what the title promises. `plan-duration.test.ts` enforces that
+ *  a title and this field never disagree. (training-core.ts already sets the
+ *  two together inline; this brings plan.ts in line with it.) */
+function session(weekStartISO: string, dayOffset: number, kind: SessionKind, title: string, distanceKm: number, intensity: TrainingSession['intensity'], durationMinutes?: number): TrainingSession {
   return {
     date: addDays(weekStartISO, dayOffset),
     kind,
     title,
     distanceKm: distanceKm || undefined,
-    durationMinutes: estimateMinutes(kind, distanceKm),
+    durationMinutes: durationMinutes ?? estimateMinutes(kind, distanceKm),
     intensity,
   };
 }
